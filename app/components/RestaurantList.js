@@ -48,12 +48,7 @@ export default function RestaurantList({ restaurants }) {
 
                             {/* Content Section */}
                             <div className="p-6">
-                                <div className="flex justify-between items-start mb-2">
-                                    <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">{restaurant.name}</h3>
-                                    <span className="bg-green-700/80 backdrop-blur-md text-white px-2 py-1 rounded-lg text-xs font-bold flex items-center gap-1 shadow-sm">
-                                        {restaurant.rating} <Star size={10} fill="currentColor" />
-                                    </span>
-                                </div>
+                                <h3 className="text-xl font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1 mb-2">{restaurant.name}</h3>
                                 <p className="text-gray-400 text-sm mb-4 line-clamp-1">{restaurant.cuisine}</p>
                                 <div className="border-t border-white/10 pt-4 flex justify-between items-center text-sm font-medium text-gray-300">
                                     <span className="text-gray-400 text-xs font-bold uppercase tracking-wider border border-white/10 px-2 py-1 rounded">{restaurant.priceForTwo || "Menu"}</span>
@@ -63,7 +58,8 @@ export default function RestaurantList({ restaurants }) {
                         </div>
                     </Link>
                 </motion.div>
-            ))}
-        </div>
+            ))
+            }
+        </div >
     );
 }

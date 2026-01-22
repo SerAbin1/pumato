@@ -140,10 +140,7 @@ function RestaurantContent() {
                                 </motion.h1>
                                 <p className="text-lg md:text-xl opacity-90 font-medium text-gray-300">{restaurant.cuisine}</p>
                                 <div className="flex items-center gap-4 mt-4 text-sm font-bold text-gray-300">
-                                    <span className="bg-green-600/90 backdrop-blur-md text-white px-3 py-1 rounded-lg flex items-center gap-1 shadow-lg shadow-green-900/20">
-                                        {restaurant.rating} <Star size={12} fill="currentColor" />
-                                    </span>
-                                    <span className="flex items-center gap-1"><Dot /> 30-35 mins</span>
+                                    <span className="flex items-center gap-1">30-35 mins</span>
                                     <span className="flex items-center gap-1"><Dot /> {restaurant.priceForTwo || "Standard Menu"}</span>
                                 </div>
                             </div>

@@ -39,7 +39,7 @@ export default function AdminPage() {
 
     // Restaurant Form State
     const [formData, setFormData] = useState({
-        name: "", image: "", cuisine: "", rating: "4.0", deliveryTime: "30 mins", offer: "", priceForTwo: "",
+        name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
         baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
         menu: []
     });
@@ -206,7 +206,7 @@ export default function AdminPage() {
     const handleAddNew = () => {
         setEditingId(null);
         setFormData({
-            name: "", image: "", cuisine: "", rating: "4.0", deliveryTime: "30 mins", offer: "", priceForTwo: "",
+            name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
             baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
             menu: []
         });
@@ -447,7 +447,6 @@ export default function AdminPage() {
                                     </div>
                                 </div>
                                 <FormInput label="Cuisine" value={formData.cuisine} onChange={(e) => setFormData({ ...formData, cuisine: e.target.value })} />
-                                <FormInput label="Rating" value={formData.rating} onChange={(e) => setFormData({ ...formData, rating: e.target.value })} />
                                 <FormInput label="Delivery Time" value={formData.deliveryTime} onChange={(e) => setFormData({ ...formData, deliveryTime: e.target.value })} />
                                 <FormInput label="Offer Badge" value={formData.offer} onChange={(e) => setFormData({ ...formData, offer: e.target.value })} placeholder="e.g 50% OFF" />
                                 <FormInput label="Extra Info / Offer" value={formData.priceForTwo} onChange={(e) => setFormData({ ...formData, priceForTwo: e.target.value })} placeholder="e.g. Buy 1 Get 1 Free" />

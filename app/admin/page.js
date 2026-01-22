@@ -7,7 +7,7 @@ import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLef
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import Link from "next/link";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import Image from "next/image";
 
@@ -373,7 +373,7 @@ export default function AdminPage() {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white pb-20 overflow-x-hidden">
+        <div className="min-h-screen bg-black text-white pb-40 overflow-x-hidden">
             {/* Noise Overlay */}
             <div className="fixed inset-0 pointer-events-none opacity-[0.04] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
 
@@ -639,9 +639,9 @@ export default function AdminPage() {
                                     })}
                                 </div>
                             </div>
-                            <div className="mt-12 pt-8 border-t border-white/10 flex justify-end gap-4">
-                                <button onClick={() => setActiveTab("list")} className="px-8 py-4 rounded-2xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors">Cancel</button>
-                                <button onClick={handleSubmitRestaurant} className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40">{editingId ? "Update Restaurant" : "Create Restaurant"}</button>
+                            <div className="mt-12 pt-8 border-t border-white/10 flex justify-end gap-4 opacity-0 pointer-events-none">
+                                <button onClick={() => setActiveTab("list")} className="px-8 py-4 rounded-2xl font-bold text-gray-400">Cancel</button>
+                                <button className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold">Update</button>
                             </div>
                         </div>
                     )
@@ -721,9 +721,9 @@ export default function AdminPage() {
                                 </div>
                             </div>
 
-                            <div className="mt-12 pt-8 border-t border-white/10 flex justify-end gap-4">
-                                <button onClick={() => setActiveTab("list")} className="px-8 py-4 rounded-2xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors">Cancel</button>
-                                <button onClick={handleSubmitCoupon} className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40">{editingId ? "Update Coupon" : "Create Coupon"}</button>
+                            <div className="mt-12 pt-8 border-t border-white/10 flex justify-end gap-4 opacity-0 pointer-events-none">
+                                <button onClick={() => setActiveTab("list")} className="px-8 py-4 rounded-2xl font-bold text-gray-400">Cancel</button>
+                                <button className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold">Update</button>
                             </div>
                         </div>
                     )
@@ -831,7 +831,7 @@ export default function AdminPage() {
                                             <button
                                                 onClick={handleBulkApply}
                                                 disabled={isBulkApplying}
-                                                className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors border border-white/10 flex justify-center items-center gap-2 hover:shadow-lg"
+                                                className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors border border-white/10 flex justify-center items-center gap-2 hover:shadow-lg opacity-0 pointer-events-none"
                                             >
                                                 {isBulkApplying ? "Applying..." : "Apply Slots to Range"}
                                             </button>
@@ -928,10 +928,8 @@ export default function AdminPage() {
                             })}
                         </div>
 
-                        <div className="mt-8 pt-8 border-t border-white/10 flex justify-end">
-                            <button onClick={handleSaveBanners} className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center gap-2">
-                                <Save size={20} /> Update All Banners
-                            </button>
+                        <div className="mt-8 pt-8 border-t border-white/10 flex justify-end opacity-0 pointer-events-none">
+                            <button className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold">Update</button>
                         </div>
                     </div>
                 )}
@@ -979,6 +977,66 @@ export default function AdminPage() {
 
 
             </div>
+
+            {/* Sticky Action Bar */}
+            <AnimatePresence>
+                {((activeSection === "restaurants" && activeTab === "form") ||
+                    (activeSection === "coupons" && activeTab === "form") ||
+                    (activeSection === "laundry" && dateOrType) ||
+                    (activeSection === "website")) && (
+                        <motion.div
+                            initial={{ y: 100, opacity: 0 }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            className="fixed bottom-0 left-0 right-0 z-[60] p-4 pb-8 md:pb-4 border-t border-white/10 bg-black/60 backdrop-blur-xl shadow-2xl"
+                        >
+                            <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+                                <div className="hidden md:block">
+                                    <p className="text-white font-bold text-sm flex items-center gap-2">
+                                        <Sparkles size={16} className="text-orange-500" />
+                                        {activeSection === "restaurants" && (editingId ? "Editing Restaurant" : "Creating Restaurant")}
+                                        {activeSection === "coupons" && (editingId ? "Editing Coupon" : "Creating Coupon")}
+                                        {activeSection === "laundry" && "Managing Laundry Slots"}
+                                        {activeSection === "website" && "Customizing Website"}
+                                    </p>
+                                </div>
+
+                                <div className="flex items-center gap-4 w-full md:w-auto">
+                                    {(activeSection === "restaurants" || activeSection === "coupons") && (
+                                        <button
+                                            onClick={() => {
+                                                setActiveTab("list");
+                                                setEditingId(null);
+                                                window.scrollTo({ top: 0, behavior: 'smooth' });
+                                            }}
+                                            className="flex-1 md:flex-none px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors border border-white/5"
+                                        >
+                                            Cancel
+                                        </button>
+                                    )}
+
+                                    <button
+                                        onClick={() => {
+                                            if (activeSection === "restaurants") handleSubmitRestaurant();
+                                            else if (activeSection === "coupons") handleSubmitCoupon();
+                                            else if (activeSection === "laundry") handleBulkApply();
+                                            else if (activeSection === "website") handleSaveBanners();
+                                        }}
+                                        className="flex-1 md:flex-none bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center justify-center gap-2 group"
+                                    >
+                                        <Save size={18} className="group-hover:scale-110 transition-transform" />
+                                        <span>
+                                            {activeSection === "restaurants" ? (editingId ? "Update Restaurant" : "Create Restaurant") : ""}
+                                            {activeSection === "coupons" ? (editingId ? "Update Coupon" : "Create Coupon") : ""}
+                                            {activeSection === "laundry" ? "Apply Changes" : ""}
+                                            {activeSection === "website" ? "Save Site Content" : ""}
+                                        </span>
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+            </AnimatePresence>
         </div>
     );
 }

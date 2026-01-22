@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, PieChart, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, PieChart, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
 import Link from "next/link";
@@ -22,6 +22,7 @@ export default function AdminPage() {
         banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
         banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
     });
+    const [menuCategories, setMenuCategories] = useState([]); // Array of strings
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("list"); // list, form
     const [editingId, setEditingId] = useState(null);
@@ -83,6 +84,14 @@ export default function AdminPage() {
 
             setRestaurants(resSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
             setCoupons(promoSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+
+            // Fetch Categories
+            const catDoc = await getDoc(doc(db, "site_content", "menu_categories"));
+            if (catDoc.exists()) {
+                setMenuCategories(catDoc.data().list || []);
+            } else {
+                setMenuCategories(["Recommended", "Starters", "Main Course", "Beverages", "Desserts"]); // Default
+            }
 
             // Fetch Banners
             const bannerDoc = await getDoc(doc(db, "site_content", "promo_banners"));
@@ -187,6 +196,25 @@ export default function AdminPage() {
             alert("Failed to apply bulk updates.");
         }
         setIsBulkApplying(false);
+    };
+
+    // --- CATEGORY HANDLERS ---
+    const handleAddCategory = async (newCat) => {
+        if (!newCat.trim()) return;
+        const updated = [...menuCategories, newCat.trim()];
+        setMenuCategories(updated);
+        try {
+            await setDoc(doc(db, "site_content", "menu_categories"), { list: updated });
+        } catch (e) { console.error(e); alert("Failed to save category"); }
+    };
+
+    const handleDeleteCategory = async (cat) => {
+        if (!confirm(`Delete category "${cat}"?`)) return;
+        const updated = menuCategories.filter(c => c !== cat);
+        setMenuCategories(updated);
+        try {
+            await setDoc(doc(db, "site_content", "menu_categories"), { list: updated });
+        } catch (e) { console.error(e); alert("Failed to delete category"); }
     };
 
     // --- BANNER HANDLERS ---
@@ -395,6 +423,12 @@ export default function AdminPage() {
                             >
                                 <Sparkles size={16} /> Banners
                             </button>
+                            <button
+                                onClick={() => { setActiveSection("categories"); setActiveTab("list"); }}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "categories" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <List size={16} /> Categories
+                            </button>
                         </div>
                     </div>
                     {activeSection !== 'laundry' && activeSection !== 'banners' && (
@@ -472,7 +506,19 @@ export default function AdminPage() {
                                                     <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white font-bold" placeholder="Item Name" value={item.name} onChange={(e) => updateMenuItem(idx, "name", e.target.value)} />
                                                     <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" type="number" value={item.price} onChange={(e) => updateMenuItem(idx, "price", e.target.value)} />
                                                     <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Extra Info (e.g. Must Try)" value={item.extraInfo || ""} onChange={(e) => updateMenuItem(idx, "extraInfo", e.target.value)} />
-                                                    <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Section (e.g. Starters, Main Course)" value={item.category || ""} onChange={(e) => updateMenuItem(idx, "category", e.target.value)} />
+                                                    <select
+                                                        className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs appearance-none focus:outline-none focus:border-orange-500/50"
+                                                        value={item.category || ""}
+                                                        onChange={(e) => updateMenuItem(idx, "category", e.target.value)}
+                                                    >
+                                                        <option value="" disabled className="bg-gray-900 text-gray-400">Select Category</option>
+                                                        {menuCategories.map(cat => (
+                                                            <option key={cat} value={cat} className="bg-gray-900">{cat}</option>
+                                                        ))}
+                                                        {item.category && !menuCategories.includes(item.category) && (
+                                                            <option value={item.category} className="bg-gray-900">{item.category} (Legacy)</option>
+                                                        )}
+                                                    </select>
                                                 </div>
                                                 <div className="col-span-2">
                                                     <textarea className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white h-full resize-none min-h-[100px]" placeholder="Description" value={item.description} onChange={(e) => updateMenuItem(idx, "description", e.target.value)} />
@@ -788,6 +834,47 @@ export default function AdminPage() {
                             <button onClick={handleSaveBanners} className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center gap-2">
                                 <Save size={20} /> Update All Banners
                             </button>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- CATEGORIES SECTION --- */}
+                {activeSection === "categories" && (
+                    <div className="bg-white/5 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 max-w-4xl mx-auto shadow-2xl">
+                        <h2 className="text-3xl font-black mb-8 text-white border-b border-white/10 pb-6 flex items-center gap-3">
+                            <List className="text-green-500" /> Manage Menu Categories
+                        </h2>
+
+                        <div className="flex gap-4 mb-8">
+                            <input
+                                className="flex-1 p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-green-500/50 transition-all font-medium"
+                                placeholder="New Category Name (e.g. Desserts)"
+                                id="new-cat-input"
+                            />
+                            <button
+                                onClick={() => {
+                                    const input = document.getElementById("new-cat-input");
+                                    if (input) {
+                                        handleAddCategory(input.value);
+                                        input.value = "";
+                                    }
+                                }}
+                                className="bg-green-600 text-white px-8 rounded-xl font-bold hover:bg-green-500 transition-colors shadow-lg shadow-green-900/40"
+                            >
+                                Add
+                            </button>
+                        </div>
+
+                        <div className="grid gap-4">
+                            {menuCategories.map(cat => (
+                                <div key={cat} className="flex items-center justify-between bg-black/30 p-4 rounded-xl border border-white/5 group hover:border-white/10 transition-all">
+                                    <span className="font-bold text-lg text-gray-200">{cat}</span>
+                                    <button onClick={() => handleDeleteCategory(cat)} className="bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 p-2 rounded-lg transition-colors">
+                                        <Trash size={18} />
+                                    </button>
+                                </div>
+                            ))}
+                            {menuCategories.length === 0 && <p className="text-center text-gray-500 italic">No categories found. Add one above!</p>}
                         </div>
                     </div>
                 )}

@@ -3,7 +3,8 @@
 import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
 import FoodCollections from "../components/FoodCollections";
-import { Search, Sparkles } from "lucide-react";
+import Link from "next/link";
+import { Search, Sparkles, Utensils, ArrowRight } from "lucide-react";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
@@ -13,6 +14,7 @@ import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 export default function DeliveryPage() {
     const [restaurants, setRestaurants] = useState([]);
     const [filteredRestaurants, setFilteredRestaurants] = useState([]);
+    const [filteredFoods, setFilteredFoods] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [promoBanners, setPromoBanners] = useState(null);
 
@@ -61,13 +63,36 @@ export default function DeliveryPage() {
 
     // Apply search filtering
     useEffect(() => {
-        let result = [...restaurants];
-
-        if (searchQuery) {
-            result = result.filter(r => r.name.toLowerCase().includes(searchQuery.toLowerCase()) || r.cuisine.toLowerCase().includes(searchQuery.toLowerCase()));
+        if (!searchQuery) {
+            setFilteredRestaurants(restaurants);
+            setFilteredFoods([]);
+            return;
         }
 
-        setFilteredRestaurants(result);
+        const query = searchQuery.toLowerCase();
+
+        // 1. Filter Restaurants (Name or Cuisine match OR has matching menu item)
+        const matchedRestaurants = restaurants.filter(r => {
+            const nameMatch = r.name.toLowerCase().includes(query);
+            const cuisineMatch = r.cuisine.toLowerCase().includes(query);
+            const menuMatch = r.menu?.some(item => item.name.toLowerCase().includes(query));
+            return nameMatch || cuisineMatch || menuMatch;
+        });
+
+        // 2. Find specific matching foods (Global Search)
+        const matchedFoods = [];
+        restaurants.forEach(r => {
+            if (r.menu) {
+                r.menu.forEach(item => {
+                    if (item.name.toLowerCase().includes(query)) {
+                        matchedFoods.push({ ...item, restaurantId: r.id, restaurantName: r.name });
+                    }
+                });
+            }
+        });
+
+        setFilteredRestaurants(matchedRestaurants);
+        setFilteredFoods(matchedFoods);
     }, [restaurants, searchQuery]);
 
 
@@ -139,6 +164,39 @@ export default function DeliveryPage() {
                 {/* <FoodCollections /> */}
 
 
+
+                {/* Search Results: Global Menu Items */}
+                {searchQuery && filteredFoods.length > 0 && (
+                    <section className="mb-12">
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <span className="w-1.5 h-6 bg-green-500 rounded-full"></span> Matching Dishes
+                            </h2>
+                            <span className="text-gray-500 font-medium px-3 py-1 bg-white/5 rounded-full text-xs">{filteredFoods.length} items</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filteredFoods.map((item, idx) => (
+                                <Link href={`/restaurant?id=${item.restaurantId}`} key={`${item.restaurantId}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group">
+                                    <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
+                                        {item.image ? (
+                                            <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
+                                        ) : (
+                                            <div className="flex items-center justify-center w-full h-full text-gray-500"><Utensils size={20} /></div>
+                                        )}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">{item.name}</h4>
+                                        <p className="text-xs text-gray-400 mb-1">{item.restaurantName}</p>
+                                        <p className="font-bold text-green-400">₹{item.price}</p>
+                                    </div>
+                                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-orange-500 transition-colors">
+                                        <ArrowRight size={14} />
+                                    </div>
+                                </Link>
+                            ))}
+                        </div>
+                    </section>
+                )}
 
                 {/* Restaurant List */}
                 <section>

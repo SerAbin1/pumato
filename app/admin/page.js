@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, PieChart, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import Link from "next/link";

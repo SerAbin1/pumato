@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Star, Clock } from "lucide-react";
+import { Clock } from "lucide-react";
 import { motion } from "framer-motion";
 
 export default function RestaurantList({ restaurants }) {

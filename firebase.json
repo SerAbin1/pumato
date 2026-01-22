@@ -1,0 +1,15 @@
+{
+    "hosting": {
+        "public": "out",
+        "cleanUrls": true,
+        "trailingSlash": true,
+        "ignore": [
+            "firebase.json",
+            "**/.*",
+            "**/node_modules/**",
+            "**/*.json",
+            "./createAdmin.js"
+        ],
+        "rewrites": []
+    }
+}

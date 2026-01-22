@@ -1,0 +1,54 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+  
+  .perspective-1000 {
+    perspective: 1000px;
+  }
+  
+  .preserve-3d {
+    transform-style: preserve-3d;
+  }
+}
+
+/* Floating Animations */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-20px) rotate(5deg); }
+}
+
+@keyframes float-medium {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-30px) rotate(-10deg); }
+}
+
+@keyframes float-fast {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  50% { transform: translateY(-15px) rotate(8deg); }
+}
+
+.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
+.animate-float-medium { animation: float-medium 5s ease-in-out infinite; }
+.animate-float-fast { animation: float-fast 4s ease-in-out infinite; }
+
+/* Pattern Background */
+.pattern-isometric {
+  background-image:  linear-gradient(30deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(150deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(30deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(150deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(60deg, #f8717177 25%, transparent 25.5%, transparent 75%, #f8717177 75%, #f8717177), linear-gradient(60deg, #f8717177 25%, transparent 25.5%, transparent 75%, #f8717177 75%, #f8717177);
+  background-size: 80px 140px;
+  background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+}

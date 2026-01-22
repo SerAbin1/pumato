@@ -4,7 +4,8 @@ import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
 import FoodCollections from "../components/FoodCollections";
 import Link from "next/link";
-import { Search, Sparkles, Utensils, ArrowRight } from "lucide-react";
+import { Search, Sparkles, Utensils, ArrowRight, Plus } from "lucide-react";
+import { useCart } from "@/app/context/CartContext";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
@@ -12,6 +13,7 @@ import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 
 export default function DeliveryPage() {
+    const { addToCart } = useCart();
     const [restaurants, setRestaurants] = useState([]);
     const [filteredRestaurants, setFilteredRestaurants] = useState([]);
     const [filteredFoods, setFilteredFoods] = useState([]);
@@ -180,23 +182,31 @@ export default function DeliveryPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredFoods.map((item, idx) => (
-                                <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} key={`${item.restaurantId}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group">
-                                    <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
-                                        {item.image ? (
-                                            <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
-                                        ) : (
-                                            <div className="flex items-center justify-center w-full h-full text-gray-500"><Utensils size={20} /></div>
-                                        )}
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                        <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">{item.name}</h4>
-                                        <p className="text-xs text-gray-400 mb-1">{item.restaurantName}</p>
-                                        <p className="font-bold text-green-400">₹{item.price}</p>
-                                    </div>
-                                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-white group-hover:bg-orange-500 transition-colors">
-                                        <ArrowRight size={14} />
-                                    </div>
-                                </Link>
+                                <div key={`${item.restaurantId}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group relative">
+                                    <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} className="flex items-center gap-4 flex-1 min-w-0">
+                                        <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
+                                            {item.image ? (
+                                                <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
+                                            ) : (
+                                                <div className="flex items-center justify-center w-full h-full text-gray-500"><Utensils size={20} /></div>
+                                            )}
+                                        </div>
+                                        <div className="flex-1 min-w-0">
+                                            <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">{item.name}</h4>
+                                            <p className="text-xs text-gray-400 mb-1">{item.restaurantName}</p>
+                                            <p className="font-bold text-green-400">₹{item.price}</p>
+                                        </div>
+                                    </Link>
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            addToCart({ ...item, restaurantId: item.restaurantId, restaurantName: item.restaurantName });
+                                        }}
+                                        className="bg-white text-black px-4 py-2 rounded-xl font-black text-xs hover:bg-gray-200 transition-colors shadow-lg active:scale-95"
+                                    >
+                                        ADD
+                                    </button>
+                                </div>
                             ))}
                         </div>
                     </section>

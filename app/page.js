@@ -348,7 +348,7 @@ export default function GatewayPage() {
           <a href="https://www.instagram.com/pumato_pu_?igsh=M2FjOHJ2aW56bmRs" target="_blank" rel="noreferrer" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
             <Instagram size={24} />
           </a>
-          <a href="https://wa.me/917511153875" target="_blank" rel="noreferrer" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
+          <a href="https://wa.me/919048086503" target="_blank" rel="noreferrer" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
             <MessageCircle size={24} />
           </a>
           <a href="mailto:pumato.feedbacks@gmail.com" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">

@@ -10,10 +10,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import useFirestore from "@/app/hooks/useFirestore";
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();
+    const { getCollection, getDocument, loading: dbLoading } = useFirestore();
     const [toast, setToast] = useState(null);
     const [restaurants, setRestaurants] = useState([]);
     const [filteredRestaurants, setFilteredRestaurants] = useState([]);
@@ -25,9 +27,9 @@ export default function DeliveryPage() {
     useEffect(() => {
         const fetchBanners = async () => {
             try {
-                const docSnap = await getDoc(doc(db, "site_content", "promo_banners"));
-                if (docSnap.exists()) {
-                    setPromoBanners(docSnap.data());
+                const data = await getDocument("site_content", "promo_banners");
+                if (data) {
+                    setPromoBanners(data);
                 } else {
                     // Fallback if no banners exist in Firebase
                     setPromoBanners({
@@ -37,8 +39,7 @@ export default function DeliveryPage() {
                     });
                 }
             } catch (err) {
-                console.error("Failed to fetch banners", err);
-                // Fallback on error
+                // Fallback on error (handled by hook, but we need default state)
                 setPromoBanners({
                     banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
                     banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
@@ -47,24 +48,21 @@ export default function DeliveryPage() {
             }
         };
         fetchBanners();
-    }, []);
+    }, [getDocument]);
 
     // Fetch restaurants on load
     useEffect(() => {
         const fetchRestaurants = async () => {
             try {
-                // Use Firestore query to fetch only visible restaurants
-                const q = query(collection(db, "restaurants"), where("isVisible", "==", true));
-                const querySnapshot = await getDocs(q);
-                const data = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                const data = await getCollection("restaurants");
                 setRestaurants(data);
                 setFilteredRestaurants(data);
             } catch (err) {
-                console.error("Failed to fetch restaurants", err);
+                // Error already logged by hook
             }
         };
         fetchRestaurants();
-    }, []);
+    }, [getCollection]);
 
     // Apply search filtering
     useEffect(() => {
@@ -184,35 +182,52 @@ export default function DeliveryPage() {
                             <span className="text-gray-500 font-medium px-3 py-1 bg-white/5 rounded-full text-xs">{filteredFoods.length} items</span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                            {filteredFoods.map((item, idx) => (
-                                <div key={`${item.restaurantId}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group relative">
-                                    <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} className="flex items-center gap-4 flex-1 min-w-0">
-                                        <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
-                                            {item.image ? (
-                                                <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
-                                            ) : (
-                                                <div className="flex items-center justify-center w-full h-full text-gray-500"><Utensils size={20} /></div>
-                                            )}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">{item.name}</h4>
-                                            <p className="text-xs text-gray-400 mb-1">{item.restaurantName}</p>
-                                            <p className="font-bold text-green-400">₹{item.price}</p>
-                                        </div>
-                                    </Link>
-                                    <button
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            addToCart({ ...item, restaurantId: item.restaurantId, restaurantName: item.restaurantName });
-                                            setToast(`Added ${item.name}`);
-                                            setTimeout(() => setToast(null), 2000);
-                                        }}
-                                        className="bg-white text-black px-4 py-2 rounded-xl font-black text-xs hover:bg-gray-200 transition-colors shadow-lg active:scale-95"
-                                    >
-                                        ADD
-                                    </button>
-                                </div>
-                            ))}
+                            {filteredFoods.map((item, idx) => {
+                                const isOutOfStock = item.isVisible === false;
+                                return (
+                                    <div key={`${item.restaurantId}-${idx}`} className={`flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl transition-all group relative ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10'}`}>
+                                        <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} className="flex items-center gap-4 flex-1 min-w-0">
+                                            <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
+                                                {item.image ? (
+                                                    <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
+                                                ) : (
+                                                    <div className="flex items-center justify-center w-full h-full text-gray-500"><Utensils size={20} /></div>
+                                                )}
+                                                {isOutOfStock && (
+                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                                                        <span className="text-[8px] font-black text-white bg-red-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">Sold Out</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">{item.name}</h4>
+                                                <p className="text-xs text-gray-400 mb-1">{item.restaurantName}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="font-bold text-green-400">₹{item.price}</p>
+                                                    {isOutOfStock && <span className="text-[10px] font-bold text-red-400 uppercase tracking-tighter">Out of stock</span>}
+                                                </div>
+                                            </div>
+                                        </Link>
+                                        {isOutOfStock ? (
+                                            <div className="bg-gray-800 text-gray-500 px-3 py-2 rounded-xl font-bold text-[10px] uppercase tracking-tighter cursor-not-allowed">
+                                                Unavailable
+                                            </div>
+                                        ) : (
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    addToCart({ ...item, restaurantId: item.restaurantId, restaurantName: item.restaurantName });
+                                                    setToast(`Added ${item.name}`);
+                                                    setTimeout(() => setToast(null), 2000);
+                                                }}
+                                                className="bg-white text-black px-4 py-2 rounded-xl font-black text-xs hover:bg-gray-200 transition-colors shadow-lg active:scale-95"
+                                            >
+                                                ADD
+                                            </button>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </section>
                 )}

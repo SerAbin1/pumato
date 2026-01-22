@@ -8,7 +8,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Star, ArrowLeft, Search, Dot, ShoppingBag, ChevronDown, Utensils, X, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import useFirestore from "@/app/hooks/useFirestore";
 
 function RestaurantContent() {
     const searchParams = useSearchParams();
@@ -23,6 +24,7 @@ function RestaurantContent() {
     const [collapsedSections, setCollapsedSections] = useState({});
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
+    const { getDocument, loading: dbLoading } = useFirestore();
     const highlight = searchParams.get("highlight");
 
     // Scroll to highlighted item
@@ -45,19 +47,19 @@ function RestaurantContent() {
         if (!id) return;
         const fetchRestaurant = async () => {
             try {
-                const docSnap = await getDoc(doc(db, "restaurants", id));
-                if (docSnap.exists()) {
-                    setRestaurant({ ...docSnap.data(), id: docSnap.id });
+                const data = await getDocument("restaurants", id);
+                if (data) {
+                    setRestaurant(data);
                 } else {
                     setRestaurant(null);
                 }
             } catch (error) {
-                console.error("Error fetching restaurant:", error);
+                // Error handled by hook
             }
             setLoading(false);
         };
         fetchRestaurant();
-    }, [id]);
+    }, [id, getDocument]);
 
     // Derived state for filtering
     const processedMenu = useMemo(() => {
@@ -70,8 +72,8 @@ function RestaurantContent() {
                 : filter === "veg"
                     ? item.isVeg
                     : !item.isVeg;
-            const isVisible = item.isVisible !== false; // Filter out hidden items
-            return matchesSearch && matchesFilter && isVisible;
+            // Note: isVisible === false items are shown but marked as "Out of Stock"
+            return matchesSearch && matchesFilter;
         });
 
         if (sortOrder !== "default") {
@@ -139,8 +141,16 @@ function RestaurantContent() {
                     transition={{ duration: 1 }}
                     src={restaurant.image}
                     alt={restaurant.name}
-                    className="w-full h-full object-cover"
+                    className={`w-full h-full object-cover ${restaurant.isVisible === false ? 'grayscale-[0.8] opacity-60' : ''}`}
                 />
+                {restaurant.isVisible === false && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
+                        <div className="bg-red-600/90 backdrop-blur-md text-white px-8 py-4 rounded-3xl shadow-2xl border border-white/20 text-center scale-110">
+                            <h2 className="text-2xl font-black uppercase tracking-widest mb-1">Temporarily Closed</h2>
+                            <p className="text-sm font-medium opacity-90">This restaurant is not accepting orders right now</p>
+                        </div>
+                    </div>
+                )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent flex items-end p-4 md:p-8">
                     <div className="w-full max-w-7xl mx-auto z-10">
                         <Link href="/delivery" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors text-sm font-bold backdrop-blur-md bg-white/10 px-4 py-2 rounded-full border border-white/10 hover:bg-white/20">
@@ -246,6 +256,7 @@ function RestaurantContent() {
                                             {items.map((item, idx) => {
                                                 const cartItem = cartItems.find(c => c.id === item.id);
                                                 const quantity = cartItem ? cartItem.quantity : 0;
+                                                const isOutOfStock = item.isVisible === false;
 
                                                 return (
                                                     <motion.div
@@ -255,7 +266,7 @@ function RestaurantContent() {
                                                         whileInView={{ opacity: 1, y: 0 }}
                                                         viewport={{ once: true, margin: "-50px" }}
                                                         transition={{ delay: idx * 0.05 }}
-                                                        className="bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group hover:bg-white/10 hover:border-white/10 hover:shadow-2xl transition-all"
+                                                        className={`bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group transition-all ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 hover:border-white/10 hover:shadow-2xl'}`}
                                                     >
                                                         <div className="flex-1">
                                                             <div className="flex items-start justify-between mb-2">
@@ -275,6 +286,9 @@ function RestaurantContent() {
                                                                     {item.extraInfo && (
                                                                         <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/20">{item.extraInfo}</span>
                                                                     )}
+                                                                    {isOutOfStock && (
+                                                                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">Out of Stock</span>
+                                                                    )}
                                                                 </div>
                                                             </div>
                                                             <h3 className="font-bold text-xl text-white group-hover:text-orange-400 transition-colors mb-1">{item.name}</h3>
@@ -291,7 +305,15 @@ function RestaurantContent() {
                                                                 </div>
                                                             )}
                                                             <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
-                                                                {quantity === 0 ? (
+                                                                {restaurant.isVisible === false ? (
+                                                                    <div className="w-full bg-gray-800 text-gray-500 border border-gray-700 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
+                                                                        Offline
+                                                                    </div>
+                                                                ) : isOutOfStock ? (
+                                                                    <div className="w-full bg-gray-600 text-gray-300 border border-gray-500 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
+                                                                        Unavailable
+                                                                    </div>
+                                                                ) : quantity === 0 ? (
                                                                     <motion.button
                                                                         whileTap={{ scale: 0.95 }}
                                                                         onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name })}

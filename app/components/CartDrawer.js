@@ -5,6 +5,7 @@ import { X, Plus, Minus, ShoppingBag, Send, Trash2, MapPin, User, Phone, Check, 
 import { useCart } from "../context/CartContext";
 import { formatWhatsAppMessage, FOOD_DELIVERY_NUMBER } from "@/lib/whatsapp";
 import { useEffect, useState } from "react";
+import Image from "next/image";
 
 export default function CartDrawer() {
     const {
@@ -167,11 +168,13 @@ export default function CartDrawer() {
                                                 className="bg-white/5 p-4 rounded-2xl border border-white/5 shadow-sm flex gap-4 group hover:bg-white/10 transition-colors"
                                             >
                                                 {item.image && (
-                                                    <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-black/50 border border-white/10">
-                                                        <img
+                                                    <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-black/50 border border-white/10 relative">
+                                                        <Image
                                                             src={item.image}
                                                             alt={item.name}
-                                                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                                                            fill
+                                                            sizes="80px"
+                                                            className="object-cover group-hover:scale-110 transition-transform duration-500"
                                                         />
                                                     </div>
                                                 )}

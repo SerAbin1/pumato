@@ -1,6 +1,7 @@
 import Link from "next/link";
-import { Clock } from "lucide-react";
+import { Clock, Utensils } from "lucide-react";
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 export default function RestaurantList({ restaurants }) {
     if (!restaurants || restaurants.length === 0) {
@@ -31,11 +32,20 @@ export default function RestaurantList({ restaurants }) {
                                 {/* Image Section */}
                                 <div className="relative h-60 overflow-hidden">
                                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent z-10" />
-                                    <img
-                                        src={restaurant.image}
-                                        alt={restaurant.name}
-                                        className={`w-full h-full object-cover transform transition-transform duration-700 ease-in-out ${!isClosed ? 'group-hover:scale-110' : ''}`}
-                                    />
+                                    {restaurant.image ? (
+                                        <Image
+                                            src={restaurant.image}
+                                            alt={restaurant.name}
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                                            className={`object-cover transform transition-transform duration-700 ease-in-out ${!isClosed ? 'group-hover:scale-110' : ''}`}
+                                            priority={i < 4}
+                                        />
+                                    ) : (
+                                        <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                                            <Utensils className="text-white/20" size={48} />
+                                        </div>
+                                    )}
                                     {isClosed && (
                                         <div className="absolute inset-0 z-20 bg-black/40 flex items-center justify-center">
                                             <div className="bg-red-600 text-white px-4 py-2 rounded-xl font-bold uppercase tracking-widest text-sm shadow-2xl scale-110">

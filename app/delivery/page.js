@@ -8,10 +8,12 @@ import { Search, Sparkles, Utensils, ArrowRight, Plus, ShoppingBag } from "lucid
 import { useCart } from "@/app/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
+import Image from "next/image";
 
 import { db } from "@/lib/firebase";
 import { doc } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
+import { RestaurantSkeleton } from "../components/Skeleton";
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();
@@ -133,7 +135,16 @@ export default function DeliveryPage() {
                                     <p className="font-medium opacity-90 text-sm mt-1 text-white/90 drop-shadow-md">{promo.sub}</p>
                                 </div>
                                 {promo.image && (
-                                    <img src={promo.image} className="absolute -right-10 -bottom-10 w-48 h-48 object-cover rounded-full group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl border-4 border-white/10" alt="Offer" />
+                                    <div className="absolute -right-10 -bottom-10 w-48 h-48 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl overflow-hidden rounded-full border-4 border-white/10">
+                                        <Image
+                                            src={promo.image}
+                                            fill
+                                            sizes="192px"
+                                            className="object-cover"
+                                            alt="Offer"
+                                            priority={i === 0}
+                                        />
+                                    </div>
                                 )}
                             </motion.div>
                         ))}
@@ -189,7 +200,13 @@ export default function DeliveryPage() {
                                         <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} className="flex items-center gap-4 flex-1 min-w-0">
                                             <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
                                                 {item.image ? (
-                                                    <img src={item.image} className="w-full h-full object-cover" alt={item.name} />
+                                                    <Image
+                                                        src={item.image}
+                                                        fill
+                                                        sizes="80px"
+                                                        className="object-cover"
+                                                        alt={item.name}
+                                                    />
                                                 ) : (
                                                     <div className="flex items-center justify-center w-full h-full text-gray-500"><Utensils size={20} /></div>
                                                 )}
@@ -240,12 +257,13 @@ export default function DeliveryPage() {
                         </h2>
                         <span className="text-gray-500 font-medium px-3 py-1 bg-white/5 rounded-full text-xs">{filteredRestaurants.length} active</span>
                     </div>
-                    {/* The RestaurantList component accepts props, but internally renders separate cards. 
-                        We need to pass a "darkMode" prop or update the component itself. 
-                        For now, assuming we will update RestaurantList next. 
-                    */}
-                    <RestaurantList restaurants={filteredRestaurants} />
-
+                    {dbLoading ? (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                            {[...Array(6)].map((_, i) => <RestaurantSkeleton key={i} />)}
+                        </div>
+                    ) : (
+                        <RestaurantList restaurants={filteredRestaurants} />
+                    )}
                 </section>
             </div>
 

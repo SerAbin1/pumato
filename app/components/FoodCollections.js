@@ -1,6 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
+import Image from "next/image";
 
 const categories = [
     { id: 1, name: "Biryani", image: "https://images.unsplash.com/photo-1589302168068-964664d93dc0?w=200&h=200&fit=crop" },
@@ -23,8 +24,14 @@ export default function FoodCollections() {
                             whileHover={{ scale: 1.05 }}
                             className="flex flex-col items-center gap-3 min-w-[120px] cursor-pointer group"
                         >
-                            <div className="w-32 h-32 rounded-full overflow-hidden shadow-md group-hover:shadow-xl transition-all">
-                                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                            <div className="w-32 h-32 rounded-full overflow-hidden shadow-md group-hover:shadow-xl transition-all relative">
+                                <Image
+                                    src={item.image}
+                                    alt={item.name}
+                                    width={128}
+                                    height={128}
+                                    className="w-full h-full object-cover"
+                                />
                             </div>
                             <span className="font-medium text-gray-700 text-lg">{item.name}</span>
                         </motion.div>

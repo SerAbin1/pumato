@@ -9,6 +9,7 @@ import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } fro
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
+import Image from "next/image";
 
 export default function AdminPage() {
     const router = useRouter();
@@ -455,7 +456,15 @@ export default function AdminPage() {
                                     className={`bg-white/5 border border-white/10 p-6 rounded-[2rem] hover:bg-white/10 transition-all group hover:border-white/20 hover:shadow-2xl hover:shadow-orange-900/10 ${r.isVisible === false ? 'opacity-60' : ''}`}
                                 >
                                     <div className="relative h-56 mb-6 overflow-hidden rounded-2xl bg-black">
-                                        {r.image && <img src={r.image} alt={r.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100" />}
+                                        {r.image && (
+                                            <Image
+                                                src={r.image}
+                                                alt={r.name}
+                                                fill
+                                                sizes="(max-width: 768px) 100vw, 400px"
+                                                className="object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
+                                            />
+                                        )}
                                         {r.isVisible === false && (
                                             <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">
                                                 <EyeOff size={12} /> Hidden

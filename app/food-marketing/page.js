@@ -4,6 +4,7 @@ import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { Instagram, Linkedin, Twitter } from "lucide-react";
+import Image from "next/image";
 
 export default function Home() {
     return (
@@ -15,10 +16,12 @@ export default function Home() {
                 {/* Background Video/Image Placeholder */}
                 <div className="absolute inset-0 z-0">
                     <div className="absolute inset-0 bg-black/60 z-10"></div>
-                    <img
+                    <Image
                         src="https://images.unsplash.com/photo-1543353071-873f17a7a088?w=1600&h=900&fit=crop"
+                        fill
                         className="w-full h-full object-cover"
                         alt="Students eating"
+                        priority
                     />
                 </div>
 
@@ -65,7 +68,7 @@ export default function Home() {
                         </p>
                     </div>
                     <div className="relative h-80 rounded-2xl overflow-hidden shadow-2xl skew-y-3 transform hover:skew-y-0 transition-transform duration-500">
-                        <img src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&q=80" className="w-full h-full object-cover" alt="Student Team" />
+                        <Image src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&q=80" fill className="w-full h-full object-cover" alt="Student Team" />
                     </div>
                 </div>
             </section>
@@ -144,8 +147,9 @@ export default function Home() {
                             whileHover={{ scale: 0.98 }}
                             className="bg-black text-white p-8 rounded-3xl md:col-span-2 md:row-span-2 flex flex-col justify-end relative overflow-hidden group"
                         >
-                            <img
+                            <Image
                                 src="https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=800&q=80"
+                                fill
                                 className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:scale-110 transition-transform duration-700"
                                 alt="Restaurant"
                             />
@@ -177,8 +181,9 @@ export default function Home() {
             {/* Parallax CTA */}
             <section className="relative py-32 flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0">
-                    <img
+                    <Image
                         src="https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=1600&h=900&fit=crop"
+                        fill
                         className="w-full h-full object-cover"
                         alt="Food background"
                     />

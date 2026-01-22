@@ -7,9 +7,11 @@ import Navbar from "@/app/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, ArrowLeft, Search, Dot, ShoppingBag, ChevronDown, Utensils, X, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { db } from "@/lib/firebase";
 import { doc } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
+import Skeleton, { MenuSkeleton } from "../components/Skeleton";
 
 function RestaurantContent() {
     const searchParams = useSearchParams();
@@ -109,8 +111,27 @@ function RestaurantContent() {
     };
 
     if (loading) return (
-        <div className="min-h-screen flex items-center justify-center bg-black text-white">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+        <div className="min-h-screen bg-black text-white pb-32">
+            <Navbar />
+            <div className="relative h-[300px] md:h-[400px] w-full">
+                <Skeleton className="w-full h-full rounded-none" />
+            </div>
+            <div className="max-w-4xl mx-auto px-4 py-8">
+                <div className="space-y-4 mb-12">
+                    <Skeleton className="h-12 w-3/4 rounded-2xl" />
+                    <Skeleton className="h-6 w-1/2 rounded-xl" />
+                </div>
+                <div className="space-y-8">
+                    {[...Array(3)].map((_, i) => (
+                        <div key={i} className="space-y-6">
+                            <Skeleton className="h-8 w-1/4 rounded-xl" />
+                            <div className="grid gap-6">
+                                {[...Array(2)].map((_, j) => <MenuSkeleton key={j} />)}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </div>
         </div>
     );
 
@@ -135,14 +156,20 @@ function RestaurantContent() {
 
             {/* Premium Header */}
             <div className="relative h-[300px] md:h-[400px] w-full">
-                <motion.img
+                <motion.div
                     initial={{ scale: 1.1, opacity: 0 }}
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ duration: 1 }}
-                    src={restaurant.image}
-                    alt={restaurant.name}
-                    className={`w-full h-full object-cover ${restaurant.isVisible === false ? 'grayscale-[0.8] opacity-60' : ''}`}
-                />
+                    className="w-full h-full relative"
+                >
+                    <Image
+                        src={restaurant.image}
+                        alt={restaurant.name}
+                        fill
+                        priority
+                        className={`object-cover ${restaurant.isVisible === false ? 'grayscale-[0.8] opacity-60' : ''}`}
+                    />
+                </motion.div>
                 {restaurant.isVisible === false && (
                     <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
                         <div className="bg-red-600/90 backdrop-blur-md text-white px-8 py-4 rounded-3xl shadow-2xl border border-white/20 text-center scale-110">
@@ -296,9 +323,15 @@ function RestaurantContent() {
                                                             <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">{item.description}</p>
                                                         </div>
 
-                                                        <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
+                                                        <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 cursor-default">
                                                             {item.image ? (
-                                                                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-2xl shadow-lg border border-white/5" />
+                                                                <Image
+                                                                    src={item.image}
+                                                                    alt={item.name}
+                                                                    fill
+                                                                    sizes="(max-width: 768px) 128px, 160px"
+                                                                    className="object-cover rounded-2xl shadow-lg border border-white/5"
+                                                                />
                                                             ) : (
                                                                 <div className="w-full h-full bg-white/5 rounded-2xl border border-white/5 flex items-center justify-center">
                                                                     <Utensils className="text-white/20" size={32} />

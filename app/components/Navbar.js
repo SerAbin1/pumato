@@ -7,6 +7,7 @@ import { motion, useScroll, useMotionValueEvent } from "framer-motion";
 import { useState } from "react";
 import CartDrawer from "./CartDrawer";
 import { usePathname } from "next/navigation";
+import Image from "next/image";
 
 export default function Navbar() {
     const { setIsCartOpen, totalItems } = useCart();
@@ -36,10 +37,13 @@ export default function Navbar() {
             >
                 <div className="max-w-7xl mx-auto px-4 h-20 flex items-center justify-between">
                     <Link href="/" className="flex items-center gap-2 group">
-                        <img
+                        <Image
                             src="/logo.png"
                             alt="Pumato Logo"
+                            width={48}
+                            height={48}
                             className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+                            priority
                         />
                     </Link>
 

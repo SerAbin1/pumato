@@ -4,6 +4,7 @@ import Link from "next/link";
 import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, useMotionTemplate } from "framer-motion";
 import { Utensils, Shirt, Instagram, Mail, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
+import Image from "next/image";
 
 // --- COMPONENTS ---
 
@@ -134,10 +135,13 @@ export default function GatewayPage() {
             className="relative mb-12"
           >
             <div className="absolute inset-0 bg-orange-500/30 blur-[80px] rounded-full animate-pulse"></div>
-            <img
+            <Image
               src="/logo.png"
+              width={288}
+              height={288}
               className="h-40 md:h-64 lg:h-72 w-auto drop-shadow-[0_0_50px_rgba(249,115,22,0.5)] relative z-10"
               alt="Pumato Logo"
+              priority
             />
           </motion.div>
 
@@ -181,11 +185,15 @@ export default function GatewayPage() {
             <TiltCard className="relative h-[50vh] md:h-[70vh] w-full rounded-[2.5rem] overflow-hidden group border border-white/10 cursor-pointer">
               <Link href="/delivery" className="block h-full w-full">
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
-                <motion.img
-                  src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1000&q=80"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  alt="Food"
-                />
+                <div className="absolute inset-0 z-0">
+                  <Image
+                    src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=1000&q=80"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    alt="Food"
+                  />
+                </div>
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
                   <div className="inline-flex items-center gap-2 bg-orange-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">
                     <Utensils size={12} /> <span>30 min</span>
@@ -203,11 +211,15 @@ export default function GatewayPage() {
             <TiltCard className="relative h-[50vh] md:h-[70vh] w-full rounded-[2.5rem] overflow-hidden group border border-white/10 cursor-pointer">
               <Link href="/coming-soon" className="block h-full w-full">
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
-                <motion.img
-                  src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1000&auto=format&fit=crop"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  alt="Grocery"
-                />
+                <div className="absolute inset-0 z-0">
+                  <Image
+                    src="https://images.unsplash.com/photo-1542838132-92c53300491e?q=80&w=1000&auto=format&fit=crop"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    alt="Grocery"
+                  />
+                </div>
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
                   <div className="inline-flex items-center gap-2 bg-green-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">
                     <Sparkles size={12} /> <span>Express</span>
@@ -225,11 +237,15 @@ export default function GatewayPage() {
             <TiltCard className="relative h-[50vh] md:h-[70vh] w-full rounded-[2.5rem] overflow-hidden group border border-white/10 cursor-pointer">
               <Link href="/coming-soon" className="block h-full w-full">
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
-                <motion.img
-                  src="https://www.sourceoffabric.com/wp-content/uploads/2024/09/217067478_m_normal_none-1200x780-1.jpg"
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  alt="Laundry"
-                />
+                <div className="absolute inset-0 z-0">
+                  <Image
+                    src="https://www.sourceoffabric.com/wp-content/uploads/2024/09/217067478_m_normal_none-1200x780-1.jpg"
+                    fill
+                    sizes="(max-width: 768px) 100vw, 33vw"
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    alt="Laundry"
+                  />
+                </div>
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
                   <div className="inline-flex items-center gap-2 bg-blue-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">
                     <Shirt size={12} /> <span>24h Turnaround</span>
@@ -334,8 +350,8 @@ export default function GatewayPage() {
             <Mail size={24} />
           </a>
         </div>
-        <div className="flex flex-col items-center justify-center gap-2 opacity-50">
-          <img src="/logo.png" className="h-6 w-auto grayscale mb-1" alt="Logo" />
+        <div className="flex flex-col items-center justify-center gap-2 opacity-50 relative">
+          <Image src="/logo.png" width={80} height={24} className="h-6 w-auto grayscale mb-1" alt="Logo" />
           <span className="text-sm">© 2024 Pumato.</span>
           <Link href="/terms" className="text-xs hover:text-white hover:underline transition-all">
             Terms & Conditions

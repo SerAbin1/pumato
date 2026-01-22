@@ -23,6 +23,7 @@ export default function DeliveryPage() {
     const [filteredRestaurants, setFilteredRestaurants] = useState([]);
     const [filteredFoods, setFilteredFoods] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [promoBanners, setPromoBanners] = useState(null);
 
     // Fetch banners on load
@@ -113,44 +114,51 @@ export default function DeliveryPage() {
             <Navbar />
 
             {/* Promo Banners Section (Above Search) */}
-            <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
-                {promoBanners && (
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {[
-                            { ...promoBanners.banner1, key: "banner1" },
-                            { ...promoBanners.banner2, key: "banner2" },
-                            { ...promoBanners.banner3, key: "banner3" }
-                        ].filter(promo => !promo.hidden).map((promo, i) => (
-                            <motion.div
-                                key={promo.key}
-                                initial={{ opacity: 0, y: 20 }}
-                                animate={{ opacity: 1, y: 0 }}
-                                transition={{ delay: i * 0.1 }}
-                                whileHover={{ y: -5, scale: 1.02 }}
-                                className={`bg-gradient-to-br ${promo.gradient || "from-gray-800 to-black"} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
-                            >
-                                <div className={`relative z-10 ${promo.image ? 'w-2/3' : 'w-full'}`}>
-                                    <span className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1"><Sparkles size={10} /> Limited Time</span>
-                                    <h3 className="text-3xl font-black italic tracking-tighter shadow-black/50 drop-shadow-lg">{promo.title}</h3>
-                                    <p className="font-medium opacity-90 text-sm mt-1 text-white/90 drop-shadow-md">{promo.sub}</p>
-                                </div>
-                                {promo.image && (
-                                    <div className="absolute -right-10 -bottom-10 w-48 h-48 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl overflow-hidden rounded-full border-4 border-white/10">
-                                        <Image
-                                            src={promo.image}
-                                            fill
-                                            sizes="192px"
-                                            className="object-cover"
-                                            alt="Offer"
-                                            priority={i === 0}
-                                        />
+            <AnimatePresence>
+                {promoBanners && !isSearchFocused && !searchQuery && (
+                    <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="max-w-7xl mx-auto px-4 py-8 relative z-10 overflow-hidden"
+                    >
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            {[
+                                { ...promoBanners.banner1, key: "banner1" },
+                                { ...promoBanners.banner2, key: "banner2" },
+                                { ...promoBanners.banner3, key: "banner3" }
+                            ].filter(promo => !promo.hidden).map((promo, i) => (
+                                <motion.div
+                                    key={promo.key}
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: i * 0.1 }}
+                                    whileHover={{ y: -5, scale: 1.02 }}
+                                    className={`bg-gradient-to-br ${promo.gradient || "from-gray-800 to-black"} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
+                                >
+                                    <div className={`relative z-10 ${promo.image ? 'w-2/3' : 'w-full'}`}>
+                                        <span className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1"><Sparkles size={10} /> Limited Time</span>
+                                        <h3 className="text-3xl font-black italic tracking-tighter shadow-black/50 drop-shadow-lg">{promo.title}</h3>
+                                        <p className="font-medium opacity-90 text-sm mt-1 text-white/90 drop-shadow-md">{promo.sub}</p>
                                     </div>
-                                )}
-                            </motion.div>
-                        ))}
-                    </div>
+                                    {promo.image && (
+                                        <div className="absolute -right-10 -bottom-10 w-48 h-48 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl overflow-hidden rounded-full border-4 border-white/10">
+                                            <Image
+                                                src={promo.image}
+                                                fill
+                                                sizes="192px"
+                                                className="object-cover"
+                                                alt="Offer"
+                                                priority={i === 0}
+                                            />
+                                        </div>
+                                    )}
+                                </motion.div>
+                            ))}
+                        </div>
+                    </motion.div>
                 )}
-            </div>
+            </AnimatePresence>
 
             {/* Sticky Header / Search Section */}
             <div className="sticky top-20 z-30 pt-6 pb-4 border-b border-white/5 bg-black/80 backdrop-blur-xl">
@@ -165,6 +173,13 @@ export default function DeliveryPage() {
                                 className="w-full bg-transparent border-none outline-none text-white placeholder-gray-500 font-medium"
                                 value={searchQuery}
                                 onChange={(e) => setSearchQuery(e.target.value)}
+                                onFocus={() => setIsSearchFocused(true)}
+                                onBlur={() => setIsSearchFocused(false)}
+                                onKeyDown={(e) => {
+                                    if (e.key === "Enter") {
+                                        e.target.blur();
+                                    }
+                                }}
                             />
                         </div>
                     </div>

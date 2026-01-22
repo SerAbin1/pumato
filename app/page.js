@@ -334,9 +334,12 @@ export default function GatewayPage() {
             <Mail size={24} />
           </a>
         </div>
-        <div className="flex items-center justify-center gap-2 opacity-50">
-          <img src="/logo.png" className="h-6 w-auto grayscale" alt="Logo" />
+        <div className="flex flex-col items-center justify-center gap-2 opacity-50">
+          <img src="/logo.png" className="h-6 w-auto grayscale mb-1" alt="Logo" />
           <span className="text-sm">© 2024 Pumato.</span>
+          <Link href="/terms" className="text-xs hover:text-white hover:underline transition-all">
+            Terms & Conditions
+          </Link>
         </div>
       </footer>
     </main>

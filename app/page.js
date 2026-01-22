@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, useMotionTemplate } from "framer-motion";
-import { Utensils, Shirt, Instagram, Linkedin, Twitter, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck } from "lucide-react";
+import { Utensils, Shirt, Instagram, Linkedin, Twitter, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 
 // --- COMPONENTS ---
@@ -308,6 +308,9 @@ export default function GatewayPage() {
         <div className="flex justify-center gap-6 mb-12">
           <a href="https://www.instagram.com/pumato_pu_?igsh=M2FjOHJ2aW56bmRs" target="_blank" rel="noreferrer" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
             <Instagram size={24} />
+          </a>
+          <a href="https://wa.me/917511153875" target="_blank" rel="noreferrer" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
+            <MessageCircle size={24} />
           </a>
           <a href="#" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
             <Linkedin size={24} />

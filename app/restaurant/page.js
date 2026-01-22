@@ -264,7 +264,13 @@ function RestaurantContent() {
                                                         </div>
 
                                                         <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
-                                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-2xl shadow-lg border border-white/5" />
+                                                            {item.image ? (
+                                                                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-2xl shadow-lg border border-white/5" />
+                                                            ) : (
+                                                                <div className="w-full h-full bg-white/5 rounded-2xl border border-white/5 flex items-center justify-center">
+                                                                    <Utensils className="text-white/20" size={32} />
+                                                                </div>
+                                                            )}
                                                             <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
                                                                 {quantity === 0 ? (
                                                                     <motion.button

@@ -109,9 +109,9 @@ export default function DeliveryPage() {
                 {promoBanners && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
-                            { ...promoBanners.banner1, gradient: "from-blue-600 to-blue-800", img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80", key: "banner1" },
-                            { ...promoBanners.banner2, gradient: "from-orange-500 to-red-600", img: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80", key: "banner2" },
-                            { ...promoBanners.banner3, gradient: "from-emerald-600 to-emerald-800", img: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=400&q=80", key: "banner3" }
+                            { ...promoBanners.banner1, key: "banner1" },
+                            { ...promoBanners.banner2, key: "banner2" },
+                            { ...promoBanners.banner3, key: "banner3" }
                         ].filter(promo => !promo.hidden).map((promo, i) => (
                             <motion.div
                                 key={promo.key}
@@ -119,14 +119,16 @@ export default function DeliveryPage() {
                                 animate={{ opacity: 1, y: 0 }}
                                 transition={{ delay: i * 0.1 }}
                                 whileHover={{ y: -5, scale: 1.02 }}
-                                className={`bg-gradient-to-br ${promo.gradient} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
+                                className={`bg-gradient-to-br ${promo.gradient || "from-gray-800 to-black"} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
                             >
-                                <div className="relative z-10">
+                                <div className={`relative z-10 ${promo.image ? 'w-2/3' : 'w-full'}`}>
                                     <span className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1"><Sparkles size={10} /> Limited Time</span>
-                                    <h3 className="text-3xl font-black italic tracking-tighter">{promo.title}</h3>
-                                    <p className="font-medium opacity-90 text-sm mt-1 text-white/90">{promo.sub}</p>
+                                    <h3 className="text-3xl font-black italic tracking-tighter shadow-black/50 drop-shadow-lg">{promo.title}</h3>
+                                    <p className="font-medium opacity-90 text-sm mt-1 text-white/90 drop-shadow-md">{promo.sub}</p>
                                 </div>
-                                <img src={promo.img} className="absolute -right-10 -bottom-10 w-48 h-48 object-cover rounded-full group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl border-4 border-white/10" alt="Offer" />
+                                {promo.image && (
+                                    <img src={promo.image} className="absolute -right-10 -bottom-10 w-48 h-48 object-cover rounded-full group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl border-4 border-white/10" alt="Offer" />
+                                )}
                             </motion.div>
                         ))}
                     </div>

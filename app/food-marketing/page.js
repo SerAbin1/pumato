@@ -3,8 +3,23 @@
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Instagram, Linkedin, Twitter } from "lucide-react";
+import { Instagram, Linkedin, Twitter, Sparkles } from "lucide-react";
 import Image from "next/image";
+import TestimonialsMarquee from "../components/TestimonialsMarquee";
+
+const REVIEWS = [
+    { name: "Kathyayini", text: "I've been using pumato for around a week now. The delivery charges are reasonable and it's very useful for me as I'm unable to go to the mess due to an ankle injury. The deliveries are on time ninety percent of the time and all of them are very polite and communicate clearly." },
+    { name: "Suchitra", text: "It's a good initiative, getting better with every order. Would surely love to see it grow further. Warm regards." },
+    { name: "Sohani Borah", text: "Good service!!! 👍" },
+    { name: "Jigisha", text: "Niceeee" },
+    { name: "Tanaya", text: "Thank you for the food. And thanks for remembering the things to add on to my order. Service is faster and thanks for bringing food for us. All the best!" },
+    { name: "Adrian Joshua M Murali", text: "Very generous when comes to delivering food." },
+    { name: "Kessiya", text: "You guys have turned into such a necessity in the university. Pumato is the only reason that my belly is full every day. You guys do your part with such professionalism and integrity. Thank you for your timely deliveries and response to my messages." },
+    { name: "Naveen", text: "5/5 excellent" },
+    { name: "Pumato user", text: "Thank you for all the deliveries. This is an inevitable part in my PU life. I will surely miss ordering in PUmato once my course ends." },
+    { name: "Pumato user", text: "I would truly appreciate the services of pumato in the university and overall I can tell it's excellent and outstanding! 🎉🎊" },
+    { name: "Pumato user", text: "Good initiative, useful for students during the exams, late-night sleep and also provide accurate and average time during delivery." }
+];
 
 export default function Home() {
     return (
@@ -178,6 +193,20 @@ export default function Home() {
                 </div>
             </section>
 
+            {/* Testimonials */}
+            <section className="py-24 px-4 bg-white border-t border-gray-100 overflow-hidden text-center">
+                <div className="max-w-7xl mx-auto mb-16">
+                    <motion.span
+                        initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+                        className="text-red-500 font-bold tracking-[0.2em] text-sm uppercase"
+                    >
+                        Wall of Love
+                    </motion.span>
+                    <h2 className="text-4xl font-bold text-gray-900 mt-4">What Students Say</h2>
+                </div>
+                <TestimonialsMarquee reviews={REVIEWS} dark={false} />
+            </section>
+
             {/* Parallax CTA */}
             <section className="relative py-32 flex items-center justify-center overflow-hidden">
                 <div className="absolute inset-0 z-0">
@@ -210,6 +239,6 @@ export default function Home() {
                     <a href="#" className="p-4 bg-white rounded-full shadow-lg hover:text-blue-400 hover:scale-110 transition-all"><Twitter size={32} /></a>
                 </div>
             </section>
-        </main>
+        </main >
     );
 }

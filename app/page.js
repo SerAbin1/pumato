@@ -5,6 +5,7 @@ import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, 
 import { Utensils, Shirt, Instagram, Mail, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
+import TestimonialsMarquee from "./components/TestimonialsMarquee";
 
 // --- COMPONENTS ---
 
@@ -104,6 +105,20 @@ function Counter({ value, label }) {
     </motion.div>
   );
 }
+
+const REVIEWS = [
+  { name: "Kathyayini", text: "I've been using pumato for around a week now. The delivery charges are reasonable and it's very useful for me as I'm unable to go to the mess due to an ankle injury. The deliveries are on time ninety percent of the time and all of them are very polite and communicate clearly." },
+  { name: "Suchitra", text: "It's a good initiative, getting better with every order. Would surely love to see it grow further. Warm regards." },
+  { name: "Sohani Borah", text: "Good service!!! 👍" },
+  { name: "Jigisha", text: "Niceeee" },
+  { name: "Tanaya", text: "Thank you for the food. And thanks for remembering the things to add on to my order. Service is faster and thanks for bringing food for us. All the best!" },
+  { name: "Adrian Joshua M Murali", text: "Very generous when comes to delivering food." },
+  { name: "Kessiya", text: "You guys have turned into such a necessity in the university. Pumato is the only reason that my belly is full every day. You guys do your part with such professionalism and integrity. Thank you for your timely deliveries and response to my messages." },
+  { name: "Naveen", text: "5/5 excellent" },
+  { name: "Pumato user", text: "Thank you for all the deliveries. This is an inevitable part in my PU life. I will surely miss ordering in PUmato once my course ends." },
+  { name: "Pumato user", text: "I would truly appreciate the services of pumato in the university and overall I can tell it's excellent and outstanding! 🎉🎊" },
+  { name: "Pumato user", text: "Good initiative, useful for students during the exams, late-night sleep and also provide accurate and average time during delivery." }
+];
 
 export default function GatewayPage() {
   const { scrollYProgress } = useScroll();
@@ -330,7 +345,26 @@ export default function GatewayPage() {
         </div>
       </section>
 
-      {/* SECTION 4: STATS */}
+      {/* SECTION 4: TESTIMONIALS */}
+      <section className="py-24 w-full bg-black/40 relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 relative z-10 mb-16 text-center">
+          <motion.span
+            initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+            className="text-orange-500 font-bold tracking-[0.3em] text-sm uppercase"
+          >
+            Wall of Love
+          </motion.span>
+          <motion.h2
+            initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.7 }}
+            className="text-4xl md:text-5xl font-bold mt-4"
+          >
+            Trusted by 5,000+ Students.
+          </motion.h2>
+        </div>
+        <TestimonialsMarquee reviews={REVIEWS} dark={true} />
+      </section>
+
+      {/* SECTION 5: STATS */}
       <section className="py-24 border-y border-white/5 bg-black/50">
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           <Counter label="Happy Students" value="5000+" />

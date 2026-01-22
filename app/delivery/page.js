@@ -176,7 +176,7 @@ export default function DeliveryPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredFoods.map((item, idx) => (
-                                <Link href={`/restaurant?id=${item.restaurantId}`} key={`${item.restaurantId}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group">
+                                <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} key={`${item.restaurantId}-${idx}`} className="flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl hover:bg-white/10 transition-all group">
                                     <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
                                         {item.image ? (
                                             <img src={item.image} className="w-full h-full object-cover" alt={item.name} />

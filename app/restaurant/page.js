@@ -23,6 +23,23 @@ function RestaurantContent() {
     const [collapsedSections, setCollapsedSections] = useState({});
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
+    const highlight = searchParams.get("highlight");
+
+    // Scroll to highlighted item
+    useEffect(() => {
+        if (highlight && !loading && restaurant) {
+            const idString = `menu-item-${highlight.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+            // Small delay to ensure rendering
+            setTimeout(() => {
+                const element = document.getElementById(idString);
+                if (element) {
+                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    element.classList.add('ring-2', 'ring-orange-500', 'bg-white/10');
+                    setTimeout(() => element.classList.remove('ring-2', 'ring-orange-500', 'bg-white/10'), 2500);
+                }
+            }, 500);
+        }
+    }, [highlight, loading, restaurant]);
 
     useEffect(() => {
         if (!id) return;
@@ -232,6 +249,7 @@ function RestaurantContent() {
                                                 return (
                                                     <motion.div
                                                         key={item.id}
+                                                        id={`menu-item-${item.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
                                                         initial={{ opacity: 0, y: 20 }}
                                                         whileInView={{ opacity: 1, y: 0 }}
                                                         viewport={{ once: true, margin: "-50px" }}

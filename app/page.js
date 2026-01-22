@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, useMotionTemplate } from "framer-motion";
-import { Utensils, Shirt, Instagram, Linkedin, Twitter, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck } from "lucide-react";
+import { Utensils, Shirt, Instagram, Mail, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 
 // --- COMPONENTS ---
@@ -158,8 +158,7 @@ export default function GatewayPage() {
               animate={{ opacity: 1 }}
               transition={{ delay: 1 }}
             >
-              The ultimate <span className="text-white font-medium">super-app</span> for your hostel needs.
-              Food & Laundry at the speed of light.
+              The <span className="text-white font-medium">Super-App</span> for Every Hostel Need — Food, Laundry, and More, Delivered Fast.
             </motion.p>
 
             <motion.button
@@ -264,8 +263,8 @@ export default function GatewayPage() {
               initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}
               className="text-4xl md:text-6xl font-bold mt-4 leading-tight"
             >
-              Built for students, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">by students.</span>
+              Built by Students, <br />
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">for Students.</span>
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6 }}
@@ -315,7 +314,7 @@ export default function GatewayPage() {
         <div className="max-w-7xl mx-auto px-4 grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
           <Counter label="Happy Students" value="5000+" />
           <Counter label="Orders Delivered" value="25k+" />
-          <Counter label="Partner Services" value="50+" />
+          <Counter label="Partner Services" value="25+" />
           <Counter label="Campus Reach" value="100%" />
         </div>
       </section>
@@ -331,11 +330,8 @@ export default function GatewayPage() {
           <a href="https://wa.me/917511153875" target="_blank" rel="noreferrer" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
             <MessageCircle size={24} />
           </a>
-          <a href="#" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
-            <Linkedin size={24} />
-          </a>
-          <a href="#" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
-            <Twitter size={24} />
+          <a href="mailto:pumato.feedbacks@gmail.com" className="p-4 bg-white/10 rounded-full hover:bg-white hover:text-black transition-all cursor-pointer">
+            <Mail size={24} />
           </a>
         </div>
         <div className="flex items-center justify-center gap-2 opacity-50">

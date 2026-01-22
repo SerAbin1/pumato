@@ -62,16 +62,20 @@ export function CartProvider({ children }) {
 
     // Default values if not configured
     let baseCharge = currentRestaurant?.baseDeliveryCharge ? parseInt(currentRestaurant.baseDeliveryCharge) : 30;
-    
-    // If ordering from multiple restaurants, set base charge to 40
-    if (isMultiRestaurant) {
-        baseCharge = 40;
+
+    // Add ₹10 for each additional restaurant beyond the first
+    if (uniqueRestaurants.size > 1) {
+        baseCharge += (uniqueRestaurants.size - 1) * 10;
     }
 
     const threshold = currentRestaurant?.extraItemThreshold ? parseInt(currentRestaurant.extraItemThreshold) : 3;
     const extraChargeAmt = currentRestaurant?.extraItemCharge ? parseInt(currentRestaurant.extraItemCharge) : 10;
 
-    const deliveryCharge = baseCharge + (totalItems > threshold ? extraChargeAmt : 0);
+    // Large Order Surcharge: Add ₹10 for EACH item beyond threshold
+    const itemsOverThreshold = Math.max(0, totalItems - threshold);
+    const largeOrderSurcharge = itemsOverThreshold * extraChargeAmt;
+
+    const deliveryCharge = baseCharge + largeOrderSurcharge;
     const finalTotal = Math.max(0, itemTotal + deliveryCharge - discount);
 
     const applyCoupon = (code) => {

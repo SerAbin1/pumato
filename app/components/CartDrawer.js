@@ -297,8 +297,8 @@ export default function CartDrawer() {
                                         </div>
                                         {isMultiRestaurant && (
                                             <div className="flex justify-between text-xs text-orange-400 bg-orange-500/10 p-2 rounded-lg border border-orange-500/10">
-                                                <span>Multiple Restaurants</span>
-                                                <span>₹40 standard charge</span>
+                                                <span>Multiple Restaurants Surcharge</span>
+                                                <span>Applied</span>
                                             </div>
                                         )}
                                         {discount > 0 && (

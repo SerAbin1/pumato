@@ -19,6 +19,7 @@ function RestaurantContent() {
     const [filter, setFilter] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
     const [showMenuModal, setShowMenuModal] = useState(false);
+    const [collapsedSections, setCollapsedSections] = useState({});
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
 
@@ -69,6 +70,13 @@ function RestaurantContent() {
             el.scrollIntoView({ behavior: 'smooth', block: 'start' });
             setShowMenuModal(false);
         }
+    };
+
+    const toggleSection = (category) => {
+        setCollapsedSections(prev => ({
+            ...prev,
+            [category]: !prev[category]
+        }));
     };
 
     if (loading) return (
@@ -176,73 +184,97 @@ function RestaurantContent() {
                 <div className="space-y-12">
                     {Object.entries(processedMenu).map(([category, items]) => (
                         <div key={category} id={category} className="scroll-mt-40">
-                            <h3 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
-                                <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span>
-                                {category} <span className="text-gray-500 text-base font-normal">({items.length})</span>
-                            </h3>
-                            <div className="grid gap-6">
-                                {items.map((item, idx) => {
-                                    const cartItem = cartItems.find(c => c.id === item.id);
-                                    const quantity = cartItem ? cartItem.quantity : 0;
+                            <button
+                                onClick={() => toggleSection(category)}
+                                className="w-full text-2xl font-bold text-white mb-6 flex items-center justify-between gap-3 hover:text-orange-400 transition-colors group"
+                            >
+                                <div className="flex items-center gap-3">
+                                    <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span>
+                                    {category} <span className="text-gray-500 text-base font-normal">({items.length})</span>
+                                </div>
+                                <motion.div
+                                    animate={{ rotate: collapsedSections[category] ? -180 : 0 }}
+                                    transition={{ duration: 0.2 }}
+                                    className="text-gray-500 group-hover:text-orange-400"
+                                >
+                                    <ChevronDown size={24} />
+                                </motion.div>
+                            </button>
+                            <AnimatePresence initial={false}>
+                                {!collapsedSections[category] && (
+                                    <motion.div
+                                        initial={{ height: 0, opacity: 0 }}
+                                        animate={{ height: "auto", opacity: 1 }}
+                                        exit={{ height: 0, opacity: 0 }}
+                                        transition={{ duration: 0.3, ease: "easeInOut" }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className="grid gap-6">
+                                            {items.map((item, idx) => {
+                                                const cartItem = cartItems.find(c => c.id === item.id);
+                                                const quantity = cartItem ? cartItem.quantity : 0;
 
-                                    return (
-                                        <motion.div
-                                            key={item.id}
-                                            initial={{ opacity: 0, y: 20 }}
-                                            whileInView={{ opacity: 1, y: 0 }}
-                                            viewport={{ once: true, margin: "-50px" }}
-                                            transition={{ delay: idx * 0.05 }}
-                                            className="bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group hover:bg-white/10 hover:border-white/10 hover:shadow-2xl transition-all"
-                                        >
-                                            <div className="flex-1">
-                                                <div className="flex items-start justify-between mb-2">
-                                                    <div className="flex items-center gap-2">
-                                                        {item.isVeg !== false ? (
-                                                            <div className="border border-green-500 p-0.5 rounded-[4px]">
-                                                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                return (
+                                                    <motion.div
+                                                        key={item.id}
+                                                        initial={{ opacity: 0, y: 20 }}
+                                                        whileInView={{ opacity: 1, y: 0 }}
+                                                        viewport={{ once: true, margin: "-50px" }}
+                                                        transition={{ delay: idx * 0.05 }}
+                                                        className="bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group hover:bg-white/10 hover:border-white/10 hover:shadow-2xl transition-all"
+                                                    >
+                                                        <div className="flex-1">
+                                                            <div className="flex items-start justify-between mb-2">
+                                                                <div className="flex items-center gap-2">
+                                                                    {item.isVeg !== false ? (
+                                                                        <div className="border border-green-500 p-0.5 rounded-[4px]">
+                                                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                                        </div>
+                                                                    ) : (
+                                                                        <div className="border border-red-500 p-0.5 rounded-[4px]">
+                                                                            <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[6px] border-b-red-500"></div>
+                                                                        </div>
+                                                                    )}
+                                                                    {item.isBestSeller && (
+                                                                        <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-orange-500/20">Bestseller</span>
+                                                                    )}
+                                                                    {item.extraInfo && (
+                                                                        <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/20">{item.extraInfo}</span>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        ) : (
-                                                            <div className="border border-red-500 p-0.5 rounded-[4px]">
-                                                                <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[6px] border-b-red-500"></div>
-                                                            </div>
-                                                        )}
-                                                        {item.isBestSeller && (
-                                                            <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-orange-500/20">Bestseller</span>
-                                                        )}
-                                                        {item.extraInfo && (
-                                                            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/20">{item.extraInfo}</span>
-                                                        )}
-                                                    </div>
-                                                </div>
-                                                <h3 className="font-bold text-xl text-white group-hover:text-orange-400 transition-colors mb-1">{item.name}</h3>
-                                                <p className="font-bold text-gray-300">₹{item.price}</p>
-                                                <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">{item.description}</p>
-                                            </div>
-
-                                            <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
-                                                <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-2xl shadow-lg border border-white/5" />
-                                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
-                                                    {quantity === 0 ? (
-                                                        <motion.button
-                                                            whileTap={{ scale: 0.95 }}
-                                                            onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name })}
-                                                            className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
-                                                        >
-                                                            ADD
-                                                        </motion.button>
-                                                    ) : (
-                                                        <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
-                                                            <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, -1)} className="hover:text-orange-500 transition-colors w-6">-</button>
-                                                            <span className="text-sm">{quantity}</span>
-                                                            <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, 1)} className="hover:text-orange-500 transition-colors w-6">+</button>
+                                                            <h3 className="font-bold text-xl text-white group-hover:text-orange-400 transition-colors mb-1">{item.name}</h3>
+                                                            <p className="font-bold text-gray-300">₹{item.price}</p>
+                                                            <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">{item.description}</p>
                                                         </div>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </motion.div>
-                                    );
-                                })}
-                            </div>
+
+                                                        <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0">
+                                                            <img src={item.image} alt={item.name} className="w-full h-full object-cover rounded-2xl shadow-lg border border-white/5" />
+                                                            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
+                                                                {quantity === 0 ? (
+                                                                    <motion.button
+                                                                        whileTap={{ scale: 0.95 }}
+                                                                        onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name })}
+                                                                        className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
+                                                                    >
+                                                                        ADD
+                                                                    </motion.button>
+                                                                ) : (
+                                                                    <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
+                                                                        <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, -1)} className="hover:text-orange-500 transition-colors w-6">-</button>
+                                                                        <span className="text-sm">{quantity}</span>
+                                                                        <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, 1)} className="hover:text-orange-500 transition-colors w-6">+</button>
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </motion.div>
+                                                );
+                                            })}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                             <hr className="mt-12 border-white/5 border-dashed" />
                         </div>
                     ))}

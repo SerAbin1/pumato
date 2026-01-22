@@ -246,7 +246,7 @@ export default function AdminPage() {
 
     // --- MENU HANDLERS ---
     const addMenuItem = () => {
-        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: true }] });
+        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: true, category: "" }] });
     };
 
     const updateMenuItem = (index, field, value) => {
@@ -473,6 +473,7 @@ export default function AdminPage() {
                                                     <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white font-bold" placeholder="Item Name" value={item.name} onChange={(e) => updateMenuItem(idx, "name", e.target.value)} />
                                                     <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" type="number" value={item.price} onChange={(e) => updateMenuItem(idx, "price", e.target.value)} />
                                                     <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Extra Info (e.g. Must Try)" value={item.extraInfo || ""} onChange={(e) => updateMenuItem(idx, "extraInfo", e.target.value)} />
+                                                    <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Section (e.g. Starters, Main Course)" value={item.category || ""} onChange={(e) => updateMenuItem(idx, "category", e.target.value)} />
                                                 </div>
                                                 <div className="col-span-2">
                                                     <textarea className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white h-full resize-none min-h-[100px]" placeholder="Description" value={item.description} onChange={(e) => updateMenuItem(idx, "description", e.target.value)} />

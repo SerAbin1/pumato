@@ -253,7 +253,7 @@ export default function GatewayPage() {
         <motion.div style={{ y: yParallax }} className="absolute -left-40 bottom-20 w-96 h-96 bg-orange-600/10 rounded-full blur-[120px] pointer-events-none" />
 
         <div className="max-w-5xl mx-auto relative z-10">
-          <div className="text-center mb-24">
+          <div className="text-center mb-16">
             <motion.span
               initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
               className="text-orange-500 font-bold tracking-[0.3em] text-sm uppercase"
@@ -267,9 +267,15 @@ export default function GatewayPage() {
               Built for students, <br />
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-white to-gray-600">by students.</span>
             </motion.h2>
+            <motion.p
+              initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-gray-400 text-lg md:text-xl mt-6 max-w-3xl mx-auto leading-relaxed"
+            >
+              PUMATO aims to become a student-powered campus platform that solves everyday university problems by providing fast, affordable, and reliable services.
+            </motion.p>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8 text-center md:text-left">
+          <div className="grid md:grid-cols-3 gap-8 text-center md:text-left mb-20">
             {[
               { title: "Fast", desc: "Delivery times optimized for campus layouts.", icon: <Zap size={40} className="text-orange-500" /> },
               { title: "Affordable", desc: "Prices tailored for student budgets.", icon: <Wallet size={40} className="text-orange-500" /> },
@@ -288,6 +294,19 @@ export default function GatewayPage() {
               </motion.div>
             ))}
           </div>
+
+          {/* Mission */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7 }}
+            className="text-center bg-gradient-to-r from-orange-500/10 via-transparent to-purple-500/10 p-10 md:p-16 rounded-[2.5rem] border border-white/10"
+          >
+            <span className="text-purple-400 font-bold tracking-[0.3em] text-sm uppercase">Our Mission</span>
+            <p className="text-white text-xl md:text-2xl mt-4 leading-relaxed font-medium max-w-3xl mx-auto">
+              Our mission is to provide fast and reliable campus deliveries, support student needs, and create work opportunities for students through a student-run service platform.
+            </p>
+          </motion.div>
         </div>
       </section>
 

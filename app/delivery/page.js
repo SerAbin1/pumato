@@ -4,9 +4,9 @@ import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
 import FoodCollections from "../components/FoodCollections";
 import Link from "next/link";
-import { Search, Sparkles, Utensils, ArrowRight, Plus } from "lucide-react";
+import { Search, Sparkles, Utensils, ArrowRight, Plus, ShoppingBag } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
 import { db } from "@/lib/firebase";
@@ -14,6 +14,7 @@ import { collection, getDocs, doc, getDoc } from "firebase/firestore";
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();
+    const [toast, setToast] = useState(null);
     const [restaurants, setRestaurants] = useState([]);
     const [filteredRestaurants, setFilteredRestaurants] = useState([]);
     const [filteredFoods, setFilteredFoods] = useState([]);
@@ -201,6 +202,8 @@ export default function DeliveryPage() {
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             addToCart({ ...item, restaurantId: item.restaurantId, restaurantName: item.restaurantName });
+                                            setToast(`Added ${item.name}`);
+                                            setTimeout(() => setToast(null), 2000);
                                         }}
                                         className="bg-white text-black px-4 py-2 rounded-xl font-black text-xs hover:bg-gray-200 transition-colors shadow-lg active:scale-95"
                                     >
@@ -225,8 +228,24 @@ export default function DeliveryPage() {
                         For now, assuming we will update RestaurantList next. 
                     */}
                     <RestaurantList restaurants={filteredRestaurants} />
+
                 </section>
             </div>
+
+            {/* Toast Notification */}
+            <AnimatePresence>
+                {toast && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 50 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        className="fixed bottom-10 left-1/2 -translate-x-1/2 bg-green-600 text-white px-6 py-3 rounded-full shadow-2xl z-50 flex items-center gap-2 font-bold backdrop-blur-md border border-white/10"
+                    >
+                        <ShoppingBag size={18} /> {toast}
+                    </motion.div>
+                )
+                }
+            </AnimatePresence>
         </main>
     );
 }

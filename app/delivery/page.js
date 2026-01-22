@@ -107,30 +107,8 @@ export default function DeliveryPage() {
 
             <Navbar />
 
-            {/* Sticky Header / Search Section */}
-            <div className="sticky top-20 z-30 pt-6 pb-4 border-b border-white/5 bg-black/80 backdrop-blur-xl">
-                <div className="max-w-7xl mx-auto px-4">
-                    <div className="flex flex-col md:flex-row gap-4 items-center">
-                        {/* Search Bar */}
-                        <div className="w-full flex items-center bg-white/10 border border-white/10 rounded-2xl px-5 py-4 shadow-inner focus-within:bg-black/40 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all group">
-                            <Search className="text-gray-400 mr-3 group-focus-within:text-orange-500 transition-colors" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search 'Biryani' or 'Pizza'..."
-                                className="w-full bg-transparent border-none outline-none text-white placeholder-gray-500 font-medium"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                            />
-                        </div>
-                    </div>
-
-
-                </div>
-            </div>
-
-            <div className="max-w-7xl mx-auto px-4 space-y-16 py-12 relative z-10">
-
-                {/* Promo Banners */}
+            {/* Promo Banners Section (Above Search) */}
+            <div className="max-w-7xl mx-auto px-4 py-8 relative z-10">
                 {promoBanners && (
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         {[
@@ -158,6 +136,32 @@ export default function DeliveryPage() {
                         ))}
                     </div>
                 )}
+            </div>
+
+            {/* Sticky Header / Search Section */}
+            <div className="sticky top-20 z-30 pt-6 pb-4 border-b border-white/5 bg-black/80 backdrop-blur-xl">
+                <div className="max-w-7xl mx-auto px-4">
+                    <div className="flex flex-col md:flex-row gap-4 items-center">
+                        {/* Search Bar */}
+                        <div className="w-full flex items-center bg-white/10 border border-white/10 rounded-2xl px-5 py-4 shadow-inner focus-within:bg-black/40 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all group">
+                            <Search className="text-gray-400 mr-3 group-focus-within:text-orange-500 transition-colors" size={20} />
+                            <input
+                                type="text"
+                                placeholder="Search 'Biryani' or 'Pizza'..."
+                                className="w-full bg-transparent border-none outline-none text-white placeholder-gray-500 font-medium"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                    </div>
+
+
+                </div>
+            </div>
+
+            <div className="max-w-7xl mx-auto px-4 space-y-16 py-12 relative z-10">
+
+
 
                 {/* Food Collections (Horizontal Scroll) */}
                 {/* Note: FoodCollections component will need its own dark mode update, skipping for now to keep focus on page layout */}

@@ -5,7 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 import Navbar from "@/app/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, ArrowLeft, Search, Dot, ShoppingBag, ChevronDown, Utensils, X } from "lucide-react";
+import { Star, ArrowLeft, Search, Dot, ShoppingBag, ChevronDown, Utensils, X, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
@@ -17,6 +17,7 @@ function RestaurantContent() {
     const [restaurant, setRestaurant] = useState(null);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("all");
+    const [sortOrder, setSortOrder] = useState("default"); // default, asc, desc
     const [searchQuery, setSearchQuery] = useState("");
     const [showMenuModal, setShowMenuModal] = useState(false);
     const [collapsedSections, setCollapsedSections] = useState({});
@@ -55,6 +56,14 @@ function RestaurantContent() {
             return matchesSearch && matchesFilter;
         });
 
+        if (sortOrder !== "default") {
+            items.sort((a, b) => {
+                const priceA = parseInt(a.price) || 0;
+                const priceB = parseInt(b.price) || 0;
+                return sortOrder === "asc" ? priceA - priceB : priceB - priceA;
+            });
+        }
+
         // Group by category
         return items.reduce((acc, item) => {
             const cat = item.category || "Recommended";
@@ -62,7 +71,7 @@ function RestaurantContent() {
             acc[cat].push(item);
             return acc;
         }, {});
-    }, [restaurant, searchQuery, filter]);
+    }, [restaurant, searchQuery, filter, sortOrder]);
 
     const scrollToCategory = (cat) => {
         const el = document.getElementById(cat);
@@ -168,6 +177,15 @@ function RestaurantContent() {
                     </div>
 
                     <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                        <button
+                            onClick={() => setSortOrder(prev => prev === "default" ? "asc" : (prev === "asc" ? "desc" : "default"))}
+                            className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border flex items-center gap-2 whitespace-nowrap ${sortOrder !== "default" ? "bg-white text-black border-white shadow-lg" : "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white"}`}
+                        >
+                            <ArrowUpDown size={14} />
+                            {sortOrder === "default" ? "Sort" : (sortOrder === "asc" ? "Low-High" : "High-Low")}
+                        </button>
+                        <div className="w-px h-6 bg-white/10 mx-1 flex-shrink-0"></div>
+
                         {['all', 'veg', 'non-veg'].map((f) => (
                             <button
                                 key={f}

@@ -70,7 +70,8 @@ function RestaurantContent() {
                 : filter === "veg"
                     ? item.isVeg
                     : !item.isVeg;
-            return matchesSearch && matchesFilter;
+            const isVisible = item.isVisible !== false; // Filter out hidden items
+            return matchesSearch && matchesFilter && isVisible;
         });
 
         if (sortOrder !== "default") {

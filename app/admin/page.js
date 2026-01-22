@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, PieChart, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, PieChart, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
@@ -26,6 +26,7 @@ export default function AdminPage() {
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("list"); // list, form
     const [editingId, setEditingId] = useState(null);
+    const [menuSearchQuery, setMenuSearchQuery] = useState("");
 
     // Laundry Slots State
     const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
@@ -42,6 +43,7 @@ export default function AdminPage() {
     const [formData, setFormData] = useState({
         name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
         baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
+        isVisible: true,
         menu: []
     });
 
@@ -228,17 +230,17 @@ export default function AdminPage() {
         }
     };
 
-
-
     // --- RESTAURANT HANDLERS ---
     const handleAddNew = () => {
         setEditingId(null);
         setFormData({
             name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
             baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
+            isVisible: true,
             menu: []
         });
         setActiveTab("form");
+        setMenuSearchQuery("");
     };
 
     const handleEdit = (restaurant) => {
@@ -274,7 +276,7 @@ export default function AdminPage() {
 
     // --- MENU HANDLERS ---
     const addMenuItem = () => {
-        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: true, category: "" }] });
+        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: true, isVisible: true, category: "" }] });
     };
 
     const updateMenuItem = (index, field, value) => {
@@ -450,11 +452,33 @@ export default function AdminPage() {
                                     initial={{ opacity: 0, scale: 0.95 }}
                                     animate={{ opacity: 1, scale: 1 }}
                                     key={r.id}
-                                    className="bg-white/5 border border-white/10 p-6 rounded-[2rem] hover:bg-white/10 transition-all group hover:border-white/20 hover:shadow-2xl hover:shadow-orange-900/10"
+                                    className={`bg-white/5 border border-white/10 p-6 rounded-[2rem] hover:bg-white/10 transition-all group hover:border-white/20 hover:shadow-2xl hover:shadow-orange-900/10 ${r.isVisible === false ? 'opacity-60' : ''}`}
                                 >
                                     <div className="relative h-56 mb-6 overflow-hidden rounded-2xl bg-black">
-                                        <img src={r.image} alt={r.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100" />
+                                        {r.image && <img src={r.image} alt={r.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100" />}
+                                        {r.isVisible === false && (
+                                            <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">
+                                                <EyeOff size={12} /> Hidden
+                                            </div>
+                                        )}
                                         <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                                            <button
+                                                onClick={async (e) => {
+                                                    e.stopPropagation();
+                                                    const updated = { ...r, isVisible: r.isVisible === false ? true : false };
+                                                    try {
+                                                        await setDoc(doc(db, "restaurants", r.id), updated);
+                                                        await fetchData();
+                                                    } catch (error) {
+                                                        console.error(error);
+                                                        alert("Failed to toggle visibility");
+                                                    }
+                                                }}
+                                                className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-purple-600 hover:text-white text-white transition-all"
+                                                title={r.isVisible === false ? "Show Restaurant" : "Hide Restaurant"}
+                                            >
+                                                {r.isVisible === false ? <Eye size={18} /> : <EyeOff size={18} />}
+                                            </button>
                                             <button onClick={(e) => { e.stopPropagation(); handleEdit(r); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-blue-600 hover:text-white text-white transition-all"><Save size={18} /></button>
                                             <button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-red-600 hover:text-white text-white transition-all"><Trash size={18} /></button>
                                         </div>
@@ -490,55 +514,120 @@ export default function AdminPage() {
                                     <FormInput label="Extra Item Threshold" type="number" value={formData.extraItemThreshold} onChange={(e) => setFormData({ ...formData, extraItemThreshold: e.target.value })} />
                                     <FormInput label="Extra Charge (₹)" type="number" value={formData.extraItemCharge} onChange={(e) => setFormData({ ...formData, extraItemCharge: e.target.value })} />
                                 </div>
+
+                                <div className="col-span-full flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5">
+                                    <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input
+                                            type="checkbox"
+                                            name="restaurant-visibility"
+                                            id="restaurant-visibility"
+                                            className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
+                                            checked={formData.isVisible !== false}
+                                            onChange={(e) => setFormData({ ...formData, isVisible: e.target.checked })}
+                                            style={{ right: formData.isVisible !== false ? '0' : 'auto', left: formData.isVisible !== false ? 'auto' : '0' }}
+                                        />
+                                        <label htmlFor="restaurant-visibility" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${formData.isVisible !== false ? 'bg-green-500' : 'bg-gray-600'}`}></label>
+                                    </div>
+                                    <div className="flex-1">
+                                        <label htmlFor="restaurant-visibility" className="text-sm font-bold text-white cursor-pointer select-none flex items-center gap-2">
+                                            {formData.isVisible !== false ? <Eye size={18} className="text-green-400" /> : <EyeOff size={18} className="text-gray-400" />}
+                                            Restaurant Visible to Customers
+                                        </label>
+                                        <p className="text-xs text-gray-500 mt-1">Toggle off to temporarily hide this restaurant from the delivery page</p>
+                                    </div>
+                                </div>
                             </div>
 
                             <div className="border-t border-white/10 pt-10">
-                                <div className="flex justify-between items-center mb-8">
+                                <div className="flex justify-between items-center mb-6">
                                     <h3 className="font-bold text-2xl text-white">Menu Management</h3>
                                     <button onClick={addMenuItem} className="text-black bg-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shadow-white/10"><Plus size={18} /> Add Item</button>
                                 </div>
+
+                                {/* Search Bar */}
+                                <div className="mb-6 relative group">
+                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-orange-500 transition-colors" size={18} />
+                                    <input
+                                        type="text"
+                                        placeholder="Search menu items by name..."
+                                        value={menuSearchQuery}
+                                        onChange={(e) => setMenuSearchQuery(e.target.value)}
+                                        className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium placeholder-gray-500"
+                                    />
+                                    {menuSearchQuery && (
+                                        <button
+                                            onClick={() => setMenuSearchQuery("")}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                                        >
+                                            <X size={18} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Item Count */}
+                                {(formData.menu || []).length > 0 && (
+                                    <div className="mb-4 text-sm text-gray-400 font-medium">
+                                        Showing {(formData.menu || []).filter(item => !menuSearchQuery || item.name.toLowerCase().includes(menuSearchQuery.toLowerCase())).length} of {(formData.menu || []).length} items
+                                    </div>
+                                )}
+
                                 <div className="space-y-6">
-                                    {(formData.menu || []).map((item, idx) => (
-                                        <div key={item.id} className="p-6 border border-white/10 rounded-3xl bg-black/20 relative group">
-                                            <button onClick={() => removeMenuItem(idx)} className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"><Trash size={16} /></button>
-                                            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                                <div className="col-span-1 space-y-4">
-                                                    <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white font-bold" placeholder="Item Name" value={item.name} onChange={(e) => updateMenuItem(idx, "name", e.target.value)} />
-                                                    <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" type="number" value={item.price} onChange={(e) => updateMenuItem(idx, "price", e.target.value)} />
-                                                    <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Extra Info (e.g. Must Try)" value={item.extraInfo || ""} onChange={(e) => updateMenuItem(idx, "extraInfo", e.target.value)} />
-                                                    <select
-                                                        className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs appearance-none focus:outline-none focus:border-orange-500/50"
-                                                        value={item.category || ""}
-                                                        onChange={(e) => updateMenuItem(idx, "category", e.target.value)}
-                                                    >
-                                                        <option value="" disabled className="bg-gray-900 text-gray-400">Select Category</option>
-                                                        {menuCategories.map(cat => (
-                                                            <option key={cat} value={cat} className="bg-gray-900">{cat}</option>
-                                                        ))}
-                                                        {item.category && !menuCategories.includes(item.category) && (
-                                                            <option value={item.category} className="bg-gray-900">{item.category} (Legacy)</option>
-                                                        )}
-                                                    </select>
-                                                </div>
-                                                <div className="col-span-2">
-                                                    <textarea className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white h-full resize-none min-h-[100px]" placeholder="Description" value={item.description} onChange={(e) => updateMenuItem(idx, "description", e.target.value)} />
-                                                </div>
-                                                <div className="col-span-1 space-y-4">
-                                                    <div className="flex gap-2">
-                                                        <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Image URL" value={item.image} onChange={(e) => updateMenuItem(idx, "image", e.target.value)} />
-                                                        <label className="bg-white/10 hover:bg-white/20 p-2 rounded-lg cursor-pointer text-white transition-colors flex items-center justify-center min-w-[40px]">
-                                                            <Upload size={16} />
-                                                            <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, (url) => updateMenuItem(idx, "image", url))} />
-                                                        </label>
+                                    {(formData.menu || []).filter(item => !menuSearchQuery || item.name.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((item, idx) => {
+                                        const actualIdx = (formData.menu || []).indexOf(item);
+                                        return (
+                                            <div key={item.id} className={`p-6 border border-white/10 rounded-3xl bg-black/20 relative group ${item.isVisible === false ? 'opacity-60' : ''}`}>
+                                                <button onClick={() => removeMenuItem(actualIdx)} className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"><Trash size={16} /></button>
+                                                <button
+                                                    onClick={() => updateMenuItem(actualIdx, "isVisible", item.isVisible === false ? true : false)}
+                                                    className="absolute -top-3 -left-3 bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-colors shadow-lg"
+                                                    title={item.isVisible === false ? "Show Item" : "Hide Item"}
+                                                >
+                                                    {item.isVisible === false ? <Eye size={16} /> : <EyeOff size={16} />}
+                                                </button>
+                                                {item.isVisible === false && (
+                                                    <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-md text-white px-2 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg z-10">
+                                                        Hidden
                                                     </div>
-                                                    <div className="flex items-center gap-3">
-                                                        <input type="checkbox" checked={item.isVeg} onChange={(e) => updateMenuItem(idx, "isVeg", e.target.checked)} id={`veg-${idx}`} className="w-5 h-5 accent-green-500 rounded" />
-                                                        <label htmlFor={`veg-${idx}`} className="text-sm font-bold text-green-400">Pure Veg</label>
+                                                )}
+                                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                                    <div className="col-span-1 space-y-4">
+                                                        <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white font-bold" placeholder="Item Name" value={item.name} onChange={(e) => updateMenuItem(actualIdx, "name", e.target.value)} />
+                                                        <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" type="number" value={item.price} onChange={(e) => updateMenuItem(actualIdx, "price", e.target.value)} />
+                                                        <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Extra Info (e.g. Must Try)" value={item.extraInfo || ""} onChange={(e) => updateMenuItem(actualIdx, "extraInfo", e.target.value)} />
+                                                        <select
+                                                            className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs appearance-none focus:outline-none focus:border-orange-500/50"
+                                                            value={item.category || ""}
+                                                            onChange={(e) => updateMenuItem(actualIdx, "category", e.target.value)}
+                                                        >
+                                                            <option value="" disabled className="bg-gray-900 text-gray-400">Select Category</option>
+                                                            {menuCategories.map(cat => (
+                                                                <option key={cat} value={cat} className="bg-gray-900">{cat}</option>
+                                                            ))}
+                                                            {item.category && !menuCategories.includes(item.category) && (
+                                                                <option value={item.category} className="bg-gray-900">{item.category} (Legacy)</option>
+                                                            )}
+                                                        </select>
+                                                    </div>
+                                                    <div className="col-span-2">
+                                                        <textarea className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white h-full resize-none min-h-[100px]" placeholder="Description" value={item.description} onChange={(e) => updateMenuItem(actualIdx, "description", e.target.value)} />
+                                                    </div>
+                                                    <div className="col-span-1 space-y-4">
+                                                        <div className="flex gap-2">
+                                                            <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Image URL" value={item.image} onChange={(e) => updateMenuItem(actualIdx, "image", e.target.value)} />
+                                                            <label className="bg-white/10 hover:bg-white/20 p-2 rounded-lg cursor-pointer text-white transition-colors flex items-center justify-center min-w-[40px]">
+                                                                <Upload size={16} />
+                                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, (url) => updateMenuItem(actualIdx, "image", url))} />
+                                                            </label>
+                                                        </div>
+                                                        <div className="flex items-center gap-3">
+                                                            <input type="checkbox" checked={item.isVeg} onChange={(e) => updateMenuItem(actualIdx, "isVeg", e.target.checked)} id={`veg-${actualIdx}`} className="w-5 h-5 accent-green-500 rounded" />
+                                                            <label htmlFor={`veg-${actualIdx}`} className="text-sm font-bold text-green-400">Pure Veg</label>
+                                                        </div>
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                             <div className="mt-12 pt-8 border-t border-white/10 flex justify-end gap-4">

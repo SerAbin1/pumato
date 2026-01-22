@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, query, where } from "firebase/firestore";
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();
@@ -53,7 +53,9 @@ export default function DeliveryPage() {
     useEffect(() => {
         const fetchRestaurants = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, "restaurants"));
+                // Use Firestore query to fetch only visible restaurants
+                const q = query(collection(db, "restaurants"), where("isVisible", "==", true));
+                const querySnapshot = await getDocs(q);
                 const data = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
                 setRestaurants(data);
                 setFilteredRestaurants(data);

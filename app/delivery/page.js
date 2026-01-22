@@ -21,11 +21,7 @@ export default function DeliveryPage() {
         offers: false
     });
     const [searchQuery, setSearchQuery] = useState("");
-    const [promoBanners, setPromoBanners] = useState({
-        banner1: { title: "50% OFF", sub: "Welcome Bonus" },
-        banner2: { title: "Free Delivery", sub: "On all orders" },
-        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off" }
-    });
+    const [promoBanners, setPromoBanners] = useState(null);
 
     // Fetch banners on load
     useEffect(() => {
@@ -33,10 +29,23 @@ export default function DeliveryPage() {
             try {
                 const docSnap = await getDoc(doc(db, "site_content", "promo_banners"));
                 if (docSnap.exists()) {
-                    setPromoBanners(prev => ({ ...prev, ...docSnap.data() }));
+                    setPromoBanners(docSnap.data());
+                } else {
+                    // Fallback if no banners exist in Firebase
+                    setPromoBanners({
+                        banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
+                        banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
+                        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
+                    });
                 }
             } catch (err) {
                 console.error("Failed to fetch banners", err);
+                // Fallback on error
+                setPromoBanners({
+                    banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
+                    banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
+                    banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
+                });
             }
         };
         fetchBanners();
@@ -190,29 +199,31 @@ export default function DeliveryPage() {
             <div className="max-w-7xl mx-auto px-4 space-y-16 py-12 relative z-10">
 
                 {/* Promo Banners */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    {[
-                        { ...promoBanners.banner1, gradient: "from-blue-600 to-blue-800", img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80" },
-                        { ...promoBanners.banner2, gradient: "from-orange-500 to-red-600", img: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80" },
-                        { ...promoBanners.banner3, gradient: "from-emerald-600 to-emerald-800", img: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=400&q=80" }
-                    ].map((promo, i) => (
-                        <motion.div
-                            key={i}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ delay: i * 0.1 }}
-                            whileHover={{ y: -5, scale: 1.02 }}
-                            className={`bg-gradient-to-br ${promo.gradient} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
-                        >
-                            <div className="relative z-10">
-                                <span className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1"><Sparkles size={10} /> Limited Time</span>
-                                <h3 className="text-3xl font-black italic tracking-tighter">{promo.title}</h3>
-                                <p className="font-medium opacity-90 text-sm mt-1 text-white/90">{promo.sub}</p>
-                            </div>
-                            <img src={promo.img} className="absolute -right-10 -bottom-10 w-48 h-48 object-cover rounded-full group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl border-4 border-white/10" alt="Offer" />
-                        </motion.div>
-                    ))}
-                </div>
+                {promoBanners && (
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {[
+                            { ...promoBanners.banner1, gradient: "from-blue-600 to-blue-800", img: "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=400&q=80", key: "banner1" },
+                            { ...promoBanners.banner2, gradient: "from-orange-500 to-red-600", img: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=400&q=80", key: "banner2" },
+                            { ...promoBanners.banner3, gradient: "from-emerald-600 to-emerald-800", img: "https://images.unsplash.com/photo-1482049016688-2d3e1b311543?w=400&q=80", key: "banner3" }
+                        ].filter(promo => !promo.hidden).map((promo, i) => (
+                            <motion.div
+                                key={promo.key}
+                                initial={{ opacity: 0, y: 20 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: i * 0.1 }}
+                                whileHover={{ y: -5, scale: 1.02 }}
+                                className={`bg-gradient-to-br ${promo.gradient} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
+                            >
+                                <div className="relative z-10">
+                                    <span className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1"><Sparkles size={10} /> Limited Time</span>
+                                    <h3 className="text-3xl font-black italic tracking-tighter">{promo.title}</h3>
+                                    <p className="font-medium opacity-90 text-sm mt-1 text-white/90">{promo.sub}</p>
+                                </div>
+                                <img src={promo.img} className="absolute -right-10 -bottom-10 w-48 h-48 object-cover rounded-full group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl border-4 border-white/10" alt="Offer" />
+                            </motion.div>
+                        ))}
+                    </div>
+                )}
 
                 {/* Food Collections (Horizontal Scroll) */}
                 {/* Note: FoodCollections component will need its own dark mode update, skipping for now to keep focus on page layout */}

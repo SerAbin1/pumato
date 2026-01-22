@@ -18,9 +18,9 @@ export default function AdminPage() {
     const [restaurants, setRestaurants] = useState([]);
     const [coupons, setCoupons] = useState([]);
     const [banners, setBanners] = useState({
-        banner1: { title: "50% OFF", sub: "Welcome Bonus" },
-        banner2: { title: "Free Delivery", sub: "On all orders" },
-        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off" }
+        banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
+        banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
+        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
     });
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("list"); // list, form
@@ -708,9 +708,18 @@ export default function AdminPage() {
 
                         <div className="grid gap-8">
                             {[1, 2, 3].map(num => (
-                                <div key={num} className="bg-black/30 p-6 rounded-2xl border border-white/10 relative overflow-hidden">
+                                <div key={num} className={`bg-black/30 p-6 rounded-2xl border border-white/10 relative overflow-hidden ${banners[`banner${num}`]?.hidden ? 'opacity-50' : ''}`}>
                                     <div className="absolute top-0 right-0 p-4 opacity-50 font-black text-6xl text-white/5 pointer-events-none">{num}</div>
-                                    <h3 className="text-xl font-bold text-gray-200 mb-4 uppercase tracking-wider">Banner {num}</h3>
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-xl font-bold text-gray-200 uppercase tracking-wider">Banner {num}</h3>
+                                        <button
+                                            onClick={() => setBanners({ ...banners, [`banner${num}`]: { ...banners[`banner${num}`], hidden: !banners[`banner${num}`]?.hidden } })}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${banners[`banner${num}`]?.hidden ? 'bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30' : 'bg-green-500/20 text-green-400 border border-green-500/30 hover:bg-green-500/30'}`}
+                                            title={banners[`banner${num}`]?.hidden ? "Click to show banner" : "Click to hide banner"}
+                                        >
+                                            {banners[`banner${num}`]?.hidden ? <><EyeOff size={16} /> Hidden</> : <><Eye size={16} /> Visible</>}
+                                        </button>
+                                    </div>
                                     <div className="grid md:grid-cols-2 gap-6">
                                         <FormInput
                                             label="Title (e.g. 50% OFF)"

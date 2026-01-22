@@ -271,12 +271,14 @@ export default function GatewayPage() {
           <div className="text-center mb-16">
             <motion.span
               initial={{ opacity: 0 }} whileInView={{ opacity: 1 }}
+              viewport={{ once: true }}
               className="text-orange-500 font-bold tracking-[0.3em] text-sm uppercase"
             >
               Our Vision
             </motion.span>
             <motion.h2
               initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} transition={{ duration: 0.7 }}
+              viewport={{ once: true }}
               className="text-4xl md:text-6xl font-bold mt-4 leading-tight"
             >
               Built by Students, <br />
@@ -284,6 +286,7 @@ export default function GatewayPage() {
             </motion.h2>
             <motion.p
               initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} transition={{ delay: 0.3, duration: 0.6 }}
+              viewport={{ once: true }}
               className="text-gray-400 text-lg md:text-xl mt-6 max-w-3xl mx-auto leading-relaxed"
             >
               PUMATO aims to become a student-powered campus platform that solves everyday university problems by providing fast, affordable, and reliable services.
@@ -300,6 +303,7 @@ export default function GatewayPage() {
                 key={i}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
                 transition={{ delay: i * 0.2, duration: 0.6 }}
                 className="p-8 rounded-3xl bg-white/5 border border-white/10 hover:border-orange-500/50 transition-colors"
               >
@@ -314,6 +318,7 @@ export default function GatewayPage() {
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
             transition={{ duration: 0.7 }}
             className="text-center bg-gradient-to-r from-orange-500/10 via-transparent to-purple-500/10 p-10 md:p-16 rounded-[2.5rem] border border-white/10"
           >

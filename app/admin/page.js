@@ -431,7 +431,7 @@ export default function AdminPage() {
                             </button>
                         </div>
                     </div>
-                    {activeSection !== 'laundry' && activeSection !== 'banners' && (
+                    {activeSection !== 'laundry' && activeSection !== 'banners' && activeSection !== 'categories' && (
                         <button
                             onClick={() => activeTab === "list" ? (activeSection === "restaurants" ? handleAddNew() : handleAddNewCoupon()) : setActiveTab("list")}
                             className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-orange-900/40 hover:bg-orange-500 hover:scale-105 transition-all flex items-center gap-2"

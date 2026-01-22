@@ -397,8 +397,8 @@ export default function AdminPage() {
                         <h1 className="text-4xl font-black text-white tracking-tight">Admin Dashboard</h1>
                     </div>
 
-                    <div className="flex gap-4 w-full md:w-auto">
-                        <div className="flex bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-md flex-1 md:flex-none">
+                    <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                        <div className="flex bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-md min-w-max">
                             <button
                                 onClick={() => { setActiveSection("restaurants"); setActiveTab("list"); }}
                                 className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "restaurants" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}

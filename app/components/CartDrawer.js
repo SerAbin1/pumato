@@ -1,11 +1,13 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, ShoppingBag, Send, Trash2, MapPin, User, Phone, Check, Tag } from "lucide-react";
+import { X, Plus, Minus, ShoppingBag, Send, Trash2, MapPin, User, Phone, Check, Tag, Loader2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { formatWhatsAppMessage, FOOD_DELIVERY_NUMBER } from "@/lib/whatsapp";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { getFunctions, httpsCallable } from "firebase/functions";
+import { getApp } from "firebase/app";
 
 export default function CartDrawer() {
     const {
@@ -32,6 +34,7 @@ export default function CartDrawer() {
     const [inputCode, setInputCode] = useState("");
     const [couponMsg, setCouponMsg] = useState(null);
     const [isApplying, setIsApplying] = useState(false);
+    const [checkoutError, setCheckoutError] = useState(null);
 
     const [isStoreOpen, setIsStoreOpen] = useState(true);
 
@@ -41,6 +44,7 @@ export default function CartDrawer() {
             setIsCheckingOut(false);
             setCouponMsg(null);
             setInputCode("");
+            setCheckoutError(null);
         } else {
             // Check time when cart opens
             const now = new Date();
@@ -73,27 +77,41 @@ export default function CartDrawer() {
         }, 600);
     };
 
-    const handleCheckout = () => {
+    const handleCheckout = async () => {
         if (!userDetails.name || !userDetails.phone || !userDetails.address) {
             return;
         }
 
-        const button = document.getElementById("checkout-btn");
-        if (button) {
-            button.innerHTML = "Opening WhatsApp...";
-            button.style.opacity = "0.8";
-        }
+        setIsCheckingOut(true);
+        setCheckoutError(null);
 
-        setTimeout(() => {
+        try {
+            // If coupon is applied, validate with cloud function first
+            if (couponCode) {
+                const functions = getFunctions(getApp());
+                const checkoutCoupon = httpsCallable(functions, "checkoutCoupon");
+                await checkoutCoupon({ couponCode });
+            }
+
+            // Coupon validated (or no coupon), proceed with WhatsApp
             const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode });
             const whatsappUrl = `https://wa.me/${FOOD_DELIVERY_NUMBER}?text=${message}`;
             window.open(whatsappUrl, "_blank");
-
-            if (button) {
-                button.innerHTML = "Order Placed";
-                setIsCartOpen(false);
+            setIsCartOpen(false);
+        } catch (error) {
+            console.error("Checkout error:", error);
+            if (error.code === "functions/resource-exhausted") {
+                setCheckoutError("Coupon usage limit reached. Please remove it to proceed.");
+                removeCoupon();
+            } else if (error.code === "functions/not-found") {
+                setCheckoutError("Invalid coupon. Please remove it to proceed.");
+                removeCoupon();
+            } else {
+                setCheckoutError("Something went wrong. Please try again.");
             }
-        }, 800);
+        } finally {
+            setIsCheckingOut(false);
+        }
     };
 
     const isFormValid = userDetails.name && userDetails.phone && userDetails.address;
@@ -386,14 +404,30 @@ export default function CartDrawer() {
                                         </span>
                                     </div>
                                 )}
+                                {checkoutError && (
+                                    <div className="mb-3 text-center">
+                                        <span className="text-xs text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20 font-bold">
+                                            ⚠️ {checkoutError}
+                                        </span>
+                                    </div>
+                                )}
                                 <button
                                     id="checkout-btn"
                                     onClick={handleCheckout}
-                                    disabled={!isFormValid || !isStoreOpen}
+                                    disabled={!isFormValid || !isStoreOpen || isCheckingOut}
                                     className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-gray-600 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-900/20 active:scale-[0.98] border border-white/5"
                                 >
-                                    <span>Place Order via WhatsApp</span>
-                                    <Send size={20} className={isFormValid ? "animate-bounce-x" : ""} />
+                                    {isCheckingOut ? (
+                                        <>
+                                            <Loader2 size={20} className="animate-spin" />
+                                            <span>Processing...</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span>Place Order via WhatsApp</span>
+                                            <Send size={20} className={isFormValid ? "animate-bounce-x" : ""} />
+                                        </>
+                                    )}
                                 </button>
                             </div>
                         )}

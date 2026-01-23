@@ -44,3 +44,6 @@ next-env.d.ts
 *-firebase-adminsdk-*.json
 .firebase/*
 firebase-debug.log
+
+# cloud functions
+functions/node_modules/

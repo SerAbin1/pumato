@@ -50,7 +50,7 @@ export default function AdminPage() {
 
     // Coupon Form State
     const [couponForm, setCouponForm] = useState({
-        code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true
+        code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: ""
     });
 
     useEffect(() => {
@@ -294,7 +294,7 @@ export default function AdminPage() {
     // --- COUPON HANDLERS ---
     const handleAddNewCoupon = () => {
         setEditingId(null);
-        setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true });
+        setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "" });
         setActiveTab("form");
     };
 
@@ -316,8 +316,19 @@ export default function AdminPage() {
     };
 
     const handleSubmitCoupon = async () => {
-        const id = editingId || Date.now().toString();
-        const data = { ...couponForm, id };
+        const limit = parseInt(couponForm.usageLimit);
+        if (!limit || limit < 1) {
+            alert("Usage limit is required and must be at least 1.");
+            return;
+        }
+
+        const id = editingId || couponForm.code.toUpperCase();
+        const data = {
+            ...couponForm,
+            id,
+            usageLimit: limit,
+            usedCount: editingId ? (couponForm.usedCount || 0) : 0
+        };
 
         try {
             await setDoc(doc(db, "promocodes", id), data);
@@ -670,7 +681,12 @@ export default function AdminPage() {
 
                                     <div className="flex items-center justify-between text-sm font-bold text-gray-300 bg-black/30 p-4 rounded-xl border border-white/5">
                                         <span>Value: {c.type === 'FLAT' ? `₹${c.value}` : `${c.value}%`}</span>
-                                        <span>Min Order: ₹{c.minOrder}</span>
+                                        <span>Min: ₹{c.minOrder}</span>
+                                        {c.usageLimit > 0 && (
+                                            <span className={`${(c.usedCount || 0) >= c.usageLimit ? 'text-red-400' : 'text-cyan-400'}`}>
+                                                Used: {c.usedCount || 0}/{c.usageLimit}
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                             ))}
@@ -696,6 +712,8 @@ export default function AdminPage() {
                                 </div>
 
                                 <FormInput label="Min Order Amount (₹)" type="number" value={couponForm.minOrder} onChange={(e) => setCouponForm({ ...couponForm, minOrder: e.target.value })} placeholder="0" />
+
+                                <FormInput label="Usage Limit" type="number" value={couponForm.usageLimit} onChange={(e) => setCouponForm({ ...couponForm, usageLimit: e.target.value })} placeholder="e.g. 100" />
 
                                 <div className="space-y-3">
                                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Description</label>

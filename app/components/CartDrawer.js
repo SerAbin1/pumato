@@ -365,8 +365,20 @@ export default function CartDrawer() {
                                                     type="tel"
                                                     placeholder="Phone Number"
                                                     value={userDetails.phone}
-                                                    onChange={(e) => setUserDetails({ ...userDetails, phone: e.target.value })}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value.replace(/\D/g, ''); // Numeric only
+                                                        setUserDetails({ ...userDetails, phone: val });
+                                                    }}
                                                     className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600"
+                                                />
+                                            </div>
+
+                                            <div className="relative group">
+                                                <textarea
+                                                    placeholder="Custom Instructions (e.g. Biryani should be spicy)"
+                                                    value={userDetails.instructions || ""}
+                                                    onChange={(e) => setUserDetails({ ...userDetails, instructions: e.target.value })}
+                                                    className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600 h-20 resize-none text-sm"
                                                 />
                                             </div>
 

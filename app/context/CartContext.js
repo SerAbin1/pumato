@@ -13,6 +13,7 @@ export function CartProvider({ children }) {
         name: "",
         phone: "",
         address: "",
+        instructions: ""
     });
 
     // Data State

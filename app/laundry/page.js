@@ -15,7 +15,8 @@ export default function LaundryPage() {
         phone: "",
         location: "",
         date: "",
-        time: ""
+        time: "",
+        instructions: ""
     });
 
     const [items, setItems] = useState([
@@ -109,7 +110,11 @@ export default function LaundryPage() {
         message += `*Customer Details:*\n`;
         message += `Name: ${formData.name}\n`;
         message += `Phone: ${formData.phone}\n`;
-        message += `Location: ${formData.location}\n\n`;
+        message += `Location: ${formData.location}\n`;
+        if (formData.instructions) {
+            message += `Instructions: ${formData.instructions}\n`;
+        }
+        message += `\n`;
 
         message += `*Pickup Schedule:*\n`;
         message += `Date: ${formData.date}\n`;
@@ -182,27 +187,54 @@ export default function LaundryPage() {
                         <h2 className="text-2xl font-bold mb-8 text-white">Request Pickup</h2>
 
                         <form onSubmit={handleSubmit} className="space-y-6">
-                            {[
-                                { label: "Your Name", name: "name", type: "text", placeholder: "John Doe", icon: User },
-                                { label: "Phone Number", name: "phone", type: "tel", placeholder: "917...", icon: Phone },
-                                { label: "Pickup Location", name: "location", type: "text", placeholder: "Hostel Block A, Room 101", icon: MapPin }
-                            ].map((field, i) => (
-                                <div key={i}>
-                                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">{field.label}</label>
-                                    <div className="relative group">
-                                        <field.icon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" size={20} />
-                                        <input
-                                            type={field.type}
-                                            name={field.name}
-                                            required
-                                            placeholder={field.placeholder}
-                                            className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium text-white placeholder-gray-600"
-                                            value={formData[field.name]}
-                                            onChange={handleChange}
-                                        />
-                                    </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Your Name</label>
+                                <div className="relative group">
+                                    <User className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" size={20} />
+                                    <input
+                                        type="text"
+                                        name="name"
+                                        required
+                                        placeholder="John Doe"
+                                        className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium text-white placeholder-gray-600"
+                                        value={formData.name}
+                                        onChange={handleChange}
+                                    />
                                 </div>
-                            ))}
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Phone Number</label>
+                                <div className="relative group">
+                                    <Phone className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" size={20} />
+                                    <input
+                                        type="tel"
+                                        name="phone"
+                                        required
+                                        placeholder="917..."
+                                        className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium text-white placeholder-gray-600"
+                                        value={formData.phone}
+                                        onChange={(e) => {
+                                            const val = e.target.value.replace(/\D/g, ''); // Numeric only
+                                            setFormData({ ...formData, phone: val });
+                                        }}
+                                    />
+                                </div>
+                            </div>
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Pickup Location</label>
+                                <div className="relative group">
+                                    <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" size={20} />
+                                    <input
+                                        type="text"
+                                        name="location"
+                                        required
+                                        placeholder="Hostel Block A, Room 101"
+                                        className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium text-white placeholder-gray-600"
+                                        value={formData.location}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                            </div>
 
                             {/* Date & Time Selection */}
                             <div className="space-y-2">
@@ -247,6 +279,17 @@ export default function LaundryPage() {
                                         )}
                                     </div>
                                 )}
+                            </div>
+
+                            <div className="space-y-2">
+                                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Special Instructions (Optional)</label>
+                                <textarea
+                                    name="instructions"
+                                    placeholder="e.g. Handle silk items carefully"
+                                    className="w-full px-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 transition-all font-medium text-white placeholder-gray-600 h-24 resize-none"
+                                    value={formData.instructions}
+                                    onChange={handleChange}
+                                />
                             </div>
 
 

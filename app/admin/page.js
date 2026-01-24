@@ -1000,8 +1000,8 @@ export default function AdminPage() {
             <AnimatePresence>
                 {((activeSection === "restaurants" && activeTab === "form") ||
                     (activeSection === "coupons" && activeTab === "form") ||
-                    (activeSection === "laundry" && dateOrType) ||
-                    (activeSection === "website")) && (
+                    (activeSection === "laundry") ||
+                    (activeSection === "banners")) && (
                         <motion.div
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
@@ -1015,7 +1015,7 @@ export default function AdminPage() {
                                         {activeSection === "restaurants" && (editingId ? "Editing Restaurant" : "Creating Restaurant")}
                                         {activeSection === "coupons" && (editingId ? "Editing Coupon" : "Creating Coupon")}
                                         {activeSection === "laundry" && "Managing Laundry Slots"}
-                                        {activeSection === "website" && "Customizing Website"}
+                                        {activeSection === "banners" && "Managing Promo Banners"}
                                     </p>
                                 </div>
 
@@ -1038,7 +1038,7 @@ export default function AdminPage() {
                                             if (activeSection === "restaurants") handleSubmitRestaurant();
                                             else if (activeSection === "coupons") handleSubmitCoupon();
                                             else if (activeSection === "laundry") handleBulkApply();
-                                            else if (activeSection === "website") handleSaveBanners();
+                                            else if (activeSection === "banners") handleSaveBanners();
                                         }}
                                         className="flex-1 md:flex-none bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center justify-center gap-2 group"
                                     >
@@ -1047,7 +1047,7 @@ export default function AdminPage() {
                                             {activeSection === "restaurants" ? (editingId ? "Update Restaurant" : "Create Restaurant") : ""}
                                             {activeSection === "coupons" ? (editingId ? "Update Coupon" : "Create Coupon") : ""}
                                             {activeSection === "laundry" ? "Apply Changes" : ""}
-                                            {activeSection === "website" ? "Save Site Content" : ""}
+                                            {activeSection === "banners" ? "Update Banners" : ""}
                                         </span>
                                     </button>
                                 </div>

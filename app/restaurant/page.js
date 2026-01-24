@@ -41,7 +41,6 @@ function RestaurantContent() {
     const [filter, setFilter] = useState("all");
     const [sortOrder, setSortOrder] = useState("default"); // default, asc, desc
     const [searchQuery, setSearchQuery] = useState("");
-    const [showMenuModal, setShowMenuModal] = useState(false);
     const [collapsedSections, setCollapsedSections] = useState({});
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
@@ -130,13 +129,6 @@ function RestaurantContent() {
         return finalMenu;
     }, [restaurant, searchQuery, filter, sortOrder]);
 
-    const scrollToCategory = (cat) => {
-        const el = document.getElementById(cat);
-        if (el) {
-            el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            setShowMenuModal(false);
-        }
-    };
 
     const toggleSection = (category) => {
         setCollapsedSections(prev => ({
@@ -419,56 +411,6 @@ function RestaurantContent() {
                 </div>
             </div>
 
-            {/* Floating Browse Menu Button */}
-            <AnimatePresence>
-                {Object.keys(processedMenu).length > 0 && (
-                    <motion.button
-                        initial={{ y: 100, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: 100, opacity: 0 }}
-                        onClick={() => setShowMenuModal(true)}
-                        className="fixed bottom-24 right-6 bg-white text-black px-6 py-3 rounded-full shadow-2xl shadow-white/10 flex items-center gap-2 z-30 hover:scale-105 transition-transform font-bold pointer-events-auto border-2 border-black"
-                    >
-                        <Utensils size={18} /> Browse Menu
-                    </motion.button>
-                )}
-            </AnimatePresence>
-
-            {/* Menu Category Modal */}
-            <AnimatePresence>
-                {showMenuModal && (
-                    <>
-                        <motion.div
-                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                            onClick={() => setShowMenuModal(false)}
-                            className="fixed inset-0 bg-black/80 z-40 backdrop-blur-sm"
-                        />
-                        <motion.div
-                            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-                            transition={{ type: "spring", damping: 25 }}
-                            className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-white/10 z-50 rounded-t-[2rem] max-h-[70vh] overflow-y-auto pb-10 shadow-2xl"
-                        >
-                            <div className="p-8">
-                                <div className="flex justify-between items-center mb-8">
-                                    <h3 className="text-2xl font-black text-white">Menu Categories</h3>
-                                    <button onClick={() => setShowMenuModal(false)} className="p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition-colors"><X size={20} /></button>
-                                </div>
-                                <div className="grid gap-3">
-                                    {Object.keys(processedMenu).map(cat => (
-                                        <button
-                                            key={cat}
-                                            onClick={() => scrollToCategory(cat)}
-                                            className="text-left w-full p-4 rounded-xl hover:bg-white/5 flex justify-between items-center border border-transparent hover:border-white/5 transition-all font-bold text-gray-300 hover:text-white"
-                                        >
-                                            {cat} <span className="bg-white/10 px-2 py-1 rounded text-xs text-gray-400">{processedMenu[cat].length} items</span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </motion.div>
-                    </>
-                )}
-            </AnimatePresence>
 
             {/* Sticky Cart Footer */}
             <AnimatePresence>

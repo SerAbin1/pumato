@@ -561,7 +561,6 @@ export default function AdminPage() {
                             <div className="border-t border-white/10 pt-10">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="font-bold text-2xl text-white">Menu Management</h3>
-                                    <button onClick={addMenuItem} className="text-black bg-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shadow-white/10"><Plus size={18} /> Add Item</button>
                                 </div>
 
                                 {/* Search Bar */}
@@ -1027,9 +1026,18 @@ export default function AdminPage() {
                                                 setEditingId(null);
                                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                                             }}
-                                            className="flex-1 md:flex-none px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors border border-white/5"
+                                            className="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors border border-white/5"
                                         >
                                             Cancel
+                                        </button>
+                                    )}
+
+                                    {activeSection === "restaurants" && activeTab === "form" && (
+                                        <button
+                                            onClick={addMenuItem}
+                                            className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shadow-white/10"
+                                        >
+                                            <Plus size={18} /> Add Item
                                         </button>
                                     )}
 

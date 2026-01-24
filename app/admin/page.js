@@ -11,6 +11,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import Image from "next/image";
 
+import { toTitleCase } from "@/lib/formatters";
+
 const format12h = (time24) => {
     if (!time24) return "";
     const [h, m] = time24.split(":").map(Number);
@@ -220,7 +222,8 @@ export default function AdminPage() {
     // --- CATEGORY HANDLERS ---
     const handleAddCategory = async (newCat) => {
         if (!newCat.trim()) return;
-        const updated = [...menuCategories, newCat.trim()];
+        const formattedCat = newCat.trim().toUpperCase();
+        const updated = [...menuCategories, formattedCat];
         setMenuCategories(updated);
         try {
             await setDoc(doc(db, "site_content", "menu_categories"), { list: updated });
@@ -255,6 +258,58 @@ export default function AdminPage() {
             console.error("Error saving settings:", error);
             alert("Failed to update settings");
         }
+    };
+
+    const normalizeAllData = async () => {
+        if (!confirm("This will normalize the database: Restaurant Names and Categories will be UPPERCASE, Menu Items will be Title Case. Are you sure?")) return;
+
+        setLoading(true);
+        let updatedCount = 0;
+
+        try {
+            // 1. Normalize Global Menu Categories (UPPERCASE)
+            const catDoc = await getDoc(doc(db, "site_content", "menu_categories"));
+            if (catDoc.exists()) {
+                const list = catDoc.data().list || [];
+                const newList = list.map(c => c.toUpperCase());
+                await setDoc(doc(db, "site_content", "menu_categories"), { list: newList });
+                setMenuCategories(newList);
+                updatedCount++;
+            }
+
+            // 2. Normalize Restaurants and their Menu Items
+            const querySnapshot = await getDocs(collection(db, "restaurants"));
+            const batchPromises = querySnapshot.docs.map(async (d) => {
+                const data = d.data();
+                const newName = (data.name || "").toUpperCase();
+                const newCuisine = toTitleCase(data.cuisine || "");
+
+                let newMenu = data.menu || [];
+                if (newMenu.length > 0) {
+                    newMenu = newMenu.map(item => ({
+                        ...item,
+                        name: toTitleCase(item.name || ""),
+                        category: (item.category || "").toUpperCase()
+                    }));
+                }
+
+                await setDoc(doc(db, "restaurants", d.id), {
+                    ...data,
+                    name: newName,
+                    cuisine: newCuisine,
+                    menu: newMenu
+                });
+                updatedCount++;
+            });
+
+            await Promise.all(batchPromises);
+            await fetchData(); // Refresh local state
+            alert(`SUCCESS: Normalized ${updatedCount} records based on new rules!`);
+        } catch (error) {
+            console.error("Normalization error:", error);
+            alert("Failed to normalize data completely.");
+        }
+        setLoading(false);
     };
 
     // --- RESTAURANT HANDLERS ---
@@ -293,10 +348,20 @@ export default function AdminPage() {
 
     const handleSubmitRestaurant = async () => {
         const id = editingId || Date.now().toString();
-        const data = { ...formData, id };
+        const formattedData = {
+            ...formData,
+            id,
+            name: (formData.name || "").toUpperCase(),
+            cuisine: toTitleCase(formData.cuisine || ""),
+            menu: (formData.menu || []).map(item => ({
+                ...item,
+                name: toTitleCase(item.name || ""),
+                category: (item.category || "").toUpperCase()
+            }))
+        };
 
         try {
-            await setDoc(doc(db, "restaurants", id), data);
+            await setDoc(doc(db, "restaurants", id), formattedData);
             await fetchData();
             setActiveTab("list");
         } catch (error) {
@@ -1153,6 +1218,25 @@ export default function AdminPage() {
                                 >
                                     Save All Settings
                                 </button>
+
+                                <div className="pt-8 border-t border-white/5">
+                                    <div className="p-6 bg-red-500/5 border border-red-500/10 rounded-3xl space-y-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
+                                                <Sparkles size={18} />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-white">Database Normalization</h3>
+                                        </div>
+                                        <p className="text-gray-400 text-sm pl-13">Fix inconsistent naming in your existing items. Use this to automatically capitalize all names, categories, and cuisines to Title Case.</p>
+                                        <button
+                                            onClick={normalizeAllData}
+                                            disabled={loading}
+                                            className="ml-13 flex items-center gap-2 text-red-400 hover:text-red-300 font-bold transition-all disabled:opacity-50"
+                                        >
+                                            <Trash size={16} /> Run Cleanup Tool
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </motion.div>

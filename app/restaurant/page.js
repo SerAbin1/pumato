@@ -220,10 +220,15 @@ function RestaurantContent() {
                                 >
                                     {restaurant.name}
                                 </motion.h1>
-                                <p className="text-lg md:text-xl opacity-90 font-medium text-gray-300">{restaurant.cuisine}</p>
-                                <div className="flex items-center gap-4 mt-4 text-sm font-bold text-gray-300">
+                                <div className="flex flex-wrap items-center gap-3 md:gap-6 text-gray-300 font-bold text-sm md:text-base">
+                                    <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
+                                        <Utensils size={18} className="text-orange-500" />
+                                        <span>{restaurant.cuisine}</span>
+                                    </div>
                                     <span className="flex items-center gap-1">30-35 mins</span>
-                                    <span className="flex items-center gap-1"><Dot /> {restaurant.priceForTwo || "Standard Menu"}</span>
+                                    <span className="flex items-center gap-1">
+                                        <div className="w-1 h-1 bg-gray-300 rounded-full"></div> {restaurant.priceForTwo || "Standard Menu"}
+                                    </span>
                                 </div>
                             </div>
                             {restaurant.offer && (
@@ -285,10 +290,13 @@ function RestaurantContent() {
                                 onClick={() => toggleSection(category)}
                                 className="w-full text-2xl font-bold text-white mb-6 flex items-center justify-between gap-3 hover:text-orange-400 transition-colors group"
                             >
-                                <div className="flex items-center gap-3">
-                                    <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span>
-                                    {category} <span className="text-gray-500 text-base font-normal">({items.length})</span>
-                                </div>
+                                <h2 id={category} className="text-2xl font-black text-white mb-6 flex items-center gap-3 sticky top-0 py-4 bg-black/80 backdrop-blur-md z-10">
+                                    <div className="w-1.5 h-8 bg-orange-600 rounded-full"></div>
+                                    {category}
+                                    <span className="text-sm font-bold bg-white/10 text-gray-400 px-3 py-1 rounded-full border border-white/10 ml-auto md:ml-0">
+                                        {items.length} {items.length === 1 ? 'item' : 'items'}
+                                    </span>
+                                </h2>
                                 <motion.div
                                     animate={{ rotate: collapsedSections[category] ? -180 : 0 }}
                                     transition={{ duration: 0.2 }}
@@ -345,7 +353,7 @@ function RestaurantContent() {
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                            <h3 className="font-bold text-xl text-white group-hover:text-orange-400 transition-colors mb-1">{item.name}</h3>
+                                                            <h4 className="font-bold text-white text-base md:text-lg mb-1 group-hover:text-orange-400 transition-colors">{item.name}</h4>
                                                             <p className="font-bold text-gray-300">₹{item.price}</p>
                                                             <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">{item.description}</p>
                                                         </div>

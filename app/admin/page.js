@@ -277,7 +277,7 @@ export default function AdminPage() {
 
     // --- MENU HANDLERS ---
     const addMenuItem = () => {
-        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: true, isVisible: true, category: "" }] });
+        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: null, isNonVeg: null, isVisible: true, category: "" }] });
     };
 
     const updateMenuItem = (index, field, value) => {
@@ -638,9 +638,35 @@ export default function AdminPage() {
                                                                 <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, (url) => updateMenuItem(actualIdx, "image", url))} />
                                                             </label>
                                                         </div>
-                                                        <div className="flex items-center gap-3">
-                                                            <input type="checkbox" checked={item.isVeg} onChange={(e) => updateMenuItem(actualIdx, "isVeg", e.target.checked)} id={`veg-${actualIdx}`} className="w-5 h-5 accent-green-500 rounded" />
-                                                            <label htmlFor={`veg-${actualIdx}`} className="text-sm font-bold text-green-400">Pure Veg</label>
+                                                        <div className="flex flex-col gap-3">
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={item.isVeg === true}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.checked;
+                                                                        updateMenuItem(actualIdx, "isVeg", val ? true : null);
+                                                                        if (val) updateMenuItem(actualIdx, "isNonVeg", null);
+                                                                    }}
+                                                                    id={`veg-${actualIdx}`}
+                                                                    className="w-5 h-5 accent-green-500 rounded"
+                                                                />
+                                                                <label htmlFor={`veg-${actualIdx}`} className="text-sm font-bold text-green-400">Pure Veg</label>
+                                                            </div>
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={item.isNonVeg === true}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.checked;
+                                                                        updateMenuItem(actualIdx, "isNonVeg", val ? true : null);
+                                                                        if (val) updateMenuItem(actualIdx, "isVeg", null);
+                                                                    }}
+                                                                    id={`nonveg-${actualIdx}`}
+                                                                    className="w-5 h-5 accent-red-500 rounded"
+                                                                />
+                                                                <label htmlFor={`nonveg-${actualIdx}`} className="text-sm font-bold text-red-500">Non-Veg</label>
+                                                            </div>
                                                         </div>
                                                     </div>
                                                 </div>

@@ -9,6 +9,14 @@ import Image from "next/image";
 import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApp } from "firebase/app";
 
+const format12h = (time24) => {
+    if (!time24) return "";
+    const [h, m] = time24.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+};
+
 export default function CartDrawer() {
     const {
         isCartOpen,
@@ -27,7 +35,8 @@ export default function CartDrawer() {
         applyCoupon,
         removeCoupon,
         availableCoupons,
-        isMultiRestaurant
+        isMultiRestaurant,
+        orderSettings
     } = useCart();
 
     const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -52,8 +61,11 @@ export default function CartDrawer() {
             const minutes = now.getMinutes();
             const timeInMinutes = hours * 60 + minutes;
 
-            const START_TIME = 18 * 60 + 30; // 6:30 PM
-            const END_TIME = 23 * 60; // 11:00 PM
+            const [startH, startM] = (orderSettings.startTime || "18:30").split(":").map(Number);
+            const [endH, endM] = (orderSettings.endTime || "23:00").split(":").map(Number);
+
+            const START_TIME = startH * 60 + startM;
+            const END_TIME = endH * 60 + endM;
 
             if (timeInMinutes >= START_TIME && timeInMinutes <= END_TIME) {
                 setIsStoreOpen(true);
@@ -61,7 +73,7 @@ export default function CartDrawer() {
                 setIsStoreOpen(false);
             }
         }
-    }, [isCartOpen]);
+    }, [isCartOpen, orderSettings]);
 
     const handleApplyCoupon = async () => {
         if (!inputCode.trim()) return;
@@ -402,10 +414,10 @@ export default function CartDrawer() {
                         {/* Sticky Footer */}
                         {cartItems.length > 0 && (
                             <div className="p-6 bg-zinc-900 border-t border-white/5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] z-20 sticky bottom-0">
-                                {!isStoreOpen && (
+                                {orderSettings.startTime && orderSettings.endTime && !isStoreOpen && (
                                     <div className="mb-3 text-center">
                                         <span className="text-xs text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20 font-bold">
-                                            ⚠️ Ordering available 6:30 PM - 11:00 PM
+                                            ⚠️ Ordering available {format12h(orderSettings.startTime)} - {format12h(orderSettings.endTime)}
                                         </span>
                                     </div>
                                 )}

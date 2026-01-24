@@ -24,6 +24,12 @@ export function CartProvider({ children }) {
     const [couponCode, setCouponCode] = useState(null);
     const [discount, setDiscount] = useState(0);
 
+    // Site Settings State
+    const [orderSettings, setOrderSettings] = useState({
+        startTime: "18:30", // Default 6:30 PM
+        endTime: "23:00"    // Default 11:00 PM
+    });
+
     useEffect(() => {
         // Fetch Restaurants directly from Firestore
         const fetchRestaurants = async () => {
@@ -47,8 +53,22 @@ export function CartProvider({ children }) {
             }
         };
 
+        // Fetch Site Settings
+        const fetchSettings = async () => {
+            try {
+                const settingsSnap = await getDocs(collection(db, "site_content"));
+                const orderSettingsDoc = settingsSnap.docs.find(d => d.id === "order_settings");
+                if (orderSettingsDoc) {
+                    setOrderSettings(orderSettingsDoc.data());
+                }
+            } catch (err) {
+                console.error("Failed to fetch settings", err);
+            }
+        };
+
         fetchRestaurants();
         fetchCoupons();
+        fetchSettings();
     }, []);
 
     // Calculate totals
@@ -173,7 +193,8 @@ export function CartProvider({ children }) {
                 applyCoupon,
                 removeCoupon,
                 availableCoupons,
-                isMultiRestaurant
+                isMultiRestaurant,
+                orderSettings
             }}
         >
             {children}

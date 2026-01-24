@@ -3,13 +3,21 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search, ChevronUp, ChevronDown } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search, ChevronUp, ChevronDown, Settings } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import Image from "next/image";
+
+const format12h = (time24) => {
+    if (!time24) return "";
+    const [h, m] = time24.split(":").map(Number);
+    const ampm = h >= 12 ? "PM" : "AM";
+    const h12 = h % 12 || 12;
+    return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
+};
 
 export default function AdminPage() {
     const router = useRouter();
@@ -39,6 +47,9 @@ export default function AdminPage() {
     const [bulkStartDate, setBulkStartDate] = useState("");
     const [bulkEndDate, setBulkEndDate] = useState("");
     const [isBulkApplying, setIsBulkApplying] = useState(false);
+
+    // Site Settings
+    const [orderSettings, setOrderSettings] = useState({ startTime: "18:30", endTime: "23:00" });
 
     // Restaurant Form State
     const [formData, setFormData] = useState({
@@ -100,6 +111,11 @@ export default function AdminPage() {
             const bannerDoc = await getDoc(doc(db, "site_content", "promo_banners"));
             if (bannerDoc.exists()) {
                 setBanners(bannerDoc.data());
+            }
+
+            const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
+            if (settingsDoc.exists()) {
+                setOrderSettings(settingsDoc.data());
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -228,6 +244,16 @@ export default function AdminPage() {
         } catch (error) {
             console.error("Error saving banners:", error);
             alert("Failed to update banners");
+        }
+    };
+
+    const handleSaveSettings = async () => {
+        try {
+            await setDoc(doc(db, "site_content", "order_settings"), orderSettings);
+            alert("Settings updated successfully!");
+        } catch (error) {
+            console.error("Error saving settings:", error);
+            alert("Failed to update settings");
         }
     };
 
@@ -446,6 +472,12 @@ export default function AdminPage() {
                                 className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "categories" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                             >
                                 <List size={16} /> Categories
+                            </button>
+                            <button
+                                onClick={() => { setActiveSection("settings"); setActiveTab("list"); }}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "settings" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <Settings size={16} /> Settings
                             </button>
                         </div>
                     </div>
@@ -1070,6 +1102,61 @@ export default function AdminPage() {
                     </div>
                 )}
 
+                {/* SETTINGS SECTION */}
+                {activeSection === "settings" && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
+                            <h2 className="text-3xl font-black text-white mb-8">Global Site Settings</h2>
+
+                            <div className="max-w-2xl space-y-8">
+                                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
+                                            <Clock size={18} />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white">Food Ordering Hours</h3>
+                                    </div>
+                                    <p className="text-gray-400 text-sm pl-13">Set the time window when customers can place food delivery orders. Outside these hours, they can still browse but not checkout.</p>
+
+                                    <div className="grid md:grid-cols-2 gap-6 pt-2">
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Daily Start Time</label>
+                                                <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">{format12h(orderSettings.startTime)}</span>
+                                            </div>
+                                            <input
+                                                type="time"
+                                                className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-bold [color-scheme:dark]"
+                                                value={orderSettings.startTime}
+                                                onChange={(e) => setOrderSettings({ ...orderSettings, startTime: e.target.value })}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <div className="flex justify-between items-center px-1">
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Daily End Time</label>
+                                                <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">{format12h(orderSettings.endTime)}</span>
+                                            </div>
+                                            <input
+                                                type="time"
+                                                className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-bold [color-scheme:dark]"
+                                                value={orderSettings.endTime}
+                                                onChange={(e) => setOrderSettings({ ...orderSettings, endTime: e.target.value })}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button
+                                    onClick={handleSaveSettings}
+                                    className="w-full md:w-auto bg-white text-black px-10 py-4 rounded-2xl font-black text-lg hover:bg-gray-200 transition-all shadow-xl active:scale-95"
+                                >
+                                    Save All Settings
+                                </button>
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
 
             </div>
 

@@ -238,6 +238,7 @@ export default function AdminPage() {
             name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
             baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
             isVisible: true,
+            categories: menuCategories,
             menu: []
         });
         setActiveTab("form");
@@ -246,7 +247,10 @@ export default function AdminPage() {
 
     const handleEdit = (restaurant) => {
         setEditingId(restaurant.id);
-        setFormData(restaurant);
+        setFormData({
+            ...restaurant,
+            categories: restaurant.categories || menuCategories
+        });
         setActiveTab("form");
     };
 
@@ -558,6 +562,54 @@ export default function AdminPage() {
                                 </div>
                             </div>
 
+                            {/* Category Management */}
+                            <div className="border-t border-white/10 pt-10 mb-10">
+                                <h3 className="font-bold text-2xl text-white mb-6">Restaurant Categories</h3>
+                                <div className="flex gap-4 mb-6">
+                                    <input
+                                        className="flex-1 p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
+                                        placeholder="Add Custom Category for this Restaurant"
+                                        id="local-cat-input"
+                                    />
+                                    <button
+                                        onClick={() => {
+                                            const input = document.getElementById("local-cat-input");
+                                            if (input && input.value.trim()) {
+                                                setFormData(prev => ({
+                                                    ...prev,
+                                                    categories: [...(prev.categories || []), input.value.trim()]
+                                                }));
+                                                input.value = "";
+                                            }
+                                        }}
+                                        className="bg-orange-600 text-white px-8 rounded-xl font-bold hover:bg-orange-500 transition-colors shadow-lg shadow-orange-900/40"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {(formData.categories || []).map(cat => (
+                                        <div key={cat} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/10 hover:border-white/30 transition-all group">
+                                            <span className="text-sm font-bold text-gray-200">{cat}</span>
+                                            <button
+                                                onClick={() => {
+                                                    setFormData(prev => ({
+                                                        ...prev,
+                                                        categories: (prev.categories || []).filter(c => c !== cat)
+                                                    }));
+                                                }}
+                                                className="text-gray-500 hover:text-red-500 transition-colors"
+                                            >
+                                                <X size={14} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                                <p className="text-xs text-gray-500 mt-4 italic">
+                                    * These categories are specific to this restaurant. They define the filter headings in the menu.
+                                </p>
+                            </div>
+
                             <div className="border-t border-white/10 pt-10">
                                 <div className="flex justify-between items-center mb-6">
                                     <h3 className="font-bold text-2xl text-white">Menu Management</h3>
@@ -619,10 +671,10 @@ export default function AdminPage() {
                                                             onChange={(e) => updateMenuItem(actualIdx, "category", e.target.value)}
                                                         >
                                                             <option value="" disabled className="bg-gray-900 text-gray-400">Select Category</option>
-                                                            {menuCategories.map(cat => (
+                                                            {(formData.categories || []).map(cat => (
                                                                 <option key={cat} value={cat} className="bg-gray-900">{cat}</option>
                                                             ))}
-                                                            {item.category && !menuCategories.includes(item.category) && (
+                                                            {item.category && !(formData.categories || []).includes(item.category) && (
                                                                 <option value={item.category} className="bg-gray-900">{item.category} (Legacy)</option>
                                                             )}
                                                         </select>

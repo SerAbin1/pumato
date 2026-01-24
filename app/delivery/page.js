@@ -15,6 +15,27 @@ import { db } from "@/lib/firebase";
 import { doc } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
 import { RestaurantSkeleton } from "../components/Skeleton";
+import { useMemo } from "react";
+
+// Simple seeded shuffle to keep order stable for the day
+const seededShuffle = (array, seed) => {
+    let m = array.length, t, i;
+    // Simple seeded pseudo-random generator
+    const random = (s) => {
+        const x = Math.sin(s++) * 10000;
+        return x - Math.floor(x);
+    };
+
+    const shuffled = [...array];
+    let s = seed;
+    while (m) {
+        i = Math.floor(random(s++) * m--);
+        t = shuffled[m];
+        shuffled[m] = shuffled[i];
+        shuffled[i] = t;
+    }
+    return shuffled;
+};
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();
@@ -59,8 +80,11 @@ export default function DeliveryPage() {
         const fetchRestaurants = async () => {
             try {
                 const data = await getCollection("restaurants");
-                setRestaurants(data);
-                setFilteredRestaurants(data);
+                const seed = new Date().toDateString(); // Changes daily
+                const shuffledData = seededShuffle(data, seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0));
+
+                setRestaurants(shuffledData);
+                setFilteredRestaurants(shuffledData);
             } catch (err) {
                 // Error already logged by hook
             }

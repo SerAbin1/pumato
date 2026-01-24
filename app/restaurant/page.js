@@ -13,6 +13,25 @@ import { doc } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
 import Skeleton, { MenuSkeleton } from "../components/Skeleton";
 
+// Simple seeded shuffle to keep order stable for the day
+const seededShuffle = (array, seed) => {
+    let m = array.length, t, i;
+    const random = (s) => {
+        const x = Math.sin(s++) * 10000;
+        return x - Math.floor(x);
+    };
+
+    const shuffled = [...array];
+    let s = seed;
+    while (m) {
+        i = Math.floor(random(s++) * m--);
+        t = shuffled[m];
+        shuffled[m] = shuffled[i];
+        shuffled[i] = t;
+    }
+    return shuffled;
+};
+
 function RestaurantContent() {
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
@@ -67,6 +86,9 @@ function RestaurantContent() {
     const processedMenu = useMemo(() => {
         if (!restaurant || !restaurant.menu) return {};
 
+        const seedString = new Date().toDateString();
+        const seed = seedString.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+
         let items = restaurant.menu.filter(item => {
             const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesFilter = filter === "all"
@@ -74,11 +96,13 @@ function RestaurantContent() {
                 : filter === "veg"
                     ? item.isVeg
                     : !item.isVeg;
-            // Note: isVisible === false items are shown but marked as "Out of Stock"
             return matchesSearch && matchesFilter;
         });
 
-        if (sortOrder !== "default") {
+        // 1. Shuffle items if default sorting
+        if (sortOrder === "default") {
+            items = seededShuffle(items, seed + 1); // Different seed for items
+        } else {
             items.sort((a, b) => {
                 const priceA = parseInt(a.price) || 0;
                 const priceB = parseInt(b.price) || 0;
@@ -86,13 +110,24 @@ function RestaurantContent() {
             });
         }
 
-        // Group by category
-        return items.reduce((acc, item) => {
+        // 2. Group by category
+        const grouped = items.reduce((acc, item) => {
             const cat = item.category || "Recommended";
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(item);
             return acc;
         }, {});
+
+        // 3. Randomize Category Order
+        const categories = Object.keys(grouped);
+        const shuffledCategories = seededShuffle(categories, seed + 2); // Different seed for categories
+
+        const finalMenu = {};
+        shuffledCategories.forEach(cat => {
+            finalMenu[cat] = grouped[cat];
+        });
+
+        return finalMenu;
     }, [restaurant, searchQuery, filter, sortOrder]);
 
     const scrollToCategory = (cat) => {

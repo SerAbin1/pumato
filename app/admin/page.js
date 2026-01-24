@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search, ChevronUp, ChevronDown } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import Link from "next/link";
@@ -1007,7 +1007,7 @@ export default function AdminPage() {
                             exit={{ y: 100, opacity: 0 }}
                             className="fixed bottom-0 left-0 right-0 z-[60] p-4 pb-8 md:pb-4 border-t border-white/10 bg-black/60 backdrop-blur-xl shadow-2xl"
                         >
-                            <div className="max-w-5xl mx-auto flex items-center justify-between gap-4">
+                            <div className="max-w-5xl mx-auto flex flex-wrap items-center justify-between gap-2 md:gap-4">
                                 <div className="hidden md:block">
                                     <p className="text-white font-bold text-sm flex items-center gap-2">
                                         <Sparkles size={16} className="text-orange-500" />
@@ -1026,7 +1026,7 @@ export default function AdminPage() {
                                                 setEditingId(null);
                                                 window.scrollTo({ top: 0, behavior: 'smooth' });
                                             }}
-                                            className="px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors border border-white/5"
+                                            className="px-4 md:px-6 py-3 rounded-xl font-bold text-gray-400 hover:text-white hover:bg-white/5 transition-colors border border-white/5 text-xs md:text-sm"
                                         >
                                             Cancel
                                         </button>
@@ -1035,11 +1035,29 @@ export default function AdminPage() {
                                     {activeSection === "restaurants" && activeTab === "form" && (
                                         <button
                                             onClick={addMenuItem}
-                                            className="bg-white text-black px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shadow-white/10"
+                                            className="bg-white text-black px-4 md:px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shadow-white/10 text-xs md:text-sm"
                                         >
                                             <Plus size={18} /> Add Item
                                         </button>
                                     )}
+
+                                    <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl items-center">
+                                        <button
+                                            onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                            className="p-2.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
+                                            title="Scroll to Top"
+                                        >
+                                            <ChevronUp size={20} />
+                                        </button>
+                                        <div className="w-px h-4 bg-white/10 mx-1"></div>
+                                        <button
+                                            onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+                                            className="p-2.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
+                                            title="Scroll to Bottom"
+                                        >
+                                            <ChevronDown size={20} />
+                                        </button>
+                                    </div>
 
                                     <button
                                         onClick={() => {
@@ -1048,14 +1066,14 @@ export default function AdminPage() {
                                             else if (activeSection === "laundry") handleBulkApply();
                                             else if (activeSection === "banners") handleSaveBanners();
                                         }}
-                                        className="flex-1 md:flex-none bg-orange-600 text-white px-8 py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center justify-center gap-2 group"
+                                        className="flex-1 md:flex-none bg-orange-600 text-white px-4 md:px-8 py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center justify-center gap-2 group text-xs md:text-sm"
                                     >
                                         <Save size={18} className="group-hover:scale-110 transition-transform" />
                                         <span>
-                                            {activeSection === "restaurants" ? (editingId ? "Update Restaurant" : "Create Restaurant") : ""}
-                                            {activeSection === "coupons" ? (editingId ? "Update Coupon" : "Create Coupon") : ""}
-                                            {activeSection === "laundry" ? "Apply Changes" : ""}
-                                            {activeSection === "banners" ? "Update Banners" : ""}
+                                            {activeSection === "restaurants" ? (editingId ? "Update" : "Create") : ""}
+                                            {activeSection === "coupons" ? (editingId ? "Update" : "Create") : ""}
+                                            {activeSection === "laundry" ? "Apply" : ""}
+                                            {activeSection === "banners" ? "Update" : ""}
                                         </span>
                                     </button>
                                 </div>

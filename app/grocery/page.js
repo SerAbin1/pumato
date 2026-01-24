@@ -4,6 +4,7 @@ import { useState } from "react";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2 } from "lucide-react";
+import TermsFooter from "../components/TermsFooter";
 import { GROCERY_NUMBER } from "@/lib/whatsapp";
 
 export default function GroceryPage() {
@@ -252,6 +253,8 @@ export default function GroceryPage() {
                     </form>
                 </motion.div>
             </div>
+
+            <TermsFooter type="grocery" />
         </main>
     );
 }

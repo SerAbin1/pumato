@@ -3,6 +3,7 @@
 import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
 import FoodCollections from "../components/FoodCollections";
+import TermsFooter from "../components/TermsFooter";
 import Link from "next/link";
 import { Search, Sparkles, Utensils, ArrowRight, Plus, ShoppingBag } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
@@ -296,6 +297,8 @@ export default function DeliveryPage() {
                 )
                 }
             </AnimatePresence>
+
+            <TermsFooter type="delivery" />
         </main>
     );
 }

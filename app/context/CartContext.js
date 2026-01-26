@@ -17,6 +17,28 @@ export function CartProvider({ children }) {
         instructions: ""
     });
 
+    // 1. Load from localStorage on mount
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("pumato_user_details");
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    setUserDetails(prev => ({ ...prev, ...parsed }));
+                } catch (e) {
+                    console.error("Failed to parse saved user details", e);
+                }
+            }
+        }
+    }, []);
+
+    // 2. Save to localStorage whenever userDetails changes
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            localStorage.setItem("pumato_user_details", JSON.stringify(userDetails));
+        }
+    }, [userDetails]);
+
     // Data State
     const [restaurants, setRestaurants] = useState([]);
     const [availableCoupons, setAvailableCoupons] = useState([]);

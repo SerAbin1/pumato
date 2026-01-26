@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
 import { supabase } from "@/lib/supabase";
 
 const CartContext = createContext();
@@ -49,8 +49,7 @@ export function CartProvider({ children }) {
 
     // Site Settings State
     const [orderSettings, setOrderSettings] = useState({
-        startTime: "18:30", // Default 6:30 PM
-        endTime: "23:00"    // Default 11:00 PM
+        slots: [{ start: "18:30", end: "23:00" }]
     });
 
     useEffect(() => {
@@ -80,22 +79,24 @@ export function CartProvider({ children }) {
             }
         };
 
-        // Fetch Site Settings
-        const fetchSettings = async () => {
-            try {
-                const settingsSnap = await getDocs(collection(db, "site_content"));
-                const orderSettingsDoc = settingsSnap.docs.find(d => d.id === "order_settings");
-                if (orderSettingsDoc) {
-                    setOrderSettings(orderSettingsDoc.data());
+        // Fetch Site Settings - Realtime
+        const unsubscribe = onSnapshot(doc(db, "site_content", "order_settings"), (settingsDoc) => {
+            if (settingsDoc.exists()) {
+                const data = settingsDoc.data();
+                if (data.startTime && !data.slots) {
+                    setOrderSettings({ slots: [{ start: data.startTime, end: data.endTime }] });
+                } else {
+                    setOrderSettings(data);
                 }
-            } catch (err) {
-                console.error("Failed to fetch settings", err);
             }
-        };
+        }, (err) => {
+            console.error("Failed to fetch settings", err);
+        });
 
         fetchRestaurants();
         fetchCoupons();
-        fetchSettings();
+
+        return () => unsubscribe();
     }, []);
 
     // Calculate totals

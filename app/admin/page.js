@@ -52,7 +52,7 @@ export default function AdminPage() {
     const [isBulkApplying, setIsBulkApplying] = useState(false);
 
     // Site Settings
-    const [orderSettings, setOrderSettings] = useState({ startTime: "18:30", endTime: "23:00" });
+    const [orderSettings, setOrderSettings] = useState({ slots: [{ start: "18:30", end: "23:00" }] });
 
     // Restaurant Form State
     const [formData, setFormData] = useState({
@@ -126,7 +126,13 @@ export default function AdminPage() {
 
             const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
             if (settingsDoc.exists()) {
-                setOrderSettings(settingsDoc.data());
+                const data = settingsDoc.data();
+                // Migration/Normalization: handle old {startTime, endTime} structure
+                if (data.startTime && !data.slots) {
+                    setOrderSettings({ slots: [{ start: data.startTime, end: data.endTime }] });
+                } else {
+                    setOrderSettings(data);
+                }
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -1199,39 +1205,68 @@ export default function AdminPage() {
 
                             <div className="max-w-2xl space-y-8">
                                 <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
-                                            <Clock size={18} />
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
+                                                <Clock size={18} />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-white">Food Ordering Hours</h3>
                                         </div>
-                                        <h3 className="text-xl font-bold text-white">Food Ordering Hours</h3>
+                                        <button
+                                            onClick={() => setOrderSettings({ ...orderSettings, slots: [...(orderSettings.slots || []), { start: "18:30", end: "23:00" }] })}
+                                            className="bg-orange-600/20 text-orange-400 hover:bg-orange-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-orange-500/20 flex items-center gap-2"
+                                        >
+                                            <Plus size={14} /> Add Slot
+                                        </button>
                                     </div>
-                                    <p className="text-gray-400 text-sm pl-13">Set the time window when customers can place food delivery orders. Outside these hours, they can still browse but not checkout.</p>
+                                    <p className="text-gray-400 text-sm pl-13">Define one or more time windows when customers can place food delivery orders.</p>
 
-                                    <div className="grid md:grid-cols-2 gap-6 pt-2">
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center px-1">
-                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Daily Start Time</label>
-                                                <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">{format12h(orderSettings.startTime)}</span>
+                                    <div className="space-y-4 pt-2">
+                                        {(orderSettings.slots || []).map((slot, index) => (
+                                            <div key={index} className="pl-13 flex flex-col md:flex-row gap-4 items-start md:items-end">
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Start Time</label>
+                                                        <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">{format12h(slot.start)}</span>
+                                                    </div>
+                                                    <input
+                                                        type="time"
+                                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-bold [color-scheme:dark]"
+                                                        value={slot.start}
+                                                        onChange={(e) => {
+                                                            const newSlots = [...orderSettings.slots];
+                                                            newSlots[index].start = e.target.value;
+                                                            setOrderSettings({ ...orderSettings, slots: newSlots });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">End Time</label>
+                                                        <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">{format12h(slot.end)}</span>
+                                                    </div>
+                                                    <input
+                                                        type="time"
+                                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-bold [color-scheme:dark]"
+                                                        value={slot.end}
+                                                        onChange={(e) => {
+                                                            const newSlots = [...orderSettings.slots];
+                                                            newSlots[index].end = e.target.value;
+                                                            setOrderSettings({ ...orderSettings, slots: newSlots });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => setOrderSettings({ ...orderSettings, slots: orderSettings.slots.filter((_, i) => i !== index) })}
+                                                    className="p-4 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-2xl border border-red-500/20 transition-all flex-shrink-0"
+                                                >
+                                                    <Trash size={18} />
+                                                </button>
                                             </div>
-                                            <input
-                                                type="time"
-                                                className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-bold [color-scheme:dark]"
-                                                value={orderSettings.startTime}
-                                                onChange={(e) => setOrderSettings({ ...orderSettings, startTime: e.target.value })}
-                                            />
-                                        </div>
-                                        <div className="space-y-2">
-                                            <div className="flex justify-between items-center px-1">
-                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-widest">Daily End Time</label>
-                                                <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full border border-orange-500/20">{format12h(orderSettings.endTime)}</span>
-                                            </div>
-                                            <input
-                                                type="time"
-                                                className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-bold [color-scheme:dark]"
-                                                value={orderSettings.endTime}
-                                                onChange={(e) => setOrderSettings({ ...orderSettings, endTime: e.target.value })}
-                                            />
-                                        </div>
+                                        ))}
+                                        {(orderSettings.slots || []).length === 0 && (
+                                            <div className="pl-13 text-gray-500 italic text-sm">No ordering slots defined. Service will remain offline.</div>
+                                        )}
                                     </div>
                                 </div>
 

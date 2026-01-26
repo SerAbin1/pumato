@@ -61,17 +61,16 @@ export default function CartDrawer() {
             const minutes = now.getMinutes();
             const timeInMinutes = hours * 60 + minutes;
 
-            const [startH, startM] = (orderSettings.startTime || "18:30").split(":").map(Number);
-            const [endH, endM] = (orderSettings.endTime || "23:00").split(":").map(Number);
+            const slots = orderSettings.slots || [];
+            const isOpen = slots.some(slot => {
+                const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
+                const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
+                const START = startH * 60 + startM;
+                const END = endH * 60 + endM;
+                return timeInMinutes >= START && timeInMinutes <= END;
+            });
 
-            const START_TIME = startH * 60 + startM;
-            const END_TIME = endH * 60 + endM;
-
-            if (timeInMinutes >= START_TIME && timeInMinutes <= END_TIME) {
-                setIsStoreOpen(true);
-            } else {
-                setIsStoreOpen(false);
-            }
+            setIsStoreOpen(isOpen);
         }
     }, [isCartOpen, orderSettings]);
 
@@ -421,11 +420,16 @@ export default function CartDrawer() {
                         {/* Sticky Footer */}
                         {cartItems.length > 0 && (
                             <div className="p-6 bg-zinc-900 border-t border-white/5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] z-20 sticky bottom-0">
-                                {orderSettings.startTime && orderSettings.endTime && !isStoreOpen && (
+                                {orderSettings.slots && orderSettings.slots.length > 0 && !isStoreOpen && (
                                     <div className="mb-3 text-center">
-                                        <span className="text-xs text-red-400 bg-red-500/10 px-3 py-1 rounded-full border border-red-500/20 font-bold">
-                                            ⚠️ Ordering available {format12h(orderSettings.startTime)} - {format12h(orderSettings.endTime)}
-                                        </span>
+                                        <div className="text-xs text-red-400 bg-red-500/10 px-4 py-2 rounded-2xl border border-red-500/20 font-bold space-y-1">
+                                            <p className="uppercase tracking-widest text-[10px] opacity-70 mb-1">Store Currently Closed</p>
+                                            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                                                {orderSettings.slots.map((slot, i) => (
+                                                    <span key={i} className="whitespace-nowrap">Slot {i + 1}: {format12h(slot.start)} - {format12h(slot.end)}</span>
+                                                ))}
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
                                 {!isFormValid && isStoreOpen && (

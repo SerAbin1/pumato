@@ -19,6 +19,45 @@ export default function LaundryPage() {
         instructions: ""
     });
 
+    // 1. Load from localStorage on mount
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("pumato_user_details");
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    setFormData(prev => ({
+                        ...prev,
+                        name: parsed.name || prev.name,
+                        phone: parsed.phone || prev.phone,
+                        location: parsed.address || parsed.room || parsed.location || prev.location
+                    }));
+                } catch (e) {
+                    console.error("Failed to parse saved user details", e);
+                }
+            }
+        }
+    }, []);
+
+    // 2. Save to localStorage whenever formData changes
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            // Only save if name, phone or location has value to avoid overwriting with empty
+            if (formData.name || formData.phone || formData.location) {
+                // Map location back to address for cross-tab sharing with CartDrawer/Grocery
+                const currentSaved = JSON.parse(localStorage.getItem("pumato_user_details") || "{}");
+                const toSave = {
+                    ...currentSaved,
+                    name: formData.name || currentSaved.name,
+                    phone: formData.phone || currentSaved.phone,
+                    address: formData.location || currentSaved.address,
+                    location: formData.location || currentSaved.location
+                };
+                localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
+            }
+        }
+    }, [formData.name, formData.phone, formData.location]);
+
     const [items, setItems] = useState([
         { id: 1, name: "", quantity: "" }
     ]);

@@ -32,11 +32,11 @@ export default function CartDrawer() {
         totalItems,
         couponCode,
         discount,
-        applyCoupon,
-        removeCoupon,
         availableCoupons,
+        activeCoupon,
         isMultiRestaurant,
-        orderSettings
+        orderSettings,
+        paymentQR
     } = useCart();
 
     const [isCheckingOut, setIsCheckingOut] = useState(false);
@@ -112,7 +112,7 @@ export default function CartDrawer() {
             }
 
             // Coupon validated (or no coupon), proceed with WhatsApp
-            const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode });
+            const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR });
             const whatsappUrl = `https://wa.me/${FOOD_DELIVERY_NUMBER}?text=${message}`;
             window.open(whatsappUrl, "_blank");
             setIsCartOpen(false);
@@ -296,7 +296,30 @@ export default function CartDrawer() {
                                         )}
 
                                         {/* Coupon Feedback Message */}
-                                        {couponMsg && (
+                                        {couponCode && activeCoupon && (
+                                            <div className="mt-2 px-1">
+                                                {activeCoupon.item_id && (
+                                                    <div className="space-y-1">
+                                                        {(() => {
+                                                            const targetItem = cartItems.find(i => i.id === activeCoupon.item_id);
+                                                            const qty = targetItem?.quantity || 0;
+                                                            const itemName = targetItem?.name || "the target item";
+
+                                                            if (activeCoupon.type === "BOGO") {
+                                                                if (qty === 0) return <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1"><Plus size={10} /> Add {itemName} to get 1 FREE!</p>;
+                                                                if (qty % 2 !== 0) return <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1"><Plus size={10} /> Add one more {itemName} for a FREE unit!</p>;
+                                                                return <p className="text-[10px] text-green-400 font-bold flex items-center gap-1"><Check size={10} /> {Math.floor(qty / 2)} Free {itemName} Applied!</p>;
+                                                            } else {
+                                                                if (qty === 0) return <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1"><Plus size={10} /> Add {itemName} to apply discount!</p>;
+                                                                return <p className="text-[10px] text-green-400 font-bold flex items-center gap-1"><Check size={10} /> Discount applied to {itemName}!</p>;
+                                                            }
+                                                        })()}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {couponMsg && !couponCode && (
                                             <motion.p
                                                 initial={{ opacity: 0, y: -5 }}
                                                 animate={{ opacity: 1, y: 0 }}

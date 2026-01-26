@@ -103,7 +103,9 @@ Deno.serve(async (req) => {
                     description: payload.description,
                     is_visible: payload.isVisible,
                     usage_limit: payload.usageLimit,
-                    used_count: payload.usedCount || 0
+                    used_count: payload.usedCount || 0,
+                    restaurant_id: payload.restaurantId || null,
+                    item_id: payload.itemId || null
                 })
                 .select()
             if (error) throw error

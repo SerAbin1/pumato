@@ -12,7 +12,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import Image from "next/image";
 
-import { toTitleCase } from "@/lib/formatters";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -64,7 +63,8 @@ export default function AdminPage() {
 
     // Coupon Form State
     const [couponForm, setCouponForm] = useState({
-        code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: ""
+        code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "",
+        restaurantId: null, itemId: null
     });
 
     useEffect(() => {
@@ -275,57 +275,6 @@ export default function AdminPage() {
         }
     };
 
-    const normalizeAllData = async () => {
-        if (!confirm("This will normalize the database: Restaurant Names and Categories will be UPPERCASE, Menu Items will be Title Case. Are you sure?")) return;
-
-        setLoading(true);
-        let updatedCount = 0;
-
-        try {
-            // 1. Normalize Global Menu Categories (UPPERCASE)
-            const catDoc = await getDoc(doc(db, "site_content", "menu_categories"));
-            if (catDoc.exists()) {
-                const list = catDoc.data().list || [];
-                const newList = list.map(c => c.toUpperCase());
-                await setDoc(doc(db, "site_content", "menu_categories"), { list: newList });
-                setMenuCategories(newList);
-                updatedCount++;
-            }
-
-            // 2. Normalize Restaurants and their Menu Items
-            const querySnapshot = await getDocs(collection(db, "restaurants"));
-            const batchPromises = querySnapshot.docs.map(async (d) => {
-                const data = d.data();
-                const newName = (data.name || "").toUpperCase();
-                const newCuisine = toTitleCase(data.cuisine || "");
-
-                let newMenu = data.menu || [];
-                if (newMenu.length > 0) {
-                    newMenu = newMenu.map(item => ({
-                        ...item,
-                        name: toTitleCase(item.name || ""),
-                        category: (item.category || "").toUpperCase()
-                    }));
-                }
-
-                await setDoc(doc(db, "restaurants", d.id), {
-                    ...data,
-                    name: newName,
-                    cuisine: newCuisine,
-                    menu: newMenu
-                });
-                updatedCount++;
-            });
-
-            await Promise.all(batchPromises);
-            await fetchData(); // Refresh local state
-            alert(`SUCCESS: Normalized ${updatedCount} records based on new rules!`);
-        } catch (error) {
-            console.error("Normalization error:", error);
-            alert("Failed to normalize data completely.");
-        }
-        setLoading(false);
-    };
 
     // --- RESTAURANT HANDLERS ---
     const handleAddNew = () => {
@@ -404,7 +353,7 @@ export default function AdminPage() {
     // --- COUPON HANDLERS ---
     const handleAddNewCoupon = () => {
         setEditingId(null);
-        setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "" });
+        setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "", restaurantId: null, itemId: null });
         setActiveTab("form");
     };
 
@@ -413,7 +362,9 @@ export default function AdminPage() {
         setCouponForm({
             ...coupon,
             usageLimit: coupon.usage_limit,
-            usedCount: coupon.used_count
+            usedCount: coupon.used_count,
+            restaurantId: coupon.restaurant_id || null, // Map correctly from Supabase snake_case
+            itemId: coupon.item_id || null
         });
         setActiveTab("form");
     };
@@ -441,10 +392,18 @@ export default function AdminPage() {
             return;
         }
 
+        // BOGO Validation
+        if (couponForm.type === 'BOGO' && (!couponForm.restaurantId || !couponForm.itemId)) {
+            alert("Restaurant and Item are required for BOGO offers.");
+            return;
+        }
+
         const id = editingId || couponForm.code.toUpperCase();
         const payload = {
             ...couponForm,
             id,
+            value: couponForm.type === 'BOGO' ? 0 : (couponForm.value || 0),
+            minOrder: couponForm.minOrder || 0,
             usage_limit: limit,
             used_count: editingId ? (couponForm.usedCount || 0) : 0
         };
@@ -908,10 +867,60 @@ export default function AdminPage() {
                                             <select className="appearance-none p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium" value={couponForm.type} onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value })}>
                                                 <option value="FLAT" className="bg-gray-900">Flat Amount (₹)</option>
                                                 <option value="PERCENTAGE" className="bg-gray-900">Percentage (%)</option>
+                                                <option value="BOGO" className="bg-gray-900">Buy 1 Get 1 (BOGO)</option>
                                             </select>
                                         </div>
                                     </div>
-                                    <FormInput label="Discount Value" type="number" value={couponForm.value} onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })} placeholder="50" />
+                                    {couponForm.type !== 'BOGO' ? (
+                                        <FormInput label="Discount Value" type="number" value={couponForm.value} onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })} placeholder="50" />
+                                    ) : (
+                                        <div className="space-y-3 opacity-50">
+                                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Discount Value</label>
+                                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl w-full text-gray-500 font-medium">Automatic (100% of Item)</div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* Item-Specific Configuration */}
+                                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+                                    <div className="flex items-center gap-3 mb-2">
+                                        <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                                            <Utensils size={18} />
+                                        </div>
+                                        <h3 className="text-xl font-bold text-white">Target Item (Optional)</h3>
+                                    </div>
+                                    <p className="text-gray-400 text-sm pl-13">Link this coupon to a specific item. {couponForm.type === 'BOGO' ? <span className="text-orange-400 font-bold">REQUIRED for BOGO.</span> : "Leave blank for a global discount."}</p>
+
+                                    <div className="grid md:grid-cols-2 gap-6 pl-13">
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Select Restaurant</label>
+                                            <select
+                                                className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                                value={couponForm.restaurantId || ""}
+                                                onChange={(e) => setCouponForm({ ...couponForm, restaurantId: e.target.value, itemId: null })}
+                                            >
+                                                <option value="" className="bg-gray-900">All Restaurants</option>
+                                                {restaurants.map(r => (
+                                                    <option key={r.id} value={r.id} className="bg-gray-900">{r.name}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="space-y-3">
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Select Item</label>
+                                            <select
+                                                className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium disabled:opacity-50"
+                                                disabled={!couponForm.restaurantId}
+                                                value={couponForm.itemId || ""}
+                                                onChange={(e) => setCouponForm({ ...couponForm, itemId: e.target.value })}
+                                            >
+                                                <option value="" className="bg-gray-900">All Items</option>
+                                                {couponForm.restaurantId && restaurants.find(r => r.id === couponForm.restaurantId)?.menu?.map(item => (
+                                                    <option key={item.id} value={item.id} className="bg-gray-900">{item.name} (₹{item.price})</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
                                 </div>
 
                                 <FormInput label="Min Order Amount (₹)" type="number" value={couponForm.minOrder} onChange={(e) => setCouponForm({ ...couponForm, minOrder: e.target.value })} placeholder="0" />
@@ -1270,6 +1279,45 @@ export default function AdminPage() {
                                     </div>
                                 </div>
 
+                                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
+                                                <Sparkles size={18} />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-white">Payment Settings</h3>
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-400 text-sm pl-13">Upload your Payment QR code. This will be sent as a link in the WhatsApp order message.</p>
+
+                                    <div className="pl-13 space-y-4">
+                                        <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Payment QR Image URL</label>
+                                        <div className="flex gap-4">
+                                            <div className="flex-1 relative group">
+                                                <input
+                                                    type="text"
+                                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium placeholder-gray-600"
+                                                    value={orderSettings.paymentQR || ""}
+                                                    onChange={(e) => setOrderSettings({ ...orderSettings, paymentQR: e.target.value })}
+                                                    placeholder="QR Code Image URL..."
+                                                />
+                                            </div>
+                                            <label className="bg-white/10 hover:bg-white/20 p-4 rounded-2xl cursor-pointer text-white transition-colors flex items-center justify-center min-w-[60px] border border-white/10">
+                                                <Upload size={20} />
+                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, (url) => setOrderSettings({ ...orderSettings, paymentQR: url }))} />
+                                            </label>
+                                        </div>
+                                        {orderSettings.paymentQR && (
+                                            <div className="mt-4 p-4 bg-black/40 rounded-2xl border border-white/5 inline-block">
+                                                <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">Preview</p>
+                                                <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-white/10">
+                                                    <Image src={orderSettings.paymentQR} alt="Payment QR Preview" fill className="object-cover" />
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+
                                 <button
                                     onClick={handleSaveSettings}
                                     className="w-full md:w-auto bg-white text-black px-10 py-4 rounded-2xl font-black text-lg hover:bg-gray-200 transition-all shadow-xl active:scale-95"
@@ -1277,24 +1325,6 @@ export default function AdminPage() {
                                     Save All Settings
                                 </button>
 
-                                <div className="pt-8 border-t border-white/5">
-                                    <div className="p-6 bg-red-500/5 border border-red-500/10 rounded-3xl space-y-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center text-red-500 border border-red-500/20">
-                                                <Sparkles size={18} />
-                                            </div>
-                                            <h3 className="text-xl font-bold text-white">Database Normalization</h3>
-                                        </div>
-                                        <p className="text-gray-400 text-sm pl-13">Fix inconsistent naming in your existing items. Use this to automatically capitalize all names, categories, and cuisines to Title Case.</p>
-                                        <button
-                                            onClick={normalizeAllData}
-                                            disabled={loading}
-                                            className="ml-13 flex items-center gap-2 text-red-400 hover:text-red-300 font-bold transition-all disabled:opacity-50"
-                                        >
-                                            <Trash size={16} /> Run Cleanup Tool
-                                        </button>
-                                    </div>
-                                </div>
                             </div>
                         </div>
                     </motion.div>

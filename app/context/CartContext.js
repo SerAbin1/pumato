@@ -45,7 +45,6 @@ export function CartProvider({ children }) {
 
     // Coupon State
     const [couponCode, setCouponCode] = useState(null);
-    const [discount, setDiscount] = useState(0);
 
     // Site Settings State
     const [orderSettings, setOrderSettings] = useState({
@@ -123,8 +122,48 @@ export function CartProvider({ children }) {
     // Large Order Surcharge: Add ₹10 for EACH item beyond threshold
     const itemsOverThreshold = Math.max(0, totalItems - threshold);
     const largeOrderSurcharge = itemsOverThreshold * extraChargeAmt;
-
     const deliveryCharge = baseCharge + largeOrderSurcharge;
+
+    // Calculate Discount Reactively
+    const activeCoupon = availableCoupons.find(c => c.code === couponCode);
+
+    const discount = (() => {
+        if (!activeCoupon) return 0;
+
+        // 1. Validate Min Order (Always applies to subtotal)
+        if (itemTotal < parseInt(activeCoupon.min_order || "0")) return 0;
+
+        // 2. Handle Item-Specific or BOGO
+        if (activeCoupon.item_id) {
+            const targetItems = cartItems.filter(i => i.id === activeCoupon.item_id);
+            if (targetItems.length === 0) return 0;
+
+            const totalQty = targetItems.reduce((s, i) => s + i.quantity, 0);
+            const unitPrice = targetItems[0].price;
+
+            if (activeCoupon.type === "BOGO") {
+                // Unlimited BOGO: floor(qty / 2) * price
+                return Math.floor(totalQty / 2) * unitPrice;
+            } else if (activeCoupon.type === "PERCENTAGE") {
+                // Percentage off ONLY that item
+                return Math.round((totalQty * unitPrice) * (parseInt(activeCoupon.value) / 100));
+            } else {
+                // Flat off ONLY that item (e.g. ₹50 off this pizza)
+                return Math.min(totalQty * unitPrice, parseInt(activeCoupon.value));
+            }
+        }
+
+        // 3. Global Discounts
+        if (activeCoupon.type === "FLAT") {
+            return Math.min(itemTotal, parseInt(activeCoupon.value));
+        } else if (activeCoupon.type === "PERCENTAGE") {
+            const calculated = Math.round(itemTotal * (parseInt(activeCoupon.value) / 100));
+            return Math.min(calculated, 100); // Keeping the safety cap of 100 for global percentage
+        }
+
+        return 0;
+    })();
+
     const finalTotal = Math.max(0, itemTotal + deliveryCharge - discount);
 
     const applyCoupon = (code) => {
@@ -137,28 +176,16 @@ export function CartProvider({ children }) {
             return { success: false, message: "Invalid Coupon Code" };
         }
 
-        // Validate Min Order
-        if (itemTotal < parseInt(coupon.minOrder)) {
-            return { success: false, message: `Min order ₹${coupon.minOrder} for ${coupon.code}` };
+        // Initial validation
+        if (itemTotal < parseInt(coupon.min_order || "0")) {
+            return { success: false, message: `Min order ₹${coupon.min_order} for ${coupon.code}` };
         }
 
-        // Calculate Discount
-        let discAmt = 0;
-        if (coupon.type === "FLAT") {
-            discAmt = parseInt(coupon.value);
-        } else if (coupon.type === "PERCENTAGE") {
-            const calculated = Math.round(itemTotal * (parseInt(coupon.value) / 100));
-            // Optional: Cap percentage discount if needed, for now assuming no cap or high cap
-            discAmt = Math.min(calculated, 100); // Keeping the safety cap of 100 for now
-        }
-
-        setDiscount(discAmt);
         setCouponCode(coupon.code);
-        return { success: true, message: `₹${discAmt} Discount Applied!` };
+        return { success: true, message: `Coupon Applied!` };
     };
 
     const removeCoupon = () => {
-        setDiscount(0);
         setCouponCode(null);
     };
 
@@ -221,8 +248,10 @@ export function CartProvider({ children }) {
                 applyCoupon,
                 removeCoupon,
                 availableCoupons,
+                activeCoupon,
                 isMultiRestaurant,
-                orderSettings
+                orderSettings,
+                paymentQR: orderSettings?.paymentQR
             }}
         >
             {children}

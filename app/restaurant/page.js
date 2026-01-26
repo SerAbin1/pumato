@@ -93,8 +93,8 @@ function RestaurantContent() {
             const matchesFilter = filter === "all"
                 ? true
                 : filter === "veg"
-                    ? item.isVeg
-                    : !item.isVeg;
+                    ? item.isVeg === true
+                    : item.isVeg === false;
             return matchesSearch && matchesFilter;
         });
 
@@ -333,11 +333,12 @@ function RestaurantContent() {
                                                         <div className="flex-1">
                                                             <div className="flex items-start justify-between mb-2">
                                                                 <div className="flex items-center gap-2">
-                                                                    {item.isVeg !== false ? (
+                                                                    {item.isVeg === true && (
                                                                         <div className="border border-green-500 p-0.5 rounded-[4px]">
                                                                             <div className="w-2 h-2 bg-green-500 rounded-full"></div>
                                                                         </div>
-                                                                    ) : (
+                                                                    )}
+                                                                    {item.isVeg === false && (
                                                                         <div className="border border-red-500 p-0.5 rounded-[4px]">
                                                                             <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[6px] border-b-red-500"></div>
                                                                         </div>

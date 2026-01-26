@@ -1,8 +1,7 @@
-import * as jose from "https://deno.land/x/jose@v4.14.4/index.ts"
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
+import * as jose from "npm:jose@4"
+import { createClient } from "npm:@supabase/supabase-js@2"
 
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'POST, GET, OPTIONS, PUT, DELETE',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
@@ -33,37 +32,64 @@ async function verifyFirebaseToken(token: string) {
 }
 
 Deno.serve(async (req) => {
+    const origin = req.headers.get('Origin') || '*'
+
     // 1. Handle CORS Preflight
     if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+        return new Response('ok', {
+            headers: {
+                ...corsHeaders,
+                'Access-Control-Allow-Origin': origin
+            }
+        })
     }
 
     try {
         // 2. Auth Check
         const authHeader = req.headers.get('Authorization')
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.warn('Missing or invalid Authorization header')
             return new Response(JSON.stringify({ error: 'unauthorized' }), {
                 status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' },
             })
         }
 
         const token = authHeader.split(' ')[1]
         const isAuthorized = await verifyFirebaseToken(token)
         if (!isAuthorized) {
+            console.warn('Unauthorized attempt with invalid or non-admin token')
             return new Response(JSON.stringify({ error: 'forbidden' }), {
                 status: 403,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+                headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' },
             })
         }
 
         // 3. Supabase Client
-        const supabaseClient = createClient(
-            Deno.env.get('SUPABASE_URL') ?? '',
-            Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-        )
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')
 
-        const { action, payload } = await req.json()
+        if (!supabaseUrl || !supabaseKey) {
+            throw new Error('Missing Supabase environment variables')
+        }
+
+        const supabaseClient = createClient(supabaseUrl, supabaseKey)
+
+        // 4. Parse Body
+        let body: any = {}
+        if (req.method !== 'GET') {
+            try {
+                body = await req.json()
+            } catch (e) {
+                console.error('Failed to parse JSON body:', e)
+                return new Response(JSON.stringify({ error: 'invalid-json' }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
+                })
+            }
+        }
+
+        const { action, payload } = body
 
         if (action === 'CREATE' || action === 'UPDATE') {
             const { data, error } = await supabaseClient
@@ -82,7 +108,7 @@ Deno.serve(async (req) => {
                 .select()
             if (error) throw error
             return new Response(JSON.stringify(data[0]), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
             })
         }
 
@@ -93,7 +119,7 @@ Deno.serve(async (req) => {
                 .eq('id', payload.id)
             if (error) throw error
             return new Response(JSON.stringify({ success: true }), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
             })
         }
 
@@ -103,21 +129,22 @@ Deno.serve(async (req) => {
                 .select('*')
             if (error) throw error
             return new Response(JSON.stringify(data), {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+                headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
             })
         }
 
         return new Response(JSON.stringify({ error: 'invalid-action' }), {
             status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
         })
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Function error:', error)
         return new Response(JSON.stringify({ error: 'internal', message: error.message }), {
             status: 500,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' },
         })
     }
 })
+
 

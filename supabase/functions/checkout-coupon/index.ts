@@ -1,5 +1,5 @@
 // No need to import serve from std, Deno.serve is built-in.
-import { createClient } from "supabase"
+import { createClient } from "npm:@supabase/supabase-js@2"
 
 const corsHeaders = {
     'Access-Control-Allow-Origin': '*',

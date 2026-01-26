@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2 } from "lucide-react";
@@ -13,6 +13,40 @@ export default function GroceryPage() {
         phone: "",
         room: ""
     });
+
+    // 1. Load from localStorage on mount
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const saved = localStorage.getItem("pumato_user_details");
+            if (saved) {
+                try {
+                    const parsed = JSON.parse(saved);
+                    setFormData(prev => ({
+                        ...prev,
+                        name: parsed.name || prev.name,
+                        phone: parsed.phone || prev.phone,
+                        room: parsed.address || parsed.room || prev.room
+                    }));
+                } catch (e) {
+                    console.error("Failed to parse saved user details", e);
+                }
+            }
+        }
+    }, []);
+
+    // 2. Save to localStorage whenever formData changes
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            // Map room back to address for cross-tab sharing with CartDrawer
+            const toSave = {
+                name: formData.name,
+                phone: formData.phone,
+                address: formData.room,
+                room: formData.room
+            };
+            localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
+        }
+    }, [formData]);
 
     const [items, setItems] = useState([
         { id: 1, text: "" }

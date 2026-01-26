@@ -404,7 +404,11 @@ export default function AdminPage() {
 
     const handleEditCoupon = (coupon) => {
         setEditingId(coupon.id);
-        setCouponForm(coupon);
+        setCouponForm({
+            ...coupon,
+            usageLimit: coupon.usage_limit,
+            usedCount: coupon.used_count
+        });
         setActiveTab("form");
     };
 
@@ -435,8 +439,8 @@ export default function AdminPage() {
         const payload = {
             ...couponForm,
             id,
-            usageLimit: limit,
-            usedCount: editingId ? (couponForm.usedCount || 0) : 0
+            usage_limit: limit,
+            used_count: editingId ? (couponForm.usedCount || 0) : 0
         };
 
         try {
@@ -875,9 +879,9 @@ export default function AdminPage() {
                                     <div className="flex items-center justify-between text-sm font-bold text-gray-300 bg-black/30 p-4 rounded-xl border border-white/5">
                                         <span>Value: {c.type === 'FLAT' ? `₹${c.value}` : `${c.value}%`}</span>
                                         <span>Min: ₹{c.minOrder}</span>
-                                        {c.usageLimit > 0 && (
-                                            <span className={`${(c.usedCount || 0) >= c.usageLimit ? 'text-red-400' : 'text-cyan-400'}`}>
-                                                Used: {c.usedCount || 0}/{c.usageLimit}
+                                        {c.usage_limit > 0 && (
+                                            <span className={`${(c.used_count || 0) >= c.usage_limit ? 'text-red-400' : 'text-cyan-400'}`}>
+                                                Used: {c.used_count || 0}/{c.usage_limit}
                                             </span>
                                         )}
                                     </div>

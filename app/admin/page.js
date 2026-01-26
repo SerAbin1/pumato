@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import Image from "next/image";
 
+import { toTitleCase } from "@/lib/formatters";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -58,6 +59,7 @@ export default function AdminPage() {
         name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
         baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
         isVisible: true,
+        isAvailable: true,
         menu: []
     });
 
@@ -276,6 +278,7 @@ export default function AdminPage() {
     };
 
 
+
     // --- RESTAURANT HANDLERS ---
     const handleAddNew = () => {
         setEditingId(null);
@@ -294,7 +297,9 @@ export default function AdminPage() {
         setEditingId(restaurant.id);
         setFormData({
             ...restaurant,
-            categories: restaurant.categories || menuCategories
+            categories: restaurant.categories || menuCategories,
+            isVisible: restaurant.isVisible !== false,
+            isAvailable: restaurant.isAvailable !== false
         });
         setActiveTab("form");
     };
@@ -624,25 +629,49 @@ export default function AdminPage() {
                                     <FormInput label="Extra Charge (₹)" type="number" value={formData.extraItemCharge} onChange={(e) => setFormData({ ...formData, extraItemCharge: e.target.value })} />
                                 </div>
 
-                                <div className="col-span-full flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5">
-                                    <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                                        <input
-                                            type="checkbox"
-                                            name="restaurant-visibility"
-                                            id="restaurant-visibility"
-                                            className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
-                                            checked={formData.isVisible !== false}
-                                            onChange={(e) => setFormData({ ...formData, isVisible: e.target.checked })}
-                                            style={{ right: formData.isVisible !== false ? '0' : 'auto', left: formData.isVisible !== false ? 'auto' : '0' }}
-                                        />
-                                        <label htmlFor="restaurant-visibility" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${formData.isVisible !== false ? 'bg-green-500' : 'bg-gray-600'}`}></label>
+                                <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    {/* Temporarily Closed Toggle */}
+                                    <div className="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5">
+                                        <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                            <input
+                                                type="checkbox"
+                                                id="restaurant-visibility"
+                                                className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
+                                                checked={formData.isVisible !== false}
+                                                onChange={(e) => setFormData({ ...formData, isVisible: e.target.checked })}
+                                                style={{ right: formData.isVisible !== false ? '0' : 'auto', left: formData.isVisible !== false ? 'auto' : '0' }}
+                                            />
+                                            <label htmlFor="restaurant-visibility" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${formData.isVisible !== false ? 'bg-green-500' : 'bg-gray-600'}`}></label>
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="restaurant-visibility" className="text-sm font-bold text-white cursor-pointer select-none flex items-center gap-2">
+                                                {formData.isVisible !== false ? <Clock size={18} className="text-green-400" /> : <Clock size={18} className="text-red-400" />}
+                                                Open for Orders
+                                            </label>
+                                            <p className="text-xs text-gray-500 mt-1">Status: {formData.isVisible !== false ? "OPEN" : "TEMPORARILY CLOSED"}</p>
+                                        </div>
                                     </div>
-                                    <div className="flex-1">
-                                        <label htmlFor="restaurant-visibility" className="text-sm font-bold text-white cursor-pointer select-none flex items-center gap-2">
-                                            {formData.isVisible !== false ? <Eye size={18} className="text-green-400" /> : <EyeOff size={18} className="text-gray-400" />}
-                                            Restaurant Visible to Customers
-                                        </label>
-                                        <p className="text-xs text-gray-500 mt-1">Toggle off to temporarily hide this restaurant from the delivery page</p>
+
+                                    {/* Database Availability Toggle */}
+                                    <div className="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-red-500/10">
+                                        <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                            <input
+                                                type="checkbox"
+                                                id="restaurant-availability"
+                                                className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
+                                                checked={formData.isAvailable !== false}
+                                                onChange={(e) => setFormData({ ...formData, isAvailable: e.target.checked })}
+                                                style={{ right: formData.isAvailable !== false ? '0' : 'auto', left: formData.isAvailable !== false ? 'auto' : '0' }}
+                                            />
+                                            <label htmlFor="restaurant-availability" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${formData.isAvailable !== false ? 'bg-blue-500' : 'bg-gray-600'}`}></label>
+                                        </div>
+                                        <div className="flex-1">
+                                            <label htmlFor="restaurant-availability" className="text-sm font-bold text-white cursor-pointer select-none flex items-center gap-2">
+                                                {formData.isAvailable !== false ? <Eye size={18} className="text-blue-400" /> : <EyeOff size={18} className="text-gray-400" />}
+                                                Account Active
+                                            </label>
+                                            <p className="text-xs text-gray-500 mt-1">{formData.isAvailable !== false ? "Visible in search and lists" : "HIDDEN from all users"}</p>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

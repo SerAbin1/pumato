@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 
 import { db } from "@/lib/firebase";
-import { doc } from "firebase/firestore";
+import { doc, where } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import { useMemo } from "react";
@@ -79,7 +79,7 @@ export default function DeliveryPage() {
     useEffect(() => {
         const fetchRestaurants = async () => {
             try {
-                const data = await getCollection("restaurants");
+                const data = await getCollection("restaurants", [where("isAvailable", "==", true)]);
                 const seed = new Date().toDateString(); // Changes daily
                 const shuffledData = seededShuffle(data, seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0));
 

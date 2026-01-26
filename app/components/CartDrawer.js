@@ -6,8 +6,8 @@ import { useCart } from "../context/CartContext";
 import { formatWhatsAppMessage, FOOD_DELIVERY_NUMBER } from "@/lib/whatsapp";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { getFunctions, httpsCallable } from "firebase/functions";
 import { getApp } from "firebase/app";
+import { supabase } from "@/lib/supabase";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -100,9 +100,16 @@ export default function CartDrawer() {
         try {
             // If coupon is applied, validate with cloud function first
             if (couponCode) {
-                const functions = getFunctions(getApp());
-                const checkoutCoupon = httpsCallable(functions, "checkoutCoupon");
-                await checkoutCoupon({ couponCode });
+                const { data, error: funcError } = await supabase.functions.invoke("checkout-coupon", {
+                    body: { couponCode }
+                });
+
+                if (funcError) throw funcError;
+                if (data?.error) {
+                    const error = new Error(data.message);
+                    error.code = data.error; // e.g. 'resource-exhausted'
+                    throw error;
+                }
             }
 
             // Coupon validated (or no coupon), proceed with WhatsApp
@@ -112,10 +119,10 @@ export default function CartDrawer() {
             setIsCartOpen(false);
         } catch (error) {
             console.error("Checkout error:", error);
-            if (error.code === "functions/resource-exhausted") {
+            if (error.code === "resource-exhausted" || error.message?.includes("limit reached")) {
                 setCheckoutError("Coupon usage limit reached. Please remove it to proceed.");
                 removeCoupon();
-            } else if (error.code === "functions/not-found") {
+            } else if (error.code === "not-found" || error.message?.includes("Invalid")) {
                 setCheckoutError("Invalid coupon. Please remove it to proceed.");
                 removeCoupon();
             } else {

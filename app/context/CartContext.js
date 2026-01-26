@@ -3,6 +3,7 @@
 import { createContext, useContext, useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs } from "firebase/firestore";
+import { supabase } from "@/lib/supabase";
 
 const CartContext = createContext();
 
@@ -42,14 +43,18 @@ export function CartProvider({ children }) {
             }
         };
 
-        // Fetch Promo Codes directly from Firestore
+        // Fetch Promo Codes directly from Supabase
         const fetchCoupons = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, "promocodes"));
-                const data = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
-                setAvailableCoupons(data);
+                const { data, error } = await supabase
+                    .from("promocodes")
+                    .select("*")
+                    .eq("is_visible", true);
+
+                if (error) throw error;
+                setAvailableCoupons(data || []);
             } catch (err) {
-                console.error("Failed to fetch coupons", err);
+                console.error("Failed to fetch coupons from Supabase", err);
             }
         };
 

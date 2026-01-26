@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search, ChevronUp, ChevronDown, Settings } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
+import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
@@ -93,13 +94,21 @@ export default function AdminPage() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [resSnap, promoSnap] = await Promise.all([
+            const [resSnap, promoRes] = await Promise.all([
                 getDocs(collection(db, "restaurants")),
-                getDocs(collection(db, "promocodes"))
+                (async () => {
+                    const idToken = await user.getIdToken();
+                    return supabase.functions.invoke("manage-coupons", {
+                        body: { action: "FETCH_ALL" },
+                        headers: { "Authorization": `Bearer ${idToken}` }
+                    });
+                })()
             ]);
 
             setRestaurants(resSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
-            setCoupons(promoSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+
+            if (promoRes.error) throw promoRes.error;
+            setCoupons(promoRes.data || []);
 
             // Fetch Categories
             const catDoc = await getDoc(doc(db, "site_content", "menu_categories"));
@@ -402,11 +411,16 @@ export default function AdminPage() {
     const handleDeleteCoupon = async (id) => {
         if (!confirm("Delete this coupon?")) return;
         try {
-            await deleteDoc(doc(db, "promocodes", id));
+            const idToken = await user.getIdToken();
+            const { error } = await supabase.functions.invoke("manage-coupons", {
+                body: { action: "DELETE", payload: { id } },
+                headers: { "Authorization": `Bearer ${idToken}` }
+            });
+            if (error) throw error;
             await fetchData();
         } catch (error) {
             console.error(error);
-            alert("Failed to delete");
+            alert("Failed to delete from Supabase");
         }
     };
 
@@ -418,7 +432,7 @@ export default function AdminPage() {
         }
 
         const id = editingId || couponForm.code.toUpperCase();
-        const data = {
+        const payload = {
             ...couponForm,
             id,
             usageLimit: limit,
@@ -426,12 +440,17 @@ export default function AdminPage() {
         };
 
         try {
-            await setDoc(doc(db, "promocodes", id), data);
+            const idToken = await user.getIdToken();
+            const { error } = await supabase.functions.invoke("manage-coupons", {
+                body: { action: editingId ? "UPDATE" : "CREATE", payload },
+                headers: { "Authorization": `Bearer ${idToken}` }
+            });
+            if (error) throw error;
             await fetchData();
             setActiveTab("list");
         } catch (error) {
             console.error(error);
-            alert("Failed to save");
+            alert("Failed to save to Supabase");
         }
     };
 

@@ -1,7 +1,4 @@
 {
-    "functions": {
-        "source": "functions"
-    },
     "hosting": {
         "public": "out",
         "cleanUrls": true,
@@ -11,7 +8,8 @@
             "**/.*",
             "**/node_modules/**",
             "**/*.json",
-            "./createAdmin.js"
+            "./createAdmin.js",
+            "supabase/**"
         ],
         "rewrites": []
     }

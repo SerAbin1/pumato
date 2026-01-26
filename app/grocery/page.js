@@ -289,6 +289,6 @@ export default function GroceryPage() {
             </div>
 
             <TermsFooter type="grocery" />
-        </main>
+        </main >
     );
 }

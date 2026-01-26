@@ -27,7 +27,8 @@ export default function RestaurantList({ restaurants }) {
                         className={`group ${isClosed ? 'opacity-60 grayscale-[0.5]' : ''}`}
                     >
                         <Link href={`/restaurant?id=${restaurant.id}`} className={isClosed ? 'cursor-pointer' : ''}>
-                            <div className={`bg-white/5 backdrop-blur-md rounded-[2rem] overflow-hidden border border-white/10 transition-all shadow-lg ${!isClosed ? 'hover:border-orange-500/50 hover:bg-white/10 hover:shadow-orange-900/20' : ''}`}>
+                            <div className={`relative bg-white/5 backdrop-blur-md rounded-[2rem] overflow-hidden border border-white/10 transition-all shadow-lg ${!isClosed ? 'hover:border-orange-500/50 hover:bg-white/10 hover:shadow-orange-900/20' : ''}`}>
+
 
                                 {/* Image Section */}
                                 <div className="relative h-60 overflow-hidden">
@@ -76,6 +77,7 @@ export default function RestaurantList({ restaurants }) {
                                         </span>
                                     </div>
                                 </div>
+
                             </div>
                         </Link>
                     </motion.div>

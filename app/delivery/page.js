@@ -236,7 +236,7 @@ export default function DeliveryPage() {
                             {filteredFoods.map((item, idx) => {
                                 const isOutOfStock = item.isVisible === false;
                                 return (
-                                    <div key={`${item.restaurantId}-${idx}`} className={`flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl transition-all group relative ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10'}`}>
+                                    <div key={`${item.restaurantId}-${idx}`} className={`flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl transition-all group relative ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 overflow-hidden'}`}>
                                         <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} className="flex items-center gap-4 flex-1 min-w-0">
                                             <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
                                                 {item.image ? (

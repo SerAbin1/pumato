@@ -220,6 +220,7 @@ export default function GatewayPage() {
                   </span>
                 </div>
               </Link>
+
             </TiltCard>
 
             {/* Grocery Card */}
@@ -246,6 +247,7 @@ export default function GatewayPage() {
                   </span>
                 </div>
               </Link>
+
             </TiltCard>
 
             {/* Laundry Card */}

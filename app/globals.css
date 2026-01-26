@@ -16,11 +16,11 @@
   .text-balance {
     text-wrap: balance;
   }
-  
+
   .perspective-1000 {
     perspective: 1000px;
   }
-  
+
   .preserve-3d {
     transform-style: preserve-3d;
   }
@@ -28,27 +28,89 @@
 
 /* Floating Animations */
 @keyframes float-slow {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-20px) rotate(5deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-20px) rotate(5deg);
+  }
 }
 
 @keyframes float-medium {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-30px) rotate(-10deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-30px) rotate(-10deg);
+  }
 }
 
 @keyframes float-fast {
-  0%, 100% { transform: translateY(0) rotate(0deg); }
-  50% { transform: translateY(-15px) rotate(8deg); }
+
+  0%,
+  100% {
+    transform: translateY(0) rotate(0deg);
+  }
+
+  50% {
+    transform: translateY(-15px) rotate(8deg);
+  }
 }
 
-.animate-float-slow { animation: float-slow 6s ease-in-out infinite; }
-.animate-float-medium { animation: float-medium 5s ease-in-out infinite; }
-.animate-float-fast { animation: float-fast 4s ease-in-out infinite; }
+.animate-float-slow {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-float-medium {
+  animation: float-medium 5s ease-in-out infinite;
+}
+
+.animate-float-fast {
+  animation: float-fast 4s ease-in-out infinite;
+}
 
 /* Pattern Background */
 .pattern-isometric {
-  background-image:  linear-gradient(30deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(150deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(30deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(150deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(60deg, #f8717177 25%, transparent 25.5%, transparent 75%, #f8717177 75%, #f8717177), linear-gradient(60deg, #f8717177 25%, transparent 25.5%, transparent 75%, #f8717177 75%, #f8717177);
+  background-image: linear-gradient(30deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(150deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(30deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(150deg, #ef4444 12%, transparent 12.5%, transparent 87%, #ef4444 87.5%, #ef4444), linear-gradient(60deg, #f8717177 25%, transparent 25.5%, transparent 75%, #f8717177 75%, #f8717177), linear-gradient(60deg, #f8717177 25%, transparent 25.5%, transparent 75%, #f8717177 75%, #f8717177);
   background-size: 80px 140px;
   background-position: 0 0, 0 0, 40px 70px, 40px 70px, 0 0, 40px 70px;
+}
+
+/* Diagonal Live Badge */
+.badge-live-diagonal {
+  position: absolute;
+  top: -10px;
+  left: -10px;
+  width: 120px;
+  height: 120px;
+  overflow: hidden;
+  z-index: 99;
+  pointer-events: none;
+}
+
+.badge-live-diagonal::before {
+  content: "LIVE";
+  position: absolute;
+  top: 25px;
+  left: -35px;
+  width: 160px;
+  background: #22c55e;
+  /* green-500 */
+  color: white;
+  text-align: center;
+  font-weight: 900;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  padding: 6px 0;
+  transform: rotate(-45deg);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+  filter: drop-shadow(0 0 8px rgba(34, 197, 94, 0.6));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  display: block;
 }

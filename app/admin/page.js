@@ -53,6 +53,7 @@ export default function AdminPage() {
 
     // Site Settings
     const [orderSettings, setOrderSettings] = useState({ slots: [{ start: "18:30", end: "23:00" }] });
+    const [grocerySettings, setGrocerySettings] = useState({ slots: [{ start: "10:00", end: "22:00" }] });
 
     // Restaurant Form State
     const [formData, setFormData] = useState({
@@ -107,7 +108,117 @@ export default function AdminPage() {
                 })()
             ]);
 
-            setRestaurants(resSnap.docs.map(doc => ({ ...doc.data(), id: doc.id })));
+            const restaurantsData = resSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+
+            // --- AUTO-REVERT LOGIC (LAZY CHECK) ---
+            const now = new Date();
+            const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+
+            // Fetch order settings to determine current slot
+            const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
+            let currentSlots = [{ start: "18:30", end: "23:00" }]; // Default
+            if (settingsDoc.exists()) {
+                const sData = settingsDoc.data();
+                if (sData.startTime && !sData.slots) {
+                    currentSlots = [{ start: sData.startTime, end: sData.endTime }];
+                } else if (sData.slots) {
+                    currentSlots = sData.slots;
+                }
+                setOrderSettings({ slots: currentSlots, ...sData }); // Set state here too
+            }
+
+            // Check if we are currently in a slot
+            const isInSlot = currentSlots.some(slot => {
+                const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
+                const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
+                const startMins = startH * 60 + startM;
+                const endMins = endH * 60 + endM;
+                return timeInMinutes >= startMins && timeInMinutes <= endMins;
+            });
+
+            // If we are currently in a slot, we need to know WHEN this slot started to compare with hiddenAt
+            // Strategy: If hiddenAt < today's slot start time, unhide it.
+            // Simplified Strategy: If hiddenAt is not from "today's current active session", unhide.
+            // Even simpler: If hiddenAt date is before today, unhide. If hiddenAt is today but before current slot start, unhide.
+
+            const todayStr = now.toISOString().split('T')[0];
+            const updates = [];
+
+            const updatedRestaurants = restaurantsData.map(r => {
+                if (!r.menu) return r;
+                let hasChanges = false;
+                const updatedMenu = r.menu.map(item => {
+                    if (item.isVisible === false && item.hiddenAt) {
+                        const hiddenDate = new Date(item.hiddenAt);
+                        const hiddenDay = hiddenDate.toISOString().split('T')[0];
+
+                        // 1. If hidden on a previous day, unhide
+                        if (hiddenDay < todayStr) {
+                            hasChanges = true;
+                            return { ...item, isVisible: true, hiddenAt: null };
+                        }
+
+                        // 2. If hidden today, check multiple conditions
+
+                        // Check if it was hidden in a slot that has ENDED.
+                        const hiddenTimeMins = hiddenDate.getHours() * 60 + hiddenDate.getMinutes();
+                        const slotHiddenIn = currentSlots.find(slot => {
+                            const [sH, sM] = (slot.start || "00:00").split(":").map(Number);
+                            const [eH, eM] = (slot.end || "23:59").split(":").map(Number);
+                            const start = sH * 60 + sM;
+                            const end = eH * 60 + eM;
+                            return hiddenTimeMins >= start && hiddenTimeMins <= end;
+                        });
+
+                        if (slotHiddenIn) {
+                            const [eH, eM] = (slotHiddenIn.end || "23:59").split(":").map(Number);
+                            const slotEndMins = eH * 60 + eM;
+
+                            // If Update Time (Now) is past the end of the slot where it was hidden -> UNHIDE
+                            if (timeInMinutes > slotEndMins) {
+                                hasChanges = true;
+                                return { ...item, isVisible: true, hiddenAt: null };
+                            }
+                        }
+
+                        // 3. Fallback: If currently in a slot, check if hidden before this slot started
+                        if (isInSlot) {
+                            const activeSlot = currentSlots.find(slot => {
+                                const [sH, sM] = (slot.start || "00:00").split(":").map(Number);
+                                const [eH, eM] = (slot.end || "23:59").split(":").map(Number);
+                                const startMins = sH * 60 + sM;
+                                const endMins = eH * 60 + eM;
+                                return timeInMinutes >= startMins && timeInMinutes <= endMins;
+                            });
+
+                            if (activeSlot) {
+                                const [sH, sM] = (activeSlot.start || "00:00").split(":").map(Number);
+                                const [eH, eM] = (activeSlot.end || "23:59").split(":").map(Number);
+                                const slotStartMins = sH * 60 + sM; // Correct calculation
+
+                                if (hiddenTimeMins < slotStartMins) {
+                                    hasChanges = true;
+                                    return { ...item, isVisible: true, hiddenAt: null };
+                                }
+                            }
+                        }
+                    }
+                    return item;
+                });
+
+                if (hasChanges) {
+                    updates.push(setDoc(doc(db, "restaurants", r.id), { ...r, menu: updatedMenu }));
+                    return { ...r, menu: updatedMenu };
+                }
+                return r;
+            });
+
+            if (updates.length > 0) {
+                await Promise.all(updates);
+                console.log(`Auto-reverted ${updates.length} restaurants' items.`);
+            }
+
+            setRestaurants(updatedRestaurants);
 
             if (promoRes.error) throw promoRes.error;
             setCoupons(promoRes.data || []);
@@ -126,16 +237,12 @@ export default function AdminPage() {
                 setBanners(bannerDoc.data());
             }
 
-            const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
-            if (settingsDoc.exists()) {
-                const data = settingsDoc.data();
-                // Migration/Normalization: handle old {startTime, endTime} structure
-                if (data.startTime && !data.slots) {
-                    setOrderSettings({ slots: [{ start: data.startTime, end: data.endTime }] });
-                } else {
-                    setOrderSettings(data);
-                }
+            // Fetch Grocery Settings
+            const groceryDoc = await getDoc(doc(db, "site_content", "grocery_settings"));
+            if (groceryDoc.exists()) {
+                setGrocerySettings(groceryDoc.data());
             }
+
         } catch (error) {
             console.error("Error fetching data:", error);
             alert("Failed to load data");
@@ -269,7 +376,10 @@ export default function AdminPage() {
 
     const handleSaveSettings = async () => {
         try {
-            await setDoc(doc(db, "site_content", "order_settings"), orderSettings);
+            await Promise.all([
+                setDoc(doc(db, "site_content", "order_settings"), orderSettings),
+                setDoc(doc(db, "site_content", "grocery_settings"), grocerySettings)
+            ]);
             alert("Settings updated successfully!");
         } catch (error) {
             console.error("Error saving settings:", error);
@@ -341,11 +451,17 @@ export default function AdminPage() {
 
     // --- MENU HANDLERS ---
     const addMenuItem = () => {
-        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: null, isNonVeg: null, isVisible: true, category: "" }] });
+        setFormData({ ...formData, menu: [...(formData.menu || []), { id: Date.now().toString(), name: "", price: "", description: "", image: "", isVeg: null, isVisible: true, category: "" }] });
     };
 
     const updateMenuItem = (index, field, value) => {
         const newMenu = [...formData.menu];
+        if (field === "isVisible" && value === false) {
+            // Saving hiddenAt timestamp for auto-revert logic
+            newMenu[index].hiddenAt = new Date().toISOString();
+        } else if (field === "isVisible" && value === true) {
+            newMenu[index].hiddenAt = null;
+        }
         newMenu[index][field] = value;
         setFormData({ ...formData, menu: newMenu });
     };
@@ -812,7 +928,6 @@ export default function AdminPage() {
                                                                     onChange={(e) => {
                                                                         const val = e.target.checked;
                                                                         updateMenuItem(actualIdx, "isVeg", val ? true : null);
-                                                                        if (val) updateMenuItem(actualIdx, "isNonVeg", null);
                                                                     }}
                                                                     id={`veg-${actualIdx}`}
                                                                     className="w-5 h-5 accent-green-500 rounded"
@@ -822,11 +937,10 @@ export default function AdminPage() {
                                                             <div className="flex items-center gap-3">
                                                                 <input
                                                                     type="checkbox"
-                                                                    checked={item.isNonVeg === true}
+                                                                    checked={item.isVeg === false}
                                                                     onChange={(e) => {
                                                                         const val = e.target.checked;
-                                                                        updateMenuItem(actualIdx, "isNonVeg", val ? true : null);
-                                                                        if (val) updateMenuItem(actualIdx, "isVeg", null);
+                                                                        updateMenuItem(actualIdx, "isVeg", val ? false : null);
                                                                     }}
                                                                     id={`nonveg-${actualIdx}`}
                                                                     className="w-5 h-5 accent-red-500 rounded"
@@ -1304,6 +1418,75 @@ export default function AdminPage() {
                                         ))}
                                         {(orderSettings.slots || []).length === 0 && (
                                             <div className="pl-13 text-gray-500 italic text-sm">No ordering slots defined. Service will remain offline.</div>
+                                        )}
+                                    </div>
+                                </div>
+
+                                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-400 border border-green-500/20">
+                                                <div className="relative">
+                                                    <Clock size={16} className="absolute -left-1 -top-1 opacity-50" />
+                                                    <Tag size={18} className="relative z-10" />
+                                                </div>
+                                            </div>
+                                            <h3 className="text-xl font-bold text-white">Grocery Service Hours</h3>
+                                        </div>
+                                        <button
+                                            onClick={() => setGrocerySettings({ ...grocerySettings, slots: [...(grocerySettings.slots || []), { start: "10:00", end: "22:00" }] })}
+                                            className="bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-green-500/20 flex items-center gap-2"
+                                        >
+                                            <Plus size={14} /> Add Slot
+                                        </button>
+                                    </div>
+                                    <p className="text-gray-400 text-sm pl-13">Define time windows when the Grocery service is active.</p>
+
+                                    <div className="space-y-4 pt-2">
+                                        {(grocerySettings.slots || []).map((slot, index) => (
+                                            <div key={index} className="pl-13 flex flex-col md:flex-row gap-4 items-start md:items-end">
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Start Time</label>
+                                                        <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">{format12h(slot.start)}</span>
+                                                    </div>
+                                                    <input
+                                                        type="time"
+                                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-green-500/50 transition-all font-bold [color-scheme:dark]"
+                                                        value={slot.start}
+                                                        onChange={(e) => {
+                                                            const newSlots = [...(grocerySettings.slots || [])];
+                                                            newSlots[index].start = e.target.value;
+                                                            setGrocerySettings({ ...grocerySettings, slots: newSlots });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <div className="flex-1 space-y-2">
+                                                    <div className="flex justify-between items-center px-1">
+                                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">End Time</label>
+                                                        <span className="text-[10px] font-bold text-green-400 bg-green-500/10 px-2 py-0.5 rounded-full border border-green-500/20">{format12h(slot.end)}</span>
+                                                    </div>
+                                                    <input
+                                                        type="time"
+                                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-green-500/50 transition-all font-bold [color-scheme:dark]"
+                                                        value={slot.end}
+                                                        onChange={(e) => {
+                                                            const newSlots = [...(grocerySettings.slots || [])];
+                                                            newSlots[index].end = e.target.value;
+                                                            setGrocerySettings({ ...grocerySettings, slots: newSlots });
+                                                        }}
+                                                    />
+                                                </div>
+                                                <button
+                                                    onClick={() => setGrocerySettings({ ...grocerySettings, slots: (grocerySettings.slots || []).filter((_, i) => i !== index) })}
+                                                    className="p-4 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-2xl border border-red-500/20 transition-all flex-shrink-0"
+                                                >
+                                                    <Trash size={18} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                        {(grocerySettings.slots || []).length === 0 && (
+                                            <div className="pl-13 text-gray-500 italic text-sm">No grocery slots defined. Service will remain offline.</div>
                                         )}
                                     </div>
                                 </div>

@@ -10,11 +10,15 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 
 export default function Navbar() {
-    const { setIsCartOpen, totalItems, orderSettings } = useCart();
+    const { setIsCartOpen, totalItems, orderSettings, grocerySettings } = useCart();
+    const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const [isScheduleOpen, setIsScheduleOpen] = useState(false);
     const { scrollY } = useScroll();
-    const pathname = usePathname();
+
+    useMotionValueEvent(scrollY, "change", (latest) => {
+        setIsScrolled(latest > 50);
+    });
 
     const format12h = (time24) => {
         if (!time24) return "";
@@ -24,24 +28,30 @@ export default function Navbar() {
         return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
     };
 
-    useMotionValueEvent(scrollY, "change", (latest) => {
-        if (latest > 50) {
-            setIsScrolled(true);
-        } else {
-            setIsScrolled(false);
-        }
-    });
+    // Determine which settings to use based on path
+    const isGroceryPage = pathname?.startsWith("/grocery");
+    const currentSettings = isGroceryPage ? grocerySettings : orderSettings;
+    const settingsLabel = isGroceryPage ? "Grocery Hours" : "Food Ordering Hours";
 
-    const isLive = (() => {
-        const now = new Date();
-        const timeInMinutes = now.getHours() * 60 + now.getMinutes();
-        const slots = orderSettings?.slots || [];
-        return slots.some(slot => {
-            const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
-            const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
-            return timeInMinutes >= (startH * 60 + startM) && timeInMinutes <= (endH * 60 + endM);
-        });
-    })();
+    const [isLive, setIsLive] = useState(false);
+
+    useEffect(() => {
+        const checkLive = () => {
+            const now = new Date();
+            const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+            const slots = currentSettings?.slots || [];
+            const active = slots.some(slot => {
+                const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
+                const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
+                return timeInMinutes >= (startH * 60 + startM) && timeInMinutes <= (endH * 60 + endM);
+            });
+            setIsLive(active);
+        };
+
+        checkLive();
+        const interval = setInterval(checkLive, 60000);
+        return () => clearInterval(interval);
+    }, [currentSettings]);
 
     const navClass = isScrolled
         ? "bg-black/80 backdrop-blur-xl border-b border-white/10 shadow-lg"
@@ -86,12 +96,12 @@ export default function Navbar() {
                             className="absolute left-0 md:left-auto md:right-0 top-full mt-3 w-64 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl z-[60]"
                         >
                             <div className="flex items-center justify-between mb-4">
-                                <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">Live Hours</h4>
+                                <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">{settingsLabel}</h4>
                                 <button onClick={() => setIsScheduleOpen(false)} className="text-gray-500 hover:text-white"><X size={14} /></button>
                             </div>
                             <div className="space-y-3">
-                                {orderSettings?.slots?.length > 0 ? (
-                                    orderSettings.slots.map((slot, i) => (
+                                {currentSettings?.slots?.length > 0 ? (
+                                    currentSettings.slots.map((slot, i) => (
                                         <div key={i} className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-xl border border-white/5">
                                             <span className="text-[10px] font-bold text-gray-400 uppercase">Slot {i + 1}</span>
                                             <span className="text-xs font-black text-white">{format12h(slot.start)} - {format12h(slot.end)}</span>

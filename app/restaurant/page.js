@@ -319,6 +319,7 @@ function RestaurantContent() {
                                                 const cartItem = cartItems.find(c => c.id === item.id);
                                                 const quantity = cartItem ? cartItem.quantity : 0;
                                                 const isOutOfStock = item.isVisible === false;
+                                                console.log(`Debug Item: ${item.name}, isVeg: ${item.isVeg} (${typeof item.isVeg})`);
 
                                                 return (
                                                     <motion.div

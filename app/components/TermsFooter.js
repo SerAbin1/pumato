@@ -11,7 +11,6 @@ export default function TermsFooter({ type = "delivery" }) {
         "PUMATO is a student-run personal shopping facilitator, not a store",
         "Item quality, pricing, and availability are determined by third-party stores",
         "Total payable = Store Bill + Delivery Fee (varies by complexity)",
-        "Item images are illustrative and may differ from actual delivered goods",
         "Prohibited items (tobacco, alcohol) result in immediate ban",
         "Orders once purchased cannot be cancelled"
     ] : [

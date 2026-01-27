@@ -50,6 +50,9 @@ export function CartProvider({ children }) {
     const [orderSettings, setOrderSettings] = useState({
         slots: [{ start: "18:30", end: "23:00" }]
     });
+    const [grocerySettings, setGrocerySettings] = useState({
+        slots: [{ start: "10:00", end: "22:00" }]
+    });
 
     useEffect(() => {
         // Fetch Restaurants directly from Firestore
@@ -79,7 +82,7 @@ export function CartProvider({ children }) {
         };
 
         // Fetch Site Settings - Realtime
-        const unsubscribe = onSnapshot(doc(db, "site_content", "order_settings"), (settingsDoc) => {
+        const unsubscribeOrder = onSnapshot(doc(db, "site_content", "order_settings"), (settingsDoc) => {
             if (settingsDoc.exists()) {
                 const data = settingsDoc.data();
                 if (data.startTime && !data.slots) {
@@ -88,14 +91,21 @@ export function CartProvider({ children }) {
                     setOrderSettings(data);
                 }
             }
-        }, (err) => {
-            console.error("Failed to fetch settings", err);
+        });
+
+        const unsubscribeGrocery = onSnapshot(doc(db, "site_content", "grocery_settings"), (settingsDoc) => {
+            if (settingsDoc.exists()) {
+                setGrocerySettings(settingsDoc.data());
+            }
         });
 
         fetchRestaurants();
         fetchCoupons();
 
-        return () => unsubscribe();
+        return () => {
+            unsubscribeOrder();
+            unsubscribeGrocery();
+        };
     }, []);
 
     // Calculate totals
@@ -251,6 +261,7 @@ export function CartProvider({ children }) {
                 activeCoupon,
                 isMultiRestaurant,
                 orderSettings,
+                grocerySettings,
                 paymentQR: orderSettings?.paymentQR
             }}
         >

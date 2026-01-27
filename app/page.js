@@ -2,12 +2,25 @@
 
 import Link from "next/link";
 import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, useMotionTemplate } from "framer-motion";
-import { Utensils, Shirt, Instagram, Mail, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck } from "lucide-react";
+import { Utensils, Shirt, Instagram, Mail, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck, Clock } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
+import { useCart } from "./context/CartContext";
 
 // --- COMPONENTS ---
+
+// --- HELPER FUNCTION ---
+const checkIsLive = (settings) => {
+  if (!settings || !settings.slots) return false;
+  const now = new Date();
+  const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+  return settings.slots.some(slot => {
+    const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
+    const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
+    return timeInMinutes >= (startH * 60 + startM) && timeInMinutes <= (endH * 60 + endM);
+  });
+};
 
 // 1. 3D Tilt Card Component
 function TiltCard({ children, className }) {
@@ -121,8 +134,26 @@ const REVIEWS = [
 ];
 
 export default function GatewayPage() {
+  const { orderSettings, grocerySettings } = useCart();
   const { scrollYProgress } = useScroll();
   const yParallax = useTransform(scrollYProgress, [0, 1], [0, -200]);
+
+  // Use state for live status to prevent hydration mismatch
+  const [isFoodLive, setIsFoodLive] = useState(false);
+  const [isGroceryLive, setIsGroceryLive] = useState(false);
+
+  useEffect(() => {
+    setIsFoodLive(checkIsLive(orderSettings));
+    setIsGroceryLive(checkIsLive(grocerySettings));
+
+    // Optional: Update every minute to keep it fresh without refresh
+    const interval = setInterval(() => {
+      setIsFoodLive(checkIsLive(orderSettings));
+      setIsGroceryLive(checkIsLive(grocerySettings));
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [orderSettings, grocerySettings]);
 
   return (
     <main className="min-h-screen w-full bg-black text-white selection:bg-orange-500 selection:text-white overflow-x-hidden">
@@ -209,6 +240,13 @@ export default function GatewayPage() {
                     alt="Food"
                   />
                 </div>
+                {/* LIVE BADGE */}
+                <div className="absolute top-6 right-6 z-20">
+                  <div className={`px-3 py-1 rounded-full border backdrop-blur-md flex items-center gap-2 ${isFoodLive ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'}`}>
+                    <span className={`w-2 h-2 rounded-full ${isFoodLive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{isFoodLive ? 'Live' : 'Closed'}</span>
+                  </div>
+                </div>
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
                   <div className="inline-flex items-center gap-2 bg-orange-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">
                     <Utensils size={12} /> <span>30 min</span>
@@ -235,6 +273,13 @@ export default function GatewayPage() {
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                     alt="Grocery"
                   />
+                </div>
+                {/* LIVE BADGE */}
+                <div className="absolute top-6 right-6 z-20">
+                  <div className={`px-3 py-1 rounded-full border backdrop-blur-md flex items-center gap-2 ${isGroceryLive ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'}`}>
+                    <span className={`w-2 h-2 rounded-full ${isGroceryLive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{isGroceryLive ? 'Live' : 'Closed'}</span>
+                  </div>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
                   <div className="inline-flex items-center gap-2 bg-green-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">

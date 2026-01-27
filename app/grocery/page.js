@@ -3,11 +3,39 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
-import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2 } from "lucide-react";
+import { useCart } from "../context/CartContext";
+import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2, Clock, AlertCircle } from "lucide-react";
 import TermsFooter from "../components/TermsFooter";
 import { GROCERY_NUMBER } from "@/lib/whatsapp";
 
 export default function GroceryPage() {
+    const { grocerySettings } = useCart();
+    const [isLive, setIsLive] = useState(true);
+
+    useEffect(() => {
+        const checkLiveStatus = () => {
+            const now = new Date();
+            const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+            const slots = grocerySettings?.slots || [];
+
+            if (slots.length === 0) {
+                setIsLive(false);
+                return;
+            }
+
+            const active = slots.some(slot => {
+                const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
+                const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
+                return timeInMinutes >= (startH * 60 + startM) && timeInMinutes <= (endH * 60 + endM);
+            });
+            setIsLive(active);
+        };
+
+        checkLiveStatus();
+        const interval = setInterval(checkLiveStatus, 60000); // Check every minute
+        return () => clearInterval(interval);
+    }, [grocerySettings]);
+
     const [formData, setFormData] = useState({
         name: "",
         phone: "",
@@ -173,7 +201,21 @@ export default function GroceryPage() {
                     {/* Glass Shine */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 
-                    <form onSubmit={handleSubmit} className="space-y-8">
+                    {/* Offline Overlay */}
+                    {!isLive && (
+                        <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8">
+                            <div className="bg-red-500/10 p-4 rounded-full border border-red-500/20 mb-4 animate-pulse">
+                                <Clock size={48} className="text-red-500" />
+                            </div>
+                            <h2 className="text-2xl font-black text-white mb-2">Service Offline</h2>
+                            <p className="text-gray-400 max-w-sm mb-6">Grocery delivery is currently closed. Please check the top navigation bar for operating hours.</p>
+                            <div className="flex gap-2 text-xs font-bold uppercase tracking-widest text-red-500 bg-red-500/5 px-4 py-2 rounded-full border border-red-500/10">
+                                <AlertCircle size={14} /> Currently Closed
+                            </div>
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit} className={`space-y-8 ${!isLive ? 'opacity-20 pointer-events-none' : ''}`}>
 
                         {/* Personal Details */}
                         <div className="space-y-6">

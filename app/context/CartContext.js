@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, getDoc, onSnapshot } from "firebase/firestore";
+import { collection, getDocs, doc, onSnapshot } from "firebase/firestore";
 import { supabase } from "@/lib/supabase";
 
 const CartContext = createContext();
@@ -45,6 +45,7 @@ export function CartProvider({ children }) {
 
     // Coupon State
     const [couponCode, setCouponCode] = useState(null);
+    const [activeCoupon, setActiveCoupon] = useState(null);
 
     // Site Settings State
     const [orderSettings, setOrderSettings] = useState({
@@ -75,7 +76,17 @@ export function CartProvider({ children }) {
                     .eq("is_visible", true);
 
                 if (error) throw error;
-                setAvailableCoupons(data || []);
+                // Map to camelCase for frontend consistency
+                const mapped = (data || []).map(c => ({
+                    ...c,
+                    minOrder: c.min_order,
+                    isVisible: c.is_visible,
+                    usageLimit: c.usage_limit,
+                    usedCount: c.used_count,
+                    restaurantId: c.restaurant_id,
+                    itemId: c.item_id
+                }));
+                setAvailableCoupons(mapped);
             } catch (err) {
                 console.error("Failed to fetch coupons from Supabase", err);
             }
@@ -135,31 +146,42 @@ export function CartProvider({ children }) {
     const deliveryCharge = baseCharge + largeOrderSurcharge;
 
     // Calculate Discount Reactively
-    const activeCoupon = availableCoupons.find(c => c.code === couponCode);
+    // activeCoupon is now managed via state in applyCoupon for better synchronization
 
     const discount = (() => {
         if (!activeCoupon) return 0;
 
         // 1. Validate Min Order (Always applies to subtotal)
-        if (itemTotal < parseInt(activeCoupon.min_order || "0")) return 0;
+        if (itemTotal < parseInt(activeCoupon.minOrder || activeCoupon.min_order || "0")) return 0;
 
         // 2. Handle Item-Specific or BOGO
-        if (activeCoupon.item_id) {
-            const targetItems = cartItems.filter(i => i.id === activeCoupon.item_id);
+        const targetId = activeCoupon.itemId || activeCoupon.item_id;
+        if (targetId) {
+            const isCategoryTarget = targetId.startsWith("CATEGORY:");
+            const targetItems = isCategoryTarget
+                ? cartItems.filter(i => (i.category || "").trim().toLowerCase() === targetId.replace("CATEGORY:", "").trim().toLowerCase())
+                : cartItems.filter(i => String(i.id) === String(targetId));
+
             if (targetItems.length === 0) return 0;
 
             const totalQty = targetItems.reduce((s, i) => s + i.quantity, 0);
+            const totalItemsPrice = targetItems.reduce((s, i) => s + (i.price * i.quantity), 0);
+
+            // For BOGO/B2G1, we assume items are similar in price or use the first one encountered
             const unitPrice = targetItems[0].price;
 
             if (activeCoupon.type === "BOGO") {
                 // Unlimited BOGO: floor(qty / 2) * price
                 return Math.floor(totalQty / 2) * unitPrice;
+            } else if (activeCoupon.type === "B2G1") {
+                // Unlimited B2G1: floor(qty / 3) * price
+                return Math.floor(totalQty / 3) * unitPrice;
             } else if (activeCoupon.type === "PERCENTAGE") {
-                // Percentage off ONLY that item
-                return Math.round((totalQty * unitPrice) * (parseInt(activeCoupon.value) / 100));
+                // Percentage off ALL matching items
+                return Math.round(totalItemsPrice * (parseInt(activeCoupon.value) / 100));
             } else {
-                // Flat off ONLY that item (e.g. ₹50 off this pizza)
-                return Math.min(totalQty * unitPrice, parseInt(activeCoupon.value));
+                // Flat off ALL matching items (capped at total price of matching items)
+                return Math.min(totalItemsPrice, parseInt(activeCoupon.value));
             }
         }
 
@@ -176,27 +198,60 @@ export function CartProvider({ children }) {
 
     const finalTotal = Math.max(0, itemTotal + deliveryCharge - discount);
 
-    const applyCoupon = (code) => {
+    const applyCoupon = async (code) => {
         const uppercaseCode = code.toUpperCase();
 
-        // Find coupon in available list
-        const coupon = availableCoupons.find(c => c.code === uppercaseCode);
+        try {
+            // Fetch fresh from Supabase to show network activity and ensure latest limits
+            const { data: coupon, error } = await supabase
+                .from("promocodes")
+                .select("*")
+                .eq("code", uppercaseCode)
+                .single();
 
-        if (!coupon) {
-            return { success: false, message: "Invalid Coupon Code" };
+            if (error || !coupon) {
+                return { success: false, message: "Invalid Coupon Code" };
+            }
+
+            // Map to camelCase for local validation
+            const mappedCoupon = {
+                ...coupon,
+                minOrder: coupon.min_order,
+                isVisible: coupon.is_visible,
+                usageLimit: coupon.usage_limit,
+                usedCount: coupon.used_count,
+                restaurantId: coupon.restaurant_id,
+                itemId: coupon.item_id
+            };
+
+            // Initial validation
+            if (itemTotal < parseInt(mappedCoupon.minOrder || "0")) {
+                return { success: false, message: `Min order ₹${mappedCoupon.minOrder} for ${mappedCoupon.code}` };
+            }
+
+            if (mappedCoupon.usageLimit && mappedCoupon.usedCount >= mappedCoupon.usageLimit) {
+                return { success: false, message: "Coupon usage limit reached" };
+            }
+
+            setAvailableCoupons(prev => {
+                const exists = prev.find(c => c.code === mappedCoupon.code);
+                if (exists) {
+                    return prev.map(c => c.code === mappedCoupon.code ? mappedCoupon : c);
+                }
+                return [...prev, mappedCoupon];
+            });
+            setCouponCode(mappedCoupon.code);
+            setActiveCoupon(mappedCoupon);
+            return { success: true, message: `Coupon Applied!` };
+        } catch (err) {
+            console.error("Coupon validation error:", err);
+            return { success: false, message: "Validation error" };
         }
-
-        // Initial validation
-        if (itemTotal < parseInt(coupon.min_order || "0")) {
-            return { success: false, message: `Min order ₹${coupon.min_order} for ${coupon.code}` };
-        }
-
-        setCouponCode(coupon.code);
-        return { success: true, message: `Coupon Applied!` };
     };
 
     const removeCoupon = () => {
         setCouponCode(null);
+        setActiveCoupon(null);
     };
 
     function itemsHasRestaurant() {

@@ -69,6 +69,8 @@ export default function AdminPage() {
         code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "",
         restaurantId: null, itemId: null
     });
+    const [itemSearchQuery, setItemSearchQuery] = useState("");
+    const [couponTargetType, setCouponTargetType] = useState("item"); // item, category
 
     useEffect(() => {
         // Redirect to login if not authenticated or not admin
@@ -221,7 +223,20 @@ export default function AdminPage() {
             setRestaurants(updatedRestaurants);
 
             if (promoRes.error) throw promoRes.error;
-            setCoupons(promoRes.data || []);
+            const mappedCoupons = (promoRes.data || []).map(c => ({
+                id: c.id,
+                code: c.code,
+                type: c.type,
+                value: c.value,
+                description: c.description,
+                minOrder: c.min_order,
+                isVisible: c.is_visible,
+                usageLimit: c.usage_limit,
+                usedCount: c.used_count,
+                restaurantId: c.restaurant_id,
+                itemId: c.item_id
+            }));
+            setCoupons(mappedCoupons);
 
             // Fetch Categories
             const catDoc = await getDoc(doc(db, "site_content", "menu_categories"));
@@ -475,17 +490,27 @@ export default function AdminPage() {
     const handleAddNewCoupon = () => {
         setEditingId(null);
         setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "", restaurantId: null, itemId: null });
+        setCouponTargetType("item");
+        setItemSearchQuery("");
         setActiveTab("form");
     };
 
     const handleEditCoupon = (coupon) => {
         setEditingId(coupon.id);
+        const targetId = coupon.itemId || coupon.item_id;
+        const isCategory = String(targetId).startsWith("CATEGORY:");
+        setCouponTargetType(isCategory ? "category" : "item");
         setCouponForm({
-            ...coupon,
-            usageLimit: coupon.usage_limit,
-            usedCount: coupon.used_count,
-            restaurantId: coupon.restaurant_id || null, // Map correctly from Supabase snake_case
-            itemId: coupon.item_id || null
+            code: coupon.code || "",
+            type: coupon.type || "FLAT",
+            value: coupon.value || "",
+            minOrder: coupon.minOrder || coupon.min_order || "0",
+            description: coupon.description || "",
+            isVisible: coupon.isVisible !== undefined ? coupon.isVisible : (coupon.is_visible !== undefined ? coupon.is_visible : true),
+            usageLimit: coupon.usageLimit || coupon.usage_limit || "",
+            usedCount: coupon.usedCount || coupon.used_count || 0,
+            restaurantId: coupon.restaurantId || coupon.restaurant_id || null,
+            itemId: targetId || null
         });
         setActiveTab("form");
     };
@@ -513,23 +538,29 @@ export default function AdminPage() {
             return;
         }
 
-        // BOGO Validation
-        if (couponForm.type === 'BOGO' && (!couponForm.restaurantId || !couponForm.itemId)) {
-            alert("Restaurant and Item are required for BOGO offers.");
+        // BOGO & B2G1 Validation
+        if ((couponForm.type === 'BOGO' || couponForm.type === 'B2G1') && (!couponForm.restaurantId || !couponForm.itemId)) {
+            alert("Restaurant and Item are required for Buy X Get Y offers.");
             return;
         }
 
         const id = editingId || couponForm.code.toUpperCase();
         const payload = {
-            ...couponForm,
             id,
-            value: couponForm.type === 'BOGO' ? 0 : (couponForm.value || 0),
+            code: couponForm.code.toUpperCase(),
+            type: couponForm.type,
+            value: (couponForm.type === 'BOGO' || couponForm.type === 'B2G1') ? 0 : (couponForm.value || 0),
             minOrder: couponForm.minOrder || 0,
-            usage_limit: limit,
-            used_count: editingId ? (couponForm.usedCount || 0) : 0
+            description: couponForm.description,
+            isVisible: couponForm.isVisible,
+            usageLimit: limit,
+            usedCount: editingId ? (couponForm.usedCount || 0) : 0,
+            restaurantId: couponForm.restaurantId || null,
+            itemId: couponForm.itemId || null
         };
 
         try {
+            console.log("Submitting coupon payload:", payload);
             const idToken = await user.getIdToken();
             const { error } = await supabase.functions.invoke("manage-coupons", {
                 body: { action: editingId ? "UPDATE" : "CREATE", payload },
@@ -1011,15 +1042,18 @@ export default function AdminPage() {
                                                 <option value="FLAT" className="bg-gray-900">Flat Amount (₹)</option>
                                                 <option value="PERCENTAGE" className="bg-gray-900">Percentage (%)</option>
                                                 <option value="BOGO" className="bg-gray-900">Buy 1 Get 1 (BOGO)</option>
+                                                <option value="B2G1" className="bg-gray-900">Buy 2 Get 1 Free</option>
                                             </select>
                                         </div>
                                     </div>
-                                    {couponForm.type !== 'BOGO' ? (
+                                    {!['BOGO', 'B2G1'].includes(couponForm.type) ? (
                                         <FormInput label="Discount Value" type="number" value={couponForm.value} onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })} placeholder="50" />
                                     ) : (
                                         <div className="space-y-3 opacity-50">
                                             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Discount Value</label>
-                                            <div className="p-4 bg-white/5 border border-white/10 rounded-xl w-full text-gray-500 font-medium">Automatic (100% of Item)</div>
+                                            <div className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white/40 font-medium text-sm italic">
+                                                Calculated Automatically
+                                            </div>
                                         </div>
                                     )}
                                 </div>
@@ -1034,35 +1068,85 @@ export default function AdminPage() {
                                     </div>
                                     <p className="text-gray-400 text-sm pl-13">Link this coupon to a specific item. {couponForm.type === 'BOGO' ? <span className="text-orange-400 font-bold">REQUIRED for BOGO.</span> : "Leave blank for a global discount."}</p>
 
-                                    <div className="grid md:grid-cols-2 gap-6 pl-13">
+                                    <div className="space-y-6 pl-13">
                                         <div className="space-y-3">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Select Restaurant</label>
+                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Step 1: Select Restaurant</label>
                                             <select
                                                 className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                                 value={couponForm.restaurantId || ""}
-                                                onChange={(e) => setCouponForm({ ...couponForm, restaurantId: e.target.value, itemId: null })}
+                                                onChange={(e) => {
+                                                    setCouponForm({ ...couponForm, restaurantId: e.target.value, itemId: null });
+                                                    setCouponTargetType("item");
+                                                    setItemSearchQuery("");
+                                                }}
                                             >
-                                                <option value="" className="bg-gray-900">All Restaurants</option>
+                                                <option value="" className="bg-gray-900">All Restaurants (Global Coupon)</option>
                                                 {restaurants.map(r => (
                                                     <option key={r.id} value={r.id} className="bg-gray-900">{r.name}</option>
                                                 ))}
                                             </select>
                                         </div>
 
-                                        <div className="space-y-3">
-                                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Select Item</label>
-                                            <select
-                                                className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium disabled:opacity-50"
-                                                disabled={!couponForm.restaurantId}
-                                                value={couponForm.itemId || ""}
-                                                onChange={(e) => setCouponForm({ ...couponForm, itemId: e.target.value })}
-                                            >
-                                                <option value="" className="bg-gray-900">All Items</option>
-                                                {couponForm.restaurantId && restaurants.find(r => r.id === couponForm.restaurantId)?.menu?.map(item => (
-                                                    <option key={item.id} value={item.id} className="bg-gray-900">{item.name} (₹{item.price})</option>
-                                                ))}
-                                            </select>
-                                        </div>
+                                        {couponForm.restaurantId && (
+                                            <div className="space-y-6 pt-4 border-t border-white/5">
+                                                <div className="flex bg-black/20 p-1.5 rounded-2xl border border-white/5 gap-2">
+                                                    <button
+                                                        onClick={() => { setCouponTargetType("item"); setCouponForm({ ...couponForm, itemId: null }); }}
+                                                        className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${couponTargetType === 'item' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                                                    >
+                                                        Specific Item
+                                                    </button>
+                                                    <button
+                                                        onClick={() => { setCouponTargetType("category"); setCouponForm({ ...couponForm, itemId: null }); }}
+                                                        className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${couponTargetType === 'category' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                                                    >
+                                                        Entire Category
+                                                    </button>
+                                                </div>
+
+                                                {couponTargetType === "item" ? (
+                                                    <div className="space-y-4">
+                                                        <div className="relative group">
+                                                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-500 transition-colors" size={16} />
+                                                            <input
+                                                                type="text"
+                                                                placeholder="Search item name..."
+                                                                value={itemSearchQuery}
+                                                                onChange={(e) => setItemSearchQuery(e.target.value)}
+                                                                className="w-full bg-black/20 border border-white/10 pl-11 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
+                                                            />
+                                                        </div>
+                                                        <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
+                                                            {(restaurants.find(r => r.id === couponForm.restaurantId)?.menu || [])
+                                                                .filter(item => item.name.toLowerCase().includes(itemSearchQuery.toLowerCase()))
+                                                                .map(item => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        onClick={() => setCouponForm({ ...couponForm, itemId: item.id })}
+                                                                        className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${couponForm.itemId === item.id ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                                                                    >
+                                                                        <span className="font-bold text-sm tracking-tight">{item.name}</span>
+                                                                        <span className="text-xs font-medium opacity-60">₹{item.price}</span>
+                                                                    </button>
+                                                                ))}
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <div className="grid grid-cols-2 gap-2">
+                                                        {Array.from(new Set(restaurants.find(r => r.id === couponForm.restaurantId)?.menu?.map(i => i.category) || []))
+                                                            .map(cat => (
+                                                                <button
+                                                                    key={cat}
+                                                                    onClick={() => setCouponForm({ ...couponForm, itemId: `CATEGORY:${cat}` })}
+                                                                    className={`p-4 rounded-xl border transition-all text-center font-bold text-xs ${couponForm.itemId === `CATEGORY:${cat}` ? 'bg-orange-600/20 border-orange-500 text-white' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                                                                >
+                                                                    {cat || "General"}
+                                                                </button>
+                                                            ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
 

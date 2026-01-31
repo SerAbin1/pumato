@@ -36,6 +36,8 @@ export default function CartDrawer() {
         activeCoupon,
         isMultiRestaurant,
         orderSettings,
+        applyCoupon,
+        removeCoupon,
         paymentQR
     } = useCart();
 
@@ -79,13 +81,11 @@ export default function CartDrawer() {
         setIsApplying(true);
         setCouponMsg(null);
 
-        // Simulate network delay for effect
-        setTimeout(() => {
-            const result = applyCoupon(inputCode);
-            setCouponMsg(result);
-            setIsApplying(false);
-            if (result.success) setInputCode("");
-        }, 600);
+        // Network verification
+        const result = await applyCoupon(inputCode);
+        setCouponMsg(result);
+        setIsApplying(false);
+        if (result.success) setInputCode("");
     };
 
     const handleCheckout = async () => {

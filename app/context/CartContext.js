@@ -97,7 +97,8 @@ export function CartProvider({ children }) {
             if (settingsDoc.exists()) {
                 const data = settingsDoc.data();
                 if (data.startTime && !data.slots) {
-                    setOrderSettings({ slots: [{ start: data.startTime, end: data.endTime }] });
+                    // Legacy format: convert startTime/endTime to slots, keep all other fields
+                    setOrderSettings({ ...data, slots: [{ start: data.startTime, end: data.endTime }] });
                 } else {
                     setOrderSettings(data);
                 }

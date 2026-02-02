@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search, ChevronUp, ChevronDown, Settings, Phone } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, Search, ChevronUp, ChevronDown, Settings, Phone } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import { supabase } from "@/lib/supabase";
@@ -34,7 +34,7 @@ export default function AdminPage() {
         banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
         banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
     });
-    const [menuCategories, setMenuCategories] = useState([]); // Array of strings
+    const [menuCategories] = useState(["Recommended", "Starters", "Main Course", "Beverages", "Desserts"]); // Default categories for new restaurants
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("list"); // list, form
     const [editingId, setEditingId] = useState(null);
@@ -246,14 +246,6 @@ export default function AdminPage() {
             }));
             setCoupons(mappedCoupons);
 
-            // Fetch Categories
-            const catDoc = await getDoc(doc(db, "site_content", "menu_categories"));
-            if (catDoc.exists()) {
-                setMenuCategories(catDoc.data().list || []);
-            } else {
-                setMenuCategories(["Recommended", "Starters", "Main Course", "Beverages", "Desserts"]); // Default
-            }
-
             // Fetch Banners
             const bannerDoc = await getDoc(doc(db, "site_content", "promo_banners"));
             if (bannerDoc.exists()) {
@@ -364,26 +356,6 @@ export default function AdminPage() {
             alert("Failed to apply bulk updates.");
         }
         setIsBulkApplying(false);
-    };
-
-    // --- CATEGORY HANDLERS ---
-    const handleAddCategory = async (newCat) => {
-        if (!newCat.trim()) return;
-        const formattedCat = newCat.trim().toUpperCase();
-        const updated = [...menuCategories, formattedCat];
-        setMenuCategories(updated);
-        try {
-            await setDoc(doc(db, "site_content", "menu_categories"), { list: updated });
-        } catch (e) { console.error(e); alert("Failed to save category"); }
-    };
-
-    const handleDeleteCategory = async (cat) => {
-        if (!confirm(`Delete category "${cat}"?`)) return;
-        const updated = menuCategories.filter(c => c !== cat);
-        setMenuCategories(updated);
-        try {
-            await setDoc(doc(db, "site_content", "menu_categories"), { list: updated });
-        } catch (e) { console.error(e); alert("Failed to delete category"); }
     };
 
     // --- BANNER HANDLERS ---

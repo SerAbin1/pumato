@@ -41,6 +41,7 @@ export default function CartDrawer() {
         paymentQR,
         foodDeliveryNumber,
         upiId,
+        googleSheetUrl,
         minOrderShortfalls
     } = useCart();
 
@@ -116,7 +117,31 @@ export default function CartDrawer() {
                 }
             }
 
-            // Coupon validated (or no coupon), proceed with WhatsApp
+            // Coupon validated (or no coupon), proceed
+
+            // Log order to Google Sheet (fire and forget)
+            if (googleSheetUrl) {
+                const orderData = {
+                    name: userDetails.name,
+                    phone: userDetails.phone,
+                    address: userDetails.address,
+                    instructions: userDetails.instructions || "",
+                    items: cartItems.map(item => `${item.name} x${item.quantity} (${item.restaurantName})`).join(", "),
+                    itemTotal,
+                    deliveryCharge,
+                    discount: discount || 0,
+                    couponCode: couponCode || "",
+                    finalTotal
+                };
+                fetch(googleSheetUrl, {
+                    redirect: "follow",
+                    method: "POST",
+                    headers: { "Content-Type": "text/plain;charset=utf-8" },
+                    body: JSON.stringify(orderData)
+                }).catch(err => console.error("Sheet log error:", err));
+            }
+
+            // Open WhatsApp
             const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR, upiId });
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.open(whatsappUrl, "_blank");

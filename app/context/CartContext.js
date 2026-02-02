@@ -388,6 +388,7 @@ export function CartProvider({ children }) {
                 laundryNumber: orderSettings?.laundryWhatsappNumber || "919048086503",
                 groceryNumber: grocerySettings?.whatsappNumber || "919048086503",
                 upiId: orderSettings?.upiId || "",
+                googleSheetUrl: orderSettings?.googleSheetUrl || "",
                 minOrderShortfalls
             }}
         >

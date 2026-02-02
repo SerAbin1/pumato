@@ -1750,6 +1750,17 @@ export default function AdminPage() {
                                         />
                                         <p className="text-xs text-gray-500 mt-2">This UPI ID will be included in the WhatsApp order message for payment.</p>
                                     </div>
+
+                                    <div className="pl-13 mt-4">
+                                        <FormInput
+                                            label="Google Sheet URL (for orders)"
+                                            type="url"
+                                            value={orderSettings.googleSheetUrl || ""}
+                                            onChange={(e) => setOrderSettings({ ...orderSettings, googleSheetUrl: e.target.value })}
+                                            placeholder="https://script.google.com/macros/s/..."
+                                        />
+                                        <p className="text-xs text-gray-500 mt-2">Orders will be logged to this Google Apps Script URL. Leave empty to disable.</p>
+                                    </div>
                                 </div>
 
 

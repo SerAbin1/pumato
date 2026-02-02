@@ -1757,10 +1757,72 @@ export default function AdminPage() {
                                             type="url"
                                             value={orderSettings.googleSheetUrl || ""}
                                             onChange={(e) => setOrderSettings({ ...orderSettings, googleSheetUrl: e.target.value })}
-                                            placeholder="https://script.google.com/macros/s/..."
                                         />
                                         <p className="text-xs text-gray-500 mt-2">Orders will be logged to this Google Apps Script URL. Leave empty to disable.</p>
                                     </div>
+                                </div>
+
+                                {/* WhatsApp Community Groups */}
+                                <div className="bg-white/5 p-6 rounded-2xl border border-white/10">
+                                    <div className="flex items-center justify-between mb-4">
+                                        <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                                            <Phone size={18} className="text-green-500" /> Community Groups
+                                        </h3>
+                                        <button
+                                            type="button"
+                                            onClick={() => setOrderSettings({
+                                                ...orderSettings,
+                                                whatsappGroups: [...(orderSettings.whatsappGroups || []), { name: "", link: "" }]
+                                            })}
+                                            className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
+                                        >
+                                            <Plus size={14} /> Add Group
+                                        </button>
+                                    </div>
+                                    <p className="text-xs text-gray-500 mb-4">Add WhatsApp group invite links. These will appear in the navbar under "Community".</p>
+
+                                    {(orderSettings.whatsappGroups || []).length === 0 ? (
+                                        <p className="text-sm text-gray-500 italic text-center py-4">No community groups added yet.</p>
+                                    ) : (
+                                        <div className="space-y-3">
+                                            {(orderSettings.whatsappGroups || []).map((group, idx) => (
+                                                <div key={idx} className="flex items-center gap-2">
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Group Name"
+                                                        value={group.name}
+                                                        onChange={(e) => {
+                                                            const updated = [...orderSettings.whatsappGroups];
+                                                            updated[idx].name = e.target.value;
+                                                            setOrderSettings({ ...orderSettings, whatsappGroups: updated });
+                                                        }}
+                                                        className="flex-1 bg-white/5 border border-white/10 px-3 py-2 rounded-lg text-sm text-white placeholder-gray-500"
+                                                    />
+                                                    <input
+                                                        type="url"
+                                                        placeholder="https://chat.whatsapp.com/..."
+                                                        value={group.link}
+                                                        onChange={(e) => {
+                                                            const updated = [...orderSettings.whatsappGroups];
+                                                            updated[idx].link = e.target.value;
+                                                            setOrderSettings({ ...orderSettings, whatsappGroups: updated });
+                                                        }}
+                                                        className="flex-[2] bg-white/5 border border-white/10 px-3 py-2 rounded-lg text-sm text-white placeholder-gray-500"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const updated = orderSettings.whatsappGroups.filter((_, i) => i !== idx);
+                                                            setOrderSettings({ ...orderSettings, whatsappGroups: updated });
+                                                        }}
+                                                        className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
+                                                    >
+                                                        <Trash size={16} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
 
 

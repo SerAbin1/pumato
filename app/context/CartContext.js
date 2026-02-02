@@ -389,6 +389,7 @@ export function CartProvider({ children }) {
                 groceryNumber: grocerySettings?.whatsappNumber || "919048086503",
                 upiId: orderSettings?.upiId || "",
                 googleSheetUrl: orderSettings?.googleSheetUrl || "",
+                whatsappGroups: orderSettings?.whatsappGroups || [],
                 minOrderShortfalls
             }}
         >

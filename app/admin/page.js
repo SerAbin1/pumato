@@ -34,7 +34,6 @@ export default function AdminPage() {
         banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
         banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
     });
-    const [menuCategories] = useState(["Recommended", "Starters", "Main Course", "Beverages", "Desserts"]); // Default categories for new restaurants
     const [loading, setLoading] = useState(true);
     const [activeTab, setActiveTab] = useState("list"); // list, form
     const [editingId, setEditingId] = useState(null);
@@ -391,7 +390,7 @@ export default function AdminPage() {
             name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
             baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10", minOrderAmount: "0",
             isVisible: true,
-            categories: menuCategories,
+            categories: [],
             menu: []
         });
         setActiveTab("form");
@@ -402,7 +401,7 @@ export default function AdminPage() {
         setEditingId(restaurant.id);
         setFormData({
             ...restaurant,
-            categories: restaurant.categories || menuCategories,
+            categories: restaurant.categories || [],
             outOfStockCategories: restaurant.outOfStockCategories || [],
             isVisible: restaurant.isVisible !== false,
             isAvailable: restaurant.isAvailable !== false

@@ -1793,6 +1793,17 @@ export default function AdminPage() {
                                             placeholder="919048086503"
                                         />
                                     </div>
+
+                                    <div className="pl-13 mt-4">
+                                        <FormInput
+                                            label="UPI ID (for order message)"
+                                            type="text"
+                                            value={orderSettings.upiId || ""}
+                                            onChange={(e) => setOrderSettings({ ...orderSettings, upiId: e.target.value })}
+                                            placeholder="example@upi"
+                                        />
+                                        <p className="text-xs text-gray-500 mt-2">This UPI ID will be included in the WhatsApp order message for payment.</p>
+                                    </div>
                                 </div>
 
 

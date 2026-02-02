@@ -40,6 +40,7 @@ export default function CartDrawer() {
         removeCoupon,
         paymentQR,
         foodDeliveryNumber,
+        upiId,
         minOrderShortfalls
     } = useCart();
 
@@ -116,7 +117,7 @@ export default function CartDrawer() {
             }
 
             // Coupon validated (or no coupon), proceed with WhatsApp
-            const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR });
+            const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR, upiId });
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.open(whatsappUrl, "_blank");
             setIsCartOpen(false);

@@ -3,7 +3,7 @@
 import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, ShoppingBag, Send, Trash2, MapPin, User, Phone, Check, Tag, Loader2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
-import { formatWhatsAppMessage, FOOD_DELIVERY_NUMBER } from "@/lib/whatsapp";
+import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useEffect, useState } from "react";
 import Image from "next/image";
 import { getApp } from "firebase/app";
@@ -38,8 +38,12 @@ export default function CartDrawer() {
         orderSettings,
         applyCoupon,
         removeCoupon,
-        paymentQR
+        paymentQR,
+        foodDeliveryNumber,
+        minOrderShortfalls
     } = useCart();
+
+    const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
 
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [inputCode, setInputCode] = useState("");
@@ -113,7 +117,7 @@ export default function CartDrawer() {
 
             // Coupon validated (or no coupon), proceed with WhatsApp
             const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR });
-            const whatsappUrl = `https://wa.me/${FOOD_DELIVERY_NUMBER}?text=${message}`;
+            const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.open(whatsappUrl, "_blank");
             setIsCartOpen(false);
         } catch (error) {
@@ -469,10 +473,20 @@ export default function CartDrawer() {
                                         </span>
                                     </div>
                                 )}
+                                {hasMinOrderIssue && isStoreOpen && (
+                                    <div className="mb-3 space-y-2">
+                                        {minOrderShortfalls.map((item) => (
+                                            <div key={item.restaurantId} className="text-xs text-orange-400 bg-orange-500/10 px-4 py-2 rounded-lg border border-orange-500/20 font-bold text-center">
+                                                🛍️ Add ₹{item.shortfall} more from <span className="text-white">{item.restaurantName}</span>
+                                                <span className="text-gray-500 ml-1">(Min: ₹{item.minAmount})</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                                 <button
                                     id="checkout-btn"
                                     onClick={handleCheckout}
-                                    disabled={!isFormValid || !isStoreOpen || isCheckingOut}
+                                    disabled={!isFormValid || !isStoreOpen || isCheckingOut || hasMinOrderIssue}
                                     className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-gray-600 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-900/20 active:scale-[0.98] border border-white/5"
                                 >
                                     {isCheckingOut ? (

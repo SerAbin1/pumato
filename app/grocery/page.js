@@ -6,10 +6,10 @@ import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2, Clock, AlertCircle } from "lucide-react";
 import TermsFooter from "../components/TermsFooter";
-import { GROCERY_NUMBER } from "@/lib/whatsapp";
+// Fallback is defined in context
 
 export default function GroceryPage() {
-    const { grocerySettings } = useCart();
+    const { grocerySettings, groceryNumber } = useCart();
     const [isLive, setIsLive] = useState(true);
 
     useEffect(() => {
@@ -148,7 +148,7 @@ export default function GroceryPage() {
             message += `${index + 1}. ${item.text}\n`;
         });
 
-        const whatsappUrl = `https://wa.me/${GROCERY_NUMBER}?text=${encodeURIComponent(message)}`;
+        const whatsappUrl = `https://wa.me/${groceryNumber}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, "_blank");
     };
 

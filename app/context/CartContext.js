@@ -130,20 +130,79 @@ export function CartProvider({ children }) {
     const currentRestaurant = itemsHasRestaurant() ? restaurants.find(r => r.id === cartItems[0].restaurantId) : null;
 
     // Default values if not configured
-    let baseCharge = currentRestaurant?.baseDeliveryCharge ? parseInt(currentRestaurant.baseDeliveryCharge) : 30;
+    const defaultBaseCharge = orderSettings?.baseDeliveryCharge ? parseInt(orderSettings.baseDeliveryCharge) : 30;
+    const defaultThreshold = orderSettings?.extraItemThreshold ? parseInt(orderSettings.extraItemThreshold) : 3;
+    const defaultExtraCharge = orderSettings?.extraItemCharge ? parseInt(orderSettings.extraItemCharge) : 10;
+
+    let baseCharge = currentRestaurant?.baseDeliveryCharge ? parseInt(currentRestaurant.baseDeliveryCharge) : defaultBaseCharge;
 
     // Add ₹10 for each additional restaurant beyond the first
     if (uniqueRestaurants.size > 1) {
         baseCharge += (uniqueRestaurants.size - 1) * 10;
     }
 
-    const threshold = currentRestaurant?.extraItemThreshold ? parseInt(currentRestaurant.extraItemThreshold) : 3;
-    const extraChargeAmt = currentRestaurant?.extraItemCharge ? parseInt(currentRestaurant.extraItemCharge) : 10;
+    const threshold = currentRestaurant?.extraItemThreshold ? parseInt(currentRestaurant.extraItemThreshold) : defaultThreshold;
+    const extraChargeAmt = currentRestaurant?.extraItemCharge ? parseInt(currentRestaurant.extraItemCharge) : defaultExtraCharge;
 
-    // Large Order Surcharge: Add ₹10 for EACH item beyond threshold
-    const itemsOverThreshold = Math.max(0, totalItems - threshold);
+    // Light Items Logic: Light items bundle before counting towards surcharge
+    const lightItemIds = orderSettings?.lightItems || [];
+    const lightItemThreshold = parseInt(orderSettings?.lightItemThreshold) || 5;
+
+    let regularItemCount = 0;
+    let lightItemCount = 0;
+
+    cartItems.forEach(item => {
+        if (lightItemIds.includes(item.id)) {
+            lightItemCount += item.quantity;
+        } else {
+            regularItemCount += item.quantity;
+        }
+    });
+
+    // Calculate effective items: each bundle of light items counts as 1 item
+    const effectiveLightItems = Math.floor(lightItemCount / lightItemThreshold);
+    const effectiveTotalItems = regularItemCount + effectiveLightItems;
+
+    // Large Order Surcharge: Add extra charge for EACH item beyond threshold
+    const itemsOverThreshold = Math.max(0, effectiveTotalItems - threshold);
     const largeOrderSurcharge = itemsOverThreshold * extraChargeAmt;
     const deliveryCharge = baseCharge + largeOrderSurcharge;
+
+    // Calculate per-restaurant totals and check minimum order requirements
+    const minOrderShortfalls = (() => {
+        const shortfalls = [];
+        const restaurantTotals = {};
+
+        // Calculate total per restaurant
+        cartItems.forEach(item => {
+            if (item.restaurantId) {
+                if (!restaurantTotals[item.restaurantId]) {
+                    restaurantTotals[item.restaurantId] = 0;
+                }
+                restaurantTotals[item.restaurantId] += item.price * item.quantity;
+            }
+        });
+
+        // Check each restaurant's minimum
+        Object.keys(restaurantTotals).forEach(restId => {
+            const restaurant = restaurants.find(r => r.id === restId);
+            if (restaurant && restaurant.minOrderAmount) {
+                const minAmount = parseInt(restaurant.minOrderAmount);
+                const currentTotal = restaurantTotals[restId];
+                if (minAmount > 0 && currentTotal < minAmount) {
+                    shortfalls.push({
+                        restaurantId: restId,
+                        restaurantName: restaurant.name,
+                        minAmount,
+                        currentTotal,
+                        shortfall: minAmount - currentTotal
+                    });
+                }
+            }
+        });
+
+        return shortfalls;
+    })();
 
     // Calculate Discount Reactively
     // activeCoupon is now managed via state in applyCoupon for better synchronization
@@ -218,11 +277,17 @@ export function CartProvider({ children }) {
                 ...coupon,
                 minOrder: coupon.min_order,
                 isVisible: coupon.is_visible,
+                isActive: coupon.is_active,
                 usageLimit: coupon.usage_limit,
                 usedCount: coupon.used_count,
                 restaurantId: coupon.restaurant_id,
                 itemId: coupon.item_id
             };
+
+            // Check if coupon is active
+            if (mappedCoupon.isActive === false) {
+                return { success: false, message: "This coupon is currently inactive" };
+            }
 
             // Initial validation
             if (itemTotal < parseInt(mappedCoupon.minOrder || "0")) {
@@ -317,7 +382,11 @@ export function CartProvider({ children }) {
                 isMultiRestaurant,
                 orderSettings,
                 grocerySettings,
-                paymentQR: orderSettings?.paymentQR
+                paymentQR: orderSettings?.paymentQR,
+                foodDeliveryNumber: orderSettings?.whatsappNumber || "919048086503",
+                laundryNumber: orderSettings?.laundryWhatsappNumber || "919048086503",
+                groceryNumber: grocerySettings?.whatsappNumber || "919048086503",
+                minOrderShortfalls
             }}
         >
             {children}

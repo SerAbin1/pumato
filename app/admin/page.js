@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search, ChevronUp, ChevronDown, Settings } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, List, Search, ChevronUp, ChevronDown, Settings, Phone } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import { supabase } from "@/lib/supabase";
@@ -52,13 +52,20 @@ export default function AdminPage() {
     const [isBulkApplying, setIsBulkApplying] = useState(false);
 
     // Site Settings
-    const [orderSettings, setOrderSettings] = useState({ slots: [{ start: "18:30", end: "23:00" }] });
+    const [orderSettings, setOrderSettings] = useState({
+        slots: [{ start: "18:30", end: "23:00" }],
+        baseDeliveryCharge: "30",
+        extraItemThreshold: "3",
+        extraItemCharge: "10",
+        lightItems: [],
+        lightItemThreshold: "5"
+    });
     const [grocerySettings, setGrocerySettings] = useState({ slots: [{ start: "10:00", end: "22:00" }] });
 
     // Restaurant Form State
     const [formData, setFormData] = useState({
         name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
-        baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
+        baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10", minOrderAmount: "0",
         isVisible: true,
         isAvailable: true,
         menu: []
@@ -66,10 +73,11 @@ export default function AdminPage() {
 
     // Coupon Form State
     const [couponForm, setCouponForm] = useState({
-        code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "",
+        code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, isActive: true, usageLimit: "",
         restaurantId: null, itemId: null
     });
     const [itemSearchQuery, setItemSearchQuery] = useState("");
+    const [lightItemSearchQuery, setLightItemSearchQuery] = useState("");
     const [couponTargetType, setCouponTargetType] = useState("item"); // item, category
 
     useEffect(() => {
@@ -409,7 +417,7 @@ export default function AdminPage() {
         setEditingId(null);
         setFormData({
             name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
-            baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10",
+            baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10", minOrderAmount: "0",
             isVisible: true,
             categories: menuCategories,
             menu: []
@@ -553,6 +561,7 @@ export default function AdminPage() {
             minOrder: couponForm.minOrder || 0,
             description: couponForm.description,
             isVisible: couponForm.isVisible,
+            isActive: couponForm.isActive !== false,
             usageLimit: limit,
             usedCount: editingId ? (couponForm.usedCount || 0) : 0,
             restaurantId: couponForm.restaurantId || null,
@@ -770,10 +779,11 @@ export default function AdminPage() {
                                 <FormInput label="Offer Badge" value={formData.offer} onChange={(e) => setFormData({ ...formData, offer: e.target.value })} placeholder="e.g 50% OFF" />
                                 <FormInput label="Extra Info / Offer" value={formData.priceForTwo} onChange={(e) => setFormData({ ...formData, priceForTwo: e.target.value })} placeholder="e.g. Buy 1 Get 1 Free" />
 
-                                <div className="col-span-full grid grid-cols-1 md:grid-cols-3 gap-6 bg-white/5 p-6 rounded-2xl border border-white/5">
+                                <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-6 bg-white/5 p-6 rounded-2xl border border-white/5">
                                     <FormInput label="Base Del. Charge (₹)" type="number" value={formData.baseDeliveryCharge} onChange={(e) => setFormData({ ...formData, baseDeliveryCharge: e.target.value })} />
                                     <FormInput label="Extra Item Threshold" type="number" value={formData.extraItemThreshold} onChange={(e) => setFormData({ ...formData, extraItemThreshold: e.target.value })} />
                                     <FormInput label="Extra Charge (₹)" type="number" value={formData.extraItemCharge} onChange={(e) => setFormData({ ...formData, extraItemCharge: e.target.value })} />
+                                    <FormInput label="Min Order Amt (₹)" type="number" value={formData.minOrderAmount || "0"} onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })} placeholder="0" />
                                 </div>
 
                                 <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1176,6 +1186,24 @@ export default function AdminPage() {
                                         Show in Cart Quick Apply?
                                     </label>
                                 </div>
+
+                                <div className="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5">
+                                    <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                        <input
+                                            type="checkbox"
+                                            name="toggle-active"
+                                            id="toggle-active"
+                                            className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
+                                            checked={couponForm.isActive !== false}
+                                            onChange={(e) => setCouponForm({ ...couponForm, isActive: e.target.checked })}
+                                            style={{ right: couponForm.isActive !== false ? '0' : 'auto', left: couponForm.isActive !== false ? 'auto' : '0' }}
+                                        />
+                                        <label htmlFor="toggle-active" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${couponForm.isActive !== false ? 'bg-green-500' : 'bg-gray-600'}`}></label>
+                                    </div>
+                                    <label htmlFor="toggle-active" className="text-sm font-bold text-white cursor-pointer select-none">
+                                        Coupon Active? <span className="text-gray-500 font-normal">(If off, customers cannot apply)</span>
+                                    </label>
+                                </div>
                             </div>
 
                             <div className="mt-12 pt-8 border-t border-white/10 flex justify-end gap-4 opacity-0 pointer-events-none">
@@ -1500,6 +1528,123 @@ export default function AdminPage() {
                                                 </button>
                                             </div>
                                         ))}
+
+                                        <div className="pl-13 col-span-full grid grid-cols-1 md:grid-cols-3 gap-6 bg-white/5 p-6 rounded-2xl border border-white/5">
+                                            <FormInput
+                                                label="Global Base Del. Charge (₹)"
+                                                type="number"
+                                                value={orderSettings.baseDeliveryCharge || "30"}
+                                                onChange={(e) => setOrderSettings({ ...orderSettings, baseDeliveryCharge: e.target.value })}
+                                            />
+                                            <FormInput
+                                                label="Global Extra Threshold"
+                                                type="number"
+                                                value={orderSettings.extraItemThreshold || "3"}
+                                                onChange={(e) => setOrderSettings({ ...orderSettings, extraItemThreshold: e.target.value })}
+                                            />
+                                            <FormInput
+                                                label="Global Extra Charge (₹)"
+                                                type="number"
+                                                value={orderSettings.extraItemCharge || "10"}
+                                                onChange={(e) => setOrderSettings({ ...orderSettings, extraItemCharge: e.target.value })}
+                                            />
+                                        </div>
+
+                                        {/* Light Items Section */}
+                                        <div className="pl-13 bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">Light Items</h4>
+                                                    <p className="text-xs text-gray-500">Items that bundle before counting towards extra delivery charge.</p>
+                                                </div>
+                                                <div className="w-32">
+                                                    <FormInput
+                                                        label="Bundle Size"
+                                                        type="number"
+                                                        value={orderSettings.lightItemThreshold || "5"}
+                                                        onChange={(e) => setOrderSettings({ ...orderSettings, lightItemThreshold: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Selected Light Items */}
+                                            <div className="flex flex-wrap gap-2">
+                                                {(orderSettings.lightItems || []).map(itemId => {
+                                                    const allItems = restaurants.flatMap(r => (r.menu || []).map(m => ({ ...m, restaurantName: r.name })));
+                                                    const item = allItems.find(i => i.id === itemId);
+                                                    return item ? (
+                                                        <span key={itemId} className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-orange-500/20">
+                                                            {item.name} <span className="text-gray-500 text-[10px]">({item.restaurantName})</span>
+                                                            <button
+                                                                onClick={() => setOrderSettings({
+                                                                    ...orderSettings,
+                                                                    lightItems: (orderSettings.lightItems || []).filter(id => id !== itemId)
+                                                                })}
+                                                                className="hover:text-red-400"
+                                                            >
+                                                                <X size={12} />
+                                                            </button>
+                                                        </span>
+                                                    ) : null;
+                                                })}
+                                                {(orderSettings.lightItems || []).length === 0 && (
+                                                    <span className="text-gray-500 text-xs italic">No light items selected</span>
+                                                )}
+                                            </div>
+
+                                            {/* Add Light Item Search */}
+                                            <div className="relative">
+                                                <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus-within:border-orange-500/50">
+                                                    <Search size={16} className="text-gray-500" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search items to add..."
+                                                        value={lightItemSearchQuery}
+                                                        onChange={(e) => setLightItemSearchQuery(e.target.value)}
+                                                        className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-gray-500"
+                                                    />
+                                                    {lightItemSearchQuery && (
+                                                        <button onClick={() => setLightItemSearchQuery("")} className="text-gray-500 hover:text-white">
+                                                            <X size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {lightItemSearchQuery.trim().length > 0 && (
+                                                    <div className="absolute z-20 left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl max-h-48 overflow-y-auto shadow-xl">
+                                                        {restaurants.flatMap(r =>
+                                                            (r.menu || [])
+                                                                .filter(item =>
+                                                                    item.name.toLowerCase().includes(lightItemSearchQuery.toLowerCase()) &&
+                                                                    !(orderSettings.lightItems || []).includes(item.id)
+                                                                )
+                                                                .map(item => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        onClick={() => {
+                                                                            setOrderSettings({
+                                                                                ...orderSettings,
+                                                                                lightItems: [...(orderSettings.lightItems || []), item.id]
+                                                                            });
+                                                                            setLightItemSearchQuery("");
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between items-center"
+                                                                    >
+                                                                        <span>{item.name}</span>
+                                                                        <span className="text-gray-500 text-xs">{r.name}</span>
+                                                                    </button>
+                                                                ))
+                                                        )}
+                                                        {restaurants.flatMap(r => (r.menu || []).filter(item =>
+                                                            item.name.toLowerCase().includes(lightItemSearchQuery.toLowerCase()) &&
+                                                            !(orderSettings.lightItems || []).includes(item.id)
+                                                        )).length === 0 && (
+                                                                <div className="px-4 py-3 text-gray-500 text-sm text-center">No matching items</div>
+                                                            )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
                                         {(orderSettings.slots || []).length === 0 && (
                                             <div className="pl-13 text-gray-500 italic text-sm">No ordering slots defined. Service will remain offline.</div>
                                         )}
@@ -1614,12 +1759,42 @@ export default function AdminPage() {
                                     </div>
                                 </div>
 
-                                <button
-                                    onClick={handleSaveSettings}
-                                    className="w-full md:w-auto bg-white text-black px-10 py-4 rounded-2xl font-black text-lg hover:bg-gray-200 transition-all shadow-xl active:scale-95"
-                                >
-                                    Save All Settings
-                                </button>
+                                <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
+                                    <div className="flex items-center justify-between gap-3 mb-2">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-green-500/10 flex items-center justify-center text-green-400 border border-green-500/20">
+                                                <Phone size={18} />
+                                            </div>
+                                            <h3 className="text-xl font-bold text-white">WhatsApp Numbers</h3>
+                                        </div>
+                                    </div>
+                                    <p className="text-gray-400 text-sm pl-13">Configure the WhatsApp numbers for order redirects. Include country code without + (e.g., 919048086503).</p>
+
+                                    <div className="pl-13 grid grid-cols-1 md:grid-cols-3 gap-6">
+                                        <FormInput
+                                            label="Food Delivery"
+                                            type="tel"
+                                            value={orderSettings.whatsappNumber || ""}
+                                            onChange={(e) => setOrderSettings({ ...orderSettings, whatsappNumber: e.target.value.replace(/\D/g, '') })}
+                                            placeholder="919048086503"
+                                        />
+                                        <FormInput
+                                            label="Laundry"
+                                            type="tel"
+                                            value={orderSettings.laundryWhatsappNumber || ""}
+                                            onChange={(e) => setOrderSettings({ ...orderSettings, laundryWhatsappNumber: e.target.value.replace(/\D/g, '') })}
+                                            placeholder="919048086503"
+                                        />
+                                        <FormInput
+                                            label="Grocery"
+                                            type="tel"
+                                            value={grocerySettings.whatsappNumber || ""}
+                                            onChange={(e) => setGrocerySettings({ ...grocerySettings, whatsappNumber: e.target.value.replace(/\D/g, '') })}
+                                            placeholder="919048086503"
+                                        />
+                                    </div>
+                                </div>
+
 
                             </div>
                         </div>
@@ -1633,7 +1808,8 @@ export default function AdminPage() {
                 {((activeSection === "restaurants" && activeTab === "form") ||
                     (activeSection === "coupons" && activeTab === "form") ||
                     (activeSection === "laundry") ||
-                    (activeSection === "banners")) && (
+                    (activeSection === "banners") ||
+                    (activeSection === "settings")) && (
                         <motion.div
                             initial={{ y: 100, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
@@ -1648,6 +1824,7 @@ export default function AdminPage() {
                                         {activeSection === "coupons" && (editingId ? "Editing Coupon" : "Creating Coupon")}
                                         {activeSection === "laundry" && "Managing Laundry Slots"}
                                         {activeSection === "banners" && "Managing Promo Banners"}
+                                        {activeSection === "settings" && "Global Site Settings"}
                                     </p>
                                 </div>
 
@@ -1698,6 +1875,7 @@ export default function AdminPage() {
                                             else if (activeSection === "coupons") handleSubmitCoupon();
                                             else if (activeSection === "laundry") handleBulkApply();
                                             else if (activeSection === "banners") handleSaveBanners();
+                                            else if (activeSection === "settings") handleSaveSettings();
                                         }}
                                         className="flex-1 md:flex-none bg-orange-600 text-white px-4 md:px-8 py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center justify-center gap-2 group text-xs md:text-sm"
                                     >
@@ -1707,6 +1885,7 @@ export default function AdminPage() {
                                             {activeSection === "coupons" ? (editingId ? "Update" : "Create") : ""}
                                             {activeSection === "laundry" ? "Apply" : ""}
                                             {activeSection === "banners" ? "Update" : ""}
+                                            {activeSection === "settings" ? "Save Settings" : ""}
                                         </span>
                                     </button>
                                 </div>

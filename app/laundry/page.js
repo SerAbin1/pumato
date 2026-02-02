@@ -5,7 +5,7 @@ import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { ArrowLeft, Clock, Shirt, MapPin, Phone, User, Send, Plus, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { LAUNDRY_NUMBER } from "@/lib/whatsapp";
+import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 
@@ -64,6 +64,25 @@ export default function LaundryPage() {
 
     const [availableSlots, setAvailableSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
+    const [laundryNumber, setLaundryNumber] = useState(LAUNDRY_NUMBER);
+
+    // Fetch laundry WhatsApp number from site settings
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
+                if (settingsDoc.exists()) {
+                    const data = settingsDoc.data();
+                    if (data.laundryWhatsappNumber) {
+                        setLaundryNumber(data.laundryWhatsappNumber);
+                    }
+                }
+            } catch (error) {
+                console.error("Error fetching settings:", error);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     // Fetch slots when date changes
     useEffect(() => {
@@ -166,7 +185,7 @@ export default function LaundryPage() {
             });
         }
 
-        const whatsappUrl = `https://wa.me/${LAUNDRY_NUMBER}?text=${encodeURIComponent(message)}`;
+        const whatsappUrl = `https://wa.me/${laundryNumber}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, "_blank");
     };
 

@@ -116,7 +116,7 @@ export default function DeliveryPage() {
             if (r.menu) {
                 r.menu.forEach(item => {
                     if (item.name.toLowerCase().includes(query)) {
-                        matchedFoods.push({ ...item, restaurantId: r.id, restaurantName: r.name });
+                        matchedFoods.push({ ...item, restaurantId: r.id, restaurantName: r.name, outOfStockCategories: r.outOfStockCategories || [] });
                     }
                 });
             }
@@ -234,7 +234,8 @@ export default function DeliveryPage() {
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredFoods.map((item, idx) => {
-                                const isOutOfStock = item.isVisible === false;
+                                const categoryOutOfStock = (item.outOfStockCategories || []).includes(item.category);
+                                const isOutOfStock = item.isVisible === false || categoryOutOfStock;
                                 return (
                                     <div key={`${item.restaurantId}-${idx}`} className={`flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl transition-all group relative ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 overflow-hidden'}`}>
                                         <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} className="flex items-center gap-4 flex-1 min-w-0">

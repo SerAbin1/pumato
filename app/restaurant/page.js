@@ -284,130 +284,137 @@ function RestaurantContent() {
 
                 {/* Categorized Menu */}
                 <div className="space-y-12">
-                    {Object.entries(processedMenu).map(([category, items]) => (
-                        <div key={category} id={category} className="scroll-mt-40">
-                            <button
-                                onClick={() => toggleSection(category)}
-                                className="w-full text-2xl font-bold text-white mb-6 flex items-center justify-between gap-3 hover:text-orange-400 transition-colors group"
-                            >
-                                <h2 id={category} className="text-2xl font-black text-white mb-6 flex items-center gap-3 sticky top-0 py-4 bg-black/80 backdrop-blur-md z-10">
-                                    <div className="w-1.5 h-8 bg-orange-600 rounded-full"></div>
-                                    {category}
-                                    <span className="text-sm font-bold bg-white/10 text-gray-400 px-3 py-1 rounded-full border border-white/10 ml-auto md:ml-0">
-                                        {items.length} {items.length === 1 ? 'item' : 'items'}
-                                    </span>
-                                </h2>
-                                <motion.div
-                                    animate={{ rotate: collapsedSections[category] ? -180 : 0 }}
-                                    transition={{ duration: 0.2 }}
-                                    className="text-gray-500 group-hover:text-orange-400"
+                    {Object.entries(processedMenu).map(([category, items]) => {
+                        const isCategoryOutOfStock = (restaurant.outOfStockCategories || []).includes(category);
+                        return (
+                            <div key={category} id={category} className="scroll-mt-40">
+                                <button
+                                    onClick={() => toggleSection(category)}
+                                    className="w-full text-2xl font-bold text-white mb-6 flex items-center justify-between gap-3 hover:text-orange-400 transition-colors group"
                                 >
-                                    <ChevronDown size={24} />
-                                </motion.div>
-                            </button>
-                            <AnimatePresence initial={false}>
-                                {!collapsedSections[category] && (
+                                    <h2 id={category} className={`text-2xl font-black mb-6 flex items-center gap-3 sticky top-0 py-4 bg-black/80 backdrop-blur-md z-10 ${isCategoryOutOfStock ? 'text-gray-500' : 'text-white'}`}>
+                                        <div className={`w-1.5 h-8 rounded-full ${isCategoryOutOfStock ? 'bg-red-600' : 'bg-orange-600'}`}></div>
+                                        <span className={isCategoryOutOfStock ? 'line-through' : ''}>{category}</span>
+                                        {isCategoryOutOfStock && (
+                                            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">Section Unavailable</span>
+                                        )}
+                                        <span className="text-sm font-bold bg-white/10 text-gray-400 px-3 py-1 rounded-full border border-white/10 ml-auto md:ml-0">
+                                            {items.length} {items.length === 1 ? 'item' : 'items'}
+                                        </span>
+                                    </h2>
                                     <motion.div
-                                        initial={{ height: 0, opacity: 0 }}
-                                        animate={{ height: "auto", opacity: 1 }}
-                                        exit={{ height: 0, opacity: 0 }}
-                                        transition={{ duration: 0.3, ease: "easeInOut" }}
-                                        className="overflow-hidden"
+                                        animate={{ rotate: collapsedSections[category] ? -180 : 0 }}
+                                        transition={{ duration: 0.2 }}
+                                        className="text-gray-500 group-hover:text-orange-400"
                                     >
-                                        <div className="grid gap-6">
-                                            {items.map((item, idx) => {
-                                                const cartItem = cartItems.find(c => c.id === item.id);
-                                                const quantity = cartItem ? cartItem.quantity : 0;
-                                                const isOutOfStock = item.isVisible === false;
-                                                return (
-                                                    <motion.div
-                                                        key={item.id}
-                                                        id={`menu-item-${item.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
-                                                        initial={{ opacity: 0, y: 20 }}
-                                                        whileInView={{ opacity: 1, y: 0 }}
-                                                        viewport={{ once: true, margin: "-50px" }}
-                                                        transition={{ delay: idx * 0.05 }}
-                                                        className={`bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group transition-all ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 hover:border-white/10 hover:shadow-2xl'}`}
-                                                    >
-                                                        <div className="flex-1">
-                                                            <div className="flex items-start justify-between mb-2">
-                                                                <div className="flex items-center gap-2">
-                                                                    {item.isVeg === true && (
-                                                                        <div className="border border-green-500 p-0.5 rounded-[4px]">
-                                                                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                                                        </div>
-                                                                    )}
-                                                                    {item.isVeg === false && (
-                                                                        <div className="border border-red-500 p-0.5 rounded-[4px]">
-                                                                            <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[6px] border-b-red-500"></div>
-                                                                        </div>
-                                                                    )}
-                                                                    {item.isBestSeller && (
-                                                                        <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-orange-500/20">Bestseller</span>
-                                                                    )}
-                                                                    {item.extraInfo && (
-                                                                        <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/20">{item.extraInfo}</span>
-                                                                    )}
-                                                                    {isOutOfStock && (
-                                                                        <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">Out of Stock</span>
-                                                                    )}
+                                        <ChevronDown size={24} />
+                                    </motion.div>
+                                </button>
+                                <AnimatePresence initial={false}>
+                                    {!collapsedSections[category] && (
+                                        <motion.div
+                                            initial={{ height: 0, opacity: 0 }}
+                                            animate={{ height: "auto", opacity: 1 }}
+                                            exit={{ height: 0, opacity: 0 }}
+                                            transition={{ duration: 0.3, ease: "easeInOut" }}
+                                            className="overflow-hidden"
+                                        >
+                                            <div className="grid gap-6">
+                                                {items.map((item, idx) => {
+                                                    const cartItem = cartItems.find(c => c.id === item.id);
+                                                    const quantity = cartItem ? cartItem.quantity : 0;
+                                                    const categoryOutOfStock = (restaurant.outOfStockCategories || []).includes(item.category);
+                                                    const isOutOfStock = item.isVisible === false || categoryOutOfStock;
+                                                    return (
+                                                        <motion.div
+                                                            key={item.id}
+                                                            id={`menu-item-${item.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                                                            initial={{ opacity: 0, y: 20 }}
+                                                            whileInView={{ opacity: 1, y: 0 }}
+                                                            viewport={{ once: true, margin: "-50px" }}
+                                                            transition={{ delay: idx * 0.05 }}
+                                                            className={`bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group transition-all ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 hover:border-white/10 hover:shadow-2xl'}`}
+                                                        >
+                                                            <div className="flex-1">
+                                                                <div className="flex items-start justify-between mb-2">
+                                                                    <div className="flex items-center gap-2">
+                                                                        {item.isVeg === true && (
+                                                                            <div className="border border-green-500 p-0.5 rounded-[4px]">
+                                                                                <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                                                            </div>
+                                                                        )}
+                                                                        {item.isVeg === false && (
+                                                                            <div className="border border-red-500 p-0.5 rounded-[4px]">
+                                                                                <div className="w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-b-[6px] border-b-red-500"></div>
+                                                                            </div>
+                                                                        )}
+                                                                        {item.isBestSeller && (
+                                                                            <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-orange-500/20">Bestseller</span>
+                                                                        )}
+                                                                        {item.extraInfo && (
+                                                                            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/20">{item.extraInfo}</span>
+                                                                        )}
+                                                                        {isOutOfStock && (
+                                                                            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">Out of Stock</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
+                                                                <h4 className="font-bold text-white text-base md:text-lg mb-1 group-hover:text-orange-400 transition-colors">{item.name}</h4>
+                                                                <p className="font-bold text-gray-300">₹{item.price}</p>
+                                                                <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">{item.description}</p>
                                                             </div>
-                                                            <h4 className="font-bold text-white text-base md:text-lg mb-1 group-hover:text-orange-400 transition-colors">{item.name}</h4>
-                                                            <p className="font-bold text-gray-300">₹{item.price}</p>
-                                                            <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">{item.description}</p>
-                                                        </div>
 
-                                                        <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 cursor-default">
-                                                            {item.image ? (
-                                                                <Image
-                                                                    src={item.image}
-                                                                    alt={item.name}
-                                                                    fill
-                                                                    sizes="(max-width: 768px) 128px, 160px"
-                                                                    className="object-cover rounded-2xl shadow-lg border border-white/5"
-                                                                />
-                                                            ) : (
-                                                                <div className="w-full h-full bg-white/5 rounded-2xl border border-white/5 flex items-center justify-center">
-                                                                    <Utensils className="text-white/20" size={32} />
-                                                                </div>
-                                                            )}
-                                                            <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
-                                                                {restaurant.isVisible === false ? (
-                                                                    <div className="w-full bg-gray-800 text-gray-500 border border-gray-700 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
-                                                                        Offline
-                                                                    </div>
-                                                                ) : isOutOfStock ? (
-                                                                    <div className="w-full bg-gray-600 text-gray-300 border border-gray-500 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
-                                                                        Unavailable
-                                                                    </div>
-                                                                ) : quantity === 0 ? (
-                                                                    <motion.button
-                                                                        whileTap={{ scale: 0.95 }}
-                                                                        onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name })}
-                                                                        className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
-                                                                    >
-                                                                        ADD
-                                                                    </motion.button>
+                                                            <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 cursor-default">
+                                                                {item.image ? (
+                                                                    <Image
+                                                                        src={item.image}
+                                                                        alt={item.name}
+                                                                        fill
+                                                                        sizes="(max-width: 768px) 128px, 160px"
+                                                                        className="object-cover rounded-2xl shadow-lg border border-white/5"
+                                                                    />
                                                                 ) : (
-                                                                    <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
-                                                                        <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, -1)} className="hover:text-orange-500 transition-colors w-6">-</button>
-                                                                        <span className="text-sm">{quantity}</span>
-                                                                        <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, 1)} className="hover:text-orange-500 transition-colors w-6">+</button>
+                                                                    <div className="w-full h-full bg-white/5 rounded-2xl border border-white/5 flex items-center justify-center">
+                                                                        <Utensils className="text-white/20" size={32} />
                                                                     </div>
                                                                 )}
+                                                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
+                                                                    {restaurant.isVisible === false ? (
+                                                                        <div className="w-full bg-gray-800 text-gray-500 border border-gray-700 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
+                                                                            Offline
+                                                                        </div>
+                                                                    ) : isOutOfStock ? (
+                                                                        <div className="w-full bg-gray-600 text-gray-300 border border-gray-500 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
+                                                                            Unavailable
+                                                                        </div>
+                                                                    ) : quantity === 0 ? (
+                                                                        <motion.button
+                                                                            whileTap={{ scale: 0.95 }}
+                                                                            onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name })}
+                                                                            className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
+                                                                        >
+                                                                            ADD
+                                                                        </motion.button>
+                                                                    ) : (
+                                                                        <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
+                                                                            <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, -1)} className="hover:text-orange-500 transition-colors w-6">-</button>
+                                                                            <span className="text-sm">{quantity}</span>
+                                                                            <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, 1)} className="hover:text-orange-500 transition-colors w-6">+</button>
+                                                                        </div>
+                                                                    )}
+                                                                </div>
                                                             </div>
-                                                        </div>
-                                                    </motion.div>
-                                                );
-                                            })}
-                                        </div>
-                                    </motion.div>
-                                )}
-                            </AnimatePresence>
-                            <hr className="mt-12 border-white/5 border-dashed" />
-                        </div>
-                    ))}
+                                                        </motion.div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </motion.div>
+                                    )}
+                                </AnimatePresence>
+                                <hr className="mt-12 border-white/5 border-dashed" />
+                            </div>
+                        );
+                    })}
 
                     {Object.keys(processedMenu).length === 0 && (
                         <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/5 border-dashed">

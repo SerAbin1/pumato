@@ -431,6 +431,7 @@ export default function AdminPage() {
         setFormData({
             ...restaurant,
             categories: restaurant.categories || menuCategories,
+            outOfStockCategories: restaurant.outOfStockCategories || [],
             isVisible: restaurant.isVisible !== false,
             isAvailable: restaurant.isAvailable !== false
         });
@@ -682,12 +683,6 @@ export default function AdminPage() {
                                 <Sparkles size={16} /> Banners
                             </button>
                             <button
-                                onClick={() => { setActiveSection("categories"); setActiveTab("list"); }}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "categories" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                            >
-                                <List size={16} /> Categories
-                            </button>
-                            <button
                                 onClick={() => { setActiveSection("settings"); setActiveTab("list"); }}
                                 className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "settings" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                             >
@@ -859,25 +854,46 @@ export default function AdminPage() {
                                     </button>
                                 </div>
                                 <div className="flex flex-wrap gap-2">
-                                    {(formData.categories || []).map(cat => (
-                                        <div key={cat} className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-full border border-white/10 hover:border-white/30 transition-all group">
-                                            <span className="text-sm font-bold text-gray-200">{cat}</span>
-                                            <button
-                                                onClick={() => {
-                                                    setFormData(prev => ({
-                                                        ...prev,
-                                                        categories: (prev.categories || []).filter(c => c !== cat)
-                                                    }));
-                                                }}
-                                                className="text-gray-500 hover:text-red-500 transition-colors"
-                                            >
-                                                <X size={14} />
-                                            </button>
-                                        </div>
-                                    ))}
+                                    {(formData.categories || []).map(cat => {
+                                        const isOutOfStock = (formData.outOfStockCategories || []).includes(cat);
+                                        return (
+                                            <div key={cat} className={`flex items-center gap-2 px-4 py-2 rounded-full border transition-all group ${isOutOfStock ? 'bg-red-500/20 border-red-500/30' : 'bg-white/10 border-white/10 hover:border-white/30'}`}>
+                                                <button
+                                                    onClick={() => {
+                                                        setFormData(prev => {
+                                                            const outOfStock = prev.outOfStockCategories || [];
+                                                            return {
+                                                                ...prev,
+                                                                outOfStockCategories: isOutOfStock
+                                                                    ? outOfStock.filter(c => c !== cat)
+                                                                    : [...outOfStock, cat]
+                                                            };
+                                                        });
+                                                    }}
+                                                    className={`text-xs font-bold px-2 py-0.5 rounded ${isOutOfStock ? 'bg-red-500 text-white' : 'bg-gray-600 text-gray-300 hover:bg-orange-500 hover:text-white'}`}
+                                                    title={isOutOfStock ? "Mark as Available" : "Mark as Out of Stock"}
+                                                >
+                                                    {isOutOfStock ? "OUT" : "IN"}
+                                                </button>
+                                                <span className={`text-sm font-bold ${isOutOfStock ? 'text-red-400 line-through' : 'text-gray-200'}`}>{cat}</span>
+                                                <button
+                                                    onClick={() => {
+                                                        setFormData(prev => ({
+                                                            ...prev,
+                                                            categories: (prev.categories || []).filter(c => c !== cat),
+                                                            outOfStockCategories: (prev.outOfStockCategories || []).filter(c => c !== cat)
+                                                        }));
+                                                    }}
+                                                    className="text-gray-500 hover:text-red-500 transition-colors"
+                                                >
+                                                    <X size={14} />
+                                                </button>
+                                            </div>
+                                        );
+                                    })}
                                 </div>
                                 <p className="text-xs text-gray-500 mt-4 italic">
-                                    * These categories are specific to this restaurant. They define the filter headings in the menu.
+                                    * Click IN/OUT to toggle category availability. OUT categories hide all items in that section.
                                 </p>
                             </div>
 
@@ -1415,47 +1431,6 @@ export default function AdminPage() {
 
                         <div className="mt-8 pt-8 border-t border-white/10 flex justify-end opacity-0 pointer-events-none">
                             <button className="bg-orange-600 text-white px-10 py-4 rounded-2xl font-bold">Update</button>
-                        </div>
-                    </div>
-                )}
-
-                {/* --- CATEGORIES SECTION --- */}
-                {activeSection === "categories" && (
-                    <div className="bg-white/5 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 max-w-4xl mx-auto shadow-2xl">
-                        <h2 className="text-3xl font-black mb-8 text-white border-b border-white/10 pb-6 flex items-center gap-3">
-                            <List className="text-green-500" /> Manage Menu Categories
-                        </h2>
-
-                        <div className="flex gap-4 mb-8">
-                            <input
-                                className="flex-1 p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-green-500/50 transition-all font-medium"
-                                placeholder="New Category Name (e.g. Desserts)"
-                                id="new-cat-input"
-                            />
-                            <button
-                                onClick={() => {
-                                    const input = document.getElementById("new-cat-input");
-                                    if (input) {
-                                        handleAddCategory(input.value);
-                                        input.value = "";
-                                    }
-                                }}
-                                className="bg-green-600 text-white px-8 rounded-xl font-bold hover:bg-green-500 transition-colors shadow-lg shadow-green-900/40"
-                            >
-                                Add
-                            </button>
-                        </div>
-
-                        <div className="grid gap-4">
-                            {menuCategories.map(cat => (
-                                <div key={cat} className="flex items-center justify-between bg-black/30 p-4 rounded-xl border border-white/5 group hover:border-white/10 transition-all">
-                                    <span className="font-bold text-lg text-gray-200">{cat}</span>
-                                    <button onClick={() => handleDeleteCategory(cat)} className="bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 p-2 rounded-lg transition-colors">
-                                        <Trash size={18} />
-                                    </button>
-                                </div>
-                            ))}
-                            {menuCategories.length === 0 && <p className="text-center text-gray-500 italic">No categories found. Add one above!</p>}
                         </div>
                     </div>
                 )}

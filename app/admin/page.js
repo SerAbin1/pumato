@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, Search, ChevronUp, ChevronDown, Settings, Phone } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, Search, ChevronUp, ChevronDown, Settings, Phone, Power } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import { supabase } from "@/lib/supabase";
@@ -238,6 +238,7 @@ export default function AdminPage() {
                 description: c.description,
                 minOrder: c.min_order,
                 isVisible: c.is_visible,
+                isActive: c.is_active,
                 usageLimit: c.usage_limit,
                 usedCount: c.used_count,
                 restaurantId: c.restaurant_id,
@@ -467,9 +468,48 @@ export default function AdminPage() {
     };
 
     // --- COUPON HANDLERS ---
+    const handleToggleActive = async (e, coupon) => {
+        e.stopPropagation();
+        const newStatus = !(coupon.isActive !== false); // Toggle
+
+        // Optimistic update
+        setCoupons(prev => prev.map(c => c.id === coupon.id ? { ...c, isActive: newStatus } : c));
+
+        const payload = {
+            id: coupon.id,
+            code: coupon.code,
+            type: coupon.type,
+            value: coupon.value,
+            minOrder: coupon.minOrder,
+            description: coupon.description,
+            isVisible: coupon.isVisible,
+            isActive: newStatus,
+            usageLimit: coupon.usageLimit,
+            usedCount: coupon.usedCount,
+            restaurantId: coupon.restaurantId,
+            itemId: coupon.itemId
+        };
+
+        try {
+            const idToken = await user.getIdToken();
+            const { error } = await supabase.functions.invoke("manage-coupons", {
+                body: { action: "UPDATE", payload },
+                headers: { "Authorization": `Bearer ${idToken}` }
+            });
+            if (error) {
+                // Revert on error
+                setCoupons(prev => prev.map(c => c.id === coupon.id ? { ...c, isActive: !newStatus } : c));
+                throw error;
+            }
+        } catch (error) {
+            console.error(error);
+            alert("Failed to toggle status");
+        }
+    };
+
     const handleAddNewCoupon = () => {
         setEditingId(null);
-        setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, usageLimit: "", restaurantId: null, itemId: null });
+        setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, isActive: true, usageLimit: "", restaurantId: null, itemId: null });
         setCouponTargetType("item");
         setItemSearchQuery("");
         setActiveTab("form");
@@ -487,6 +527,7 @@ export default function AdminPage() {
             minOrder: coupon.minOrder || coupon.min_order || "0",
             description: coupon.description || "",
             isVisible: coupon.isVisible !== undefined ? coupon.isVisible : (coupon.is_visible !== undefined ? coupon.is_visible : true),
+            isActive: coupon.isActive !== undefined ? coupon.isActive : (coupon.is_active !== undefined ? coupon.is_active : true),
             usageLimit: coupon.usageLimit || coupon.usage_limit || "",
             usedCount: coupon.usedCount || coupon.used_count || 0,
             restaurantId: coupon.restaurantId || coupon.restaurant_id || null,
@@ -1000,6 +1041,13 @@ export default function AdminPage() {
                                     <div className="flex justify-between items-start mb-6">
                                         <div className="bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border border-orange-500/30">{c.type}</div>
                                         <div className="flex gap-3">
+                                            <button
+                                                onClick={(e) => handleToggleActive(e, c)}
+                                                className={`p-1.5 rounded-lg transition-colors border ${c.isActive !== false ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20'}`}
+                                                title={c.isActive !== false ? "Active (Click to Deactivate)" : "Inactive (Click to Activate)"}
+                                            >
+                                                <Power size={18} />
+                                            </button>
                                             <span className="text-gray-500 p-1" title={c.isVisible ? "Visible in Cart" : "Hidden in Cart"}>
                                                 {c.isVisible !== false ? <Eye size={18} /> : <EyeOff size={18} />}
                                             </span>
@@ -1015,9 +1063,9 @@ export default function AdminPage() {
                                     <div className="flex items-center justify-between text-sm font-bold text-gray-300 bg-black/30 p-4 rounded-xl border border-white/5">
                                         <span>Value: {c.type === 'FLAT' ? `₹${c.value}` : `${c.value}%`}</span>
                                         <span>Min: ₹{c.minOrder}</span>
-                                        {c.usage_limit > 0 && (
-                                            <span className={`${(c.used_count || 0) >= c.usage_limit ? 'text-red-400' : 'text-cyan-400'}`}>
-                                                Used: {c.used_count || 0}/{c.usage_limit}
+                                        {c.usageLimit > 0 && (
+                                            <span className={`${(c.usedCount || 0) >= c.usageLimit ? 'text-red-400' : 'text-cyan-400'}`}>
+                                                Used: {c.usedCount || 0}/{c.usageLimit}
                                             </span>
                                         )}
                                     </div>

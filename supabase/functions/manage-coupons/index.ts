@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
                     min_order: payload.minOrder,
                     description: payload.description,
                     is_visible: payload.isVisible,
+                    is_active: payload.isActive,
                     usage_limit: payload.usageLimit,
                     used_count: payload.usedCount || 0,
                     restaurant_id: payload.restaurantId || null,

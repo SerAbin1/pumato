@@ -16,6 +16,7 @@ import { doc, where } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import { useMemo } from "react";
+import Fuse from "fuse.js";
 
 // Simple seeded shuffle to keep order stable for the day
 const seededShuffle = (array, seed) => {
@@ -92,7 +93,7 @@ export default function DeliveryPage() {
         fetchRestaurants();
     }, [getCollection]);
 
-    // Apply search filtering
+    // Apply search filtering with Fuse.js fuzzy matching
     useEffect(() => {
         if (!searchQuery) {
             setFilteredRestaurants(restaurants);
@@ -100,29 +101,80 @@ export default function DeliveryPage() {
             return;
         }
 
-        const query = searchQuery.toLowerCase();
+        const query = searchQuery.toLowerCase().trim();
 
-        // 1. Filter Restaurants (Name or Cuisine match OR has matching menu item)
-        const matchedRestaurants = restaurants.filter(r => {
-            const nameMatch = r.name.toLowerCase().includes(query);
-            const cuisineMatch = r.cuisine.toLowerCase().includes(query);
-            const menuMatch = r.menu?.some(item => item.name.toLowerCase().includes(query));
-            return nameMatch || cuisineMatch || menuMatch;
+        // 1. Filter Restaurants using Fuse.js (name, cuisine, or has matching menu item)
+        const restaurantFuse = new Fuse(restaurants, {
+            keys: ['name', 'cuisine'],
+            threshold: 0.3, // Stricter threshold
+            includeScore: true
+        });
+
+        const restaurantResults = restaurantFuse.search(searchQuery);
+        const matchedByRestaurant = restaurantResults.map(r => r.item);
+
+        // Also check menu items for restaurant matching
+        const restaurantsWithMenuMatch = restaurants.filter(r => {
+            if (!r.menu || r.menu.length === 0) return false;
+            // First check exact substring match
+            const exactMatch = r.menu.some(item => 
+                item.name.toLowerCase().includes(query)
+            );
+            if (exactMatch) return true;
+            // Then check fuzzy match
+            const menuFuse = new Fuse(r.menu, {
+                keys: ['name'],
+                threshold: 0.3 // Stricter for menu items too
+            });
+            return menuFuse.search(searchQuery).length > 0;
+        });
+
+        // Combine and deduplicate restaurant results
+        const allMatchedRestaurants = [...matchedByRestaurant];
+        restaurantsWithMenuMatch.forEach(r => {
+            if (!allMatchedRestaurants.find(existing => existing.id === r.id)) {
+                allMatchedRestaurants.push(r);
+            }
         });
 
         // 2. Find specific matching foods (Global Search)
         const matchedFoods = [];
         restaurants.forEach(r => {
-            if (r.menu) {
-                r.menu.forEach(item => {
-                    if (item.name.toLowerCase().includes(query)) {
-                        matchedFoods.push({ ...item, restaurantId: r.id, restaurantName: r.name, outOfStockCategories: r.outOfStockCategories || [] });
+            if (r.menu && r.menu.length > 0) {
+                const menuFuse = new Fuse(r.menu, {
+                    keys: ['name'],
+                    threshold: 0.3, // Stricter threshold
+                    includeScore: true
+                });
+                const menuResults = menuFuse.search(searchQuery);
+                
+                menuResults.forEach(result => {
+                    const itemName = result.item.name.toLowerCase();
+                    // Boost score for exact substring matches
+                    let adjustedScore = result.score;
+                    if (itemName === query) {
+                        adjustedScore -= 0.5; // Exact match gets huge boost
+                    } else if (itemName.startsWith(query)) {
+                        adjustedScore -= 0.3; // Starts with query gets boost
+                    } else if (itemName.includes(query)) {
+                        adjustedScore -= 0.2; // Contains query gets small boost
                     }
+                    
+                    matchedFoods.push({
+                        ...result.item,
+                        restaurantId: r.id,
+                        restaurantName: r.name,
+                        outOfStockCategories: r.outOfStockCategories || [],
+                        score: adjustedScore
+                    });
                 });
             }
         });
 
-        setFilteredRestaurants(matchedRestaurants);
+        // Sort foods by relevance score (lower is better)
+        matchedFoods.sort((a, b) => (a.score || 1) - (b.score || 1));
+
+        setFilteredRestaurants(allMatchedRestaurants);
         setFilteredFoods(matchedFoods);
     }, [restaurants, searchQuery]);
 

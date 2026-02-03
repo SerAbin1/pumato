@@ -130,20 +130,22 @@ export function CartProvider({ children }) {
 
     const currentRestaurant = itemsHasRestaurant() ? restaurants.find(r => r.id === cartItems[0].restaurantId) : null;
 
-    // Default values if not configured
-    const defaultBaseCharge = orderSettings?.baseDeliveryCharge ? parseInt(orderSettings.baseDeliveryCharge) : 30;
-    const defaultThreshold = orderSettings?.extraItemThreshold ? parseInt(orderSettings.extraItemThreshold) : 3;
-    const defaultExtraCharge = orderSettings?.extraItemCharge ? parseInt(orderSettings.extraItemCharge) : 10;
+    // Priority: Global > Restaurant > Default
+    const getParam = (global, rest, def) => {
+        const isValid = (v) => v !== undefined && v !== null && v !== "" && !isNaN(parseInt(v));
+        if (isValid(global)) return parseInt(global);
+        if (isValid(rest)) return parseInt(rest);
+        return def;
+    };
 
-    let baseCharge = currentRestaurant?.baseDeliveryCharge ? parseInt(currentRestaurant.baseDeliveryCharge) : defaultBaseCharge;
+    let baseCharge = getParam(orderSettings?.baseDeliveryCharge, currentRestaurant?.baseDeliveryCharge, 30);
+    const threshold = getParam(orderSettings?.extraItemThreshold, currentRestaurant?.extraItemThreshold, 3);
+    const extraChargeAmt = getParam(orderSettings?.extraItemCharge, currentRestaurant?.extraItemCharge, 10);
 
     // Add ₹10 for each additional restaurant beyond the first
     if (uniqueRestaurants.size > 1) {
         baseCharge += (uniqueRestaurants.size - 1) * 10;
     }
-
-    const threshold = currentRestaurant?.extraItemThreshold ? parseInt(currentRestaurant.extraItemThreshold) : defaultThreshold;
-    const extraChargeAmt = currentRestaurant?.extraItemCharge ? parseInt(currentRestaurant.extraItemCharge) : defaultExtraCharge;
 
     // Light Items Logic: Light items bundle before counting towards surcharge
     const lightItemIds = orderSettings?.lightItems || [];

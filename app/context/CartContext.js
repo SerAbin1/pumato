@@ -162,13 +162,15 @@ export function CartProvider({ children }) {
         }
     });
 
-    // Calculate effective items: each bundle of light items counts as 1 item
+    // Calculate effective items: each bundle of light items counts as 1 Surcharge Unit
+    // Light items are separate and do not benefit from the regular item threshold
     const effectiveLightItems = Math.floor(lightItemCount / lightItemThreshold);
-    const effectiveTotalItems = regularItemCount + effectiveLightItems;
 
-    // Large Order Surcharge: Add extra charge for EACH item beyond threshold
-    const itemsOverThreshold = Math.max(0, effectiveTotalItems - threshold);
-    const largeOrderSurcharge = itemsOverThreshold * extraChargeAmt;
+    // Large Order Surcharge: Regular items > threshold + All Light Item Bundles
+    const regularItemsOverThreshold = Math.max(0, regularItemCount - threshold);
+    const totalSurchargeUnits = regularItemsOverThreshold + effectiveLightItems;
+
+    const largeOrderSurcharge = totalSurchargeUnits * extraChargeAmt;
     const deliveryCharge = baseCharge + largeOrderSurcharge;
 
     // Calculate per-restaurant totals and check minimum order requirements

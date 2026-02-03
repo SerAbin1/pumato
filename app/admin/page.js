@@ -11,6 +11,7 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import Image from "next/image";
+import Fuse from "fuse.js";
 
 import { toTitleCase } from "@/lib/formatters";
 
@@ -937,12 +938,73 @@ export default function AdminPage() {
                                 {/* Item Count */}
                                 {(formData.menu || []).length > 0 && (
                                     <div className="mb-4 text-sm text-gray-400 font-medium">
-                                        Showing {(formData.menu || []).filter(item => !menuSearchQuery || item.name.toLowerCase().includes(menuSearchQuery.toLowerCase())).length} of {(formData.menu || []).length} items
+                                        {(() => {
+                                            const menu = formData.menu || [];
+                                            if (!menuSearchQuery) return `Showing ${menu.length} of ${menu.length} items`;
+                                            
+                                            const fuse = new Fuse(menu, {
+                                                keys: ['name'],
+                                                threshold: 0.3,
+                                                includeScore: true
+                                            });
+                                            const results = fuse.search(menuSearchQuery);
+                                            
+                                            // Also include exact substring matches
+                                            const query = menuSearchQuery.toLowerCase();
+                                            const substringMatches = menu.filter(item => 
+                                                item.name.toLowerCase().includes(query)
+                                            );
+                                            
+                                            // Combine and deduplicate
+                                            const allMatches = [...results.map(r => r.item)];
+                                            substringMatches.forEach(item => {
+                                                if (!allMatches.find(m => m.id === item.id)) {
+                                                    allMatches.push(item);
+                                                }
+                                            });
+                                            
+                                            return `Showing ${allMatches.length} of ${menu.length} items`;
+                                        })()}
                                     </div>
                                 )}
 
                                 <div className="space-y-6">
-                                    {(formData.menu || []).filter(item => !menuSearchQuery || item.name.toLowerCase().includes(menuSearchQuery.toLowerCase())).map((item, idx) => {
+                                    {(() => {
+                                        const menu = formData.menu || [];
+                                        if (!menuSearchQuery) return menu;
+                                        
+                                        const query = menuSearchQuery.toLowerCase().trim();
+                                        const fuse = new Fuse(menu, {
+                                            keys: ['name'],
+                                            threshold: 0.3,
+                                            includeScore: true
+                                        });
+                                        const results = fuse.search(menuSearchQuery);
+                                        
+                                        // Boost scores for exact matches
+                                        const scoredResults = results.map(result => {
+                                            const itemName = result.item.name.toLowerCase();
+                                            let adjustedScore = result.score;
+                                            if (itemName === query) adjustedScore -= 0.5;
+                                            else if (itemName.startsWith(query)) adjustedScore -= 0.3;
+                                            else if (itemName.includes(query)) adjustedScore -= 0.2;
+                                            return { item: result.item, score: adjustedScore };
+                                        });
+                                        
+                                        // Also include exact substring matches that Fuse might have missed
+                                        const substringMatches = menu.filter(item => {
+                                            const itemName = item.name.toLowerCase();
+                                            return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
+                                        });
+                                        
+                                        const allMatches = [
+                                            ...scoredResults,
+                                            ...substringMatches.map(item => ({ item, score: 0 }))
+                                        ];
+                                        
+                                        allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
+                                        return allMatches.map(m => m.item);
+                                    })().map((item, idx) => {
                                         const actualIdx = (formData.menu || []).indexOf(item);
                                         return (
                                             <div key={item.id} className={`p-6 border border-white/10 rounded-3xl bg-black/20 relative group ${item.isVisible === false ? 'opacity-60' : ''}`}>
@@ -1162,9 +1224,42 @@ export default function AdminPage() {
                                                             />
                                                         </div>
                                                         <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
-                                                            {(restaurants.find(r => r.id === couponForm.restaurantId)?.menu || [])
-                                                                .filter(item => item.name.toLowerCase().includes(itemSearchQuery.toLowerCase()))
-                                                                .map(item => (
+                                                            {(() => {
+                                                                const menu = (restaurants.find(r => r.id === couponForm.restaurantId)?.menu || []);
+                                                                if (!itemSearchQuery) return menu;
+                                                                
+                                                                const query = itemSearchQuery.toLowerCase().trim();
+                                                                const fuse = new Fuse(menu, {
+                                                                    keys: ['name'],
+                                                                    threshold: 0.3,
+                                                                    includeScore: true
+                                                                });
+                                                                const results = fuse.search(itemSearchQuery);
+                                                                
+                                                                // Boost scores for exact matches
+                                                                const scoredResults = results.map(result => {
+                                                                    const itemName = result.item.name.toLowerCase();
+                                                                    let adjustedScore = result.score;
+                                                                    if (itemName === query) adjustedScore -= 0.5;
+                                                                    else if (itemName.startsWith(query)) adjustedScore -= 0.3;
+                                                                    else if (itemName.includes(query)) adjustedScore -= 0.2;
+                                                                    return { item: result.item, score: adjustedScore };
+                                                                });
+                                                                
+                                                                // Include substring matches
+                                                                const substringMatches = menu.filter(item => {
+                                                                    const itemName = item.name.toLowerCase();
+                                                                    return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
+                                                                });
+                                                                
+                                                                const allMatches = [
+                                                                    ...scoredResults,
+                                                                    ...substringMatches.map(item => ({ item, score: 0 }))
+                                                                ];
+                                                                
+                                                                allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
+                                                                return allMatches.map(m => m.item);
+                                                            })().map(item => (
                                                                     <button
                                                                         key={item.id}
                                                                         onClick={() => setCouponForm({ ...couponForm, itemId: item.id })}

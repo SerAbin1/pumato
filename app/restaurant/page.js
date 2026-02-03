@@ -12,6 +12,7 @@ import { db } from "@/lib/firebase";
 import { doc } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
 import Skeleton, { MenuSkeleton } from "../components/Skeleton";
+import Fuse from "fuse.js";
 
 // Simple seeded shuffle to keep order stable for the day
 const seededShuffle = (array, seed) => {
@@ -89,19 +90,53 @@ function RestaurantContent() {
         const seed = seedString.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
 
         let items = restaurant.menu.filter(item => {
-            const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
             const matchesFilter = filter === "all"
                 ? true
                 : filter === "veg"
                     ? item.isVeg === true
                     : item.isVeg === false;
-            return matchesSearch && matchesFilter;
+            return matchesFilter;
         });
 
+        // Apply fuzzy search if query exists
+        if (searchQuery) {
+            const query = searchQuery.toLowerCase().trim();
+            const fuse = new Fuse(items, {
+                keys: ['name'],
+                threshold: 0.3,
+                includeScore: true
+            });
+            const results = fuse.search(searchQuery);
+            
+            // Boost scores for exact matches
+            const scoredResults = results.map(result => {
+                const itemName = result.item.name.toLowerCase();
+                let adjustedScore = result.score;
+                if (itemName === query) adjustedScore -= 0.5;
+                else if (itemName.startsWith(query)) adjustedScore -= 0.3;
+                else if (itemName.includes(query)) adjustedScore -= 0.2;
+                return { item: result.item, score: adjustedScore };
+            });
+            
+            // Include substring matches that Fuse might have missed
+            const substringMatches = items.filter(item => {
+                const itemName = item.name.toLowerCase();
+                return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
+            });
+            
+            const allMatches = [
+                ...scoredResults,
+                ...substringMatches.map(item => ({ item, score: 0 }))
+            ];
+            
+            allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
+            items = allMatches.map(m => m.item);
+        }
+
         // 1. Shuffle items if default sorting
-        if (sortOrder === "default") {
+        if (sortOrder === "default" && !searchQuery) {
             items = seededShuffle(items, seed + 1); // Different seed for items
-        } else {
+        } else if (sortOrder !== "default") {
             items.sort((a, b) => {
                 const priceA = parseInt(a.price) || 0;
                 const priceB = parseInt(b.price) || 0;

@@ -308,6 +308,13 @@ export default function AdminPage() {
             return;
         }
 
+        const [startH, startM] = slotStart.split(":").map(Number);
+        const [endH, endM] = slotEnd.split(":").map(Number);
+        if (startH * 60 + startM >= endH * 60 + endM) {
+            alert("Start time must be before end time.");
+            return;
+        }
+
         const formattedSlot = `${format12h(slotStart)} - ${format12h(slotEnd)}`;
 
         // Prevent duplicates
@@ -1465,10 +1472,11 @@ export default function AdminPage() {
                                             <label className="text-xs font-bold text-gray-500 uppercase">Delivery Charge (₹)</label>
                                             <input
                                                 type="number"
+                                                min="0"
                                                 value={campus.deliveryCharge}
                                                 onChange={(e) => {
                                                     const newConfig = [...campusConfig];
-                                                    newConfig[idx].deliveryCharge = Number(e.target.value);
+                                                    newConfig[idx].deliveryCharge = Math.max(0, Number(e.target.value));
                                                     setCampusConfig(newConfig);
                                                 }}
                                                 className="w-full bg-black/30 p-3 rounded-xl text-white font-bold border border-white/10 focus:border-cyan-500 outline-none"

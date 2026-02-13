@@ -95,7 +95,14 @@ export default function CartDrawer() {
     };
 
     const handleCheckout = async () => {
-        if (!userDetails.name || !userDetails.phone || !userDetails.address) {
+        const trimmedName = userDetails.name.trim();
+        const trimmedAddress = userDetails.address.trim();
+        if (!trimmedName || !userDetails.phone || !trimmedAddress) {
+            return;
+        }
+
+        if (userDetails.phone.length !== 10) {
+            setCheckoutError("Please enter a valid 10-digit phone number.");
             return;
         }
 
@@ -162,7 +169,7 @@ export default function CartDrawer() {
         }
     };
 
-    const isFormValid = userDetails.name && userDetails.phone && userDetails.address;
+    const isFormValid = userDetails.name?.trim() && userDetails.phone?.length === 10 && userDetails.address?.trim();
 
     return (
         <AnimatePresence mode="wait">
@@ -435,9 +442,10 @@ export default function CartDrawer() {
                                                 <input
                                                     type="tel"
                                                     placeholder="Phone Number"
+                                                    maxLength={10}
                                                     value={userDetails.phone}
                                                     onChange={(e) => {
-                                                        const val = e.target.value.replace(/\D/g, ''); // Numeric only
+                                                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                                                         setUserDetails({ ...userDetails, phone: val });
                                                     }}
                                                     className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600"

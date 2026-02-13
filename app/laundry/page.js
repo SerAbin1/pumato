@@ -153,6 +153,7 @@ export default function LaundryPage() {
     };
 
     const handleItemChange = (id, field, value) => {
+        if (field === 'quantity' && value !== '' && Number(value) < 1) return;
         const newItems = items.map(item =>
             item.id === id ? { ...item, [field]: value } : item
         );
@@ -169,17 +170,23 @@ export default function LaundryPage() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        // Filter out empty items
+        const trimmedName = formData.name.trim();
+        const trimmedLocation = formData.location.trim();
         const validItems = items.filter(i => i.name.trim().length > 0);
 
-        if (!formData.name || !formData.phone || !formData.campus || !formData.location || !formData.date || !formData.time) {
+        if (!trimmedName || !formData.phone || !formData.campus || !trimmedLocation || !formData.date || !formData.time) {
             alert("Please fill in all details including Campus, Hostel & Pickup Date/Time.");
+            return;
+        }
+
+        if (formData.phone.length !== 10) {
+            alert("Please enter a valid 10-digit phone number.");
             return;
         }
 
         let message = `*New Laundry Pickup Request* 🧺\n\n`;
         message += `*Customer Details:*\n`;
-        message += `Name: ${formData.name}\n`;
+        message += `Name: ${trimmedName}\n`;
         message += `Phone: ${formData.phone}\n`;
         message += `Campus: ${formData.campus}\n`;
 
@@ -188,7 +195,7 @@ export default function LaundryPage() {
             message += `Delivery Charge: ₹${selectedCampus.deliveryCharge}\n`;
         }
 
-        message += `Hostel: ${formData.location}\n`;
+        message += `Hostel: ${trimmedLocation}\n`;
         if (formData.instructions) {
             message += `Instructions: ${formData.instructions}\n`;
         }
@@ -291,11 +298,12 @@ export default function LaundryPage() {
                                         type="tel"
                                         name="phone"
                                         required
-                                        placeholder="Phone number"
+                                        maxLength={10}
+                                        placeholder="10-digit phone number"
                                         className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium text-white placeholder-gray-600"
                                         value={formData.phone}
                                         onChange={(e) => {
-                                            const val = e.target.value.replace(/\D/g, ''); // Numeric only
+                                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
                                             setFormData({ ...formData, phone: val });
                                         }}
                                     />
@@ -414,6 +422,7 @@ export default function LaundryPage() {
                                             <div className="w-16 bg-black/20 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
                                                 <input
                                                     type="number"
+                                                    min="1"
                                                     value={item.quantity}
                                                     onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
                                                     className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-center text-sm"

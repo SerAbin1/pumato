@@ -97,6 +97,7 @@ export default function GroceryPage() {
     };
 
     const handleItemChange = (id, field, value) => {
+        if (field === 'quantity' && value !== '' && Number(value) < 1) return;
         const newItems = items.map(item =>
             item.id === id ? { ...item, [field]: value } : item
         );
@@ -122,16 +123,23 @@ export default function GroceryPage() {
     const handleSubmit = (e) => {
         e.preventDefault();
 
+        const trimmedName = formData.name.trim();
+        const trimmedHostel = formData.hostel.trim();
         const validItems = items.filter(i => i.name.trim().length > 0);
 
-        if (!formData.name || !formData.phone || !formData.campus || !formData.hostel || validItems.length === 0) {
+        if (!trimmedName || !formData.phone || !formData.campus || !trimmedHostel || validItems.length === 0) {
             alert("Please fill in all details including Campus and add at least one item.");
+            return;
+        }
+
+        if (formData.phone.length !== 10) {
+            alert("Please enter a valid 10-digit phone number.");
             return;
         }
 
         let message = `*New Grocery Order* 🛒\n\n`;
         message += `*Customer Details:*\n`;
-        message += `Name: ${formData.name}\n`;
+        message += `Name: ${trimmedName}\n`;
         message += `Phone: ${formData.phone}\n`;
         message += `Campus: ${formData.campus}\n`;
 
@@ -140,7 +148,7 @@ export default function GroceryPage() {
             message += `Delivery Charge: ₹${selectedCampus.deliveryCharge}\n`;
         }
 
-        message += `Hostel: ${formData.hostel}\n\n`;
+        message += `Hostel: ${trimmedHostel}\n\n`;
 
         message += `*Grocery List:*\n`;
         validItems.forEach((item, index) => {
@@ -244,10 +252,14 @@ export default function GroceryPage() {
                                         <input
                                             type="tel"
                                             required
+                                            maxLength={10}
                                             value={formData.phone}
-                                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                                            onChange={(e) => {
+                                                const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                setFormData({ ...formData, phone: val });
+                                            }}
                                             className="w-full pl-12 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-green-500/50 focus:bg-black/60 transition-all text-white placeholder-gray-600 font-medium"
-                                            placeholder="Enter phone number"
+                                            placeholder="10-digit phone number"
                                         />
                                     </div>
                                 </div>
@@ -311,7 +323,8 @@ export default function GroceryPage() {
                                         </div>
                                         <div className="w-16 bg-black/40 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-green-500/50 focus-within:bg-black/60 transition-all">
                                             <input
-                                                type="text"
+                                                type="number"
+                                                min="1"
                                                 value={item.quantity}
                                                 onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
                                                 className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-center text-sm"

@@ -297,7 +297,7 @@ export default function GatewayPage() {
 
             {/* Laundry Card */}
             <TiltCard className="relative h-[50vh] md:h-[70vh] w-full rounded-[2.5rem] overflow-hidden group border border-white/10 cursor-pointer">
-              <Link href="/coming-soon" className="block h-full w-full">
+              <Link href="/laundry" className="block h-full w-full">
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
                 <div className="absolute inset-0 z-0">
                   <Image

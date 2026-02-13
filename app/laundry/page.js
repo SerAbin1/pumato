@@ -107,15 +107,7 @@ export default function LaundryPage() {
 
                     if (defaultSnap.exists()) {
                         setAvailableSlots(defaultSnap.data().slots || []);
-                    } else {
-                        // 3. Fallback Hardcoded
-                        setAvailableSlots([
-                            "10:00 AM - 11:00 AM",
-                            "11:00 AM - 12:00 PM",
-                            "04:00 PM - 05:00 PM",
-                            "05:00 PM - 06:00 PM"
-                        ]);
-                    }
+                    } 
                 }
             } catch (error) {
                 console.error("Error fetching slots:", error);

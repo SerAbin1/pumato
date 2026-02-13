@@ -64,6 +64,27 @@ export default function LaundryPage() {
         { id: 1, name: "", quantity: "", steamIron: false }
     ]);
 
+    // Load items from localStorage on mount
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            const savedItems = localStorage.getItem("pumato_laundry_items");
+            if (savedItems) {
+                try {
+                    setItems(JSON.parse(savedItems));
+                } catch (e) {
+                    console.error("Failed to parse saved laundry items", e);
+                }
+            }
+        }
+    }, []);
+
+    // Save items to localStorage whenever they change
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            localStorage.setItem("pumato_laundry_items", JSON.stringify(items));
+        }
+    }, [items]);
+
     const [availableSlots, setAvailableSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [laundryNumber, setLaundryNumber] = useState(LAUNDRY_NUMBER);
@@ -219,6 +240,10 @@ export default function LaundryPage() {
 
         const whatsappUrl = `https://wa.me/${laundryNumber}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, "_blank");
+
+        // Clear only the laundry items, keeping user details
+        localStorage.removeItem("pumato_laundry_items");
+        setItems([{ id: Date.now(), name: "", quantity: "", steamIron: false }]);
     };
 
     return (

@@ -1,5 +1,4 @@
-import { useRef, useEffect } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useRef } from "react";
 import { motion } from "framer-motion";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp";
 

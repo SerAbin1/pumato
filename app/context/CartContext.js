@@ -412,7 +412,6 @@ export function CartProvider({ children }) {
                 availableCoupons,
                 activeCoupon,
                 isMultiRestaurant,
-                isMultiRestaurant,
                 orderSettings,
                 grocerySettings,
                 laundrySettings,

@@ -48,7 +48,7 @@ export default function DeliveryTermsPage() {
                         <Utensils size={120} />
                     </div>
 
-                    <p className="text-gray-300 leading-relaxed mb-8 font-medium">Welcome to PUMATO. These Terms and Conditions (“Terms”) govern your access to and use of PUMATO’s food delivery services, operated through WhatsApp, our website, or any future digital platform (collectively, the “Service”).</p>
+                    <p className="text-gray-300 leading-relaxed mb-8 font-medium">Welcome to PUMATO. These Terms and Conditions (“Terms”) govern your access to and use of PUMATO&apos;s food delivery services, operated through WhatsApp, our website, or any future digital platform (collectively, the “Service”).</p>
 
                     <div className="space-y-12">
                         <TermBlock title="1. About PUMATO">
@@ -59,7 +59,7 @@ export default function DeliveryTermsPage() {
                             <ul className="list-disc pl-5 space-y-2 mt-2 text-gray-400">
                                 <li>Does not prepare, cook, manufacture, or sell food.</li>
                                 <li>Is not a restaurant or food provider.</li>
-                                <li>Is responsible only for collecting food from vendors and delivering it to the User’s designated campus location.</li>
+                                <li>Is responsible only for collecting food from vendors and delivering it to the User&apos;s designated campus location.</li>
                             </ul>
                         </TermBlock>
 
@@ -89,7 +89,7 @@ export default function DeliveryTermsPage() {
                             <ul className="list-disc pl-5 space-y-3 text-gray-400">
                                 <li><strong className="text-white">User Cancellations:</strong> Not permitted once food preparation has started.</li>
                                 <li><strong className="text-white">PUMATO Cancellations:</strong> Refund issued if the restaurant is closed or items are unavailable.</li>
-                                <li><strong className="text-white">Service Issues:</strong> Partial/full refund of the delivery fee ONLY if delay is solely PUMATO's fault.</li>
+                                <li><strong className="text-white">Service Issues:</strong> Partial/full refund of the delivery fee ONLY if delay is solely PUMATO&apos;s fault.</li>
                             </ul>
                         </TermBlock>
 
@@ -115,10 +115,33 @@ export default function DeliveryTermsPage() {
                             <p>Delivery partners cannot enter hostel rooms or restricted zones. Users must collect orders at the agreed point. If unreachable for 10 minutes, the order may be marked failed without refund.</p>
                         </TermBlock>
 
+                        <div>
+                            <h3 className="text-xl font-bold text-white mb-2">4. User Responsibilities</h3>
+                            <ul className="list-disc pl-5 text-gray-300 space-y-2">
+                                <li>You must provide accurate pickup and drop-off information.</li>
+                                <li>You must be available to hand over and receive the package at the designated times.</li>
+                                <li>You agree not to use the service for any illegal purposes.</li>
+                                <li>We are not liable for packages left unattended at your request.</li>
+                            </ul>
+                        </div>
+
+                        <div>
+                            <h3 className="text-xl font-bold text-white mb-2">5. Liability & Insurance</h3>
+                            <p className="text-gray-300 mb-2">
+                                While we take utmost care of your packages, our liability is limited.
+                            </p>
+                            <ul className="list-disc pl-5 text-gray-300 space-y-2">
+                                <li>We are not liable for damage to fragile items not properly packed by the user.</li>
+                                <li>We do not offer insurance for high-value items unless explicitly stated.</li>
+                                <li>Our maximum liability for lost or damaged packages is limited to the service fee, unless otherwise required by law.</li>
+                                <li>We are not responsible for delays caused by traffic, weather, or other unforeseen circumstances (&quot;force majeure&quot;).</li>
+                            </ul>
+                        </div>
+
                         <TermBlock title="10. Promotional Offers & Promo Codes">
                             <ul className="list-disc pl-5 space-y-2 text-gray-400">
                                 <li>Promo codes are first-come, first-served and may have limits or expiry.</li>
-                                <li>User is responsible for applying codes correctly. Leaked or expired codes won't be reissued.</li>
+                                <li>User is responsible for applying codes correctly. Leaked or expired codes won&apos;t be reissued.</li>
                                 <li>Abuse or tampering results in an immediate and permanent ban.</li>
                             </ul>
                         </TermBlock>

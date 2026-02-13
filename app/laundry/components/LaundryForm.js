@@ -1,4 +1,3 @@
-
 import { User, Phone, MapPin, Plus, X, Send } from "lucide-react";
 import { motion } from "framer-motion";
 import SlotSelector from "./SlotSelector";

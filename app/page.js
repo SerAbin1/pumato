@@ -146,6 +146,7 @@ export default function GatewayPage() {
   const [isLaundryLive, setIsLaundryLive] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     setIsFoodLive(checkIsLive(orderSettings));
     setIsGroceryLive(checkIsLive(grocerySettings));
 

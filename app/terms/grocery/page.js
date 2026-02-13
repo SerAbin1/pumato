@@ -48,7 +48,7 @@ export default function GroceryTermsPage() {
                         <ShoppingBasket size={120} />
                     </div>
 
-                    <p className="text-gray-300 leading-relaxed mb-8 font-medium">These Terms and Conditions (“Terms”) govern the use of the PUMATO Grocery Delivery Service (“Service”). By placing an order through PUMATO, you (“User” or “Customer”) agree to be bound by these Terms.</p>
+                    <p className="text-gray-300 leading-relaxed mb-8 font-medium">These Terms and Conditions (&quot;Terms&quot;) govern the use of the PUMATO Grocery Delivery Service (&quot;Service&quot;). By placing an order through PUMATO, you (&quot;User&quot; or &quot;Customer&quot;) agree to be bound by these Terms.</p>
 
                     <div className="space-y-12">
                         <TermBlock title="1. Service Overview">
@@ -73,9 +73,9 @@ export default function GroceryTermsPage() {
 
                         <TermBlock title="3. Ordering Process">
                             <h4 className="font-bold text-white mb-2">Order Placement</h4>
-                            <p>Orders must be placed exclusively through PUMATO's official WhatsApp: <a href="https://wa.me/919048086503" className="text-green-400 hover:underline">wa.me/919048086503</a></p>
+                            <p>Orders must be placed exclusively through PUMATO&apos;s official WhatsApp: <a href="https://wa.me/919048086503" className="text-green-400 hover:underline">wa.me/919048086503</a></p>
                             <h4 className="font-bold text-white mt-6 mb-2">Accuracy Requirements</h4>
-                            <p>Users must clearly specify Brand, Quantity, and Size/Variant. For vague requests (e.g., "Buy apples"), the delivery partner is authorized to use reasonable judgment, and the User agrees to accept and pay for the selected item.</p>
+                            <p>Users must clearly specify Brand, Quantity, and Size/Variant. For vague requests (e.g., &quot;Buy apples&quot;), the delivery partner is authorized to use reasonable judgment, and the User agrees to accept and pay for the selected item.</p>
                         </TermBlock>
 
                         <TermBlock title="4. Pricing & Payments">
@@ -105,7 +105,7 @@ export default function GroceryTermsPage() {
                             <h4 className="font-bold text-white mb-2">Perishables</h4>
                             <p>Must be inspected at delivery point. Non-returnable once accepted. Any damage must be reported before acceptance.</p>
                             <h4 className="font-bold text-white mt-6 mb-2">Packaged Goods</h4>
-                            <p>PUMATO is not responsible for internal manufacturing defects. Returns are subject to the original store's policy and incurred service fees.</p>
+                            <p>PUMATO is not responsible for internal manufacturing defects. Returns are subject to the original store&apos;s policy and incurred service fees.</p>
                         </TermBlock>
 
                         <TermBlock title="8. Cancellation Policy">

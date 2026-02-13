@@ -276,14 +276,19 @@ export default function AdminPage() {
         }
     };
 
+    const [laundryPricing, setLaundryPricing] = useState({ pricePerKg: "", steamIronPrice: "" });
+
     const fetchCampusConfig = async () => {
         try {
             const docRef = doc(db, "general_settings", "laundry");
             const docSnap = await getDoc(docRef);
-            if (docSnap.exists() && docSnap.data().campuses) {
-                setCampusConfig(docSnap.data().campuses);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.campuses) setCampusConfig(data.campuses);
+                setLaundryPricing(data.pricing || { pricePerKg: "79", steamIronPrice: "15" });
             } else {
                 setCampusConfig(DEFAULT_CAMPUS_CONFIG);
+                setLaundryPricing({ pricePerKg: "79", steamIronPrice: "15" });
             }
         } catch (error) {
             console.error("Error fetching campus config:", error);
@@ -293,9 +298,10 @@ export default function AdminPage() {
     const saveCampusConfig = async () => {
         try {
             await setDoc(doc(db, "general_settings", "laundry"), {
-                campuses: campusConfig
+                campuses: campusConfig,
+                pricing: laundryPricing
             });
-            alert("Campus settings saved!");
+            alert("Campus & Pricing settings saved!");
         } catch (error) {
             console.error("Error saving campus config:", error);
             alert("Failed to save settings.");

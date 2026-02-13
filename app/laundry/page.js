@@ -69,6 +69,9 @@ export default function LaundryPage() {
     const [laundryNumber, setLaundryNumber] = useState(LAUNDRY_NUMBER);
     const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
 
+    // Laundry Pricing State
+    const [pricing, setPricing] = useState({ pricePerKg: "79", steamIronPrice: "15" });
+
     useEffect(() => {
         const fetchSettings = async () => {
             try {
@@ -81,10 +84,12 @@ export default function LaundryPage() {
                     }
                 }
 
-                // 2. Campus Config
+                // 2. Campus Config & Pricing
                 const laundrySettingsDoc = await getDoc(doc(db, "general_settings", "laundry"));
-                if (laundrySettingsDoc.exists() && laundrySettingsDoc.data().campuses) {
-                    setCampusConfig(laundrySettingsDoc.data().campuses);
+                if (laundrySettingsDoc.exists()) {
+                    const data = laundrySettingsDoc.data();
+                    if (data.campuses) setCampusConfig(data.campuses);
+                    if (data.pricing) setPricing(data.pricing);
                 }
             } catch (error) {
                 console.error("Error fetching settings:", error);
@@ -104,7 +109,7 @@ export default function LaundryPage() {
 
             try {
                 // 1. Get Day of Week (Safe parsing for YYYY-MM-DD)
-                // Appending T00:00:00 matches Date's ISO parsing which is UTC, 
+                // Appending T00:00:00 matches Date's ISO parsing which is UTC,
                 // but we want to ensure we get the weekday for that specific date string universally.
                 // Using new Date(dateString) is parsed as UTC for hyphens.
                 const date = new Date(formData.date);
@@ -243,10 +248,10 @@ export default function LaundryPage() {
                             <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">Laundry Service</h1>
                             <div className="flex flex-col gap-3 mb-8">
                                 <div className="bg-blue-600/20 text-blue-400 px-4 py-2 rounded-lg text-xl font-bold w-max border border-blue-500/30 shadow-lg shadow-blue-500/10">
-                                    Per KG ₹79
+                                    Per KG ₹{pricing.pricePerKg}
                                 </div>
                                 <div className="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-lg text-lg font-bold w-max border border-purple-500/30 shadow-lg shadow-purple-500/10 flex items-center gap-2">
-                                    <span className="text-xl">💨</span> Steam Iron ₹15
+                                    <span className="text-xl">💨</span> Steam Iron ₹{pricing.steamIronPrice}
                                 </div>
                             </div>
                             <p className="text-gray-400 mb-8 text-lg font-light leading-relaxed">

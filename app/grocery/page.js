@@ -8,9 +8,14 @@ import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2, Clock, Aler
 import TermsFooter from "../components/TermsFooter";
 // Fallback is defined in context
 
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
     const [isLive, setIsLive] = useState(true);
+    const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
 
     useEffect(() => {
         const checkLiveStatus = () => {
@@ -39,7 +44,8 @@ export default function GroceryPage() {
     const [formData, setFormData] = useState({
         name: "",
         phone: "",
-        room: ""
+        campus: "",
+        hostel: ""
     });
 
     // 1. Load from localStorage on mount
@@ -53,7 +59,7 @@ export default function GroceryPage() {
                         ...prev,
                         name: parsed.name || prev.name,
                         phone: parsed.phone || prev.phone,
-                        room: parsed.address || parsed.room || prev.room
+                        hostel: parsed.address || parsed.room || parsed.hostel || prev.hostel
                     }));
                 } catch (e) {
                     console.error("Failed to parse saved user details", e);
@@ -69,19 +75,19 @@ export default function GroceryPage() {
             const toSave = {
                 name: formData.name,
                 phone: formData.phone,
-                address: formData.room,
-                room: formData.room
+                address: formData.hostel,
+                hostel: formData.hostel
             };
             localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
         }
     }, [formData]);
 
     const [items, setItems] = useState([
-        { id: 1, text: "" }
+        { id: 1, name: "", quantity: "" }
     ]);
 
     const handleAddItem = () => {
-        setItems([...items, { id: Date.now(), text: "" }]);
+        setItems([...items, { id: Date.now(), name: "", quantity: "" }]);
     };
 
     const handleRemoveItem = (id) => {
@@ -90,50 +96,36 @@ export default function GroceryPage() {
         }
     };
 
-    const handleItemChange = (id, value) => {
+    const handleItemChange = (id, field, value) => {
         const newItems = items.map(item =>
-            item.id === id ? { ...item, text: value } : item
+            item.id === id ? { ...item, [field]: value } : item
         );
         setItems(newItems);
-
-        // Auto-add new item if the last one is being typed in
-        const lastItem = newItems[newItems.length - 1];
-        if (lastItem.id === id && value.length > 0 && items.length < 20) {
-            // Optional: Auto-add logic if preferred, but user just said "new text box will appear".
-            // Implementation: Let's stick to explicit "+" button or maybe a smarter "Enter" key or check.
-            // The user said: "when i add a one grocery then other new text box will apear"
-            // Let's interpret this as: When I type in the last box, a new one appears?
-            // Or just a simple "Add" button is fine.
-            // Let's implement the "Add" button for better UX control, but make it very prominent.
-        }
     };
 
-    // Auto-add effect: whenever the last item has text, add a new one?
-    // Let's try to match the user's specific request "when i add a one grocery then other new text box will apear".
-    // We can check if the last item is not empty, add a new empty one.
-    const handleInputChange = (id, value) => {
-        const newItems = items.map(item =>
-            item.id === id ? { ...item, text: value } : item
-        );
-
-        // If we are typing in the last item and it's not empty, append a new one
-        if (id === items[items.length - 1].id && value.trim().length > 0) {
-            setItems([...newItems, { id: Date.now(), text: "" }]);
-        } else {
-            setItems(newItems);
-        }
-
-        // If we clear the second to last item and the last item is empty, maybe remove the last one?
-        // Let's keep it simple: Add-on-type logic.
-    };
+    // Fetch Campus Config
+    useEffect(() => {
+        const fetchSettings = async () => {
+            try {
+                const docRef = doc(db, "general_settings", "laundry"); // Reusing laundry settings for campus config
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists() && docSnap.data().campuses) {
+                    setCampusConfig(docSnap.data().campuses);
+                }
+            } catch (error) {
+                console.error("Error fetching campus config:", error);
+            }
+        };
+        fetchSettings();
+    }, []);
 
     const handleSubmit = (e) => {
         e.preventDefault();
 
-        const validItems = items.filter(i => i.text.trim().length > 0);
+        const validItems = items.filter(i => i.name.trim().length > 0);
 
-        if (!formData.name || !formData.phone || !formData.room || validItems.length === 0) {
-            alert("Please fill in all details and add at least one item.");
+        if (!formData.name || !formData.phone || !formData.campus || !formData.hostel || validItems.length === 0) {
+            alert("Please fill in all details including Campus and add at least one item.");
             return;
         }
 
@@ -141,11 +133,18 @@ export default function GroceryPage() {
         message += `*Customer Details:*\n`;
         message += `Name: ${formData.name}\n`;
         message += `Phone: ${formData.phone}\n`;
-        message += `Room: ${formData.room}\n\n`;
+        message += `Campus: ${formData.campus}\n`;
 
-        message += `*grocery List:*\n`;
+        const selectedCampus = campusConfig.find(c => c.id === formData.campus);
+        if (selectedCampus && selectedCampus.deliveryCharge > 0) {
+            message += `Delivery Charge: ₹${selectedCampus.deliveryCharge}\n`;
+        }
+
+        message += `Hostel: ${formData.hostel}\n\n`;
+
+        message += `*Grocery List:*\n`;
         validItems.forEach((item, index) => {
-            message += `${index + 1}. ${item.text}\n`;
+            message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ''}\n`;
         });
 
         const whatsappUrl = `https://wa.me/${groceryNumber}?text=${encodeURIComponent(message)}`;
@@ -253,16 +252,35 @@ export default function GroceryPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Delivery Location</label>
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Campus</label>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {campusConfig.map((campus) => (
+                                            <button
+                                                key={campus.id}
+                                                type="button"
+                                                onClick={() => setFormData({ ...formData, campus: campus.id })}
+                                                className={`py-3 px-2 rounded-xl text-sm font-bold border transition-all flex flex-col items-center justify-center gap-1 ${formData.campus === campus.id ? 'bg-green-600 border-green-500 text-white shadow-lg shadow-green-900/50' : 'bg-black/20 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                                            >
+                                                <span>{campus.name}</span>
+                                                {campus.deliveryCharge > 0 && (
+                                                    <span className="text-[10px] opacity-70 bg-white/10 px-1.5 rounded-full">+₹{campus.deliveryCharge}</span>
+                                                )}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2 md:col-span-2">
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Hostel</label>
                                     <div className="relative group">
                                         <MapPin className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-green-500 transition-colors" size={20} />
                                         <input
                                             type="text"
                                             required
-                                            value={formData.room}
-                                            onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                                            value={formData.hostel}
+                                            onChange={(e) => setFormData({ ...formData, hostel: e.target.value })}
                                             className="w-full pl-12 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-green-500/50 focus:bg-black/60 transition-all text-white placeholder-gray-600 font-medium"
-                                            placeholder="Room No, Hostel Block..."
+                                            placeholder="Hostel Name (e.g. SRK)"
                                         />
                                     </div>
                                 </div>
@@ -280,39 +298,45 @@ export default function GroceryPage() {
 
                             <div className="space-y-3">
                                 {items.map((item, index) => (
-                                    <motion.div
-                                        layout
-                                        initial={{ opacity: 0, y: 10 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        key={item.id}
-                                        className="flex gap-2"
-                                    >
-                                        <div className="bg-black/40 border border-white/10 rounded-xl flex-1 flex items-center px-4 focus-within:border-green-500/50 focus-within:bg-black/60 transition-all">
-                                            <span className="text-gray-500 font-bold mr-3 text-sm">{index + 1}.</span>
+                                    <div key={item.id} className="flex flex-wrap gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                        <div className="bg-black/40 border border-white/10 rounded-lg flex-1 flex items-center px-3 focus-within:border-green-500/50 focus-within:bg-black/60 transition-all">
+                                            <span className="text-gray-500 font-bold mr-2 text-xs">{index + 1}.</span>
                                             <input
                                                 type="text"
-                                                value={item.text}
-                                                onChange={(e) => handleInputChange(item.id, e.target.value)}
-                                                className="bg-transparent border-none outline-none w-full py-3 text-white placeholder-gray-600 font-medium"
-                                                placeholder={`Item name (e.g. Milk, Bread...)`}
+                                                value={item.name}
+                                                onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
+                                                className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-sm"
+                                                placeholder="Item (e.g. Milk)"
+                                            />
+                                        </div>
+                                        <div className="w-16 bg-black/40 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-green-500/50 focus-within:bg-black/60 transition-all">
+                                            <input
+                                                type="text"
+                                                value={item.quantity}
+                                                onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                                                className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-center text-sm"
+                                                placeholder="Qty"
                                             />
                                         </div>
                                         {items.length > 1 && (
                                             <button
                                                 type="button"
                                                 onClick={() => handleRemoveItem(item.id)}
-                                                className="w-12 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center"
-                                                tabIndex="-1"
+                                                className="w-10 h-10 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center flex-shrink-0"
                                             >
-                                                <X size={20} />
+                                                <X size={18} />
                                             </button>
                                         )}
-                                    </motion.div>
+                                    </div>
                                 ))}
                             </div>
-                            <div className="text-xs text-gray-500 ml-2 font-medium">
-                                * Tip: Type in the last box to automatically add a new line.
-                            </div>
+                            <button
+                                type="button"
+                                onClick={handleAddItem}
+                                className="text-xs font-bold text-green-400 hover:text-green-300 transition-colors flex items-center gap-1 ml-1"
+                            >
+                                <Plus size={14} /> Add Another Item
+                            </button>
                         </div>
 
                         {/* Submit Button */}

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, Search, ChevronUp, ChevronDown, Settings, Phone, Power } from "lucide-react";
+import { Plus, Trash, Save, Tag, Utensils, Eye, EyeOff, Upload, LogOut, ArrowLeft, Clock, Calendar, Sparkles, Loader2, X, Search, ChevronUp, ChevronDown, Settings, Phone, Power, Truck, ShoppingCart } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where } from "firebase/firestore";
 import { supabase } from "@/lib/supabase";
@@ -693,10 +693,16 @@ export default function AdminPage() {
                                 <Utensils size={16} /> Restaurants
                             </button>
                             <button
-                                onClick={() => { setActiveSection("coupons"); setActiveTab("list"); }}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "coupons" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                onClick={() => { setActiveSection("delivery"); setActiveTab("list"); }}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "delivery" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                             >
-                                <Tag size={16} /> Promo Codes
+                                <Truck size={16} /> Delivery
+                            </button>
+                            <button
+                                onClick={() => { setActiveSection("grocery"); setActiveTab("list"); }}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "grocery" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <ShoppingCart size={16} /> Grocery
                             </button>
                             <button
                                 onClick={() => { setActiveSection("laundry"); setActiveTab("list"); }}
@@ -705,20 +711,26 @@ export default function AdminPage() {
                                 <Clock size={16} /> Laundry
                             </button>
                             <button
+                                onClick={() => { setActiveSection("settings"); setActiveTab("list"); }}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "settings" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <Settings size={16} /> Global
+                            </button>
+                            <button
+                                onClick={() => { setActiveSection("coupons"); setActiveTab("list"); }}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "coupons" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <Tag size={16} /> Promo Codes
+                            </button>
+                            <button
                                 onClick={() => { setActiveSection("banners"); setActiveTab("list"); }}
                                 className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "banners" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                             >
                                 <Sparkles size={16} /> Banners
                             </button>
-                            <button
-                                onClick={() => { setActiveSection("settings"); setActiveTab("list"); }}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "settings" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
-                            >
-                                <Settings size={16} /> Settings
-                            </button>
                         </div>
                     </div>
-                    {activeSection !== 'laundry' && activeSection !== 'banners' && activeSection !== 'categories' && (
+                    {activeSection !== 'laundry' && activeSection !== 'banners' && activeSection !== 'categories' && activeSection !== 'delivery' && activeSection !== 'grocery' && activeSection !== 'settings' && (
                         <button
                             onClick={() => activeTab === "list" ? (activeSection === "restaurants" ? handleAddNew() : handleAddNewCoupon()) : setActiveTab("list")}
                             className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-orange-900/40 hover:bg-orange-500 hover:scale-105 transition-all flex items-center gap-2"
@@ -1582,11 +1594,12 @@ export default function AdminPage() {
                 )}
 
                 {/* SETTINGS SECTION */}
-                {activeSection === "settings" && (
+                {/* --- DELIVERY SECTION --- */}
+                {activeSection === "delivery" && (
                     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
                         <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
-                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
-                            <h2 className="text-3xl font-black text-white mb-8">Global Site Settings</h2>
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-red-500"></div>
+                            <h2 className="text-3xl font-black text-white mb-8">Delivery Settings</h2>
 
                             <div className="max-w-2xl space-y-8">
                                 <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
@@ -1895,6 +1908,19 @@ export default function AdminPage() {
                                     </div>
                                 </div>
 
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* --- GROCERY SECTION --- */}
+                {activeSection === "grocery" && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
+                            <h2 className="text-3xl font-black text-white mb-8">Grocery Settings</h2>
+
+                            <div className="max-w-2xl space-y-8">
                                 <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
                                     <div className="flex items-center justify-between gap-3 mb-2">
                                         <div className="flex items-center gap-3">
@@ -1964,6 +1990,19 @@ export default function AdminPage() {
                                     </div>
                                 </div>
 
+                            </div>
+                        </div>
+                    </motion.div>
+                )}
+
+                {/* --- GLOBAL SETTINGS SECTION --- */}
+                {activeSection === "settings" && (
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+                        <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
+                            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
+                            <h2 className="text-3xl font-black text-white mb-8">Global Settings</h2>
+
+                            <div className="max-w-2xl space-y-8">
                                 <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
                                     <div className="flex items-center justify-between gap-3 mb-2">
                                         <div className="flex items-center gap-3">
@@ -2135,6 +2174,8 @@ export default function AdminPage() {
             <AnimatePresence>
                 {((activeSection === "restaurants" && activeTab === "form") ||
                     (activeSection === "coupons" && activeTab === "form") ||
+                    (activeSection === "delivery") ||
+                    (activeSection === "grocery") ||
                     (activeSection === "laundry") ||
                     (activeSection === "banners") ||
                     (activeSection === "settings")) && (
@@ -2150,9 +2191,11 @@ export default function AdminPage() {
                                         <Sparkles size={16} className="text-orange-500" />
                                         {activeSection === "restaurants" && (editingId ? "Editing Restaurant" : "Creating Restaurant")}
                                         {activeSection === "coupons" && (editingId ? "Editing Coupon" : "Creating Coupon")}
+                                        {activeSection === "delivery" && "Delivery Settings"}
+                                        {activeSection === "grocery" && "Grocery Settings"}
                                         {activeSection === "laundry" && "Managing Laundry Slots"}
                                         {activeSection === "banners" && "Managing Promo Banners"}
-                                        {activeSection === "settings" && "Global Site Settings"}
+                                        {activeSection === "settings" && "Global Settings"}
                                     </p>
                                 </div>
 
@@ -2201,6 +2244,8 @@ export default function AdminPage() {
                                         onClick={() => {
                                             if (activeSection === "restaurants") handleSubmitRestaurant();
                                             else if (activeSection === "coupons") handleSubmitCoupon();
+                                            else if (activeSection === "delivery") handleSaveSettings();
+                                            else if (activeSection === "grocery") handleSaveSettings();
                                             else if (activeSection === "laundry") handleBulkApply();
                                             else if (activeSection === "banners") handleSaveBanners();
                                             else if (activeSection === "settings") handleSaveSettings();
@@ -2211,6 +2256,8 @@ export default function AdminPage() {
                                         <span>
                                             {activeSection === "restaurants" ? (editingId ? "Update" : "Create") : ""}
                                             {activeSection === "coupons" ? (editingId ? "Update" : "Create") : ""}
+                                            {activeSection === "delivery" ? "Save Settings" : ""}
+                                            {activeSection === "grocery" ? "Save Settings" : ""}
                                             {activeSection === "laundry" ? "Apply" : ""}
                                             {activeSection === "banners" ? "Update" : ""}
                                             {activeSection === "settings" ? "Save Settings" : ""}

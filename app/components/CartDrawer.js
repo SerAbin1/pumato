@@ -44,7 +44,8 @@ export default function CartDrawer() {
         googleSheetUrl,
         minOrderShortfalls,
         campusConfig,
-        campusDeliveryCharge
+        campusDeliveryCharge,
+        hasHeavyItems
     } = useCart();
 
     const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
@@ -418,6 +419,12 @@ export default function CartDrawer() {
                                         {totalItems > 3 && (
                                             <div className="flex justify-between text-xs text-orange-400 bg-orange-500/10 p-2 rounded-lg border border-orange-500/10">
                                                 <span>Large Order Surcharge</span>
+                                                <span>Applied</span>
+                                            </div>
+                                        )}
+                                        {hasHeavyItems && (
+                                            <div className="flex justify-between text-xs text-orange-400 bg-orange-500/10 p-2 rounded-lg border border-orange-500/10">
+                                                <span>Heavy Item Surcharge</span>
                                                 <span>Applied</span>
                                             </div>
                                         )}

@@ -76,6 +76,7 @@ export default function AdminPage() {
     });
     const [itemSearchQuery, setItemSearchQuery] = useState("");
     const [lightItemSearchQuery, setLightItemSearchQuery] = useState("");
+    const [heavyItemSearchQuery, setHeavyItemSearchQuery] = useState("");
     const [couponTargetType, setCouponTargetType] = useState("item"); // item, category
 
     useEffect(() => {
@@ -1782,6 +1783,103 @@ export default function AdminPage() {
                                                         )}
                                                         {restaurants.flatMap(r => (r.menu || []).filter(item =>
                                                             item.name.toLowerCase().includes(lightItemSearchQuery.toLowerCase()) &&
+                                                            !(orderSettings.lightItems || []).includes(item.id)
+                                                        )).length === 0 && (
+                                                                <div className="px-4 py-3 text-gray-500 text-sm text-center">No matching items</div>
+                                                            )}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Heavy Items Section */}
+                                        <div className="pl-13 bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+                                            <div className="flex items-center justify-between">
+                                                <div>
+                                                    <h4 className="font-bold text-white text-sm">Heavy Items</h4>
+                                                    <p className="text-xs text-gray-500">Items that add a higher per-item surcharge instead of the regular extra charge.</p>
+                                                </div>
+                                                <div className="w-32">
+                                                    <FormInput
+                                                        label="Charge (₹)"
+                                                        type="number"
+                                                        value={orderSettings.heavyItemCharge || "30"}
+                                                        onChange={(e) => setOrderSettings({ ...orderSettings, heavyItemCharge: e.target.value })}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Selected Heavy Items */}
+                                            <div className="flex flex-wrap gap-2">
+                                                {(orderSettings.heavyItems || []).map(itemId => {
+                                                    const allItems = restaurants.flatMap(r => (r.menu || []).map(m => ({ ...m, restaurantName: r.name })));
+                                                    const item = allItems.find(i => i.id === itemId);
+                                                    return item ? (
+                                                        <span key={itemId} className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-red-500/20">
+                                                            {item.name} <span className="text-gray-500 text-[10px]">({item.restaurantName})</span>
+                                                            <button
+                                                                onClick={() => setOrderSettings({
+                                                                    ...orderSettings,
+                                                                    heavyItems: (orderSettings.heavyItems || []).filter(id => id !== itemId)
+                                                                })}
+                                                                className="hover:text-red-400"
+                                                            >
+                                                                <X size={12} />
+                                                            </button>
+                                                        </span>
+                                                    ) : null;
+                                                })}
+                                                {(orderSettings.heavyItems || []).length === 0 && (
+                                                    <span className="text-gray-500 text-xs italic">No heavy items selected</span>
+                                                )}
+                                            </div>
+
+                                            {/* Add Heavy Item Search */}
+                                            <div className="relative">
+                                                <div className="flex items-center gap-2 bg-black/40 border border-white/10 rounded-xl px-4 py-3 focus-within:border-red-500/50">
+                                                    <Search size={16} className="text-gray-500" />
+                                                    <input
+                                                        type="text"
+                                                        placeholder="Search items to add..."
+                                                        value={heavyItemSearchQuery}
+                                                        onChange={(e) => setHeavyItemSearchQuery(e.target.value)}
+                                                        className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder-gray-500"
+                                                    />
+                                                    {heavyItemSearchQuery && (
+                                                        <button onClick={() => setHeavyItemSearchQuery("")} className="text-gray-500 hover:text-white">
+                                                            <X size={14} />
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                {heavyItemSearchQuery.trim().length > 0 && (
+                                                    <div className="absolute z-20 left-0 right-0 mt-2 bg-zinc-900 border border-white/10 rounded-xl max-h-48 overflow-y-auto shadow-xl">
+                                                        {restaurants.flatMap(r =>
+                                                            (r.menu || [])
+                                                                .filter(item =>
+                                                                    item.name.toLowerCase().includes(heavyItemSearchQuery.toLowerCase()) &&
+                                                                    !(orderSettings.heavyItems || []).includes(item.id) &&
+                                                                    !(orderSettings.lightItems || []).includes(item.id)
+                                                                )
+                                                                .map(item => (
+                                                                    <button
+                                                                        key={item.id}
+                                                                        onClick={() => {
+                                                                            setOrderSettings({
+                                                                                ...orderSettings,
+                                                                                heavyItems: [...(orderSettings.heavyItems || []), item.id]
+                                                                            });
+                                                                            setHeavyItemSearchQuery("");
+                                                                        }}
+                                                                        className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between items-center"
+                                                                    >
+                                                                        <span>{item.name}</span>
+                                                                        <span className="text-gray-500 text-xs">{r.name}</span>
+                                                                    </button>
+                                                                ))
+                                                        )}
+                                                        {restaurants.flatMap(r => (r.menu || []).filter(item =>
+                                                            item.name.toLowerCase().includes(heavyItemSearchQuery.toLowerCase()) &&
+                                                            !(orderSettings.heavyItems || []).includes(item.id) &&
                                                             !(orderSettings.lightItems || []).includes(item.id)
                                                         )).length === 0 && (
                                                                 <div className="px-4 py-3 text-gray-500 text-sm text-center">No matching items</div>

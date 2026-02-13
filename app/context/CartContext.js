@@ -153,11 +153,18 @@ export function CartProvider({ children }) {
     const lightItemIds = orderSettings?.lightItems || [];
     const lightItemThreshold = parseInt(orderSettings?.lightItemThreshold) || 5;
 
+    // Heavy Items Logic: Each heavy item adds a higher flat charge
+    const heavyItemIds = orderSettings?.heavyItems || [];
+    const heavyItemCharge = parseInt(orderSettings?.heavyItemCharge) || 30;
+
     let regularItemCount = 0;
     let lightItemCount = 0;
+    let heavyItemCount = 0;
 
     cartItems.forEach(item => {
-        if (lightItemIds.includes(item.id)) {
+        if (heavyItemIds.includes(item.id)) {
+            heavyItemCount += item.quantity;
+        } else if (lightItemIds.includes(item.id)) {
             lightItemCount += item.quantity;
         } else {
             regularItemCount += item.quantity;
@@ -172,7 +179,8 @@ export function CartProvider({ children }) {
     const regularItemsOverThreshold = Math.max(0, regularItemCount - threshold);
     const totalSurchargeUnits = regularItemsOverThreshold + effectiveLightItems;
 
-    const largeOrderSurcharge = totalSurchargeUnits * extraChargeAmt;
+    const largeOrderSurcharge = (totalSurchargeUnits * extraChargeAmt) + (heavyItemCount * heavyItemCharge);
+    const hasHeavyItems = heavyItemCount > 0;
 
     // Campus-specific delivery charge from order settings
     const campusConfig = orderSettings?.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
@@ -404,7 +412,8 @@ export function CartProvider({ children }) {
                 whatsappGroups: orderSettings?.whatsappGroups || [],
                 minOrderShortfalls,
                 campusConfig,
-                campusDeliveryCharge
+                campusDeliveryCharge,
+                hasHeavyItems
             }}
         >
             {children}

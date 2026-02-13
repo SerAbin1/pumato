@@ -15,7 +15,10 @@ export default function LaundryForm({
     handleRemoveItem,
     handleItemChange,
     handleSubmit,
-    newItemRef
+    newItemRef,
+    estimatedWeight,
+    setEstimatedWeight,
+    pricing
 }) {
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl">
@@ -169,6 +172,54 @@ export default function LaundryForm({
                     >
                         <Plus size={14} /> Add Another Item
                     </button>
+                </div>
+
+                {/* Price Estimator */}
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
+                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
+                        <span className="text-yellow-400">⚡</span>Quick Price Estimator
+                    </h3>
+
+                    <div className="space-y-6">
+                        <div>
+                            <div className="flex justify-between text-sm font-bold text-gray-400 mb-2">
+                                <span>Estimated Weight</span>
+                                <span className="text-white">{estimatedWeight} Kg</span>
+                            </div>
+                            <input
+                                type="range"
+                                min="1"
+                                max="20"
+                                step="0.5"
+                                value={estimatedWeight}
+                                onChange={(e) => setEstimatedWeight(parseFloat(e.target.value))}
+                                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-green-500"
+                            />
+                            <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-wider">
+                                <span>1 Kg</span>
+                                <span>10 Kg</span>
+                                <span>20 Kg</span>
+                            </div>
+                        </div>
+
+                        <div className="space-y-2 pt-4 border-t border-white/5">
+                            <div className="flex justify-between text-sm text-gray-400">
+                                <span>Laundry ({estimatedWeight}kg x ₹{pricing.pricePerKg})</span>
+                                <span>₹{Math.round(estimatedWeight * Number(pricing.pricePerKg))}</span>
+                            </div>
+                            {items.some(i => i.steamIron) && (
+                                <div className="flex justify-between text-sm text-gray-400">
+                                    <span>Steam Ironing ({items.reduce((acc, i) => i.steamIron ? acc + (Number(i.quantity) || 1) : acc, 0)} items)</span>
+                                    <span>₹{items.reduce((acc, i) => i.steamIron ? acc + (Number(i.quantity) || 1) : acc, 0) * Number(pricing.steamIronPrice)}</span>
+                                </div>
+                            )}
+                            <div className="flex justify-between text-xl font-black text-white pt-2 border-t border-white/10">
+                                <span>Estimated Total</span>
+                                <span className="text-green-400">₹{Math.round(estimatedWeight * Number(pricing.pricePerKg)) + (items.reduce((acc, i) => i.steamIron ? acc + (Number(i.quantity) || 1) : acc, 0) * Number(pricing.steamIronPrice))}</span>
+                            </div>
+                            <p className="text-[10px] text-gray-500 italic">*Delivery charges (if applicable) are extra.</p>
+                        </div>
+                    </div>
                 </div>
 
                 <motion.button

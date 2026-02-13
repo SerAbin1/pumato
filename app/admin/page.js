@@ -6,6 +6,7 @@ import Navbar from "../components/Navbar";
 import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Plus } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
+import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";

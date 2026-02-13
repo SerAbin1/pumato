@@ -65,8 +65,9 @@ export default function LaundryPage() {
     }, [formData.name, formData.phone, formData.location]);
 
     const [items, setItems] = useState([
-        { id: 1, name: "", quantity: "", steamIron: false }
+        { id: Date.now(), name: "", quantity: "", steamIron: false }
     ]);
+    const [estimatedWeight, setEstimatedWeight] = useState(5);
 
     // Load items from localStorage on mount
     useEffect(() => {
@@ -295,6 +296,9 @@ export default function LaundryPage() {
                             handleItemChange={handleItemChange}
                             handleSubmit={handleSubmit}
                             newItemRef={newItemRef}
+                            estimatedWeight={estimatedWeight}
+                            setEstimatedWeight={setEstimatedWeight}
+                            pricing={pricing}
                         />
                     </motion.div>
                 </div>

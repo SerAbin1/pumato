@@ -6,6 +6,7 @@ import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
 import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2, Clock, AlertCircle } from "lucide-react";
 import TermsFooter from "../components/TermsFooter";
+import toast from "react-hot-toast";
 // Fallback is defined in context
 
 import { db } from "@/lib/firebase";
@@ -128,12 +129,12 @@ export default function GroceryPage() {
         const validItems = items.filter(i => i.name.trim().length > 0);
 
         if (!trimmedName || !formData.phone || !formData.campus || !trimmedHostel || validItems.length === 0) {
-            alert("Please fill in all details including Campus and add at least one item.");
+            toast.error("Please fill in all details including Campus and add at least one item.");
             return;
         }
 
         if (formData.phone.length !== 10) {
-            alert("Please enter a valid 10-digit phone number.");
+            toast.error("Please enter a valid 10-digit phone number.");
             return;
         }
 

@@ -8,11 +8,13 @@ import { motion, AnimatePresence } from "framer-motion";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
 export default function LaundryPage() {
     const [formData, setFormData] = useState({
         name: "",
         phone: "",
+        campus: "",
         location: "",
         date: "",
         time: "",
@@ -65,17 +67,24 @@ export default function LaundryPage() {
     const [availableSlots, setAvailableSlots] = useState([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [laundryNumber, setLaundryNumber] = useState(LAUNDRY_NUMBER);
+    const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
 
-    // Fetch laundry WhatsApp number from site settings
     useEffect(() => {
         const fetchSettings = async () => {
             try {
+                // 1. WhatsApp Number
                 const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
                 if (settingsDoc.exists()) {
                     const data = settingsDoc.data();
                     if (data.laundryWhatsappNumber) {
                         setLaundryNumber(data.laundryWhatsappNumber);
                     }
+                }
+
+                // 2. Campus Config
+                const laundrySettingsDoc = await getDoc(doc(db, "general_settings", "laundry"));
+                if (laundrySettingsDoc.exists() && laundrySettingsDoc.data().campuses) {
+                    setCampusConfig(laundrySettingsDoc.data().campuses);
                 }
             } catch (error) {
                 console.error("Error fetching settings:", error);
@@ -94,20 +103,32 @@ export default function LaundryPage() {
             setFormData(prev => ({ ...prev, time: "" })); // Reset time on date change
 
             try {
-                // 1. Try Specific Date
-                const dateRef = doc(db, "laundry_slots", formData.date);
-                const dateSnap = await getDoc(dateRef);
+                // 1. Get Day of Week (Safe parsing for YYYY-MM-DD)
+                // Appending T00:00:00 matches Date's ISO parsing which is UTC, 
+                // but we want to ensure we get the weekday for that specific date string universally.
+                // Using new Date(dateString) is parsed as UTC for hyphens.
+                const date = new Date(formData.date);
+                const dayName = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
 
-                if (dateSnap.exists()) {
-                    setAvailableSlots(dateSnap.data().slots || []);
+                // 2. Try Specific Day Override
+                const dayRef = doc(db, "laundry_slots", dayName);
+                const daySnap = await getDoc(dayRef);
+
+                if (daySnap.exists() && daySnap.data().slots && daySnap.data().slots.length > 0) {
+                    // If specific day has slots (even empty array is a valid "no slots" override, but here we check length to infer "set")
+                    // Actually, if document exists, it is an override. If slots are empty, it means "Closed" or "No slots".
+                    setAvailableSlots(daySnap.data().slots || []);
+                } else if (daySnap.exists()) {
+                    // Document exists but slots empty/undefined -> Treat as "No slots available" (Closed)
+                    setAvailableSlots([]);
                 } else {
-                    // 2. Try Global Default
+                    // 3. Fallback to Global Default
                     const defaultRef = doc(db, "laundry_slots", "default");
                     const defaultSnap = await getDoc(defaultRef);
 
                     if (defaultSnap.exists()) {
                         setAvailableSlots(defaultSnap.data().slots || []);
-                    } 
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching slots:", error);
@@ -122,7 +143,7 @@ export default function LaundryPage() {
     const today = new Date().toISOString().split("T")[0];
 
     const handleAddItem = () => {
-        setItems([...items, { id: Date.now(), name: "", quantity: "" }]);
+        setItems([...items, { id: Date.now(), name: "", quantity: "", steamIron: false }]);
     };
 
     const handleRemoveItem = (id) => {
@@ -151,8 +172,8 @@ export default function LaundryPage() {
         // Filter out empty items
         const validItems = items.filter(i => i.name.trim().length > 0);
 
-        if (!formData.name || !formData.phone || !formData.location || !formData.date || !formData.time) {
-            alert("Please fill in all details including Pickup Date & Time.");
+        if (!formData.name || !formData.phone || !formData.campus || !formData.location || !formData.date || !formData.time) {
+            alert("Please fill in all details including Campus, Hostel & Pickup Date/Time.");
             return;
         }
 
@@ -160,7 +181,14 @@ export default function LaundryPage() {
         message += `*Customer Details:*\n`;
         message += `Name: ${formData.name}\n`;
         message += `Phone: ${formData.phone}\n`;
-        message += `Location: ${formData.location}\n`;
+        message += `Campus: ${formData.campus}\n`;
+
+        const selectedCampus = campusConfig.find(c => c.id === formData.campus);
+        if (selectedCampus && selectedCampus.deliveryCharge > 0) {
+            message += `Delivery Charge: ₹${selectedCampus.deliveryCharge}\n`;
+        }
+
+        message += `Hostel: ${formData.location}\n`;
         if (formData.instructions) {
             message += `Instructions: ${formData.instructions}\n`;
         }
@@ -173,7 +201,7 @@ export default function LaundryPage() {
         if (validItems.length > 0) {
             message += `*Clothing Items:*\n`;
             validItems.forEach((item, index) => {
-                message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ''}\n`;
+                message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ''} ${item.steamIron ? '(Steam Iron)' : ''}\n`;
             });
         }
 
@@ -205,7 +233,10 @@ export default function LaundryPage() {
                         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-8 border border-white/10 relative overflow-hidden group">
                             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
 
-                            <h1 className="text-4xl md:text-5xl font-black text-white mb-4 tracking-tight">Laundry Service</h1>
+                            <h1 className="text-4xl md:text-5xl font-black text-white mb-2 tracking-tight">Laundry Service</h1>
+                            <div className="bg-blue-600/20 text-blue-400 px-4 py-2 rounded-lg text-xl font-bold w-max mb-6 border border-blue-500/30 shadow-lg shadow-blue-500/10">
+                                Per KG ₹79
+                            </div>
                             <p className="text-gray-400 mb-8 text-lg font-light leading-relaxed">
                                 Professional care for your clothes. Schedule a pickup from your hostel and get fresh, ironed clothes within 24 hours.
                             </p>
@@ -260,7 +291,7 @@ export default function LaundryPage() {
                                         type="tel"
                                         name="phone"
                                         required
-                                        placeholder="917..."
+                                        placeholder="Phone number"
                                         className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium text-white placeholder-gray-600"
                                         value={formData.phone}
                                         onChange={(e) => {
@@ -271,14 +302,33 @@ export default function LaundryPage() {
                                 </div>
                             </div>
                             <div>
-                                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Pickup Location</label>
+                                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Campus</label>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {campusConfig.map((campus) => (
+                                        <button
+                                            key={campus.id}
+                                            type="button"
+                                            onClick={() => setFormData({ ...formData, campus: campus.id })}
+                                            className={`py-3 px-2 rounded-xl text-sm font-bold border transition-all flex flex-col items-center justify-center gap-1 ${formData.campus === campus.id ? 'bg-blue-600 border-blue-500 text-white shadow-lg shadow-blue-900/50' : 'bg-black/20 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                                        >
+                                            <span>{campus.name}</span>
+                                            {campus.deliveryCharge > 0 && (
+                                                <span className="text-[10px] opacity-70 bg-white/10 px-1.5 rounded-full">+₹{campus.deliveryCharge}</span>
+                                            )}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">Hostel</label>
                                 <div className="relative group">
                                     <MapPin className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 group-focus-within:text-blue-400 transition-colors" size={20} />
                                     <input
                                         type="text"
                                         name="location"
                                         required
-                                        placeholder="Hostel Block A, Room 101"
+                                        placeholder="Hostel Name (e.g. SRK)"
                                         className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 focus:ring-1 focus:ring-blue-500/20 transition-all font-medium text-white placeholder-gray-600"
                                         value={formData.location}
                                         onChange={handleChange}
@@ -347,34 +397,43 @@ export default function LaundryPage() {
 
                             {/* Dynamic Laundry List */}
                             <div className="space-y-4">
-                                <label className="block text-sm font-bold text-gray-400 ml-1">Clothing Items (Optional)</label>
+                                <label className="block text-sm font-bold text-gray-400 ml-1">Clothing Items</label>
                                 <div className="space-y-3">
                                     {items.map((item, index) => (
-                                        <div key={item.id} className="flex gap-2">
-                                            <div className="bg-black/20 border border-white/10 rounded-xl flex-1 flex items-center px-4 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
-                                                <span className="text-gray-500 font-bold mr-3 text-xs">{index + 1}.</span>
+                                        <div key={item.id} className="flex flex-wrap gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                            <div className="bg-black/20 border border-white/10 rounded-lg flex-1 flex items-center px-3 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
+                                                <span className="text-gray-500 font-bold mr-2 text-xs">{index + 1}.</span>
                                                 <input
                                                     type="text"
                                                     value={item.name}
                                                     onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
-                                                    className="bg-transparent border-none outline-none w-full py-3 text-white placeholder-gray-600 font-medium text-sm"
+                                                    className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-sm"
                                                     placeholder="Item (e.g. Shirt)"
                                                 />
                                             </div>
-                                            <div className="w-20 bg-black/20 border border-white/10 rounded-xl flex items-center px-2 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
+                                            <div className="w-16 bg-black/20 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
                                                 <input
                                                     type="number"
                                                     value={item.quantity}
                                                     onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
-                                                    className="bg-transparent border-none outline-none w-full py-3 text-white placeholder-gray-600 font-medium text-center text-sm"
+                                                    className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-center text-sm"
                                                     placeholder="Qty"
                                                 />
                                             </div>
+                                            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none hover:text-white transition-colors border border-white/10 px-3 py-2.5 rounded-lg bg-black/20 hover:bg-black/30">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={item.steamIron}
+                                                    onChange={(e) => handleItemChange(item.id, 'steamIron', e.target.checked)}
+                                                    className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700/50 accent-blue-500"
+                                                />
+                                                Steam
+                                            </label>
                                             {items.length > 1 && (
                                                 <button
                                                     type="button"
                                                     onClick={() => handleRemoveItem(item.id)}
-                                                    className="w-10 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center flex-shrink-0"
+                                                    className="w-10 h-10 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center flex-shrink-0"
                                                 >
                                                     <X size={18} />
                                                 </button>

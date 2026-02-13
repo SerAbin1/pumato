@@ -23,6 +23,8 @@ const format12h = (time24) => {
     return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
 };
 
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+
 export default function AdminPage() {
     const router = useRouter();
     const { user, isAdmin, loading: authLoading, logout } = useAdminAuth();
@@ -41,15 +43,11 @@ export default function AdminPage() {
     const [menuSearchQuery, setMenuSearchQuery] = useState("");
 
     // Laundry Slots State
-    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [selectedDay, setSelectedDay] = useState("default");
     const [laundrySlots, setLaundrySlots] = useState([]);
-    const [newSlot, setNewSlot] = useState("");
-    const [isDefaultMode, setIsDefaultMode] = useState(false);
-
-    // Bulk State
-    const [bulkStartDate, setBulkStartDate] = useState("");
-    const [bulkEndDate, setBulkEndDate] = useState("");
-    const [isBulkApplying, setIsBulkApplying] = useState(false);
+    const [slotStart, setSlotStart] = useState("");
+    const [slotEnd, setSlotEnd] = useState("");
+    const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
 
     // Site Settings
     const [orderSettings, setOrderSettings] = useState({
@@ -96,13 +94,10 @@ export default function AdminPage() {
     // Fetch Laundry Slots when date changes or section becomes active
     useEffect(() => {
         if (activeSection === 'laundry') {
-            if (isDefaultMode) {
-                fetchLaundrySlots("default");
-            } else {
-                fetchLaundrySlots(selectedDate);
-            }
+            fetchLaundrySlots(selectedDay);
+            fetchCampusConfig();
         }
-    }, [activeSection, selectedDate, isDefaultMode]);
+    }, [activeSection, selectedDay]);
 
     const fetchData = async () => {
         setLoading(true);
@@ -280,14 +275,68 @@ export default function AdminPage() {
         }
     };
 
+    const fetchCampusConfig = async () => {
+        try {
+            const docRef = doc(db, "general_settings", "laundry");
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists() && docSnap.data().campuses) {
+                setCampusConfig(docSnap.data().campuses);
+            } else {
+                setCampusConfig(DEFAULT_CAMPUS_CONFIG);
+            }
+        } catch (error) {
+            console.error("Error fetching campus config:", error);
+        }
+    };
+
+    const saveCampusConfig = async () => {
+        try {
+            await setDoc(doc(db, "general_settings", "laundry"), {
+                campuses: campusConfig
+            });
+            alert("Campus settings saved!");
+        } catch (error) {
+            console.error("Error saving campus config:", error);
+            alert("Failed to save settings.");
+        }
+    };
+
     // --- LAUNDRY HANDLERS ---
     const handleAddSlot = async () => {
-        if (!newSlot.trim()) return;
-        const updatedSlots = [...laundrySlots, newSlot.trim()];
-        setLaundrySlots(updatedSlots);
-        setNewSlot("");
+        if (!slotStart || !slotEnd) {
+            alert("Please select both start and end times.");
+            return;
+        }
 
-        const targetDoc = isDefaultMode ? "default" : selectedDate;
+        const formattedSlot = `${format12h(slotStart)} - ${format12h(slotEnd)}`;
+
+        // Prevent duplicates
+        if (laundrySlots.includes(formattedSlot)) {
+            alert("This slot already exists.");
+            return;
+        }
+
+        const updatedSlots = [...laundrySlots, formattedSlot].sort((a, b) => {
+            // Sort by start time comparison logic (simplified)
+            // Extract HH:MM AM/PM part and compare
+            const getMinutes = (s) => {
+                const parts = s.split(' - ')[0].match(/(\d+):(\d+) (AM|PM)/);
+                if (!parts) return 0;
+                let h = parseInt(parts[1]);
+                const m = parseInt(parts[2]);
+                const amp = parts[3];
+                if (amp === 'PM' && h !== 12) h += 12;
+                if (amp === 'AM' && h === 12) h = 0;
+                return h * 60 + m;
+            };
+            return getMinutes(a) - getMinutes(b);
+        });
+
+        setLaundrySlots(updatedSlots);
+        setSlotStart("");
+        setSlotEnd("");
+
+        const targetDoc = selectedDay;
 
         try {
             await setDoc(doc(db, "laundry_slots", targetDoc), {
@@ -303,7 +352,7 @@ export default function AdminPage() {
         const updatedSlots = laundrySlots.filter((_, i) => i !== index);
         setLaundrySlots(updatedSlots);
 
-        const targetDoc = isDefaultMode ? "default" : selectedDate;
+        const targetDoc = selectedDay;
 
         try {
             await setDoc(doc(db, "laundry_slots", targetDoc), {
@@ -315,49 +364,7 @@ export default function AdminPage() {
     };
 
 
-    const handleBulkApply = async () => {
-        if (!bulkStartDate || !bulkEndDate) {
-            alert("Please select both Start and End dates.");
-            return;
-        }
-        if (new Date(bulkStartDate) > new Date(bulkEndDate)) {
-            alert("Start date cannot be after End date.");
-            return;
-        }
-        if (!confirm(`This will OVERWRITE slots for all dates from ${bulkStartDate} to ${bulkEndDate} with the currently visible slots. Continue?`)) {
-            return;
-        }
 
-        setIsBulkApplying(true);
-        try {
-            const start = new Date(bulkStartDate);
-            const end = new Date(bulkEndDate);
-            const batchPromises = [];
-
-            // Prevent infinite loop if dates are crazy, cap at 365 days
-            const MAX_DAYS = 365;
-            let dayCount = 0;
-
-            for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
-                if (dayCount++ > MAX_DAYS) break;
-                const dateStr = d.toISOString().split('T')[0];
-                batchPromises.push(
-                    setDoc(doc(db, "laundry_slots", dateStr), {
-                        slots: laundrySlots
-                    })
-                );
-            }
-
-            await Promise.all(batchPromises);
-            alert("Bulk update successful!");
-            setBulkStartDate("");
-            setBulkEndDate("");
-        } catch (error) {
-            console.error("Bulk apply error:", error);
-            alert("Failed to apply bulk updates.");
-        }
-        setIsBulkApplying(false);
-    };
 
     // --- BANNER HANDLERS ---
     const handleSaveBanners = async () => {
@@ -941,20 +948,20 @@ export default function AdminPage() {
                                         {(() => {
                                             const menu = formData.menu || [];
                                             if (!menuSearchQuery) return `Showing ${menu.length} of ${menu.length} items`;
-                                            
+
                                             const fuse = new Fuse(menu, {
                                                 keys: ['name'],
                                                 threshold: 0.3,
                                                 includeScore: true
                                             });
                                             const results = fuse.search(menuSearchQuery);
-                                            
+
                                             // Also include exact substring matches
                                             const query = menuSearchQuery.toLowerCase();
-                                            const substringMatches = menu.filter(item => 
+                                            const substringMatches = menu.filter(item =>
                                                 item.name.toLowerCase().includes(query)
                                             );
-                                            
+
                                             // Combine and deduplicate
                                             const allMatches = [...results.map(r => r.item)];
                                             substringMatches.forEach(item => {
@@ -962,7 +969,7 @@ export default function AdminPage() {
                                                     allMatches.push(item);
                                                 }
                                             });
-                                            
+
                                             return `Showing ${allMatches.length} of ${menu.length} items`;
                                         })()}
                                     </div>
@@ -972,7 +979,7 @@ export default function AdminPage() {
                                     {(() => {
                                         const menu = formData.menu || [];
                                         if (!menuSearchQuery) return menu;
-                                        
+
                                         const query = menuSearchQuery.toLowerCase().trim();
                                         const fuse = new Fuse(menu, {
                                             keys: ['name'],
@@ -980,7 +987,7 @@ export default function AdminPage() {
                                             includeScore: true
                                         });
                                         const results = fuse.search(menuSearchQuery);
-                                        
+
                                         // Boost scores for exact matches
                                         const scoredResults = results.map(result => {
                                             const itemName = result.item.name.toLowerCase();
@@ -990,18 +997,18 @@ export default function AdminPage() {
                                             else if (itemName.includes(query)) adjustedScore -= 0.2;
                                             return { item: result.item, score: adjustedScore };
                                         });
-                                        
+
                                         // Also include exact substring matches that Fuse might have missed
                                         const substringMatches = menu.filter(item => {
                                             const itemName = item.name.toLowerCase();
                                             return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
                                         });
-                                        
+
                                         const allMatches = [
                                             ...scoredResults,
                                             ...substringMatches.map(item => ({ item, score: 0 }))
                                         ];
-                                        
+
                                         allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
                                         return allMatches.map(m => m.item);
                                     })().map((item, idx) => {
@@ -1099,8 +1106,8 @@ export default function AdminPage() {
                     activeTab === "list" ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {coupons.map(c => (
-                                <div 
-                                    key={c.id} 
+                                <div
+                                    key={c.id}
                                     onClick={() => handleEditCoupon(c)}
                                     className="bg-white/5 p-8 rounded-[2rem] border border-white/10 hover:bg-white/10 transition-all relative group hover:shadow-xl cursor-pointer"
                                 >
@@ -1215,7 +1222,7 @@ export default function AdminPage() {
                                                             {(() => {
                                                                 const menu = (restaurants.find(r => r.id === couponForm.restaurantId)?.menu || []);
                                                                 if (!itemSearchQuery) return menu;
-                                                                
+
                                                                 const query = itemSearchQuery.toLowerCase().trim();
                                                                 const fuse = new Fuse(menu, {
                                                                     keys: ['name'],
@@ -1223,7 +1230,7 @@ export default function AdminPage() {
                                                                     includeScore: true
                                                                 });
                                                                 const results = fuse.search(itemSearchQuery);
-                                                                
+
                                                                 // Boost scores for exact matches
                                                                 const scoredResults = results.map(result => {
                                                                     const itemName = result.item.name.toLowerCase();
@@ -1233,30 +1240,30 @@ export default function AdminPage() {
                                                                     else if (itemName.includes(query)) adjustedScore -= 0.2;
                                                                     return { item: result.item, score: adjustedScore };
                                                                 });
-                                                                
+
                                                                 // Include substring matches
                                                                 const substringMatches = menu.filter(item => {
                                                                     const itemName = item.name.toLowerCase();
                                                                     return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
                                                                 });
-                                                                
+
                                                                 const allMatches = [
                                                                     ...scoredResults,
                                                                     ...substringMatches.map(item => ({ item, score: 0 }))
                                                                 ];
-                                                                
+
                                                                 allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
                                                                 return allMatches.map(m => m.item);
                                                             })().map(item => (
-                                                                    <button
-                                                                        key={item.id}
-                                                                        onClick={() => setCouponForm({ ...couponForm, itemId: item.id })}
-                                                                        className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${couponForm.itemId === item.id ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
-                                                                    >
-                                                                        <span className="font-bold text-sm tracking-tight">{item.name}</span>
-                                                                        <span className="text-xs font-medium opacity-60">₹{item.price}</span>
-                                                                    </button>
-                                                                ))}
+                                                                <button
+                                                                    key={item.id}
+                                                                    onClick={() => setCouponForm({ ...couponForm, itemId: item.id })}
+                                                                    className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${couponForm.itemId === item.id ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                                                                >
+                                                                    <span className="font-bold text-sm tracking-tight">{item.name}</span>
+                                                                    <span className="text-xs font-medium opacity-60">₹{item.price}</span>
+                                                                </button>
+                                                            ))}
                                                         </div>
                                                     </div>
                                                 ) : (
@@ -1340,18 +1347,31 @@ export default function AdminPage() {
                         </h2>
 
                         <div className="grid md:grid-cols-2 gap-12">
-                            {/* Date Selector */}
+                            {/* Day Selector */}
                             <div className="space-y-6">
-                                <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest ml-1">Select Date</label>
-                                <div className="bg-black/30 p-6 rounded-2xl border border-white/10">
-                                    <input
-                                        type="date"
-                                        value={selectedDate}
-                                        onChange={(e) => setSelectedDate(e.target.value)}
-                                        className="w-full bg-transparent text-2xl font-bold text-white outline-none border-b border-white/20 pb-2 focus:border-cyan-500 transition-colors [color-scheme:dark]"
-                                    />
-                                    <p className="text-gray-500 text-sm mt-4">Manage slots for this specific date.</p>
+                                <div className="flex flex-wrap gap-2 mb-6">
+                                    {['default', 'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'].map(day => (
+                                        <button
+                                            key={day}
+                                            onClick={() => setSelectedDay(day)}
+                                            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all border border-white/5 ${selectedDay === day ? 'bg-cyan-500 text-white shadow-lg' : 'bg-black/20 text-gray-500 hover:text-white hover:bg-white/10'}`}
+                                        >
+                                            {day === 'default' ? 'Default' : day.slice(0, 3)}
+                                        </button>
+                                    ))}
                                 </div>
+
+                                <div className="bg-cyan-500/10 p-6 rounded-2xl border border-cyan-500/20 mb-6">
+                                    <h4 className="text-xl font-bold text-cyan-400 mb-2">
+                                        Managing: <span className="text-white underline decoration-cyan-500/50">{selectedDay === 'default' ? 'Default Schedule' : selectedDay}</span>
+                                    </h4>
+                                    <p className="text-cyan-200/70 text-sm">
+                                        {selectedDay === 'default'
+                                            ? "These slots apply to any day that doesn't have specific slots set."
+                                            : `Slots added here will OVERRIDE the default schedule for all ${selectedDay}s.`}
+                                    </p>
+                                </div>
+
 
                                 <div className="bg-blue-500/10 border border-blue-500/20 p-6 rounded-2xl">
                                     <h4 className="font-bold text-blue-400 mb-2 flex items-center gap-2"><Clock size={16} /> How it works</h4>
@@ -1365,18 +1385,31 @@ export default function AdminPage() {
                             <div className="space-y-6">
                                 <label className="block text-sm font-bold text-gray-400 uppercase tracking-widest ml-1">Available Slots</label>
 
-                                <div className="flex gap-2">
-                                    <input
-                                        type="text"
-                                        value={newSlot}
-                                        onChange={(e) => setNewSlot(e.target.value)}
-                                        placeholder="e.g. 10:00 AM - 12:00 PM"
-                                        className="flex-1 p-4 bg-black/20 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500/50"
-                                        onKeyDown={(e) => e.key === 'Enter' && handleAddSlot()}
-                                    />
+                                <div className="flex gap-2 items-end">
+                                    <div className="flex-1 grid grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] uppercase font-bold text-gray-500 ml-1">Start</label>
+                                            <input
+                                                type="time"
+                                                value={slotStart}
+                                                onChange={(e) => setSlotStart(e.target.value)}
+                                                className="w-full p-3 bg-black/20 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500/50 font-bold [color-scheme:dark]"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] uppercase font-bold text-gray-500 ml-1">End</label>
+                                            <input
+                                                type="time"
+                                                value={slotEnd}
+                                                onChange={(e) => setSlotEnd(e.target.value)}
+                                                className="w-full p-3 bg-black/20 border border-white/10 rounded-xl text-white outline-none focus:border-cyan-500/50 font-bold [color-scheme:dark]"
+                                            />
+                                        </div>
+                                    </div>
                                     <button
                                         onClick={handleAddSlot}
-                                        className="bg-cyan-600 hover:bg-cyan-500 text-white p-4 rounded-xl transition-colors font-bold shadow-lg shadow-cyan-900/40"
+                                        className="bg-cyan-600 hover:bg-cyan-500 text-white p-3.5 rounded-xl transition-colors font-bold shadow-lg shadow-cyan-900/40 h-[50px] w-[50px] flex items-center justify-center"
+                                        title="Add Slot"
                                     >
                                         <Plus size={24} />
                                     </button>
@@ -1401,46 +1434,48 @@ export default function AdminPage() {
                                     ))}
                                 </div>
 
-                                {/* Bulk Actions */}
-                                {!isDefaultMode && (
-                                    <div className="mt-8 pt-8 border-t border-white/10">
-                                        <h4 className="text-sm font-bold text-gray-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                                            <Calendar size={14} /> Bulk Apply to Range
-                                        </h4>
-                                        <div className="bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
-                                            <p className="text-xs text-gray-500 mb-2">
-                                                Copy the slots visible above to a range of dates.
-                                            </p>
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-gray-500">From</label>
-                                                    <input
-                                                        type="date"
-                                                        value={bulkStartDate}
-                                                        onChange={(e) => setBulkStartDate(e.target.value)}
-                                                        className="w-full bg-black/20 p-3 rounded-xl text-white border border-white/10 focus:border-cyan-500 text-sm [color-scheme:dark]"
-                                                    />
-                                                </div>
-                                                <div className="space-y-2">
-                                                    <label className="text-xs font-bold text-gray-500">To</label>
-                                                    <input
-                                                        type="date"
-                                                        value={bulkEndDate}
-                                                        onChange={(e) => setBulkEndDate(e.target.value)}
-                                                        className="w-full bg-black/20 p-3 rounded-xl text-white border border-white/10 focus:border-cyan-500 text-sm [color-scheme:dark]"
-                                                    />
-                                                </div>
+
+                            </div>
+                        </div>
+
+                        {/* Campus Delivery Charges */}
+                        <div className="mt-12 pt-8 border-t border-white/10">
+                            <div className="flex justify-between items-center mb-6">
+                                <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                    <Tag size={20} className="text-cyan-500" /> Campus Delivery Charges
+                                </h3>
+                                <button
+                                    onClick={saveCampusConfig}
+                                    className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg flex items-center gap-2"
+                                >
+                                    <Save size={18} /> Save Settings
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                {campusConfig.map((campus, idx) => (
+                                    <div key={campus.id} className="bg-white/5 p-6 rounded-2xl border border-white/5">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <h4 className="text-lg font-bold text-white">{campus.name}</h4>
+                                            <div className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg text-xs font-bold">
+                                                {campus.id}
                                             </div>
-                                            <button
-                                                onClick={handleBulkApply}
-                                                disabled={isBulkApplying}
-                                                className="w-full bg-white/10 hover:bg-white/20 text-white font-bold py-3 rounded-xl transition-colors border border-white/10 flex justify-center items-center gap-2 hover:shadow-lg opacity-0 pointer-events-none"
-                                            >
-                                                {isBulkApplying ? "Applying..." : "Apply Slots to Range"}
-                                            </button>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <label className="text-xs font-bold text-gray-500 uppercase">Delivery Charge (₹)</label>
+                                            <input
+                                                type="number"
+                                                value={campus.deliveryCharge}
+                                                onChange={(e) => {
+                                                    const newConfig = [...campusConfig];
+                                                    newConfig[idx].deliveryCharge = Number(e.target.value);
+                                                    setCampusConfig(newConfig);
+                                                }}
+                                                className="w-full bg-black/30 p-3 rounded-xl text-white font-bold border border-white/10 focus:border-cyan-500 outline-none"
+                                            />
                                         </div>
                                     </div>
-                                )}
+                                ))}
                             </div>
                         </div>
                     </div>

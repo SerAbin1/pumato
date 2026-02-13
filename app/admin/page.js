@@ -1099,25 +1099,13 @@ export default function AdminPage() {
                     activeTab === "list" ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                             {coupons.map(c => (
-                                <div key={c.id} className="bg-white/5 p-8 rounded-[2rem] border border-white/10 hover:bg-white/10 transition-all relative group hover:shadow-xl">
+                                <div 
+                                    key={c.id} 
+                                    onClick={() => handleEditCoupon(c)}
+                                    className="bg-white/5 p-8 rounded-[2rem] border border-white/10 hover:bg-white/10 transition-all relative group hover:shadow-xl cursor-pointer"
+                                >
                                     <div className="flex justify-between items-start mb-6">
                                         <div className="bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border border-orange-500/30">{c.type}</div>
-                                        <div className="flex gap-3">
-                                            <button
-                                                onClick={(e) => handleToggleActive(e, c)}
-                                                className={`p-1.5 rounded-lg transition-colors border ${c.isActive !== false ? 'bg-green-500/10 text-green-500 border-green-500/20 hover:bg-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20 hover:bg-red-500/20'}`}
-                                                title={c.isActive !== false ? "Active (Click to Deactivate)" : "Inactive (Click to Activate)"}
-                                            >
-                                                <Power size={18} />
-                                            </button>
-                                            <span className="text-gray-500 p-1" title={c.isVisible ? "Visible in Cart" : "Hidden in Cart"}>
-                                                {c.isVisible !== false ? <Eye size={18} /> : <EyeOff size={18} />}
-                                            </span>
-                                            <div className="flex gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <button onClick={() => handleEditCoupon(c)} className="text-gray-400 hover:text-blue-400"><Save size={18} /></button>
-                                                <button onClick={() => handleDeleteCoupon(c.id)} className="text-gray-400 hover:text-red-500"><Trash size={18} /></button>
-                                            </div>
-                                        </div>
                                     </div>
                                     <h3 className="text-3xl font-black text-white mb-2 tracking-tight">{c.code}</h3>
                                     <p className="text-gray-400 text-sm mb-6 font-medium">{c.description}</p>

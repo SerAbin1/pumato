@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import toast from "react-hot-toast";
 import Link from "next/link";
 import Navbar from "../components/Navbar";
 import { ArrowLeft, Clock, Shirt, MapPin, Phone, User, Send, Plus, X } from "lucide-react";
@@ -11,6 +12,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
 export default function LaundryPage() {
+    const newItemRef = useRef(null);
     const [formData, setFormData] = useState({
         name: "",
         phone: "",
@@ -170,6 +172,7 @@ export default function LaundryPage() {
 
     const handleAddItem = () => {
         setItems([...items, { id: Date.now(), name: "", quantity: "", steamIron: false }]);
+        setTimeout(() => newItemRef.current?.focus(), 0);
     };
 
     const handleRemoveItem = (id) => {
@@ -201,12 +204,12 @@ export default function LaundryPage() {
         const validItems = items.filter(i => i.name.trim().length > 0);
 
         if (!trimmedName || !formData.phone || !formData.campus || !trimmedLocation || !formData.date || !formData.time) {
-            alert("Please fill in all details including Campus, Hostel & Pickup Date/Time.");
+            toast.error("Please fill in all details including Campus, Hostel & Pickup Date/Time.");
             return;
         }
 
         if (formData.phone.length !== 10) {
-            alert("Please enter a valid 10-digit phone number.");
+            toast.error("Please enter a valid 10-digit phone number.");
             return;
         }
 
@@ -400,8 +403,10 @@ export default function LaundryPage() {
                                         Please select a date first
                                     </div>
                                 ) : loadingSlots ? (
-                                    <div className="p-4 rounded-xl border border-dashed border-white/10 text-gray-500 text-sm text-center animate-pulse">
-                                        Loading slots...
+                                    <div className="grid grid-cols-2 gap-3 animate-pulse">
+                                        {[1, 2, 3, 4].map((n) => (
+                                            <div key={n} className="h-12 bg-white/5 rounded-xl border border-white/5"></div>
+                                        ))}
                                     </div>
                                 ) : (
                                     <div className="grid grid-cols-2 gap-3">
@@ -445,6 +450,7 @@ export default function LaundryPage() {
                                             <div className="bg-black/20 border border-white/10 rounded-lg flex-1 flex items-center px-3 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
                                                 <span className="text-gray-500 font-bold mr-2 text-xs">{index + 1}.</span>
                                                 <input
+                                                    ref={index === items.length - 1 ? newItemRef : null}
                                                     type="text"
                                                     value={item.name}
                                                     onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}

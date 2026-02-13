@@ -4,6 +4,8 @@ import { CartProvider } from "./context/CartContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
+import { Toaster } from "react-hot-toast";
+
 export const metadata = {
   title: "Pumato - Food Delivery",
   description: "Delicious food delivered to your hostel.",
@@ -24,6 +26,12 @@ export default function RootLayout({ children }) {
       <body className={inter.className}>
         <CartProvider>
           {children}
+          <Toaster position="bottom-center" toastOptions={{
+            style: {
+              background: '#333',
+              color: '#fff',
+            },
+          }} />
         </CartProvider>
       </body>
     </html>

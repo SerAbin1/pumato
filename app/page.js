@@ -7,6 +7,8 @@ import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
+import { db } from "@/lib/firebase";
+import { doc, getDoc } from "firebase/firestore";
 
 // --- COMPONENTS ---
 
@@ -141,12 +143,12 @@ export default function GatewayPage() {
   // Use state for live status to prevent hydration mismatch
   const [isFoodLive, setIsFoodLive] = useState(false);
   const [isGroceryLive, setIsGroceryLive] = useState(false);
+  const [isLaundryLive, setIsLaundryLive] = useState(false);
 
   useEffect(() => {
     setIsFoodLive(checkIsLive(orderSettings));
     setIsGroceryLive(checkIsLive(grocerySettings));
 
-    // Optional: Update every minute to keep it fresh without refresh
     const interval = setInterval(() => {
       setIsFoodLive(checkIsLive(orderSettings));
       setIsGroceryLive(checkIsLive(grocerySettings));
@@ -154,6 +156,22 @@ export default function GatewayPage() {
 
     return () => clearInterval(interval);
   }, [orderSettings, grocerySettings]);
+
+  useEffect(() => {
+    const checkLaundry = async () => {
+      try {
+        const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+        const daySnap = await getDoc(doc(db, "laundry_slots", dayName));
+        if (daySnap.exists() && daySnap.data().slots?.length > 0) {
+          setIsLaundryLive(true);
+        } else {
+          const defaultSnap = await getDoc(doc(db, "laundry_slots", "default"));
+          setIsLaundryLive(defaultSnap.exists() && (defaultSnap.data().slots?.length > 0));
+        }
+      } catch { setIsLaundryLive(false); }
+    };
+    checkLaundry();
+  }, []);
 
   return (
     <main className="min-h-screen w-full bg-black text-white selection:bg-orange-500 selection:text-white overflow-x-hidden">
@@ -248,9 +266,7 @@ export default function GatewayPage() {
                   </div>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
-                  <div className="inline-flex items-center gap-2 bg-orange-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">
-                    <Utensils size={12} /> <span>30 min</span>
-                  </div>
+
                   <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter">Food.</h2>
                   <p className="text-gray-300 text-sm md:text-base max-w-sm mb-4 line-clamp-2">Craving something good? We bring your favorites to your door.</p>
                   <span className="inline-flex items-center gap-2 text-white font-bold border-b border-white/30 pb-1 group-hover:border-orange-500 group-hover:text-orange-500 transition-colors text-sm">
@@ -282,9 +298,7 @@ export default function GatewayPage() {
                   </div>
                 </div>
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
-                  <div className="inline-flex items-center gap-2 bg-green-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">
-                    <Sparkles size={12} /> <span>Express</span>
-                  </div>
+
                   <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter">Grocery.</h2>
                   <p className="text-gray-300 text-sm md:text-base max-w-sm mb-4 line-clamp-2">Essentials delivered in minutes. Milk, bread, snacks & more.</p>
                   <span className="inline-flex items-center gap-2 text-white font-bold border-b border-white/30 pb-1 group-hover:border-green-500 group-hover:text-green-500 transition-colors text-sm">
@@ -308,10 +322,15 @@ export default function GatewayPage() {
                     alt="Laundry"
                   />
                 </div>
-                <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
-                  <div className="inline-flex items-center gap-2 bg-blue-600/90 text-white px-3 py-1 rounded-full text-xs font-bold mb-3 backdrop-blur-md">
-                    <Shirt size={12} /> <span>24h Turnaround</span>
+                {/* LIVE BADGE */}
+                <div className="absolute top-6 right-6 z-20">
+                  <div className={`px-3 py-1 rounded-full border backdrop-blur-md flex items-center gap-2 ${isLaundryLive ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'}`}>
+                    <span className={`w-2 h-2 rounded-full ${isLaundryLive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
+                    <span className="text-[10px] font-black uppercase tracking-widest">{isLaundryLive ? 'Live' : 'Closed'}</span>
                   </div>
+                </div>
+                <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
+
                   <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter">Laundry.</h2>
                   <p className="text-gray-300 text-sm md:text-base max-w-sm mb-4 line-clamp-2">Look sharp, study hard. We handle the washing.</p>
                   <span className="inline-flex items-center gap-2 text-white font-bold border-b border-white/30 pb-1 group-hover:border-blue-500 group-hover:text-blue-500 transition-colors text-sm">

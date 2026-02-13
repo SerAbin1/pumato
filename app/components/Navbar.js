@@ -151,7 +151,7 @@ const CommunityDropdown = ({ groups }) => {
 };
 
 export default function Navbar() {
-    const { setIsCartOpen, totalItems, orderSettings, grocerySettings, whatsappGroups } = useCart();
+    const { setIsCartOpen, totalItems, orderSettings, grocerySettings, laundrySettings, whatsappGroups } = useCart();
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const { scrollY } = useScroll();
@@ -162,8 +162,21 @@ export default function Navbar() {
 
     // Determine which settings to use based on path
     const isGroceryPage = pathname?.startsWith("/grocery");
-    const currentSettings = isGroceryPage ? grocerySettings : orderSettings;
-    const settingsLabel = isGroceryPage ? "Grocery Hours" : "Food Ordering Hours";
+    const isLaundryPage = pathname?.startsWith("/laundry");
+    const isAdminPage = pathname?.startsWith("/admin");
+
+    let currentSettings = orderSettings;
+    let settingsLabel = "Food Ordering Hours";
+
+    if (isGroceryPage) {
+        currentSettings = grocerySettings;
+        settingsLabel = "Grocery Hours";
+    } else if (isLaundryPage) {
+        currentSettings = laundrySettings;
+        settingsLabel = "Laundry Hours";
+    }
+
+    const shouldShowLiveIndicator = !isAdminPage;
 
     const [isLive, setIsLive] = useState(false);
 
@@ -212,7 +225,7 @@ export default function Navbar() {
                         {/* Mobile Live Indicator & Community */}
                         <div className="md:hidden flex items-center gap-2">
                             <CommunityDropdown groups={whatsappGroups} />
-                            <LiveIndicator isLive={isLive} settings={currentSettings} label={settingsLabel} />
+                            {shouldShowLiveIndicator && <LiveIndicator isLive={isLive} settings={currentSettings} label={settingsLabel} />}
                         </div>
                     </div>
 
@@ -223,7 +236,7 @@ export default function Navbar() {
                             <Link href="/laundry" className={`hover:text-white transition-colors ${pathname === '/laundry' ? 'text-white font-bold' : ''}`}>Laundry</Link>
                             <Link href="/grocery" className={`hover:text-white transition-colors ${pathname === '/grocery' ? 'text-white font-bold' : ''}`}>Grocery</Link>
                             <CommunityDropdown groups={whatsappGroups} />
-                            <LiveIndicator isLive={isLive} settings={currentSettings} label={settingsLabel} />
+                            {shouldShowLiveIndicator && <LiveIndicator isLive={isLive} settings={currentSettings} label={settingsLabel} />}
                         </div>
 
                         <button

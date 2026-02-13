@@ -56,6 +56,9 @@ export function CartProvider({ children }) {
     const [grocerySettings, setGrocerySettings] = useState({
         slots: [{ start: "10:00", end: "22:00" }]
     });
+    const [laundrySettings, setLaundrySettings] = useState({
+        slots: []
+    });
 
     useEffect(() => {
         // Fetch Restaurants directly from Firestore
@@ -113,12 +116,20 @@ export function CartProvider({ children }) {
             }
         });
 
+        const unsubscribeLaundry = onSnapshot(doc(db, "laundry_slots", "default"), (settingsDoc) => {
+            if (settingsDoc.exists()) {
+                // Laundry slots are stored as { slots: [...] } in 'default' doc
+                setLaundrySettings(settingsDoc.data());
+            }
+        });
+
         fetchRestaurants();
         fetchCoupons();
 
         return () => {
             unsubscribeOrder();
             unsubscribeGrocery();
+            unsubscribeLaundry();
         };
     }, []);
 
@@ -401,8 +412,10 @@ export function CartProvider({ children }) {
                 availableCoupons,
                 activeCoupon,
                 isMultiRestaurant,
+                isMultiRestaurant,
                 orderSettings,
                 grocerySettings,
+                laundrySettings,
                 paymentQR: orderSettings?.paymentQR,
                 foodDeliveryNumber: orderSettings?.whatsappNumber || "919048086503",
                 laundryNumber: orderSettings?.laundryWhatsappNumber || "919048086503",

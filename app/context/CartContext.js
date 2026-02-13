@@ -4,6 +4,7 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, onSnapshot } from "firebase/firestore";
 import { supabase } from "@/lib/supabase";
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
 const CartContext = createContext();
 
@@ -13,6 +14,7 @@ export function CartProvider({ children }) {
     const [userDetails, setUserDetails] = useState({
         name: "",
         phone: "",
+        campus: "",
         address: "",
         instructions: ""
     });
@@ -171,7 +173,13 @@ export function CartProvider({ children }) {
     const totalSurchargeUnits = regularItemsOverThreshold + effectiveLightItems;
 
     const largeOrderSurcharge = totalSurchargeUnits * extraChargeAmt;
-    const deliveryCharge = baseCharge + largeOrderSurcharge;
+
+    // Campus-specific delivery charge from order settings
+    const campusConfig = orderSettings?.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
+    const selectedCampus = campusConfig.find(c => c.name === userDetails.campus);
+    const campusDeliveryCharge = selectedCampus ? Number(selectedCampus.deliveryCharge) || 0 : 0;
+
+    const deliveryCharge = baseCharge + largeOrderSurcharge + campusDeliveryCharge;
 
     // Calculate per-restaurant totals and check minimum order requirements
     const minOrderShortfalls = (() => {
@@ -394,7 +402,9 @@ export function CartProvider({ children }) {
                 upiId: orderSettings?.upiId || "",
                 googleSheetUrl: orderSettings?.googleSheetUrl || "",
                 whatsappGroups: orderSettings?.whatsappGroups || [],
-                minOrderShortfalls
+                minOrderShortfalls,
+                campusConfig,
+                campusDeliveryCharge
             }}
         >
             {children}

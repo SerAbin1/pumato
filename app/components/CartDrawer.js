@@ -42,7 +42,9 @@ export default function CartDrawer() {
         foodDeliveryNumber,
         upiId,
         googleSheetUrl,
-        minOrderShortfalls
+        minOrderShortfalls,
+        campusConfig,
+        campusDeliveryCharge
     } = useCart();
 
     const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
@@ -97,7 +99,8 @@ export default function CartDrawer() {
     const handleCheckout = async () => {
         const trimmedName = userDetails.name.trim();
         const trimmedAddress = userDetails.address.trim();
-        if (!trimmedName || !userDetails.phone || !trimmedAddress) {
+        if (!trimmedName || !userDetails.phone || !userDetails.campus || !trimmedAddress) {
+            setCheckoutError("Please fill in all details including Campus and Hostel.");
             return;
         }
 
@@ -131,6 +134,7 @@ export default function CartDrawer() {
                 const orderData = {
                     name: userDetails.name,
                     phone: userDetails.phone,
+                    campus: userDetails.campus || "",
                     address: userDetails.address,
                     instructions: userDetails.instructions || "",
                     items: cartItems.map(item => `${item.name} x${item.quantity} (${item.restaurantName})`).join(", "),
@@ -169,7 +173,7 @@ export default function CartDrawer() {
         }
     };
 
-    const isFormValid = userDetails.name?.trim() && userDetails.phone?.length === 10 && userDetails.address?.trim();
+    const isFormValid = userDetails.name?.trim() && userDetails.phone?.length === 10 && userDetails.campus && userDetails.address?.trim();
 
     return (
         <AnimatePresence mode="wait">
@@ -392,8 +396,13 @@ export default function CartDrawer() {
                                         </div>
                                         <div className="flex justify-between text-sm text-gray-400">
                                             <span className="flex items-center gap-1">Delivery Charge <span className="text-xs bg-white/10 text-gray-500 px-1 rounded">Info</span></span>
-                                            <span className="font-medium text-white">₹{deliveryCharge}</span>
+                                            {userDetails.campus ? (
+                                                <span className="font-medium text-white">₹{deliveryCharge}</span>
+                                            ) : (
+                                                <span className="font-medium text-orange-400 text-xs">Select Campus</span>
+                                            )}
                                         </div>
+
                                         {isMultiRestaurant && (
                                             <div className="flex justify-between text-xs text-orange-400 bg-orange-500/10 p-2 rounded-lg border border-orange-500/10">
                                                 <span>Multiple Restaurants Surcharge</span>
@@ -461,10 +470,30 @@ export default function CartDrawer() {
                                                 />
                                             </div>
 
+                                            {/* Campus Selection */}
+                                            <div>
+                                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 block">Campus</label>
+                                                <div className="flex gap-2">
+                                                    {campusConfig.map((campus) => (
+                                                        <button
+                                                            key={campus.id}
+                                                            type="button"
+                                                            onClick={() => setUserDetails({ ...userDetails, campus: campus.name })}
+                                                            className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border ${userDetails.campus === campus.name
+                                                                ? 'bg-orange-500/20 border-orange-500/50 text-orange-400'
+                                                                : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
+                                                                }`}
+                                                        >
+                                                            {campus.name}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+
                                             <div className="relative group">
                                                 <MapPin className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors" size={20} />
                                                 <textarea
-                                                    placeholder="Room No, Hostel Block..."
+                                                    placeholder="Hostel"
                                                     value={userDetails.address}
                                                     onChange={(e) => setUserDetails({ ...userDetails, address: e.target.value })}
                                                     className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600 h-24 resize-none"

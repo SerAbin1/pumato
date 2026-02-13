@@ -1670,6 +1670,32 @@ export default function AdminPage() {
                                             />
                                         </div>
 
+                                        {/* Delivery Campus Charges */}
+                                        <div className="pl-13 bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
+                                            <div>
+                                                <h4 className="font-bold text-white text-sm">Campus Delivery Charges</h4>
+                                                <p className="text-xs text-gray-500">Extra charge per campus added on top of the base delivery charge.</p>
+                                            </div>
+                                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                                {(orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG).map((campus, idx) => (
+                                                    <div key={campus.id} className="bg-black/20 p-4 rounded-xl border border-white/5">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase block mb-2">{campus.name} (₹)</label>
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            value={campus.deliveryCharge}
+                                                            onChange={(e) => {
+                                                                const config = [...(orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG)];
+                                                                config[idx] = { ...config[idx], deliveryCharge: Math.max(0, Number(e.target.value)) };
+                                                                setOrderSettings({ ...orderSettings, deliveryCampusConfig: config });
+                                                            }}
+                                                            className="w-full bg-black/30 p-3 rounded-xl text-white font-bold border border-white/10 focus:border-purple-500 outline-none"
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         {/* Light Items Section */}
                                         <div className="pl-13 bg-white/5 p-6 rounded-2xl border border-white/5 space-y-4">
                                             <div className="flex items-center justify-between">

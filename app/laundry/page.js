@@ -61,7 +61,7 @@ export default function LaundryPage() {
     }, [formData.name, formData.phone, formData.location]);
 
     const [items, setItems] = useState([
-        { id: 1, name: "", quantity: "" }
+        { id: 1, name: "", quantity: "", steamIron: false }
     ]);
 
     const [availableSlots, setAvailableSlots] = useState([]);
@@ -270,7 +270,7 @@ export default function LaundryPage() {
                         initial={{ opacity: 0, x: 30 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
-                        className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-8 md:p-10 border border-white/10 relative shadow-2xl"
+                        className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl"
                     >
                         <h2 className="text-2xl font-bold mb-8 text-white">Request Pickup</h2>
 
@@ -419,7 +419,7 @@ export default function LaundryPage() {
                                                     placeholder="Item (e.g. Shirt)"
                                                 />
                                             </div>
-                                            <div className="w-16 bg-black/20 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
+                                            <div className="w-14 bg-black/20 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all flex-shrink-0">
                                                 <input
                                                     type="number"
                                                     min="1"
@@ -429,14 +429,14 @@ export default function LaundryPage() {
                                                     placeholder="Qty"
                                                 />
                                             </div>
-                                            <label className="flex items-center gap-2 text-xs text-gray-400 cursor-pointer select-none hover:text-white transition-colors border border-white/10 px-3 py-2.5 rounded-lg bg-black/20 hover:bg-black/30">
+                                            <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer select-none hover:text-white transition-colors border border-white/10 px-2 py-2 rounded-lg bg-black/20 hover:bg-black/30 flex-shrink-0 leading-tight">
                                                 <input
                                                     type="checkbox"
                                                     checked={item.steamIron}
                                                     onChange={(e) => handleItemChange(item.id, 'steamIron', e.target.checked)}
-                                                    className="w-4 h-4 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700/50 accent-blue-500"
+                                                    className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700/50 accent-blue-500"
                                                 />
-                                                Steam
+                                                <span className="flex flex-col"><span>Steam</span><span>Iron</span></span>
                                             </label>
                                             {items.length > 1 && (
                                                 <button

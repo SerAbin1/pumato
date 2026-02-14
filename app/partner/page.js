@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, collection, query, where, limit, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, onSnapshot, Timestamp } from "firebase/firestore";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import { LogOut, Loader2, Bell, Check } from "lucide-react";
 import toast from "react-hot-toast";
@@ -57,10 +57,15 @@ export default function PartnerDashboard() {
     useEffect(() => {
         if (!user?.restaurantId) return;
 
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
         const q = query(
             collection(db, "orders"),
             where("restaurantIds", "array-contains", user.restaurantId),
-            limit(50)
+            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
+            orderBy("createdAt", "desc"),
+            limit(100)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -69,8 +74,6 @@ export default function PartnerDashboard() {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate()
             }));
-
-            newOrders.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
 
             if (isInitialLoad.current) {
                 isInitialLoad.current = false;

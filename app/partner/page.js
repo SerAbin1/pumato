@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, onSnapshot } from "firebase/firestore";
+import { doc, getDoc, setDoc, collection, query, where, limit, onSnapshot } from "firebase/firestore";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
-import { LogOut, Loader2, Bell } from "lucide-react";
+import { LogOut, Loader2, Bell, Check } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function PartnerDashboard() {
@@ -16,28 +16,51 @@ export default function PartnerDashboard() {
     const [isFetching, setIsFetching] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
     const [orders, setOrders] = useState([]);
-    // Simple "Ding" sound (Base64)
-    const [audio] = useState(typeof Audio !== "undefined" ? new Audio("data:audio/mp3;base64,//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq//uQxAAAAANIAAAAAExBTUUzLjEwMKqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq") : null);
+    const [viewedOrders, setViewedOrders] = useState(() => {
+        if (typeof window === "undefined") return new Set();
+        try {
+            const stored = localStorage.getItem("viewedOrders");
+            return stored ? new Set(JSON.parse(stored)) : new Set();
+        } catch { return new Set(); }
+    });
+    const isInitialLoad = useRef(true);
 
-    // Sound logic
-    useEffect(() => {
-        if (audio) {
-            audio.load();
+    const playNotificationSound = useCallback(() => {
+        try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(880, ctx.currentTime);
+            osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
+            gain.gain.setValueAtTime(0.3, ctx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
+            osc.start(ctx.currentTime);
+            osc.stop(ctx.currentTime + 0.5);
+        } catch (e) {
+            console.log("Sound play failed:", e);
         }
-    }, [audio]);
+    }, []);
+
+    const markAsViewed = useCallback((orderId) => {
+        setViewedOrders(prev => {
+            const next = new Set(prev);
+            next.add(orderId);
+            localStorage.setItem("viewedOrders", JSON.stringify([...next]));
+            return next;
+        });
+    }, []);
 
     // Live Orders Listener
     useEffect(() => {
         if (!user?.restaurantId) return;
 
-        // Query: Orders containing this restaurant ID, created recently (or just last 20)
-        // Note: 'array-contains' requires an index sometimes, but usually works for simple arrays.
-        // We order by createdAt desc to get latest.
         const q = query(
             collection(db, "orders"),
             where("restaurantIds", "array-contains", user.restaurantId),
-            orderBy("createdAt", "desc"),
-            limit(20)
+            limit(50)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -47,16 +70,13 @@ export default function PartnerDashboard() {
                 createdAt: doc.data().createdAt?.toDate()
             }));
 
-            // Simple new order detection: if we have more orders than before, or the top order is new
-            // For now, just set state. In a real app we'd track "last viewed" or similar.
-            if (snapshot.docChanges().some(change => change.type === 'added')) {
-                // Only play sound if it's a *fresh* add, not initial load, but snapshot doesn't distinguish easily without metadata.
-                // Actually snapshot.metadata.fromCache is false for new server data.
-                // Let's just play sound if the list grows and it's not the very first load
-                if (orders.length > 0 && newOrders.length > orders.length) {
-                    audio?.play().catch(e => console.log("Audio play failed", e));
-                    toast("New Order Received!", { icon: "🔔" });
-                }
+            newOrders.sort((a, b) => (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0));
+
+            if (isInitialLoad.current) {
+                isInitialLoad.current = false;
+            } else if (snapshot.docChanges().some(change => change.type === 'added')) {
+                playNotificationSound();
+                toast("New Order Received!", { icon: "🔔" });
             }
 
             setOrders(newOrders);
@@ -65,7 +85,7 @@ export default function PartnerDashboard() {
         });
 
         return () => unsubscribe();
-    }, [user, audio, orders.length]);
+    }, [user, playNotificationSound]);
 
     useEffect(() => {
         if (!loading && !user) {
@@ -146,44 +166,81 @@ export default function PartnerDashboard() {
                 </div>
 
                 {/* Live Orders Section */}
-                {orders.length > 0 && (
-                    <div className="mb-12">
-                        <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
-                            <Bell className="text-orange-500" /> Live Orders ({orders.length})
-                        </h2>
-                        <div className="grid gap-4">
-                            {orders.map(order => (
-                                <div key={order.id} className="bg-white/5 border border-white/10 p-6 rounded-2xl flex flex-col md:flex-row justify-between gap-6">
-                                    <div className="flex-1">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <h3 className="font-bold text-lg text-white">{order.customer?.name}</h3>
-                                            <span className="text-xs bg-orange-500/20 text-orange-400 px-2 py-1 rounded font-bold uppercase">{order.status}</span>
-                                        </div>
-                                        <p className="text-gray-400 text-sm mb-1">{order.customer?.phone}</p>
-                                        <p className="text-gray-500 text-xs mb-4">{order.customer?.campus}, {order.customer?.address}</p>
+                <div className="mb-12">
+                    {(() => {
+                        const unviewedCount = orders.filter(o => !viewedOrders.has(o.id)).length; return (
+                            <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-3">
+                                <div className="relative">
+                                    <Bell className={`text-orange-500 ${unviewedCount > 0 ? 'animate-bounce' : ''}`} fill={unviewedCount > 0 ? "currentColor" : "none"} />
+                                    {unviewedCount > 0 && <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full animate-ping" />}
+                                </div>
+                                Live Orders
+                                <span className="bg-white/10 text-sm px-3 py-1 rounded-full text-gray-300">{orders.length}</span>
+                                {unviewedCount > 0 && <span className="bg-red-500/20 text-red-400 text-xs px-2 py-0.5 rounded-full font-bold">{unviewedCount} new</span>}
+                            </h2>);
+                    })()}
 
-                                        <div className="space-y-1">
-                                            {order.items?.filter(i => i.restaurantId === user.restaurantId).map((item, idx) => (
-                                                <div key={idx} className="flex justify-between text-sm text-gray-300">
-                                                    <span>{item.quantity}x {item.name}</span>
-                                                    <span>₹{item.price * item.quantity}</span>
+                    {orders.length === 0 ? (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-12 text-center flex flex-col items-center justify-center dashed-border">
+                            <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mb-4 text-gray-600">
+                                <Bell size={32} />
+                            </div>
+                            <h3 className="text-xl font-bold text-gray-400">No new orders yet</h3>
+                            <p className="text-gray-600 mt-2">New orders will appear here automatically with a notification sound.</p>
+                            <div className="mt-8 flex gap-2 text-xs text-gray-700">
+                                <span className="w-2 h-2 rounded-full bg-green-500/50 animate-pulse"></span>
+                                System is live and listening...
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                            {orders.map(order => {
+                                const restaurantItems = order.items?.filter(i => i.restaurantId === user.restaurantId) || [];
+                                const isViewed = viewedOrders.has(order.id);
+
+                                return (
+                                    <div key={order.id} className={`border p-5 rounded-2xl shadow-xl relative overflow-hidden transition-all ${isViewed
+                                        ? 'bg-gray-900/50 border-white/5 opacity-60'
+                                        : 'bg-gradient-to-br from-gray-900 to-gray-800 border-white/10 hover:border-orange-500/30'
+                                        }`}>
+                                        <div className={`absolute top-0 left-0 w-1 h-full ${isViewed ? 'bg-green-600' : 'bg-orange-500'}`}></div>
+
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="flex items-center gap-2">
+                                                {isViewed && <Check size={14} className="text-green-500" />}
+                                                <p className={`text-xs font-bold inline-block px-2 py-0.5 rounded uppercase tracking-wider ${isViewed ? 'text-green-400 bg-green-500/10' : 'text-orange-400 bg-orange-500/10'
+                                                    }`}>
+                                                    {isViewed ? 'Viewed' : (order.status || 'Placed')}
+                                                </p>
+                                            </div>
+                                            <span className="text-xs text-gray-500 font-mono">
+                                                {order.createdAt?.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            {restaurantItems.map((item, idx) => (
+                                                <div key={idx} className="flex items-center gap-3 text-sm">
+                                                    <span className="font-bold text-orange-500 bg-orange-500/10 px-2 py-0.5 rounded text-xs">x{item.quantity}</span>
+                                                    <span className="text-gray-200">{item.name}</span>
                                                 </div>
                                             ))}
                                         </div>
-                                        <div className="mt-4 pt-4 border-t border-white/5 flex justify-between items-center">
-                                            <span className="text-xs text-gray-500">{order.createdAt?.toLocaleString()}</span>
-                                            {/* Note: Total shown is for the whole order, maybe we should calculate this restaurant's subtotal? */}
-                                            {/* Let's show specific subtotal if possible, or just the item list total */}
-                                            <span className="font-bold text-white">
-                                                Total: ₹{order.items?.filter(i => i.restaurantId === user.restaurantId).reduce((sum, i) => sum + (i.price * i.quantity), 0)}
-                                            </span>
-                                        </div>
+
+                                        {!isViewed && (
+                                            <button
+                                                onClick={() => markAsViewed(order.id)}
+                                                className="mt-4 w-full bg-white/5 hover:bg-green-500/20 border border-white/10 hover:border-green-500/30 text-gray-400 hover:text-green-400 text-xs font-bold py-2 rounded-xl transition-all flex items-center justify-center gap-2"
+                                            >
+                                                <Check size={14} /> Mark as Viewed
+                                            </button>
+                                        )}
                                     </div>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
-                    </div>
-                )}
+                    )}
+                </div>
                 {restaurantData ? (
                     <RestaurantForm
                         initialData={restaurantData}

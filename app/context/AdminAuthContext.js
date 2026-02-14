@@ -5,7 +5,9 @@ import { auth } from "@/lib/firebase";
 import {
     signInWithEmailAndPassword,
     signOut,
-    onAuthStateChanged
+    onAuthStateChanged,
+    setPersistence,
+    browserLocalPersistence
 } from "firebase/auth";
 
 const AdminAuthContext = createContext(null);
@@ -41,6 +43,7 @@ export function AdminAuthProvider({ children }) {
 
     const login = async (email, password) => {
         try {
+            await setPersistence(auth, browserLocalPersistence);
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const tokenResult = await userCredential.user.getIdTokenResult();
 

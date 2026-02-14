@@ -155,41 +155,23 @@ export default function CartDrawer() {
                 }).catch(err => console.error("Sheet log error:", err));
             }
 
-            // --- FIREBASE ORDER CREATION (For Partner Notifications) ---
+            // --- FIREBASE ORDER NOTIFICATION (Minimal - just to alert partners) ---
             try {
                 const uniqueRestaurantIds = [...new Set(cartItems.map(item => item.restaurantId).filter(Boolean))];
 
                 await addDoc(collection(db, "orders"), {
-                    customer: {
-                        name: userDetails.name,
-                        phone: userDetails.phone,
-                        campus: userDetails.campus,
-                        address: userDetails.address,
-                        instructions: userDetails.instructions || ""
-                    },
                     items: cartItems.map(item => ({
-                        id: item.id,
                         name: item.name,
                         quantity: item.quantity,
-                        price: item.price,
                         restaurantId: item.restaurantId,
                         restaurantName: item.restaurantName
                     })),
-                    summary: {
-                        itemTotal,
-                        deliveryCharge,
-                        discount: discount || 0,
-                        couponCode: couponCode || null,
-                        finalTotal
-                    },
-                    restaurantIds: uniqueRestaurantIds, // Critical for querying
+                    restaurantIds: uniqueRestaurantIds,
                     status: "placed",
-                    createdAt: serverTimestamp(),
-                    platform: "web"
+                    createdAt: serverTimestamp()
                 });
             } catch (dbError) {
                 console.error("Failed to record order in Firestore:", dbError);
-                // We do NOT block the user here. WhatsApp is the source of truth.
             }
 
             // Open WhatsApp

@@ -1,21 +1,59 @@
 const admin = require("firebase-admin");
 const serviceAccount = require("./pumato-84497-firebase-adminsdk-fbsvc-6fc31148e4.json");
+const readline = require("readline");
 
-/*
-  This script authenticates using a Firebase service account
-  and sets a custom `admin: true` claim on a specific user.
-*/
 admin.initializeApp({
   credential: admin.credential.cert(serviceAccount),
 });
 
-const uid = "JHo1hrECYNPU1KTKFJfzbrHsHT52";
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+const askQuestion = (query) => {
+  return new Promise(resolve => rl.question(query, resolve));
+};
 
 (async () => {
-  await admin.auth().setCustomUserClaims(uid, { admin: true });
+  try {
+    const email = process.argv[2] || await askQuestion("Enter User Email: ");
+    const password = process.argv[3] || await askQuestion("Enter User Password (min 6 chars): ");
 
-  const user = await admin.auth().getUser(uid);
-  console.log("Custom claims:", user.customClaims);
+    if (!email || !password || password.length < 6) {
+      console.error("Invalid email or password (must be 6+ chars).");
+      process.exit(1);
+    }
 
-  process.exit(0);
+    let user;
+    try {
+      user = await admin.auth().getUserByEmail(email);
+      console.log(`\nUser ${email} already exists. Updating claims...`);
+    } catch (error) {
+      if (error.code === 'auth/user-not-found') {
+        console.log(`\nCreating new user ${email}...`);
+        user = await admin.auth().createUser({
+          email,
+          password,
+        });
+      } else {
+        throw error;
+      }
+    }
+
+    await admin.auth().setCustomUserClaims(user.uid, {
+      admin: true
+    });
+
+    console.log("\n✅ Success! Admin account configured.");
+    console.log(`User: ${email}`);
+    console.log("Custom claims set: { admin: true }");
+    console.log("You can now login at /admin/login");
+
+  } catch (error) {
+    console.error("Error:", error.message);
+  } finally {
+    rl.close();
+    process.exit(0);
+  }
 })();

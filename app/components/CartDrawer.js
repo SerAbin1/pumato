@@ -155,11 +155,17 @@ export default function CartDrawer() {
                 }).catch(err => console.error("Sheet log error:", err));
             }
 
-            // --- FIREBASE ORDER NOTIFICATION (Minimal - just to alert partners) ---
+            // Open WhatsApp FIRST — must be synchronous in click handler for iOS Safari
+            const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR, upiId });
+            const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
+            window.open(whatsappUrl, "_blank");
+            setIsCartOpen(false);
+
+            // --- FIREBASE ORDER NOTIFICATION (fire-and-forget) ---
             try {
                 const uniqueRestaurantIds = [...new Set(cartItems.map(item => item.restaurantId).filter(Boolean))];
 
-                await addDoc(collection(db, "orders"), {
+                addDoc(collection(db, "orders"), {
                     items: cartItems.map(item => ({
                         name: item.name,
                         quantity: item.quantity,
@@ -173,12 +179,6 @@ export default function CartDrawer() {
             } catch (dbError) {
                 console.error("Failed to record order in Firestore:", dbError);
             }
-
-            // Open WhatsApp
-            const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR, upiId });
-            const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
-            window.open(whatsappUrl, "_blank");
-            setIsCartOpen(false);
         } catch (error) {
             console.error("Checkout error:", error);
             if (error.code === "resource-exhausted" || error.message?.includes("limit reached")) {

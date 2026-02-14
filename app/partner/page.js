@@ -25,22 +25,29 @@ export default function PartnerDashboard() {
     });
     const isInitialLoad = useRef(true);
 
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        audioRef.current = new Audio("/orderNotif.mpeg");
+        audioRef.current.preload = "auto";
+
+        const unlock = () => {
+            if (audioRef.current) {
+                audioRef.current.play().then(() => {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                }).catch(() => { });
+            }
+            document.removeEventListener("click", unlock);
+        };
+        document.addEventListener("click", unlock);
+        return () => document.removeEventListener("click", unlock);
+    }, []);
+
     const playNotificationSound = useCallback(() => {
-        try {
-            const ctx = new (window.AudioContext || window.webkitAudioContext)();
-            const osc = ctx.createOscillator();
-            const gain = ctx.createGain();
-            osc.connect(gain);
-            gain.connect(ctx.destination);
-            osc.type = "sine";
-            osc.frequency.setValueAtTime(880, ctx.currentTime);
-            osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.1);
-            gain.gain.setValueAtTime(0.3, ctx.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.5);
-            osc.start(ctx.currentTime);
-            osc.stop(ctx.currentTime + 0.5);
-        } catch (e) {
-            console.log("Sound play failed:", e);
+        if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => console.log("Sound play failed:", e));
         }
     }, []);
 

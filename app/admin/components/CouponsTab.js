@@ -417,6 +417,8 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                         onSave={handleSubmitCoupon}
                         onCancel={() => setActiveTab("list")}
                         isSaving={isSaving}
+                        title={editingId ? "Editing Promo Code" : "Creating New Promo Code"}
+                        saveLabel={editingId ? "Update Promo Code" : "Create Promo Code"}
                     />
                 </div>
             )}

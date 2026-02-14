@@ -562,11 +562,23 @@ export default function AdminPage() {
             </div>
 
             {/* Sticky Action Bar for Global Settings Sections */}
-            {(activeSection === "delivery" || activeSection === "grocery" || activeSection === "settings" || activeSection === "banners") && (
+            {(activeSection === "delivery" || activeSection === "grocery" || activeSection === "settings" || activeSection === "banners" || activeSection === "laundry") && (
                 <StickyActionBar
-                    onSave={activeSection === "banners" ? handleSaveBanners : handleSaveSettings}
+                    onSave={
+                        activeSection === "banners" ? handleSaveBanners :
+                            activeSection === "laundry" ? saveCampusConfig :
+                                handleSaveSettings
+                    }
                     onCancel={() => fetchData()}
                     isSaving={isSaving}
+                    title={
+                        activeSection === "delivery" ? "Delivery Settings" :
+                            activeSection === "grocery" ? "Grocery Settings" :
+                                activeSection === "laundry" ? "Managing Laundry Slots & Charges" :
+                                    activeSection === "banners" ? "Managing Promo Banners" :
+                                        "Global Settings"
+                    }
+                    saveLabel={activeSection === "laundry" ? "Save Config" : "Save Settings"}
                 />
             )}
 

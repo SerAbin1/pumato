@@ -421,7 +421,16 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                 onSave={handleSave}
                 onCancel={onCancel}
                 isSaving={isSaving}
-            />
+                title={initialData?.id ? "Editing Restaurant" : "Creating Restaurant"}
+                saveLabel={initialData?.id ? "Update Restaurant" : "Create Restaurant"}
+            >
+                <button
+                    onClick={addMenuItem}
+                    className="bg-white text-black px-4 md:px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-gray-200 transition-colors shadow-lg shadow-white/10 text-xs md:text-sm"
+                >
+                    <Plus size={18} /> Add Item
+                </button>
+            </StickyActionBar>
         </div>
     );
 }

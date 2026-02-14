@@ -1,0 +1,32 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Auth helper functions
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+    
+    function isPartner(resId) {
+      return request.auth != null && request.auth.token.restaurantId == resId;
+    }
+
+    // Restaurants Collection
+    match /restaurants/{restaurantId} {
+      // Admins have full access
+      allow read, write: if isAdmin();
+      
+      // Partners can only read and update their OWN restaurant document
+      allow read, update: if isPartner(restaurantId);
+      
+      // Partners CANNOT create or delete restaurants
+      allow create, delete: if false; 
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

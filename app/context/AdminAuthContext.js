@@ -21,9 +21,14 @@ export function AdminAuthProvider({ children }) {
                 // Get the ID token result to check custom claims
                 const tokenResult = await firebaseUser.getIdTokenResult();
                 const adminClaim = tokenResult.claims.admin === true;
+                const restaurantIdClaim = tokenResult.claims.restaurantId || null;
 
                 setUser(firebaseUser);
                 setIsAdmin(adminClaim);
+                // We'll attach the restaurantId to the user object or a separate state if preferred.
+                // For simplicity, let's attach to the user object wrapper or just state.
+                // Actually, let's expose it as a separate state.
+                firebaseUser.restaurantId = restaurantIdClaim;
             } else {
                 setUser(null);
                 setIsAdmin(false);
@@ -39,17 +44,20 @@ export function AdminAuthProvider({ children }) {
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
             const tokenResult = await userCredential.user.getIdTokenResult();
 
-            if (tokenResult.claims.admin !== true) {
-                // User is not an admin, sign them out
+            const isAdmin = tokenResult.claims.admin === true;
+            const isPartner = !!tokenResult.claims.restaurantId;
+
+            if (!isAdmin && !isPartner) {
+                // User is not authorized at all
                 await signOut(auth);
-                throw new Error("You are not authorized as an admin.");
+                throw new Error("You are not authorized to access this panel.");
             }
 
             return { success: true };
         } catch (error) {
             let message = "Login failed. Please try again.";
 
-            if (error.message === "You are not authorized as an admin.") {
+            if (error.message === "You are not authorized to access this panel.") {
                 message = error.message;
             } else if (error.code === "auth/user-not-found" || error.code === "auth/wrong-password" || error.code === "auth/invalid-credential") {
                 message = "Invalid email or password.";

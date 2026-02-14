@@ -18,9 +18,15 @@ service cloud.firestore {
       allow update: if isPartner(restaurantId);
     }
 
+    // Orders: Anyone can create (place order), Partners/Admins can read (handled by global read for now or specific)
+    match /orders/{orderId} {
+      allow create: if true;
+    }
+
     // Default Match - Preserve existing "Public Read, Admin Write" behavior
+    // Default rules (keep existing)
     match /{document=**} {
-      allow read: if true;
+      allow read: if true; 
       allow write: if isAdmin();
     }
   }

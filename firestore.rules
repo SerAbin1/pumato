@@ -14,19 +14,14 @@ service cloud.firestore {
 
     // Restaurants Collection
     match /restaurants/{restaurantId} {
-      // Admins have full access
-      allow read, write: if isAdmin();
-      
-      // Partners can only read and update their OWN restaurant document
-      allow read, update: if isPartner(restaurantId);
-      
-      // Partners CANNOT create or delete restaurants
-      allow create, delete: if false; 
+      // Allow partners to update their own restaurant
+      allow update: if isPartner(restaurantId);
     }
 
-    // Default deny
+    // Default Match - Preserve existing "Public Read, Admin Write" behavior
     match /{document=**} {
-      allow read, write: if false;
+      allow read: if true;
+      allow write: if isAdmin();
     }
   }
 }

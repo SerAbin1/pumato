@@ -6,7 +6,7 @@ import { toTitleCase } from "@/lib/formatters";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
 
-export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false }) {
+export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false, isPartnerView = false }) {
     const [formData, setFormData] = useState({
         name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
         baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10", minOrderAmount: "0",
@@ -112,16 +112,20 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                     </div>
                 </div>
                 <FormInput label="Cuisine" value={formData.cuisine} onChange={(e) => setFormData({ ...formData, cuisine: e.target.value })} />
-                <FormInput label="Delivery Time" value={formData.deliveryTime} onChange={(e) => setFormData({ ...formData, deliveryTime: e.target.value })} />
+                {!isPartnerView && (
+                    <FormInput label="Delivery Time" value={formData.deliveryTime} onChange={(e) => setFormData({ ...formData, deliveryTime: e.target.value })} />
+                )}
                 <FormInput label="Offer Badge" value={formData.offer} onChange={(e) => setFormData({ ...formData, offer: e.target.value })} placeholder="e.g 50% OFF" />
                 <FormInput label="Extra Info / Offer" value={formData.priceForTwo} onChange={(e) => setFormData({ ...formData, priceForTwo: e.target.value })} placeholder="e.g. Buy 1 Get 1 Free" />
 
-                <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-6 bg-white/5 p-6 rounded-2xl border border-white/5">
-                    <FormInput label="Base Del. Charge (₹)" type="number" value={formData.baseDeliveryCharge} onChange={(e) => setFormData({ ...formData, baseDeliveryCharge: e.target.value })} />
-                    <FormInput label="Extra Item Threshold" type="number" value={formData.extraItemThreshold} onChange={(e) => setFormData({ ...formData, extraItemThreshold: e.target.value })} />
-                    <FormInput label="Extra Charge (₹)" type="number" value={formData.extraItemCharge} onChange={(e) => setFormData({ ...formData, extraItemCharge: e.target.value })} />
-                    <FormInput label="Min Order Amt (₹)" type="number" value={formData.minOrderAmount || "0"} onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })} placeholder="0" />
-                </div>
+                {!isPartnerView && (
+                    <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-6 bg-white/5 p-6 rounded-2xl border border-white/5">
+                        <FormInput label="Base Del. Charge (₹)" type="number" value={formData.baseDeliveryCharge} onChange={(e) => setFormData({ ...formData, baseDeliveryCharge: e.target.value })} />
+                        <FormInput label="Extra Item Threshold" type="number" value={formData.extraItemThreshold} onChange={(e) => setFormData({ ...formData, extraItemThreshold: e.target.value })} />
+                        <FormInput label="Extra Charge (₹)" type="number" value={formData.extraItemCharge} onChange={(e) => setFormData({ ...formData, extraItemCharge: e.target.value })} />
+                        <FormInput label="Min Order Amt (₹)" type="number" value={formData.minOrderAmount || "0"} onChange={(e) => setFormData({ ...formData, minOrderAmount: e.target.value })} placeholder="0" />
+                    </div>
+                )}
 
                 <div className="col-span-full grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Temporarily Closed Toggle */}

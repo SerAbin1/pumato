@@ -105,6 +105,7 @@ export default function PartnerDashboard() {
                             toast.success("Changes discarded.");
                         }}
                         isSaving={isSaving}
+                        isPartnerView={true}
                     />
                 ) : (
                     <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10">

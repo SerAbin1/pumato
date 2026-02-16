@@ -176,7 +176,7 @@ export default function Navbar() {
         settingsLabel = "Laundry Hours";
     }
 
-    const shouldShowLiveIndicator = !isAdminPage;
+    const shouldShowLiveIndicator = !isAdminPage && !isLaundryPage;
 
     const [isLive, setIsLive] = useState(false);
 

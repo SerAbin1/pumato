@@ -323,13 +323,8 @@ export default function GatewayPage() {
                     alt="Laundry"
                   />
                 </div>
-                {/* LIVE BADGE */}
-                <div className="absolute top-6 right-6 z-20">
-                  <div className={`px-3 py-1 rounded-full border backdrop-blur-md flex items-center gap-2 ${isLaundryLive ? 'bg-green-500/20 border-green-500/30 text-green-400' : 'bg-red-500/20 border-red-500/30 text-red-400'}`}>
-                    <span className={`w-2 h-2 rounded-full ${isLaundryLive ? 'bg-green-500 animate-pulse' : 'bg-red-500'}`}></span>
-                    <span className="text-[10px] font-black uppercase tracking-widest">{isLaundryLive ? 'Live' : 'Closed'}</span>
-                  </div>
-                </div>
+                {/* LIVE BADGE REMOVED */}
+
                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
 
                   <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter">Laundry.</h2>

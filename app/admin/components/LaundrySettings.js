@@ -1,30 +1,23 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Tag, Save, Clock, Plus, Trash } from "lucide-react";
 import FormInput from './FormInput';
 
 export default function LaundrySettings({
     laundrySlots,
-    setLaundrySlots,
+    selectedDay,
+    setSelectedDay,
+    slotStart,
+    setSlotStart,
+    slotEnd,
+    setSlotEnd,
+    handleAddSlot,
+    handleDeleteSlot,
     campusConfig,
     setCampusConfig,
-    handleSaveSettings,
-    selectedDay,
-    setSelectedDay
+    laundryPricing,
+    setLaundryPricing,
+    onSaveSettings
 }) {
-    const [slotStart, setSlotStart] = useState("");
-    const [slotEnd, setSlotEnd] = useState("");
-
-    const handleAddSlot = () => {
-        if (slotStart && slotEnd) {
-            setLaundrySlots([...laundrySlots, `${slotStart} - ${slotEnd}`]);
-            setSlotStart("");
-            setSlotEnd("");
-        }
-    };
-
-    const handleDeleteSlot = (index) => {
-        setLaundrySlots(laundrySlots.filter((_, i) => i !== index));
-    };
 
     return (
         <div className="bg-white/5 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 max-w-4xl mx-auto shadow-2xl">
@@ -131,7 +124,7 @@ export default function LaundrySettings({
                         <Tag size={20} className="text-cyan-500" /> Campus Delivery Charges
                     </h3>
                     <button
-                        onClick={handleSaveSettings}
+                        onClick={onSaveSettings}
                         className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg flex items-center gap-2"
                     >
                         <Save size={18} /> Save Settings

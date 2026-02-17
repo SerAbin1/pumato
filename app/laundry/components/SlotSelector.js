@@ -1,6 +1,7 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp";
+import { getISTDate } from "@/lib/dateUtils";
 
 export default function SlotSelector({ formData, setFormData, availableSlots, loadingSlots, today }) {
 
@@ -15,7 +16,7 @@ export default function SlotSelector({ formData, setFormData, availableSlots, lo
     // Helper to generate next 7 days
     const generateDates = () => {
         const dates = [];
-        const baseDate = new Date(); // Start from today
+        const baseDate = getISTDate(); // Start from today (IST)
 
         for (let i = 0; i < 7; i++) {
             const date = new Date(baseDate);

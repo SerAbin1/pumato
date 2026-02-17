@@ -9,14 +9,14 @@ import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { getISTTime, getISTObject } from "@/lib/dateUtils";
 
 // --- COMPONENTS ---
 
 // --- HELPER FUNCTION ---
 const checkIsLive = (settings) => {
   if (!settings || !settings.slots) return false;
-  const now = new Date();
-  const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+  const { timeInMinutes } = getISTTime();
   return settings.slots.some(slot => {
     const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
     const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
@@ -161,7 +161,7 @@ export default function GatewayPage() {
   useEffect(() => {
     const checkLaundry = async () => {
       try {
-        const dayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+        const { dayName } = getISTObject();
         const daySnap = await getDoc(doc(db, "laundry_slots", dayName));
         if (daySnap.exists() && daySnap.data().slots?.length > 0) {
           setIsLaundryLive(true);

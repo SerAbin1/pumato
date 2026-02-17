@@ -8,6 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import CartDrawer from "./CartDrawer";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
+import { getISTTime } from "@/lib/dateUtils";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -182,8 +183,7 @@ export default function Navbar() {
 
     useEffect(() => {
         const checkLive = () => {
-            const now = new Date();
-            const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+            const { timeInMinutes } = getISTTime();
             const slots = currentSettings?.slots || [];
             const active = slots.some(slot => {
                 const [startH, startM] = (slot.start || "00:00").split(":").map(Number);

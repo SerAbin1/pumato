@@ -12,6 +12,7 @@ import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import { getISTTime } from "@/lib/dateUtils";
 
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
@@ -20,8 +21,7 @@ export default function GroceryPage() {
 
     useEffect(() => {
         const checkLiveStatus = () => {
-            const now = new Date();
-            const timeInMinutes = now.getHours() * 60 + now.getMinutes();
+            const { timeInMinutes } = getISTTime();
             const slots = grocerySettings?.slots || [];
 
             if (slots.length === 0) {

@@ -6,10 +6,11 @@ import { useCart } from "../context/CartContext";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { getApp } from "firebase/app";
+
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { supabase } from "@/lib/supabase";
+import { getISTTime } from "@/lib/dateUtils";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -69,10 +70,7 @@ export default function CartDrawer() {
             setCheckoutError(null);
         } else {
             // Check time when cart opens
-            const now = new Date();
-            const hours = now.getHours();
-            const minutes = now.getMinutes();
-            const timeInMinutes = hours * 60 + minutes;
+            const { timeInMinutes } = getISTTime();
 
             const slots = orderSettings.slots || [];
             const isOpen = slots.some(slot => {

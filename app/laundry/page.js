@@ -253,16 +253,13 @@ export default function LaundryPage() {
     };
 
     return (
-        <main className="min-h-screen bg-black text-white relative overflow-hidden">
+        <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
             <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
             <Navbar />
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none" />
 
-            <div className="max-w-5xl mx-auto px-4 py-24 relative z-10">
-                <Link href="/" className="inline-flex items-center text-gray-400 hover:text-white font-medium mb-8 transition-colors">
-                    <ArrowLeft size={20} className="mr-2" /> Back to Home
-                </Link>
+            <div className="max-w-7xl mx-auto px-4 py-12 pt-32 relative z-10">
 
                 <div className="grid md:grid-cols-2 gap-12 items-start">
 
@@ -271,7 +268,7 @@ export default function LaundryPage() {
                         initial={{ opacity: 0, x: -30 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.6 }}
-                        className="space-y-6"
+                        className="space-y-6 min-w-0"
                     >
                         <LaundryHero pricing={pricing} />
                     </motion.div>
@@ -281,6 +278,7 @@ export default function LaundryPage() {
                         initial={{ opacity: 0, x: 30 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
+                        className="min-w-0"
                     >
                         <LaundryForm
                             formData={formData}

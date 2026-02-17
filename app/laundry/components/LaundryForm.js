@@ -21,7 +21,7 @@ export default function LaundryForm({
     pricing
 }) {
     return (
-        <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl">
+        <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl w-full max-w-full overflow-hidden">
             <h2 className="text-2xl font-bold mb-8 text-white">Request Pickup</h2>
 
             <form onSubmit={handleSubmit} className="space-y-6">

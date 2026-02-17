@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from "framer-motion";
 import { Save, Loader2, ChevronUp, ChevronDown, Sparkles } from "lucide-react";

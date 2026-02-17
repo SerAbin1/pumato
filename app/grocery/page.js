@@ -12,7 +12,7 @@ import toast from "react-hot-toast";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
-import { getISTTime } from "@/lib/dateUtils";
+import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
 
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
@@ -21,6 +21,14 @@ export default function GroceryPage() {
 
     useEffect(() => {
         const checkLiveStatus = () => {
+            // 1. Check Manual Override
+            const overrideStatus = checkManualOverride(grocerySettings);
+            if (overrideStatus !== null) {
+                setIsLive(overrideStatus === 'open');
+                return;
+            }
+
+            // 2. Fallback to Slot Check
             const { timeInMinutes } = getISTTime();
             const slots = grocerySettings?.slots || [];
 

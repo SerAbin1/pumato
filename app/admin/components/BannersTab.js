@@ -1,4 +1,3 @@
-import React from 'react';
 import { Sparkles, Eye, EyeOff, Upload, X } from "lucide-react";
 import FormInput from './FormInput';
 

@@ -57,6 +57,7 @@ export default function AdminPage() {
         lightItemThreshold: "5"
     });
     const [grocerySettings, setGrocerySettings] = useState({ slots: [{ start: "10:00", end: "22:00" }] });
+    const [laundrySettings, setLaundrySettings] = useState({ manualOverride: null });
 
     useEffect(() => {
         // Redirect to login if not authenticated or not admin
@@ -255,9 +256,11 @@ export default function AdminPage() {
                 const data = docSnap.data();
                 if (data.campuses) setCampusConfig(data.campuses);
                 setLaundryPricing(data.pricing || { pricePerKg: "79", steamIronPrice: "15" });
+                setLaundrySettings(data); // Capture everything including manualOverride
             } else {
                 setCampusConfig(DEFAULT_CAMPUS_CONFIG);
                 setLaundryPricing({ pricePerKg: "79", steamIronPrice: "15" });
+                setLaundrySettings({ manualOverride: null });
             }
         } catch (error) {
             console.error("Error fetching campus config:", error);
@@ -269,6 +272,7 @@ export default function AdminPage() {
     const saveCampusConfig = async () => {
         try {
             await setDoc(doc(db, "general_settings", "laundry"), {
+                ...laundrySettings, // Persist manualOverride
                 campuses: campusConfig,
                 pricing: laundryPricing
             });

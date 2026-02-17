@@ -9,12 +9,19 @@ import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
-import { getISTTime, getISTObject } from "@/lib/dateUtils";
+import { getISTTime, getISTObject, checkManualOverride } from "@/lib/dateUtils";
 
 // --- COMPONENTS ---
 
 // --- HELPER FUNCTION ---
 const checkIsLive = (settings) => {
+  // 1. Check Manual Override
+  const overrideStatus = checkManualOverride(settings);
+  if (overrideStatus !== null) {
+    return overrideStatus === 'open';
+  }
+
+  // 2. Fallback to Slot Check
   if (!settings || !settings.slots) return false;
   const { timeInMinutes } = getISTTime();
   return settings.slots.some(slot => {

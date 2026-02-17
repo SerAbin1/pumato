@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Clock, Plus, Trash, Search, X } from "lucide-react";
 import FormInput from './FormInput';
 import { format12h } from "@/lib/formatters";
@@ -7,6 +7,8 @@ const DEFAULT_CAMPUS_CONFIG = [
     { id: "MN", name: "Main Campus", deliveryCharge: 30 },
     { id: "S1", name: "South Campus", deliveryCharge: 30 }
 ];
+
+import ServiceOverrideControl from './ServiceOverrideControl';
 
 export default function DeliverySettings({
     orderSettings,
@@ -18,6 +20,11 @@ export default function DeliverySettings({
 
     return (
         <div className="space-y-8">
+            <ServiceOverrideControl
+                serviceName="Food Delivery"
+                settings={orderSettings}
+                onUpdate={(updates) => setOrderSettings({ ...orderSettings, ...updates })}
+            />
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-orange-500 to-red-500"></div>
                 <h2 className="text-3xl font-black text-white mb-8">Delivery Settings</h2>

@@ -10,7 +10,7 @@ import Image from "next/image";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { supabase } from "@/lib/supabase";
-import { getISTTime } from "@/lib/dateUtils";
+import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -70,6 +70,15 @@ export default function CartDrawer() {
             setCheckoutError(null);
         } else {
             // Check time when cart opens
+
+            // 1. Check Manual Override
+            const overrideStatus = checkManualOverride(orderSettings);
+            if (overrideStatus !== null) {
+                setIsStoreOpen(overrideStatus === 'open');
+                return;
+            }
+
+            // 2. Fallback to Slot Check
             const { timeInMinutes } = getISTTime();
 
             const slots = orderSettings.slots || [];

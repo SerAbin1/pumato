@@ -1,5 +1,3 @@
-import React from 'react';
-
 export default function FormInput({ label, value, onChange, placeholder, type = "text" }) {
     return (
         <div className="space-y-3">

@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from "react";
 import CartDrawer from "./CartDrawer";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { getISTTime } from "@/lib/dateUtils";
+import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -183,6 +183,14 @@ export default function Navbar() {
 
     useEffect(() => {
         const checkLive = () => {
+            // 1. Check Manual Override
+            const overrideStatus = checkManualOverride(currentSettings);
+            if (overrideStatus !== null) {
+                setIsLive(overrideStatus === 'open');
+                return;
+            }
+
+            // 2. Fallback to Slot Check
             const { timeInMinutes } = getISTTime();
             const slots = currentSettings?.slots || [];
             const active = slots.some(slot => {

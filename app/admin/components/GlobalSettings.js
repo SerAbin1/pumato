@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { motion } from "framer-motion";
 import { Sparkles, Phone, Plus, Trash, Upload, X } from "lucide-react";
 import Image from "next/image";

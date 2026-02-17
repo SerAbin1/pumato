@@ -1,7 +1,7 @@
-import React from 'react';
 import { Tag, Clock, Plus, Trash } from "lucide-react";
-import FormInput from './FormInput';
 import { format12h } from "@/lib/formatters";
+
+import ServiceOverrideControl from './ServiceOverrideControl';
 
 export default function GrocerySettings({
     grocerySettings,
@@ -9,6 +9,11 @@ export default function GrocerySettings({
 }) {
     return (
         <div className="space-y-8">
+            <ServiceOverrideControl
+                serviceName="Grocery"
+                settings={grocerySettings}
+                onUpdate={(updates) => setGrocerySettings({ ...grocerySettings, ...updates })}
+            />
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-green-500 to-emerald-500"></div>
                 <h2 className="text-3xl font-black text-white mb-8">Grocery Settings</h2>

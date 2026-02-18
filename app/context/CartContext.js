@@ -101,12 +101,16 @@ export function CartProvider({ children }) {
         const unsubscribeOrder = onSnapshot(doc(db, "site_content", "order_settings"), (settingsDoc) => {
             if (settingsDoc.exists()) {
                 const data = settingsDoc.data();
-                if (data.startTime && !data.slots) {
-                    // Legacy format: convert startTime/endTime to slots, keep all other fields
-                    setOrderSettings({ ...data, slots: [{ start: data.startTime, end: data.endTime }] });
-                } else {
-                    setOrderSettings(data);
-                }
+
+                // Enhanced logic: Support per-campus timings while maintaining fallback
+                const campuses = data.campuses || {};
+
+                setOrderSettings({
+                    ...data,
+                    deliveryCampusConfig: data.deliveryCampusConfig || [],
+                    // Main slots for backward compatibility
+                    slots: data.slots || (data.startTime ? [{ start: data.startTime, end: data.endTime }] : [])
+                });
             }
         });
 
@@ -193,10 +197,18 @@ export function CartProvider({ children }) {
     const largeOrderSurcharge = (totalSurchargeUnits * extraChargeAmt) + (heavyItemCount * heavyItemCharge);
     const hasHeavyItems = heavyItemCount > 0;
 
-    // Campus-specific delivery charge from order settings
+    // Campus-specific delivery charge & timings logic
     const campusConfig = orderSettings?.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
-    const selectedCampus = campusConfig.find(c => c.name === userDetails.campus);
+    const selectedCampus = campusConfig.find(c => c.id === userDetails.campus) || campusConfig.find(c => c.name === userDetails.campus);
     const campusDeliveryCharge = selectedCampus ? Number(selectedCampus.deliveryCharge) || 0 : 0;
+
+    // Helper to get slots for a specific campus
+    const getCampusSlots = (campusId) => {
+        if (!orderSettings) return [];
+        const config = orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
+        const campus = config.find(c => c.id === campusId);
+        return campus?.slots || [];
+    };
 
     const deliveryCharge = baseCharge + largeOrderSurcharge + campusDeliveryCharge;
 
@@ -425,7 +437,8 @@ export function CartProvider({ children }) {
                 minOrderShortfalls,
                 campusConfig,
                 campusDeliveryCharge,
-                hasHeavyItems
+                hasHeavyItems,
+                getCampusSlots
             }}
         >
             {children}

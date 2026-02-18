@@ -9,16 +9,12 @@ import CartDrawer from "./CartDrawer";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
+import CampusSelector from "./CampusSelector";
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
-const format12h = (time24) => {
-    if (!time24) return "";
-    const [h, m] = time24.split(":").map(Number);
-    const ampm = h >= 12 ? "PM" : "AM";
-    const h12 = h % 12 || 12;
-    return `${h12}:${m.toString().padStart(2, "0")} ${ampm}`;
-};
+import { format12h } from "@/lib/utils";
 
-const LiveIndicator = ({ isLive, settings, label }) => {
+const LiveIndicator = ({ isLive, settings, label, campusSlots = [] }) => {
     const [isOpen, setIsOpen] = useState(false);
     const popoverRef = useRef(null);
 
@@ -55,25 +51,46 @@ const LiveIndicator = ({ isLive, settings, label }) => {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute left-0 md:left-auto md:right-0 top-full mt-3 w-64 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl z-[60]"
+                        className="absolute left-0 md:left-auto md:right-0 top-full mt-3 w-72 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl z-[60]"
                     >
                         <div className="flex items-center justify-between mb-4">
-                            <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">{label}</h4>
+                            <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">{label}</h4>
                             <button onClick={() => setIsOpen(false)} className="text-gray-500 hover:text-white"><X size={14} /></button>
                         </div>
-                        <div className="space-y-3">
-                            {settings?.slots?.length > 0 ? (
-                                settings.slots.map((slot, i) => (
-                                    <div key={i} className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-xl border border-white/5">
-                                        <span className="text-[10px] font-bold text-gray-400 uppercase">Slot {i + 1}</span>
-                                        <span className="text-xs font-black text-white">{format12h(slot.start)} - {format12h(slot.end)}</span>
+
+                        <div className="space-y-6">
+                            {DEFAULT_CAMPUS_CONFIG.map((campus) => {
+                                const config = settings?.deliveryCampusConfig || [];
+                                const campusData = config.find(c => c.id === campus.id || c.name === campus.name);
+                                const slots = campusData?.slots || [];
+                                const isCurrentCampus = slots.length > 0; // Simplified check for now
+
+                                return (
+                                    <div key={campus.id} className="space-y-2">
+                                        <div className="flex items-center justify-between px-1">
+                                            <span className="text-[10px] font-black text-white uppercase tracking-wider">{campus.name}</span>
+                                            <div className={`w-1.5 h-1.5 rounded-full ${slots.length > 0 ? 'bg-orange-500' : 'bg-zinc-700'}`}></div>
+                                        </div>
+                                        <div className="space-y-1.5">
+                                            {slots.length > 0 ? (
+                                                slots.map((slot, i) => (
+                                                    <div key={i} className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-xl border border-white/5">
+                                                        <span className="text-[9px] font-bold text-gray-500 uppercase">Slot {i + 1}</span>
+                                                        <span className="text-[10px] font-black text-white">{format12h(slot.start)} - {format12h(slot.end)}</span>
+                                                    </div>
+                                                ))
+                                            ) : (
+                                                <div className="bg-black/20 px-3 py-2 rounded-xl border border-white/5 text-center">
+                                                    <span className="text-[9px] text-gray-500 italic">No hours set</span>
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
-                                ))
-                            ) : (
-                                <p className="text-[10px] text-gray-500 italic text-center py-2">No ordering hours scheduled for today.</p>
-                            )}
+                                );
+                            })}
                         </div>
-                        <div className={`mt-4 pt-4 border-t border-white/10 flex items-center justify-center gap-2 ${isLive ? 'text-green-500' : 'text-red-500'}`}>
+
+                        <div className={`mt-6 pt-4 border-t border-white/10 flex items-center justify-center gap-2 ${isLive ? 'text-green-500' : 'text-red-500'}`}>
                             <div className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-green-500' : 'bg-red-500'}`}></div>
                             <span className="text-[10px] font-black uppercase tracking-widest">Currently {isLive ? 'Open' : 'Closed'}</span>
                         </div>
@@ -152,7 +169,7 @@ const CommunityDropdown = ({ groups }) => {
 };
 
 export default function Navbar() {
-    const { setIsCartOpen, totalItems, orderSettings, grocerySettings, laundrySettings, whatsappGroups } = useCart();
+    const { setIsCartOpen, totalItems, orderSettings, grocerySettings, laundrySettings, whatsappGroups, userDetails, setUserDetails, getCampusSlots } = useCart();
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const { scrollY } = useScroll();
@@ -181,6 +198,9 @@ export default function Navbar() {
 
     const [isLive, setIsLive] = useState(false);
 
+    // Get slots specific to the user's selected campus
+    const currentCampusSlots = getCampusSlots(userDetails.campus);
+
     useEffect(() => {
         const checkLive = () => {
             // 1. Check Manual Override
@@ -190,9 +210,12 @@ export default function Navbar() {
                 return;
             }
 
-            // 2. Fallback to Slot Check
+            // 2. Fallback to Slot Check (Using per-campus slots if available)
             const { timeInMinutes } = getISTTime();
-            const slots = currentSettings?.slots || [];
+
+            // Priority: Campus Slots > Global Slots
+            const slots = currentSettings === orderSettings ? currentCampusSlots : (currentSettings?.slots || []);
+
             const active = slots.some(slot => {
                 const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
                 const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
@@ -204,7 +227,7 @@ export default function Navbar() {
         checkLive();
         const interval = setInterval(checkLive, 60000);
         return () => clearInterval(interval);
-    }, [currentSettings]);
+    }, [currentSettings, currentCampusSlots]);
 
     const navClass = isScrolled
         ? "bg-black/80 backdrop-blur-xl border-b border-white/10 shadow-lg"
@@ -262,6 +285,10 @@ export default function Navbar() {
                 </div>
             </motion.nav>
             <CartDrawer />
+            <CampusSelector
+                currentCampus={userDetails.campus}
+                onSelect={(campus) => setUserDetails(prev => ({ ...prev, campus }))}
+            />
         </>
     );
 }

@@ -10,8 +10,6 @@ export default function LaundrySettings({
     setSlotEnd,
     handleAddSlot,
     handleDeleteSlot,
-    campusConfig,
-    setCampusConfig,
     laundryPricing,
     setLaundryPricing,
     onSaveSettings

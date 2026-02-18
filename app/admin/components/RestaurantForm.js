@@ -5,6 +5,7 @@ import Fuse from "fuse.js";
 import { toTitleCase } from "@/lib/formatters";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
+import CustomSelect from "../../components/CustomSelect";
 
 export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false, isPartnerView = false }) {
     const [formData, setFormData] = useState({
@@ -274,16 +275,15 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
 
                 {/* Category Filter Dropdown */}
                 <div className="mb-6">
-                    <select
+                    <CustomSelect
+                        options={[
+                            { label: "All Categories", value: "all" },
+                            ...(formData.categories || []).map(cat => ({ label: cat, value: cat }))
+                        ]}
                         value={selectedCategory}
-                        onChange={(e) => setSelectedCategory(e.target.value)}
-                        className="w-full md:w-auto bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-bold appearance-none cursor-pointer"
-                    >
-                        <option value="all" className="bg-black text-white">All Categories</option>
-                        {(formData.categories || []).map(cat => (
-                            <option key={cat} value={cat} className="bg-black text-white">{cat}</option>
-                        ))}
-                    </select>
+                        onChange={setSelectedCategory}
+                        className="w-full md:w-64"
+                    />
                 </div>
 
                 {/* Item Count */}

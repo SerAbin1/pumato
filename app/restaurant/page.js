@@ -107,7 +107,7 @@ function RestaurantContent() {
                 includeScore: true
             });
             const results = fuse.search(searchQuery);
-            
+
             // Boost scores for exact matches
             const scoredResults = results.map(result => {
                 const itemName = result.item.name.toLowerCase();
@@ -117,18 +117,18 @@ function RestaurantContent() {
                 else if (itemName.includes(query)) adjustedScore -= 0.2;
                 return { item: result.item, score: adjustedScore };
             });
-            
+
             // Include substring matches that Fuse might have missed
             const substringMatches = items.filter(item => {
                 const itemName = item.name.toLowerCase();
                 return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
             });
-            
+
             const allMatches = [
                 ...scoredResults,
                 ...substringMatches.map(item => ({ item, score: 0 }))
             ];
-            
+
             allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
             items = allMatches.map(m => m.item);
         }
@@ -296,6 +296,37 @@ function RestaurantContent() {
                     </div>
 
                     <div className="flex items-center gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
+                        {/* Category Dropdown */}
+                        <div className="relative">
+                            <select
+                                onChange={(e) => {
+                                    const category = e.target.value;
+                                    if (category) {
+                                        const element = document.getElementById(category);
+                                        if (element) {
+                                            const offset = 180; // Adjust for sticky headers
+                                            const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+                                            const offsetPosition = elementPosition - offset;
+                                            window.scrollTo({
+                                                top: offsetPosition,
+                                                behavior: "smooth"
+                                            });
+                                        }
+                                    }
+                                }}
+                                className="appearance-none bg-white/5 border border-white/10 text-white text-xs font-bold uppercase tracking-wider px-4 py-2 pr-8 rounded-full focus:outline-none focus:border-white/30 cursor-pointer hover:bg-white/10 transition-colors"
+                            >
+                                <option value="" className="bg-black text-gray-400">Category</option>
+                                {Object.keys(processedMenu).map((category) => (
+                                    <option key={category} value={category} className="bg-black text-white">
+                                        {category}
+                                    </option>
+                                ))}
+                            </select>
+                            <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                        </div>
+                        <div className="w-px h-6 bg-white/10 mx-1 flex-shrink-0"></div>
+
                         <button
                             onClick={() => setSortOrder(prev => prev === "default" ? "asc" : (prev === "asc" ? "desc" : "default"))}
                             className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border flex items-center gap-2 whitespace-nowrap ${sortOrder !== "default" ? "bg-white text-black border-white shadow-lg" : "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white"}`}

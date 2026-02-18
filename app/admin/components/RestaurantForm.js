@@ -31,6 +31,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
     }, [initialData]);
 
     const [menuSearchQuery, setMenuSearchQuery] = useState("");
+    const [selectedCategory, setSelectedCategory] = useState("all");
 
     const handleFileUpload = async (e, setUrlCallback) => {
         const file = e.target.files[0];
@@ -271,6 +272,20 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                     )}
                 </div>
 
+                {/* Category Filter Dropdown */}
+                <div className="mb-6">
+                    <select
+                        value={selectedCategory}
+                        onChange={(e) => setSelectedCategory(e.target.value)}
+                        className="w-full md:w-auto bg-white/5 border border-white/10 px-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-bold appearance-none cursor-pointer"
+                    >
+                        <option value="all" className="bg-black text-white">All Categories</option>
+                        {(formData.categories || []).map(cat => (
+                            <option key={cat} value={cat} className="bg-black text-white">{cat}</option>
+                        ))}
+                    </select>
+                </div>
+
                 {/* Item Count */}
                 {(formData.menu || []).length > 0 && (
                     <div className="mb-4 text-sm text-gray-400 font-medium">
@@ -306,7 +321,13 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
 
                 <div className="space-y-6">
                     {(() => {
-                        const menu = formData.menu || [];
+                        let menu = formData.menu || [];
+
+                        // Filter by Category first
+                        if (selectedCategory !== "all") {
+                            menu = menu.filter(item => item.category === selectedCategory);
+                        }
+
                         if (!menuSearchQuery) return menu;
 
                         const query = menuSearchQuery.toLowerCase().trim();

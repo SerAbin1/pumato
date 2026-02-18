@@ -6,75 +6,8 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Clock, MapPin, Phone, User, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
-export default function OrdersTab() {
-    const [orders, setOrders] = useState([]);
-    const [loading, setLoading] = useState(true);
+export default function OrdersTab({ orders, loading }) {
     const [processingId, setProcessingId] = useState(null);
-    const isInitialLoad = useRef(true);
-    const audioRef = useRef(null);
-
-    useEffect(() => {
-        // Initialize audio
-        audioRef.current = new Audio("/orderNotif.mpeg");
-        audioRef.current.preload = "auto";
-
-        // Click-to-unlock browser policy handler
-        const unlock = () => {
-            if (audioRef.current) {
-                audioRef.current.play().then(() => {
-                    audioRef.current.pause();
-                    audioRef.current.currentTime = 0;
-                }).catch(() => { });
-            }
-            document.removeEventListener("click", unlock);
-        };
-        document.addEventListener("click", unlock);
-        return () => document.removeEventListener("click", unlock);
-    }, []);
-
-    const playNotificationSound = useCallback(() => {
-        if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(e => console.log("Sound play failed:", e));
-        }
-    }, []);
-
-    useEffect(() => {
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        // Listen for "placed" orders from today
-        const q = query(
-            collection(db, "orders"),
-            where("status", "==", "placed"),
-            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
-            orderBy("createdAt", "asc") // Oldest first for fairness
-        );
-
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const newOrders = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate()
-            }));
-
-            // Play sound for new orders (not on initial load)
-            if (isInitialLoad.current) {
-                isInitialLoad.current = false;
-            } else if (snapshot.docChanges().some(change => change.type === 'added')) {
-                playNotificationSound();
-                toast("New Order Received!", { icon: "🔔" });
-            }
-
-            setOrders(newOrders);
-            setLoading(false);
-        }, (error) => {
-            console.error("Orders listener error:", error);
-            setLoading(false);
-        });
-
-        return () => unsubscribe();
-    }, []);
 
     const handleAction = async (orderId, action) => {
         setProcessingId(orderId);

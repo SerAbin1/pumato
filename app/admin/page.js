@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Plus, Bell } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, deleteDoc, getDoc } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
@@ -30,6 +30,10 @@ export default function AdminPage() {
     const { user, isAdmin, loading: authLoading, logout } = useAdminAuth();
 
     const [activeSection, setActiveSection] = useState("orders"); // orders, restaurants, coupons, laundry, delivery, grocery, settings, banners
+    const [orders, setOrders] = useState([]);
+    const [loadingOrders, setLoadingOrders] = useState(true);
+    const isInitialLoad = useRef(true);
+    const audioRef = useRef(null);
     const [restaurants, setRestaurants] = useState([]);
     const [coupons, setCoupons] = useState([]);
     const [banners, setBanners] = useState({
@@ -72,6 +76,72 @@ export default function AdminPage() {
             fetchData();
         }
     }, [user, isAdmin]);
+
+    // Global Order Notification Logic
+    useEffect(() => {
+        // Initialize audio
+        audioRef.current = new Audio("/orderNotif.mpeg");
+        audioRef.current.preload = "auto";
+
+        // Click-to-unlock browser policy handler
+        const unlock = () => {
+            if (audioRef.current) {
+                audioRef.current.play().then(() => {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                }).catch(() => { });
+            }
+            document.removeEventListener("click", unlock);
+        };
+        document.addEventListener("click", unlock);
+        return () => document.removeEventListener("click", unlock);
+    }, []);
+
+    const playNotificationSound = useCallback(() => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => console.log("Sound play failed:", e));
+        }
+    }, []);
+
+    useEffect(() => {
+        if (!user || !isAdmin) return;
+
+        const now = new Date();
+        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+        // Listen for "placed" orders from today
+        const q = query(
+            collection(db, "orders"),
+            where("status", "==", "placed"),
+            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
+            orderBy("createdAt", "asc")
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const newOrders = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate()
+            }));
+
+            // Play sound for new orders (not on initial load)
+            if (isInitialLoad.current) {
+                isInitialLoad.current = false;
+            } else if (snapshot.docChanges().some(change => change.type === 'added')) {
+                playNotificationSound();
+                toast("New Order Received!", { icon: "🔔" });
+            }
+
+            setOrders(newOrders);
+            setLoadingOrders(false);
+        }, (error) => {
+            console.error("Orders listener error:", error);
+            setLoadingOrders(false);
+        });
+
+        return () => unsubscribe();
+    }, [user, isAdmin, playNotificationSound]);
 
     // Fetch Laundry Slots when date changes or section becomes active
     useEffect(() => {
@@ -450,9 +520,14 @@ export default function AdminPage() {
                         <div className="flex bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-md min-w-max">
                             <button
                                 onClick={() => setActiveSection("orders")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "orders" ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none relative ${activeSection === "orders" ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
                             >
                                 <Bell size={16} /> Live Orders
+                                {orders.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border-2 border-black">
+                                        {orders.length}
+                                    </span>
+                                )}
                             </button>
                             <button
                                 onClick={() => setActiveSection("restaurants")}
@@ -503,7 +578,7 @@ export default function AdminPage() {
                 {/* --- CONTENT SECTIONS --- */}
                 <div className="min-h-[500px]">
                     {activeSection === "orders" && (
-                        <OrdersTab />
+                        <OrdersTab orders={orders} loading={loadingOrders} />
                     )}
 
                     {activeSection === "restaurants" && (

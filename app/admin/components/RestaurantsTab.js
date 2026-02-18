@@ -80,55 +80,57 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
 
             {activeTab === "list" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                    {restaurants.map(r => (
-                        <motion.div
-                            initial={{ opacity: 0, scale: 0.95 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            key={r.id}
-                            className={`bg-white/5 border border-white/10 p-6 rounded-[2rem] hover:bg-white/10 transition-all group hover:border-white/20 hover:shadow-2xl hover:shadow-orange-900/10 ${r.isVisible === false ? 'opacity-60' : ''}`}
-                        >
-                            <div className="relative h-56 mb-6 overflow-hidden rounded-2xl bg-black">
-                                {r.image && (
-                                    <Image
-                                        src={r.image}
-                                        alt={r.name}
-                                        fill
-                                        sizes="(max-width: 768px) 100vw, 400px"
-                                        className="object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
-                                    />
-                                )}
-                                {r.isVisible === false && (
-                                    <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">
-                                        <EyeOff size={12} /> Hidden
+                    {[...restaurants]
+                        .sort((a, b) => (a.isVisible === false ? 0 : 1) - (b.isVisible === false ? 0 : 1))
+                        .map(r => (
+                            <motion.div
+                                initial={{ opacity: 0, scale: 0.95 }}
+                                animate={{ opacity: 1, scale: 1 }}
+                                key={r.id}
+                                className={`bg-white/5 border border-white/10 p-6 rounded-[2rem] hover:bg-white/10 transition-all group hover:border-white/20 hover:shadow-2xl hover:shadow-orange-900/10 ${r.isVisible === false ? 'opacity-60' : ''}`}
+                            >
+                                <div className="relative h-56 mb-6 overflow-hidden rounded-2xl bg-black">
+                                    {r.image && (
+                                        <Image
+                                            src={r.image}
+                                            alt={r.name}
+                                            fill
+                                            sizes="(max-width: 768px) 100vw, 400px"
+                                            className="object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
+                                        />
+                                    )}
+                                    {r.isVisible === false && (
+                                        <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">
+                                            <EyeOff size={12} /> Hidden
+                                        </div>
+                                    )}
+                                    <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
+                                        <button
+                                            onClick={async (e) => {
+                                                e.stopPropagation();
+                                                const updated = { ...r, isVisible: r.isVisible === false ? true : false };
+                                                try {
+                                                    await setDoc(doc(db, "restaurants", r.id), updated);
+                                                    await fetchData();
+                                                } catch (error) {
+                                                    console.error(error);
+                                                    alert("Failed to toggle visibility");
+                                                }
+                                            }}
+                                            className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-purple-600 hover:text-white text-white transition-all"
+                                            title={r.isVisible === false ? "Show Restaurant" : "Hide Restaurant"}
+                                        >
+                                            {r.isVisible === false ? <Eye size={18} /> : <EyeOff size={18} />}
+                                        </button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleEdit(r); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-blue-600 hover:text-white text-white transition-all"><Save size={18} /></button>
+                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-red-600 hover:text-white text-white transition-all"><Trash size={18} /></button>
                                     </div>
-                                )}
-                                <div className="absolute top-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-all translate-y-2 group-hover:translate-y-0">
-                                    <button
-                                        onClick={async (e) => {
-                                            e.stopPropagation();
-                                            const updated = { ...r, isVisible: r.isVisible === false ? true : false };
-                                            try {
-                                                await setDoc(doc(db, "restaurants", r.id), updated);
-                                                await fetchData();
-                                            } catch (error) {
-                                                console.error(error);
-                                                alert("Failed to toggle visibility");
-                                            }
-                                        }}
-                                        className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-purple-600 hover:text-white text-white transition-all"
-                                        title={r.isVisible === false ? "Show Restaurant" : "Hide Restaurant"}
-                                    >
-                                        {r.isVisible === false ? <Eye size={18} /> : <EyeOff size={18} />}
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleEdit(r); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-blue-600 hover:text-white text-white transition-all"><Save size={18} /></button>
-                                    <button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-red-600 hover:text-white text-white transition-all"><Trash size={18} /></button>
                                 </div>
-                            </div>
-                            <h3 className="font-bold text-2xl text-white mb-1">{r.name}</h3>
-                            <p className="text-gray-400 text-sm mb-6">{r.cuisine}</p>
-                            <button onClick={() => handleEdit(r)} className="w-full py-4 rounded-xl border border-white/10 text-gray-300 font-bold hover:bg-white hover:text-black transition-all">Edit Details</button>
-                        </motion.div>
-                    ))}
+                                <h3 className="font-bold text-2xl text-white mb-1">{r.name}</h3>
+                                <p className="text-gray-400 text-sm mb-6">{r.cuisine}</p>
+                                <button onClick={() => handleEdit(r)} className="w-full py-4 rounded-xl border border-white/10 text-gray-300 font-bold hover:bg-white hover:text-black transition-all">Edit Details</button>
+                            </motion.div>
+                        ))}
                 </div>
             ) : (
                 <RestaurantForm

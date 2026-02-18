@@ -359,86 +359,88 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
 
                         allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
                         return allMatches.map(m => m.item);
-                    })().map((item, idx) => {
-                        const actualIdx = (formData.menu || []).indexOf(item);
-                        return (
-                            <div key={item.id} className={`p-6 border border-white/10 rounded-3xl bg-black/20 relative group ${item.isVisible === false ? 'opacity-60' : ''}`}>
-                                <button onClick={() => removeMenuItem(actualIdx)} className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"><Trash size={16} /></button>
-                                <button
-                                    onClick={() => updateMenuItem(actualIdx, "isVisible", item.isVisible === false ? true : false)}
-                                    className="absolute -top-3 -left-3 bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-colors shadow-lg"
-                                    title={item.isVisible === false ? "Show Item" : "Hide Item"}
-                                >
-                                    {item.isVisible === false ? <Eye size={16} /> : <EyeOff size={16} />}
-                                </button>
-                                {item.isVisible === false && (
-                                    <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-md text-white px-2 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg z-10">
-                                        Hidden
-                                    </div>
-                                )}
-                                <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                                    <div className="col-span-1 space-y-4">
-                                        <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white font-bold" placeholder="Item Name" value={item.name} onChange={(e) => updateMenuItem(actualIdx, "name", e.target.value)} />
-                                        <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" type="number" value={item.price} onChange={(e) => updateMenuItem(actualIdx, "price", e.target.value)} />
-                                        <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Extra Info (e.g. Must Try)" value={item.extraInfo || ""} onChange={(e) => updateMenuItem(actualIdx, "extraInfo", e.target.value)} />
-                                        <select
-                                            className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs appearance-none focus:outline-none focus:border-orange-500/50"
-                                            value={item.category || ""}
-                                            onChange={(e) => updateMenuItem(actualIdx, "category", e.target.value)}
-                                        >
-                                            <option value="" disabled className="bg-gray-900 text-gray-400">Select Category</option>
-                                            {(formData.categories || []).map(cat => (
-                                                <option key={cat} value={cat} className="bg-gray-900">{cat}</option>
-                                            ))}
-                                            {item.category && !(formData.categories || []).includes(item.category) && (
-                                                <option value={item.category} className="bg-gray-900">{item.category} (Legacy)</option>
-                                            )}
-                                        </select>
-                                    </div>
-                                    <div className="col-span-2">
-                                        <textarea className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white h-full resize-none min-h-[100px]" placeholder="Description" value={item.description} onChange={(e) => updateMenuItem(actualIdx, "description", e.target.value)} />
-                                    </div>
-                                    <div className="col-span-1 space-y-4">
-                                        <div className="flex gap-2">
-                                            <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Image URL" value={item.image} onChange={(e) => updateMenuItem(actualIdx, "image", e.target.value)} />
-                                            <label className="bg-white/10 hover:bg-white/20 p-2 rounded-lg cursor-pointer text-white transition-colors flex items-center justify-center min-w-[40px]">
-                                                <Upload size={16} />
-                                                <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, (url) => updateMenuItem(actualIdx, "image", url))} />
-                                            </label>
+                    })()
+                        .sort((a, b) => (a.isVisible === false ? 0 : 1) - (b.isVisible === false ? 0 : 1))
+                        .map((item, idx) => {
+                            const actualIdx = (formData.menu || []).indexOf(item);
+                            return (
+                                <div key={item.id} className={`p-6 border border-white/10 rounded-3xl bg-black/20 relative group ${item.isVisible === false ? 'opacity-60' : ''}`}>
+                                    <button onClick={() => removeMenuItem(actualIdx)} className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"><Trash size={16} /></button>
+                                    <button
+                                        onClick={() => updateMenuItem(actualIdx, "isVisible", item.isVisible === false ? true : false)}
+                                        className="absolute -top-3 -left-3 bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-colors shadow-lg"
+                                        title={item.isVisible === false ? "Show Item" : "Hide Item"}
+                                    >
+                                        {item.isVisible === false ? <Eye size={16} /> : <EyeOff size={16} />}
+                                    </button>
+                                    {item.isVisible === false && (
+                                        <div className="absolute top-4 left-4 bg-red-500/90 backdrop-blur-md text-white px-2 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg z-10">
+                                            Hidden
                                         </div>
-                                        <div className="flex flex-col gap-3">
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.isVeg === true}
-                                                    onChange={(e) => {
-                                                        const val = e.target.checked;
-                                                        updateMenuItem(actualIdx, "isVeg", val ? true : null);
-                                                    }}
-                                                    id={`veg-${actualIdx}`}
-                                                    className="w-5 h-5 accent-green-500 rounded"
-                                                />
-                                                <label htmlFor={`veg-${actualIdx}`} className="text-sm font-bold text-green-400">Pure Veg</label>
+                                    )}
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                                        <div className="col-span-1 space-y-4">
+                                            <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white font-bold" placeholder="Item Name" value={item.name} onChange={(e) => updateMenuItem(actualIdx, "name", e.target.value)} />
+                                            <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" type="number" value={item.price} onChange={(e) => updateMenuItem(actualIdx, "price", e.target.value)} />
+                                            <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Extra Info (e.g. Must Try)" value={item.extraInfo || ""} onChange={(e) => updateMenuItem(actualIdx, "extraInfo", e.target.value)} />
+                                            <select
+                                                className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs appearance-none focus:outline-none focus:border-orange-500/50"
+                                                value={item.category || ""}
+                                                onChange={(e) => updateMenuItem(actualIdx, "category", e.target.value)}
+                                            >
+                                                <option value="" disabled className="bg-gray-900 text-gray-400">Select Category</option>
+                                                {(formData.categories || []).map(cat => (
+                                                    <option key={cat} value={cat} className="bg-gray-900">{cat}</option>
+                                                ))}
+                                                {item.category && !(formData.categories || []).includes(item.category) && (
+                                                    <option value={item.category} className="bg-gray-900">{item.category} (Legacy)</option>
+                                                )}
+                                            </select>
+                                        </div>
+                                        <div className="col-span-2">
+                                            <textarea className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white h-full resize-none min-h-[100px]" placeholder="Description" value={item.description} onChange={(e) => updateMenuItem(actualIdx, "description", e.target.value)} />
+                                        </div>
+                                        <div className="col-span-1 space-y-4">
+                                            <div className="flex gap-2">
+                                                <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Image URL" value={item.image} onChange={(e) => updateMenuItem(actualIdx, "image", e.target.value)} />
+                                                <label className="bg-white/10 hover:bg-white/20 p-2 rounded-lg cursor-pointer text-white transition-colors flex items-center justify-center min-w-[40px]">
+                                                    <Upload size={16} />
+                                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, (url) => updateMenuItem(actualIdx, "image", url))} />
+                                                </label>
                                             </div>
-                                            <div className="flex items-center gap-3">
-                                                <input
-                                                    type="checkbox"
-                                                    checked={item.isVeg === false}
-                                                    onChange={(e) => {
-                                                        const val = e.target.checked;
-                                                        updateMenuItem(actualIdx, "isVeg", val ? false : null);
-                                                    }}
-                                                    id={`nonveg-${actualIdx}`}
-                                                    className="w-5 h-5 accent-red-500 rounded"
-                                                />
-                                                <label htmlFor={`nonveg-${actualIdx}`} className="text-sm font-bold text-red-500">Non-Veg</label>
+                                            <div className="flex flex-col gap-3">
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={item.isVeg === true}
+                                                        onChange={(e) => {
+                                                            const val = e.target.checked;
+                                                            updateMenuItem(actualIdx, "isVeg", val ? true : null);
+                                                        }}
+                                                        id={`veg-${actualIdx}`}
+                                                        className="w-5 h-5 accent-green-500 rounded"
+                                                    />
+                                                    <label htmlFor={`veg-${actualIdx}`} className="text-sm font-bold text-green-400">Pure Veg</label>
+                                                </div>
+                                                <div className="flex items-center gap-3">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={item.isVeg === false}
+                                                        onChange={(e) => {
+                                                            const val = e.target.checked;
+                                                            updateMenuItem(actualIdx, "isVeg", val ? false : null);
+                                                        }}
+                                                        id={`nonveg-${actualIdx}`}
+                                                        className="w-5 h-5 accent-red-500 rounded"
+                                                    />
+                                                    <label htmlFor={`nonveg-${actualIdx}`} className="text-sm font-bold text-red-500">Non-Veg</label>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })}
                 </div>
             </div>
 

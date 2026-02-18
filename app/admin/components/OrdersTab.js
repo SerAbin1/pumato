@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTimestamp, Timestamp } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +10,34 @@ export default function OrdersTab() {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
     const [processingId, setProcessingId] = useState(null);
+    const isInitialLoad = useRef(true);
+    const audioRef = useRef(null);
+
+    useEffect(() => {
+        // Initialize audio
+        audioRef.current = new Audio("/orderNotif.mpeg");
+        audioRef.current.preload = "auto";
+
+        // Click-to-unlock browser policy handler
+        const unlock = () => {
+            if (audioRef.current) {
+                audioRef.current.play().then(() => {
+                    audioRef.current.pause();
+                    audioRef.current.currentTime = 0;
+                }).catch(() => { });
+            }
+            document.removeEventListener("click", unlock);
+        };
+        document.addEventListener("click", unlock);
+        return () => document.removeEventListener("click", unlock);
+    }, []);
+
+    const playNotificationSound = useCallback(() => {
+        if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(e => console.log("Sound play failed:", e));
+        }
+    }, []);
 
     useEffect(() => {
         const now = new Date();
@@ -29,6 +57,15 @@ export default function OrdersTab() {
                 ...doc.data(),
                 createdAt: doc.data().createdAt?.toDate()
             }));
+
+            // Play sound for new orders (not on initial load)
+            if (isInitialLoad.current) {
+                isInitialLoad.current = false;
+            } else if (snapshot.docChanges().some(change => change.type === 'added')) {
+                playNotificationSound();
+                toast("New Order Received!", { icon: "🔔" });
+            }
+
             setOrders(newOrders);
             setLoading(false);
         }, (error) => {

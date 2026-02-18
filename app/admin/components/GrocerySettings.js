@@ -2,11 +2,14 @@ import { Tag, Clock, Plus, Trash } from "lucide-react";
 import { format12h } from "@/lib/formatters";
 
 import ServiceOverrideControl from './ServiceOverrideControl';
+import { useState } from "react";
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function GrocerySettings({
     grocerySettings,
     setGrocerySettings
 }) {
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, slotIdx: null, slotName: "" });
     return (
         <div className="space-y-8">
             <ServiceOverrideControl
@@ -75,7 +78,10 @@ export default function GrocerySettings({
                                         />
                                     </div>
                                     <button
-                                        onClick={() => setGrocerySettings({ ...grocerySettings, slots: (grocerySettings.slots || []).filter((_, i) => i !== index) })}
+                                        onClick={() => {
+                                            const slotName = `${format12h(slot.start)} - ${format12h(slot.end)}`;
+                                            setConfirmModal({ isOpen: true, slotIdx: index, slotName });
+                                        }}
                                         className="p-4 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-2xl border border-red-500/20 transition-all flex-shrink-0"
                                     >
                                         <Trash size={18} />
@@ -90,6 +96,17 @@ export default function GrocerySettings({
 
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => {
+                    setGrocerySettings({ ...grocerySettings, slots: (grocerySettings.slots || []).filter((_, i) => i !== confirmModal.slotIdx) });
+                }}
+                title="Delete Timeslot?"
+                message={`Are you sure you want to delete the timeslot "${confirmModal.slotName}"?`}
+                confirmLabel="Delete"
+            />
         </div>
     );
 }

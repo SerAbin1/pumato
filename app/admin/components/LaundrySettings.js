@@ -1,4 +1,6 @@
 import { Tag, Save, Clock, Plus, Trash } from "lucide-react";
+import { useState } from "react";
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function LaundrySettings({
     laundrySlots,
@@ -14,6 +16,7 @@ export default function LaundrySettings({
     setLaundryPricing,
     onSaveSettings
 }) {
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, slotIdx: null, slotName: "" });
 
     return (
         <div className="space-y-8">
@@ -101,7 +104,9 @@ export default function LaundrySettings({
                                 <div key={idx} className="flex items-center justify-between bg-white/5 p-4 rounded-xl border border-white/5 group hover:bg-white/10 transition-colors">
                                     <span className="font-bold text-gray-200">{slot}</span>
                                     <button
-                                        onClick={() => handleDeleteSlot(idx)}
+                                        onClick={() => {
+                                            setConfirmModal({ isOpen: true, slotIdx: idx, slotName: slot });
+                                        }}
                                         className="text-gray-500 hover:text-red-500 p-2 rounded-lg hover:bg-red-500/10 transition-all opacity-0 group-hover:opacity-100"
                                     >
                                         <Trash size={18} />
@@ -114,6 +119,15 @@ export default function LaundrySettings({
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => handleDeleteSlot(confirmModal.slotIdx)}
+                title="Delete Timeslot?"
+                message={`Are you sure you want to delete the timeslot "${confirmModal.slotName}"?`}
+                confirmLabel="Delete"
+            />
         </div>
     );
 }

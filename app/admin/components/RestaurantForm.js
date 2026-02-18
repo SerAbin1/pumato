@@ -6,6 +6,7 @@ import { toTitleCase } from "@/lib/formatters";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
 import CustomSelect from "../../components/CustomSelect";
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false, isPartnerView = false }) {
     const [formData, setFormData] = useState({
@@ -33,6 +34,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
 
     const [menuSearchQuery, setMenuSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, targetId: null, targetName: "" });
 
     const handleFileUpload = async (e, setUrlCallback) => {
         const file = e.target.files[0];
@@ -226,11 +228,12 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                                 <span className={`text-sm font-bold ${isOutOfStock ? 'text-red-400 line-through' : 'text-gray-200'}`}>{cat}</span>
                                 <button
                                     onClick={() => {
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            categories: (prev.categories || []).filter(c => c !== cat),
-                                            outOfStockCategories: (prev.outOfStockCategories || []).filter(c => c !== cat)
-                                        }));
+                                        setConfirmModal({
+                                            isOpen: true,
+                                            type: "category",
+                                            targetId: cat,
+                                            targetName: cat
+                                        });
                                     }}
                                     className="text-gray-500 hover:text-red-500 transition-colors"
                                 >
@@ -365,7 +368,17 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                             const actualIdx = (formData.menu || []).indexOf(item);
                             return (
                                 <div key={item.id} className={`p-6 border border-white/10 rounded-3xl bg-black/20 relative group ${item.isVisible === false ? 'opacity-60' : ''}`}>
-                                    <button onClick={() => removeMenuItem(actualIdx)} className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"><Trash size={16} /></button>
+                                    <button
+                                        onClick={() => setConfirmModal({
+                                            isOpen: true,
+                                            type: "menuItem",
+                                            targetId: actualIdx,
+                                            targetName: item.name
+                                        })}
+                                        className="absolute -top-3 -right-3 bg-red-500 text-white p-2 rounded-full hover:bg-red-600 transition-colors shadow-lg"
+                                    >
+                                        <Trash size={16} />
+                                    </button>
                                     <button
                                         onClick={() => updateMenuItem(actualIdx, "isVisible", item.isVisible === false ? true : false)}
                                         className="absolute -top-3 -left-3 bg-purple-500 text-white p-2 rounded-full hover:bg-purple-600 transition-colors shadow-lg"
@@ -458,6 +471,26 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                     <Plus size={18} /> Add Item
                 </button>
             </StickyActionBar>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => {
+                    if (confirmModal.type === "menuItem") {
+                        removeMenuItem(confirmModal.targetId);
+                    } else if (confirmModal.type === "category") {
+                        const cat = confirmModal.targetId;
+                        setFormData(prev => ({
+                            ...prev,
+                            categories: (prev.categories || []).filter(c => c !== cat),
+                            outOfStockCategories: (prev.outOfStockCategories || []).filter(c => c !== cat)
+                        }));
+                    }
+                }}
+                title={confirmModal.type === "menuItem" ? "Delete Menu Item?" : "Delete Category?"}
+                message={`Are you sure you want to delete "${confirmModal.targetName}"?`}
+                confirmLabel="Delete"
+            />
         </div>
     );
 }

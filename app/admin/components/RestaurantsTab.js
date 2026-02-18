@@ -5,11 +5,13 @@ import { Trash, Save, Eye, EyeOff, Plus } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import RestaurantForm from "./RestaurantForm";
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function RestaurantsTab({ restaurants, fetchData }) {
     const [activeTab, setActiveTab] = useState("list");
     const [editingId, setEditingId] = useState(null);
     const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, restaurantId: null, restaurantName: "" });
 
     // --- HANDLERS ---
     const handleAddNew = () => {
@@ -37,7 +39,6 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
     };
 
     const handleDelete = async (id) => {
-        if (!confirm("Are you sure you want to delete this restaurant?")) return;
         try {
             await deleteDoc(doc(db, "restaurants", id));
             await fetchData();
@@ -123,7 +124,15 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
                                             {r.isVisible === false ? <Eye size={18} /> : <EyeOff size={18} />}
                                         </button>
                                         <button onClick={(e) => { e.stopPropagation(); handleEdit(r); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-blue-600 hover:text-white text-white transition-all"><Save size={18} /></button>
-                                        <button onClick={(e) => { e.stopPropagation(); handleDelete(r.id); }} className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-red-600 hover:text-white text-white transition-all"><Trash size={18} /></button>
+                                        <button
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setConfirmModal({ isOpen: true, restaurantId: r.id, restaurantName: r.name });
+                                            }}
+                                            className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-red-600 hover:text-white text-white transition-all"
+                                        >
+                                            <Trash size={18} />
+                                        </button>
                                     </div>
                                 </div>
                                 <h3 className="font-bold text-2xl text-white mb-1">{r.name}</h3>
@@ -139,6 +148,15 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
                     onCancel={() => setActiveTab("list")}
                 />
             )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => handleDelete(confirmModal.restaurantId)}
+                title="Delete Restaurant?"
+                message={`Are you sure you want to delete "${confirmModal.restaurantName}"? This will permanently remove it from the database.`}
+                confirmLabel="Delete Restaurant"
+            />
         </div>
     );
 }

@@ -4,13 +4,15 @@ import { supabase } from "@/lib/supabase";
 import Fuse from "fuse.js";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
     const [activeTab, setActiveTab] = useState("list");
-    const [editingId, setEditingId] = useState(null);
+    const [editingId, setEditingId] = useState(null); // Keep editingId as per original logic, instruction might have been a partial change
     const [itemSearchQuery, setItemSearchQuery] = useState("");
     const [couponTargetType, setCouponTargetType] = useState("item"); // "item" or "category"
     const [isSaving, setIsSaving] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, couponId: null, couponCode: "" });
 
     const [couponForm, setCouponForm] = useState({
         code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, isActive: true, usageLimit: "", restaurantId: null, itemId: null
@@ -90,7 +92,6 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
     };
 
     const handleDeleteCoupon = async (id) => {
-        if (!confirm("Delete this coupon?")) return;
         try {
             const idToken = await user.getIdToken();
             const { error } = await supabase.functions.invoke("manage-coupons", {
@@ -99,6 +100,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
             });
             if (error) throw error;
             await fetchData();
+            setConfirmModal({ isOpen: false, couponId: null, couponCode: "" }); // Close modal on success
         } catch (error) {
             console.error(error);
             alert("Failed to delete from Supabase");
@@ -186,8 +188,11 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                     {c.isActive !== false ? <Check size={16} /> : <X size={16} />}
                                 </button>
                                 <button
-                                    onClick={(e) => { e.stopPropagation(); handleDeleteCoupon(c.id); }}
-                                    className="bg-red-500/10 text-red-500 p-2 rounded-full hover:bg-red-500/20 transition-colors"
+                                    onClick={(e) => {
+                                        e.stopPropagation(); // Prevent opening edit form
+                                        setConfirmModal({ isOpen: true, couponId: c.id, couponCode: c.code });
+                                    }}
+                                    className="p-2 text-gray-500 hover:text-red-500 transition-colors"
                                 >
                                     <Trash size={16} />
                                 </button>
@@ -422,6 +427,15 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                     />
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => handleDeleteCoupon(confirmModal.couponId)}
+                title="Delete Coupon?"
+                message={`Are you sure you want to delete the coupon "${confirmModal.couponCode}"? This action cannot be undone.`}
+                confirmLabel="Delete Coupon"
+            />
         </div>
     );
 }

@@ -4,6 +4,7 @@ import FormInput from "./FormInput";
 import ServiceOverrideControl from './ServiceOverrideControl';
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { format12h } from "@/lib/utils";
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function DeliverySettings({
     orderSettings,
@@ -12,6 +13,7 @@ export default function DeliverySettings({
 }) {
     const [lightItemSearchQuery, setLightItemSearchQuery] = useState("");
     const [heavyItemSearchQuery, setHeavyItemSearchQuery] = useState("");
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, targetId: null, targetName: "", context: null });
 
     return (
         <div className="space-y-8">
@@ -125,12 +127,13 @@ export default function DeliverySettings({
                                                         </div>
                                                         <button
                                                             onClick={() => {
-                                                                const config = [...(orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG)];
-                                                                config[idx] = {
-                                                                    ...config[idx],
-                                                                    slots: slots.filter((_, i) => i !== sIdx)
-                                                                };
-                                                                setOrderSettings({ ...orderSettings, deliveryCampusConfig: config });
+                                                                setConfirmModal({
+                                                                    isOpen: true,
+                                                                    type: "slot",
+                                                                    targetId: sIdx,
+                                                                    targetName: `${format12h(slot.start)} - ${format12h(slot.end)}`,
+                                                                    context: idx
+                                                                });
                                                             }}
                                                             className="p-3 text-gray-500 hover:text-red-500 transition-colors bg-white/5 rounded-xl hover:bg-red-500/10"
                                                         >
@@ -216,10 +219,14 @@ export default function DeliverySettings({
                                     <span key={itemId} className="bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-orange-500/20">
                                         {item.name} <span className="text-gray-500 text-[10px]">({item.restaurantName})</span>
                                         <button
-                                            onClick={() => setOrderSettings({
-                                                ...orderSettings,
-                                                lightItems: (orderSettings.lightItems || []).filter(id => id !== itemId)
-                                            })}
+                                            onClick={() => {
+                                                setConfirmModal({
+                                                    isOpen: true,
+                                                    type: "lightItem",
+                                                    targetId: itemId,
+                                                    targetName: item.name
+                                                });
+                                            }}
                                             className="hover:text-red-400"
                                         >
                                             <X size={12} />
@@ -311,10 +318,14 @@ export default function DeliverySettings({
                                     <span key={itemId} className="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 border border-red-500/20">
                                         {item.name} <span className="text-gray-500 text-[10px]">({item.restaurantName})</span>
                                         <button
-                                            onClick={() => setOrderSettings({
-                                                ...orderSettings,
-                                                heavyItems: (orderSettings.heavyItems || []).filter(id => id !== itemId)
-                                            })}
+                                            onClick={() => {
+                                                setConfirmModal({
+                                                    isOpen: true,
+                                                    type: "heavyItem",
+                                                    targetId: itemId,
+                                                    targetName: item.name
+                                                });
+                                            }}
                                             className="hover:text-red-400"
                                         >
                                             <X size={12} />
@@ -382,6 +393,36 @@ export default function DeliverySettings({
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => {
+                    if (confirmModal.type === "slot") {
+                        const idx = confirmModal.context;
+                        const sIdx = confirmModal.targetId;
+                        const config = [...(orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG)];
+                        config[idx] = {
+                            ...config[idx],
+                            slots: (config[idx].slots || []).filter((_, i) => i !== sIdx)
+                        };
+                        setOrderSettings({ ...orderSettings, deliveryCampusConfig: config });
+                    } else if (confirmModal.type === "lightItem") {
+                        setOrderSettings({
+                            ...orderSettings,
+                            lightItems: (orderSettings.lightItems || []).filter(id => id !== confirmModal.targetId)
+                        });
+                    } else if (confirmModal.type === "heavyItem") {
+                        setOrderSettings({
+                            ...orderSettings,
+                            heavyItems: (orderSettings.heavyItems || []).filter(id => id !== confirmModal.targetId)
+                        });
+                    }
+                }}
+                title={confirmModal.type === "slot" ? "Delete Timeslot?" : "Remove Item?"}
+                message={`Are you sure you want to ${confirmModal.type === "slot" ? 'delete' : 'remove'} "${confirmModal.targetName}"?`}
+                confirmLabel={confirmModal.type === "slot" ? "Delete" : "Remove"}
+            />
         </div>
     );
 }

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { Sparkles, Phone, Plus, Trash, Upload, X } from "lucide-react";
 import Image from "next/image";
 import FormInput from './FormInput';
+import ConfirmModal from "../../components/ConfirmModal";
 
 export default function GlobalSettings({
     orderSettings,
@@ -11,6 +12,7 @@ export default function GlobalSettings({
     setGrocerySettings,
     handleFileUpload
 }) {
+    const [confirmModal, setConfirmModal] = useState({ isOpen: false, groupIdx: null, groupName: "" });
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
@@ -164,8 +166,11 @@ export default function GlobalSettings({
                                         <button
                                             type="button"
                                             onClick={() => {
-                                                const updated = orderSettings.whatsappGroups.filter((_, i) => i !== idx);
-                                                setOrderSettings({ ...orderSettings, whatsappGroups: updated });
+                                                setConfirmModal({
+                                                    isOpen: true,
+                                                    groupIdx: idx,
+                                                    groupName: group.name || 'Untitled'
+                                                });
                                             }}
                                             className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
                                         >
@@ -178,6 +183,18 @@ export default function GlobalSettings({
                     </div>
                 </div>
             </div>
+
+            <ConfirmModal
+                isOpen={confirmModal.isOpen}
+                onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
+                onConfirm={() => {
+                    const updated = orderSettings.whatsappGroups.filter((_, i) => i !== confirmModal.groupIdx);
+                    setOrderSettings({ ...orderSettings, whatsappGroups: updated });
+                }}
+                title="Remove Community Group?"
+                message={`Are you sure you want to remove "${confirmModal.groupName}"?`}
+                confirmLabel="Remove"
+            />
         </motion.div>
     );
 }

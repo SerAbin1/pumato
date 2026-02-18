@@ -70,17 +70,30 @@ export default function PartnerDashboard() {
         const q = query(
             collection(db, "orders"),
             where("restaurantIds", "array-contains", user.restaurantId),
+            where("status", "in", ["confirmed", "preparing", "ready", "out_for_delivery", "completed"]),
             where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
             orderBy("createdAt", "desc"),
             limit(100)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const newOrders = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate()
-            }));
+            const newOrders = snapshot.docs.map(doc => {
+                const data = doc.data();
+                // Privacy: Mask user details
+                if (data) {
+                    delete data.name;
+                    delete data.phone;
+                    delete data.address;
+                    delete data.campus;
+                    // Instructions retained for kitchen use
+                }
+
+                return {
+                    id: doc.id,
+                    ...data,
+                    createdAt: data.createdAt?.toDate()
+                };
+            });
 
             if (isInitialLoad.current) {
                 isInitialLoad.current = false;

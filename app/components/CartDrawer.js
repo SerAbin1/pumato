@@ -173,6 +173,7 @@ export default function CartDrawer() {
                 const uniqueRestaurantIds = [...new Set(cartItems.map(item => item.restaurantId).filter(Boolean))];
 
                 addDoc(collection(db, "orders"), {
+                    ...userDetails,
                     items: cartItems.map(item => ({
                         name: item.name,
                         quantity: item.quantity,
@@ -181,6 +182,7 @@ export default function CartDrawer() {
                     })),
                     restaurantIds: uniqueRestaurantIds,
                     status: "placed",
+                    finalTotal: finalTotal,
                     createdAt: serverTimestamp()
                 });
             } catch (dbError) {

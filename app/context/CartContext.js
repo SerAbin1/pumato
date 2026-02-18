@@ -194,7 +194,28 @@ export function CartProvider({ children }) {
     const regularItemsOverThreshold = Math.max(0, regularItemCount - threshold);
     const totalSurchargeUnits = regularItemsOverThreshold + effectiveLightItems;
 
-    const largeOrderSurcharge = (totalSurchargeUnits * extraChargeAmt) + (heavyItemCount * heavyItemCharge);
+    // Heavy Item Surcharge Logic
+    let effectiveHeavySurcharge = 0;
+    // "Except light": Light items do not count towards the "other items" check for the heavy item surcharge
+    // (unless they trigger their own surcharge via effectiveLightItems, which is calculated separately)
+    const effectiveItemCountForHeavyCheck = regularItemCount + heavyItemCount;
+
+    if (heavyItemCount === 1) {
+        if (effectiveItemCountForHeavyCheck > 1) {
+            // If 1 heavy item + other (non-light) items, treat as extra item
+            effectiveHeavySurcharge = extraChargeAmt;
+        } else {
+            // If 1 heavy item + only light items (or nothing), no heavy-specific surcharge
+            // (Light items will still add their own surcharge if they exceed threshold)
+            effectiveHeavySurcharge = 0;
+        }
+    } else if (heavyItemCount > 1) {
+        // For 2+ heavy items, apply heavy item charge for each additional heavy item (starting from the 2nd)
+        // Example: 2 items -> (2-1)*30 = 30. 3 items -> (3-1)*30 = 60.
+        effectiveHeavySurcharge = (heavyItemCount - 1) * heavyItemCharge;
+    }
+
+    const largeOrderSurcharge = (totalSurchargeUnits * extraChargeAmt) + effectiveHeavySurcharge;
     const hasHeavyItems = heavyItemCount > 0;
 
     // Campus-specific delivery charge & timings logic

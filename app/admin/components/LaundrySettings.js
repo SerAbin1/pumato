@@ -115,48 +115,6 @@ export default function LaundrySettings({
 
                     </div>
                 </div>
-
-                {/* Campus Delivery Charges */}
-                <div className="mt-12 pt-8 border-t border-white/10">
-                    <div className="flex justify-between items-center mb-6">
-                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                            <Tag size={20} className="text-cyan-500" /> Campus Delivery Charges
-                        </h3>
-                        <button
-                            onClick={onSaveSettings}
-                            className="bg-cyan-600 hover:bg-cyan-500 text-white px-6 py-2 rounded-xl font-bold transition-all shadow-lg flex items-center gap-2"
-                        >
-                            <Save size={18} /> Save Settings
-                        </button>
-                    </div>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        {campusConfig.map((campus, idx) => (
-                            <div key={campus.id} className="bg-white/5 p-6 rounded-2xl border border-white/5">
-                                <div className="flex justify-between items-start mb-4">
-                                    <h4 className="text-lg font-bold text-white">{campus.name}</h4>
-                                    <div className="bg-cyan-500/20 text-cyan-400 px-3 py-1 rounded-lg text-xs font-bold">
-                                        {campus.id}
-                                    </div>
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-500 uppercase">Delivery Charge (₹)</label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={campus.deliveryCharge}
-                                        onChange={(e) => {
-                                            const newConfig = [...campusConfig];
-                                            newConfig[idx].deliveryCharge = Math.max(0, Number(e.target.value));
-                                            setCampusConfig(newConfig);
-                                        }}
-                                        className="w-full bg-black/30 p-3 rounded-xl text-white font-bold border border-white/10 focus:border-cyan-500 outline-none"
-                                    />
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </div>
             </div>
         </div>
     );

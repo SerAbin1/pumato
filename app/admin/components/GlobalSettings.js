@@ -1,9 +1,13 @@
 import { useState } from 'react';
 import { motion } from "framer-motion";
-import { Sparkles, Phone, Plus, Trash, Upload, X } from "lucide-react";
+import { Sparkles, Phone, Plus, Trash, Upload, X, Database } from "lucide-react";
 import Image from "next/image";
 import FormInput from './FormInput';
 import ConfirmModal from "../../components/ConfirmModal";
+import { db } from "@/lib/firebase";
+import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
+import { toTitleCase } from "@/lib/formatters";
+import toast from "react-hot-toast";
 
 export default function GlobalSettings({
     orderSettings,
@@ -13,6 +17,75 @@ export default function GlobalSettings({
     handleFileUpload
 }) {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, groupIdx: null, groupName: "" });
+    const [isMigrating, setIsMigrating] = useState(false);
+
+    const handleStandardizeData = async () => {
+        if (!confirm("Are you sure you want to standardize all restaurant data? This will convert all categories to UPPERCASE and menu items to Title Case.")) return;
+
+        setIsMigrating(true);
+        const toastId = toast.loading("Standardizing data...");
+
+        try {
+            const querySnapshot = await getDocs(collection(db, "restaurants"));
+            const batch = writeBatch(db);
+            let count = 0;
+
+            querySnapshot.forEach((docSnap) => {
+                const data = docSnap.data();
+                const ref = doc(db, "restaurants", docSnap.id);
+                let hasChanges = false;
+                const updates = {};
+
+                // 1. Standardize Categories
+                if (data.categories && Array.isArray(data.categories)) {
+                    const newCategories = data.categories.map(c => c.trim().toUpperCase());
+                    // Check if different
+                    if (JSON.stringify(newCategories) !== JSON.stringify(data.categories)) {
+                        updates.categories = newCategories;
+                        hasChanges = true;
+                    }
+                }
+
+                // 2. Standardize Menu
+                if (data.menu && Array.isArray(data.menu)) {
+                    const newMenu = data.menu.map(item => ({
+                        ...item,
+                        name: toTitleCase((item.name || "").trim()),
+                        price: (item.price || "").toString().trim(),
+                        description: (item.description || "").trim(),
+                        image: (item.image || "").trim(),
+                        extraInfo: (item.extraInfo || "").trim(),
+                        category: (item.category || "").trim().toUpperCase()
+                    }));
+
+                    // Detailed check might be expensive, so we'll just assume changes if we processed it, 
+                    // or do a stringify compare which is fine for this size.
+                    if (JSON.stringify(newMenu) !== JSON.stringify(data.menu)) {
+                        updates.menu = newMenu;
+                        hasChanges = true;
+                    }
+                }
+
+                if (hasChanges) {
+                    batch.update(ref, updates);
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                await batch.commit();
+                toast.success(`Updated ${count} restaurants!`, { id: toastId });
+            } else {
+                toast.success("All data is already standardized!", { id: toastId });
+            }
+
+        } catch (error) {
+            console.error("Migration failed:", error);
+            toast.error("Migration failed: " + error.message, { id: toastId });
+        } finally {
+            setIsMigrating(false);
+        }
+    };
     return (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
@@ -180,6 +253,38 @@ export default function GlobalSettings({
                                 ))}
                             </div>
                         )}
+                    </div>
+
+                    {/* Data Maintenance Section */}
+                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
+                                <Database size={18} />
+                            </div>
+                            <h3 className="text-xl font-bold text-white">Data Maintenance</h3>
+                        </div>
+                        <p className="text-gray-400 text-sm">
+                            Run this tool to fix inconsistent data formats (e.g., lowercase categories, untrimmed text).
+                            This will force all categories to UPPERCASE and menu items to Title Case.
+                        </p>
+                        <button
+                            onClick={handleStandardizeData}
+                            disabled={isMigrating}
+                            className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${isMigrating
+                                ? "bg-gray-600 text-gray-400 cursor-not-allowed"
+                                : "bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-900/40"
+                                }`}
+                        >
+                            {isMigrating ? (
+                                <>
+                                    <Sparkles size={18} className="animate-spin" /> Processing...
+                                </>
+                            ) : (
+                                <>
+                                    <Sparkles size={18} /> Standardize Restaurant Data
+                                </>
+                            )}
+                        </button>
                     </div>
                 </div>
             </div>

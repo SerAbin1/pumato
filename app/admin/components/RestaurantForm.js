@@ -86,12 +86,17 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
         // Prepare data for saving
         const formattedData = {
             ...formData,
-            name: (formData.name || "").toUpperCase(),
-            cuisine: toTitleCase(formData.cuisine || ""),
+            name: (formData.name || "").trim().toUpperCase(),
+            cuisine: toTitleCase((formData.cuisine || "").trim()),
+            categories: (formData.categories || []).map(c => c.trim().toUpperCase()),
             menu: (formData.menu || []).map(item => ({
                 ...item,
-                name: toTitleCase(item.name || ""),
-                category: (item.category || "").toUpperCase()
+                name: toTitleCase((item.name || "").trim()),
+                price: (item.price || "").toString().trim(),
+                description: (item.description || "").trim(),
+                image: (item.image || "").trim(),
+                extraInfo: (item.extraInfo || "").trim(),
+                category: (item.category || "").trim().toUpperCase()
             }))
         };
         onSave(formattedData);
@@ -191,10 +196,13 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                         onClick={() => {
                             const input = document.getElementById("local-cat-input");
                             if (input && input.value.trim()) {
-                                setFormData(prev => ({
-                                    ...prev,
-                                    categories: [...(prev.categories || []), input.value.trim()]
-                                }));
+                                const newCat = input.value.trim().toUpperCase();
+                                if (!formData.categories.includes(newCat)) {
+                                    setFormData(prev => ({
+                                        ...prev,
+                                        categories: [...(prev.categories || []), newCat]
+                                    }));
+                                }
                                 input.value = "";
                             }
                         }}

@@ -3,7 +3,8 @@ const nextConfig = {
   output: 'export',
   trailingSlash: true,
   images: {
-    unoptimized: true,
+    loader: 'custom',
+    loaderFile: './lib/cloudinaryLoader.js',
   },
 };
 

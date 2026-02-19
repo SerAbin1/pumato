@@ -13,6 +13,8 @@ Find whether I'm using upload preset for uploading to cloudinary or not
 - **Cloudinary Cloud Name**: `dykcjfxx5`
 - **Upload Endpoint**: `https://api.cloudinary.com/v1_1/dykcjfxx5/image/upload`
 
+> **Note**: The cloud name is intentionally exposed in client-side code and is not considered sensitive information. Security is maintained through the upload preset configuration in your Cloudinary account, which controls what can be uploaded.
+
 ### Implementation Locations
 
 #### 1. `/app/admin/page.js` (line 456)
@@ -85,4 +87,4 @@ An upload preset is a set of predefined upload parameters stored in your Cloudin
 
 ## Summary
 
-The pumato repository **does use an upload preset** (`"pumato"`) for all Cloudinary uploads. This is implemented consistently across two files in the admin section, providing secure, unsigned uploads from the client side.
+This codebase **does use an upload preset** (`"pumato"`) for all Cloudinary uploads. This is implemented consistently across two files in the admin section, providing secure, unsigned uploads from the client side.

@@ -5,11 +5,12 @@ import { collection, query, where, orderBy, onSnapshot, doc, updateDoc, serverTi
 import { motion, AnimatePresence } from "framer-motion";
 import { Check, X, Clock, MapPin, Phone, User, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
+import { supabase } from "@/lib/supabase";
 
-export default function OrdersTab({ orders, loading }) {
+export default function OrdersTab({ orders, loading, user }) {
     const [processingId, setProcessingId] = useState(null);
 
-    const handleAction = async (orderId, action) => {
+    const handleAction = async (orderId, action, order) => {
         setProcessingId(orderId);
         try {
             const newStatus = action === "confirm" ? "confirmed" : "cancelled";
@@ -18,6 +19,16 @@ export default function OrdersTab({ orders, loading }) {
                 adminProcessedAt: serverTimestamp()
             });
             toast.success(`Order ${action === "confirm" ? "Confirmed" : "Cancelled"}`);
+
+            // Notify partner devices even if their tab is closed
+            if (action === "confirm" && user && order?.restaurantIds?.length > 0) {
+                user.getIdToken().then(idToken => {
+                    supabase.functions.invoke("send-fcm-notification", {
+                        body: { role: "partner", restaurantIds: order.restaurantIds, orderId },
+                        headers: { Authorization: `Bearer ${idToken}` },
+                    }).catch(err => console.warn("Partner FCM error:", err));
+                }).catch(() => { });
+            }
         } catch (error) {
             console.error("Error updating order:", error);
             toast.error("Failed to update order");
@@ -123,7 +134,7 @@ export default function OrdersTab({ orders, loading }) {
 
                                         <div className="flex flex-col gap-3 w-full">
                                             <button
-                                                onClick={() => handleAction(order.id, "confirm")}
+                                                onClick={() => handleAction(order.id, "confirm", order)}
                                                 disabled={processingId === order.id}
                                                 className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-4 rounded-xl flex items-center justify-center gap-2 transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >
@@ -131,7 +142,7 @@ export default function OrdersTab({ orders, loading }) {
                                                 Confirm Order
                                             </button>
                                             <button
-                                                onClick={() => handleAction(order.id, "cancel")}
+                                                onClick={() => handleAction(order.id, "cancel", order)}
                                                 disabled={processingId === order.id}
                                                 className="w-full bg-white/5 hover:bg-red-500/20 text-gray-400 hover:text-red-400 font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all border border-white/10 hover:border-red-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
                                             >

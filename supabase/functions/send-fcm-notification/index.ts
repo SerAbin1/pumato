@@ -46,7 +46,7 @@ async function getGoogleAccessToken(serviceAccountJson: string): Promise<string>
 
     const claimSet = {
         iss: sa.client_email,
-        scope: "https://www.googleapis.com/auth/firebase.messaging",
+        scope: "https://www.googleapis.com/auth/cloud-platform",
         aud: "https://oauth2.googleapis.com/token",
         iat: now,
         exp: now + 3600,
@@ -95,23 +95,29 @@ function pemToDer(pem: string): ArrayBuffer {
 // Fetch FCM tokens from Firestore REST API
 // ---------------------------------------------------------------------------
 async function getFcmTokens(uids: string[], accessToken: string): Promise<string[]> {
-    // Use Firestore REST API to batch-read fcm_tokens documents
     const baseUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`
     const tokens: string[] = []
+    console.log(`[getFcmTokens] looking up UIDs:`, uids)
 
-    // Batch fetch all requested uids in parallel
     await Promise.all(
         uids.map(async (uid) => {
             const res = await fetch(`${baseUrl}/fcm_tokens/${uid}`, {
                 headers: { Authorization: `Bearer ${accessToken}` },
             })
-            if (!res.ok) return
+            console.log(`[getFcmTokens] UID=${uid} status=${res.status}`)
+            if (!res.ok) {
+                const err = await res.text()
+                console.warn(`[getFcmTokens] UID=${uid} error:`, err)
+                return
+            }
             const data = await res.json()
             const token = data?.fields?.token?.stringValue
+            console.log(`[getFcmTokens] UID=${uid} token found:`, !!token)
             if (token) tokens.push(token)
         })
     )
 
+    console.log(`[getFcmTokens] total tokens:`, tokens.length)
     return tokens
 }
 
@@ -123,15 +129,70 @@ async function getFcmTokens(uids: string[], accessToken: string): Promise<string
 // ---------------------------------------------------------------------------
 async function getAllFcmTokens(accessToken: string): Promise<string[]> {
     const baseUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`
+    console.log(`[getAllFcmTokens] fetching all tokens`)
     const res = await fetch(`${baseUrl}/fcm_tokens`, {
         headers: { Authorization: `Bearer ${accessToken}` },
     })
-    if (!res.ok) return []
+    console.log(`[getAllFcmTokens] status=${res.status}`)
+    if (!res.ok) {
+        const err = await res.text()
+        console.warn(`[getAllFcmTokens] error:`, err)
+        return []
+    }
     const data = await res.json()
-    if (!data.documents) return []
-    return data.documents
-        .map((d: any) => d.fields?.token?.stringValue)
-        .filter(Boolean)
+    if (!data.documents) {
+        console.warn(`[getAllFcmTokens] no documents field in response`)
+        return []
+    }
+    const tokens = data.documents.map((d: any) => d.fields?.token?.stringValue).filter(Boolean)
+    console.log(`[getAllFcmTokens] total tokens:`, tokens.length)
+    return tokens
+}
+
+// ---------------------------------------------------------------------------
+// Get FCM tokens for specific restaurant IDs (for partner notifications)
+// ---------------------------------------------------------------------------
+async function getFcmTokensByRestaurantIds(restaurantIds: string[], accessToken: string): Promise<string[]> {
+    const baseUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents:runQuery`
+    const tokens: string[] = []
+    console.log(`[getTokensByRestaurant] querying for restaurantIds:`, restaurantIds)
+
+    await Promise.all(restaurantIds.map(async (restaurantId) => {
+        const res = await fetch(baseUrl, {
+            method: "POST",
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+                structuredQuery: {
+                    from: [{ collectionId: "fcm_tokens" }],
+                    where: {
+                        fieldFilter: {
+                            field: { fieldPath: "restaurantId" },
+                            op: "EQUAL",
+                            value: { stringValue: restaurantId },
+                        },
+                    },
+                },
+            }),
+        })
+        console.log(`[getTokensByRestaurant] restaurantId=${restaurantId} status=${res.status}`)
+        if (!res.ok) {
+            const err = await res.text()
+            console.warn(`[getTokensByRestaurant] restaurantId=${restaurantId} error:`, err)
+            return
+        }
+        const results = await res.json()
+        console.log(`[getTokensByRestaurant] restaurantId=${restaurantId} results count:`, results.length)
+        for (const result of results) {
+            const token = result.document?.fields?.token?.stringValue
+            if (token) tokens.push(token)
+        }
+    }))
+
+    console.log(`[getTokensByRestaurant] total tokens:`, tokens.length)
+    return tokens
 }
 
 // ---------------------------------------------------------------------------
@@ -141,8 +202,24 @@ async function sendFcmMessage(fcmToken: string, payload: Record<string, string>,
     const body = {
         message: {
             token: fcmToken,
-            // data-only message: service worker handles display + custom sound
+            // data payload: service worker handles display + custom sound
             data: payload,
+            // webpush urgency=high wakes Android even with screen off
+            webpush: {
+                headers: {
+                    Urgency: "high",
+                    TTL: "60",          // deliver within 60 seconds or drop
+                },
+                // fallback notification in case service worker is not running
+                notification: {
+                    title: payload.title || "New Order Received",
+                    body: payload.body || "A new order is waiting.",
+                    icon: "/android-chrome-192x192.png",
+                    badge: "/favicon-32x32.png",
+                    tag: "new-order",
+                    renotify: true,
+                },
+            },
         },
     }
 
@@ -210,6 +287,9 @@ Deno.serve(async (req) => {
         let fcmTokens: string[]
         if (targetUids && Array.isArray(targetUids) && targetUids.length > 0) {
             fcmTokens = await getFcmTokens(targetUids, accessToken)
+        } else if (role === "partner" && body.restaurantIds && Array.isArray(body.restaurantIds) && body.restaurantIds.length > 0) {
+            // Notify only partners registered for these restaurants
+            fcmTokens = await getFcmTokensByRestaurantIds(body.restaurantIds, accessToken)
         } else {
             // Broadcast to all registered tokens (admin broadcast use-case)
             fcmTokens = await getAllFcmTokens(accessToken)

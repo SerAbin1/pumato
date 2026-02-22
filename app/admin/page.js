@@ -592,7 +592,7 @@ export default function AdminPage() {
                 {/* --- CONTENT SECTIONS --- */}
                 <div className="min-h-[500px]">
                     {activeSection === "orders" && (
-                        <OrdersTab orders={orders} loading={loadingOrders} />
+                        <OrdersTab orders={orders} loading={loadingOrders} user={user} />
                     )}
 
                     {activeSection === "restaurants" && (

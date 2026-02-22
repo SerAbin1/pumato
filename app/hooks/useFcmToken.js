@@ -46,10 +46,14 @@ export function useFcmToken(user) {
         try {
             const tokenRef = doc(db, "fcm_tokens", user.uid);
             const existing = await getDoc(tokenRef);
-            if (!existing.exists() || existing.data()?.token !== fcmToken) {
+            const existingData = existing.data();
+            const tokenChanged = !existing.exists() || existingData?.token !== fcmToken;
+            const restaurantIdMissing = existingData?.restaurantId === undefined;
+            if (tokenChanged || restaurantIdMissing) {
                 await setDoc(tokenRef, {
                     token: fcmToken,
                     updatedAt: new Date().toISOString(),
+                    restaurantId: user.restaurantId ?? null,
                 });
             }
         } catch (err) {

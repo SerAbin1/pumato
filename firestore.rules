@@ -2,31 +2,63 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // Auth helper functions
+
+    // --- Auth Helpers ---
     function isAdmin() {
       return request.auth != null && request.auth.token.admin == true;
     }
-    
+
     function isPartner(resId) {
       return request.auth != null && request.auth.token.restaurantId == resId;
     }
 
-    // Restaurants Collection
-    match /restaurants/{restaurantId} {
-      // Allow partners to update their own restaurant
-      allow update: if isPartner(restaurantId);
+    function isAnyPartner() {
+      return request.auth != null && request.auth.token.restaurantId != null;
     }
 
-    // Orders: Anyone can create (place order), Partners/Admins can read (handled by global read for now or specific)
+    // --- Restaurants: public read, partners update own, admins full ---
+    match /restaurants/{restaurantId} {
+      allow read: if true;
+      allow update: if isPartner(restaurantId) || isAdmin();
+      allow create, delete: if isAdmin();
+    }
+
+    // --- Site Content: public read (order settings, banners, grocery settings) ---
+    match /site_content/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Laundry Slots: public read ---
+    match /laundry_slots/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- General Settings: public read (campus config etc.) ---
+    match /general_settings/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // --- Orders: NO public read ---
+    // Admins: full access
+    // Partners: can read + update only orders containing their restaurantId
+    // Public: can only create (place an order)
     match /orders/{orderId} {
       allow create: if true;
+      allow read, update, delete: if isAdmin();
+      allow read, update: if isAnyPartner()
+        && request.auth.token.restaurantId in resource.data.restaurantIds;
     }
 
-    // Default Match - Preserve existing "Public Read, Admin Write" behavior
-    // Default rules (keep existing)
+    // --- FCM Tokens: own user only ---
+    match /fcm_tokens/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // --- Catch-all: admin write only, no public read for unlisted collections ---
     match /{document=**} {
-      allow read: if true; 
       allow write: if isAdmin();
     }
   }

@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase";
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import { useFcmToken } from "@/app/hooks/useFcmToken";
 
 // Import Extracted Components
 import RestaurantsTab from "./components/RestaurantsTab";
@@ -77,6 +78,9 @@ export default function AdminPage() {
         }
     }, [user, isAdmin]);
 
+    // Register FCM token for this device once the admin is confirmed
+    useFcmToken(user && isAdmin ? user : null);
+
     // Global Order Notification Logic
     useEffect(() => {
         // Initialize audio
@@ -131,6 +135,16 @@ export default function AdminPage() {
             } else if (snapshot.docChanges().some(change => change.type === 'added')) {
                 playNotificationSound();
                 toast("New Order Received!", { icon: "🔔" });
+
+                // Fire-and-forget: notify any admin devices that may be offline
+                const newestChange = snapshot.docChanges().find(c => c.type === 'added');
+                const orderId = newestChange?.doc?.id;
+                user.getIdToken().then(idToken => {
+                    supabase.functions.invoke("send-fcm-notification", {
+                        body: { role: "admin", orderId },
+                        headers: { Authorization: `Bearer ${idToken}` },
+                    }).catch(err => console.warn("FCM invoke error:", err));
+                }).catch(() => { });
             }
 
             setOrders(newOrders);

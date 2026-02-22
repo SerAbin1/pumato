@@ -8,6 +8,8 @@ import { doc, getDoc, setDoc, collection, query, where, orderBy, limit, onSnapsh
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import { LogOut, Loader2, Bell, Check } from "lucide-react";
 import toast from "react-hot-toast";
+import { supabase } from "@/lib/supabase";
+import { useFcmToken } from "@/app/hooks/useFcmToken";
 
 export default function PartnerDashboard() {
     const { user, loading, logout } = useAdminAuth();
@@ -15,6 +17,9 @@ export default function PartnerDashboard() {
     const [restaurantData, setRestaurantData] = useState(null);
     const [isFetching, setIsFetching] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Register FCM token for this device once the partner is confirmed
+    useFcmToken(user ?? null);
     const [orders, setOrders] = useState([]);
     const [viewedOrders, setViewedOrders] = useState(() => {
         if (typeof window === "undefined") return new Set();
@@ -100,6 +105,16 @@ export default function PartnerDashboard() {
             } else if (snapshot.docChanges().some(change => change.type === 'added')) {
                 playNotificationSound();
                 toast("New Order Received!", { icon: "🔔" });
+
+                // Fire-and-forget: notify partner devices that may be offline
+                const newestChange = snapshot.docChanges().find(c => c.type === 'added');
+                const orderId = newestChange?.doc?.id;
+                user.getIdToken().then(idToken => {
+                    supabase.functions.invoke("send-fcm-notification", {
+                        body: { role: "partner", restaurantId: user.restaurantId, orderId },
+                        headers: { Authorization: `Bearer ${idToken}` },
+                    }).catch(err => console.warn("FCM invoke error:", err));
+                }).catch(() => { });
             }
 
             setOrders(newOrders);

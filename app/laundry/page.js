@@ -211,6 +211,11 @@ export default function LaundryPage() {
             return;
         }
 
+        if (validItems.length === 0) {
+            toast.error("Please add at least one clothing item to your laundry order.");
+            return;
+        }
+
         if (formData.phone.length !== 10) {
             toast.error("Please enter a valid 10-digit phone number.");
             return;

@@ -78,11 +78,19 @@ export default function CartDrawer() {
                 return;
             }
 
-            // 2. Fallback to Slot Check
+            // 2. Fallback to per-campus Slot Check
             const { timeInMinutes } = getISTTime();
+            const campusConfig = orderSettings?.deliveryCampusConfig || [];
 
-            const slots = orderSettings.slots || [];
-            const isOpen = slots.some(slot => {
+            // Use the selected campus's slots if available, else check all campuses
+            const selectedCampus = campusConfig.find(
+                c => c.name === userDetails?.campus || c.id === userDetails?.campus
+            );
+            const slotsToCheck = selectedCampus
+                ? (selectedCampus.slots || [])
+                : campusConfig.flatMap(c => c.slots || []);
+
+            const isOpen = slotsToCheck.some(slot => {
                 const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
                 const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
                 const START = startH * 60 + startM;
@@ -92,7 +100,7 @@ export default function CartDrawer() {
 
             setIsStoreOpen(isOpen);
         }
-    }, [isCartOpen, orderSettings]);
+    }, [isCartOpen, orderSettings, userDetails?.campus]);
 
     const handleApplyCoupon = async () => {
         if (!inputCode.trim()) return;
@@ -547,18 +555,28 @@ export default function CartDrawer() {
                         {/* Sticky Footer */}
                         {cartItems.length > 0 && (
                             <div className="p-6 bg-zinc-900 border-t border-white/5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] z-20 sticky bottom-0">
-                                {orderSettings.slots && orderSettings.slots.length > 0 && !isStoreOpen && (
-                                    <div className="mb-3 text-center">
-                                        <div className="text-xs text-red-400 bg-red-500/10 px-4 py-2 rounded-2xl border border-red-500/20 font-bold space-y-1">
-                                            <p className="uppercase tracking-widest text-[10px] opacity-70 mb-1">Store Currently Closed</p>
-                                            <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
-                                                {orderSettings.slots.map((slot, i) => (
-                                                    <span key={i} className="whitespace-nowrap">Slot {i + 1}: {format12h(slot.start)} - {format12h(slot.end)}</span>
-                                                ))}
+                                {(() => {
+                                    const campusConfig = orderSettings?.deliveryCampusConfig || [];
+                                    const selectedCampus = campusConfig.find(
+                                        c => c.name === userDetails?.campus || c.id === userDetails?.campus
+                                    );
+                                    const displaySlots = selectedCampus
+                                        ? (selectedCampus.slots || [])
+                                        : campusConfig.flatMap(c => c.slots || []);
+                                    const hasSlots = displaySlots.length > 0;
+                                    return hasSlots && !isStoreOpen ? (
+                                        <div className="mb-3 text-center">
+                                            <div className="text-xs text-red-400 bg-red-500/10 px-4 py-2 rounded-2xl border border-red-500/20 font-bold space-y-1">
+                                                <p className="uppercase tracking-widest text-[10px] opacity-70 mb-1">Store Currently Closed</p>
+                                                <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
+                                                    {displaySlots.map((slot, i) => (
+                                                        <span key={i} className="whitespace-nowrap">Slot {i + 1}: {format12h(slot.start)} - {format12h(slot.end)}</span>
+                                                    ))}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                )}
+                                    ) : null;
+                                })()}
                                 {!isFormValid && isStoreOpen && (
                                     <div className="mb-3 text-center">
                                         <span className="text-xs text-orange-400 bg-orange-500/10 px-3 py-1 rounded-full animate-pulse border border-orange-500/20">

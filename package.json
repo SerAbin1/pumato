@@ -7,8 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "deploy": "npm run build && firebase deploy",
-    "deploy:supabase": "npx supabase functions deploy manage-coupons --no-verify-jwt && npx supabase functions deploy checkout-coupon --no-verify-jwt"
+    "deploy": "npm run build && firebase deploy"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

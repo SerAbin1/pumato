@@ -57,9 +57,7 @@ export function useCoupons() {
 }
 
 export function useOrderSettings() {
-    const [orderSettings, setOrderSettings] = useState({
-        slots: [{ start: "18:30", end: "23:00" }]
-    });
+    const [orderSettings, setOrderSettings] = useState({});
 
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(db, "site_content", "order_settings"), (settingsDoc) => {
@@ -68,8 +66,6 @@ export function useOrderSettings() {
                 setOrderSettings({
                     ...data,
                     deliveryCampusConfig: data.deliveryCampusConfig || [],
-                    // Main slots for backward compatibility
-                    slots: data.slots || (data.startTime ? [{ start: data.startTime, end: data.endTime }] : [])
                 });
             }
         });
@@ -80,9 +76,7 @@ export function useOrderSettings() {
 }
 
 export function useGrocerySettings() {
-    const [grocerySettings, setGrocerySettings] = useState({
-        slots: [{ start: "10:00", end: "22:00" }]
-    });
+    const [grocerySettings, setGrocerySettings] = useState({});
 
     useEffect(() => {
         const unsubscribe = onSnapshot(doc(db, "site_content", "grocery_settings"), (settingsDoc) => {

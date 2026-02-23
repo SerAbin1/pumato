@@ -21,10 +21,16 @@ const checkIsLive = (settings) => {
     return overrideStatus === 'open';
   }
 
-  // 2. Fallback to Slot Check
-  if (!settings || !settings.slots) return false;
+  // 2. Check per-campus slots from deliveryCampusConfig
+  const campusConfig = settings?.deliveryCampusConfig;
+  if (!campusConfig || campusConfig.length === 0) return false;
+
+  // Collect all slots across all campuses
+  const allSlots = campusConfig.flatMap(campus => campus.slots || []);
+  if (allSlots.length === 0) return false;
+
   const { timeInMinutes } = getISTTime();
-  return settings.slots.some(slot => {
+  return allSlots.some(slot => {
     const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
     const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
     return timeInMinutes >= (startH * 60 + startM) && timeInMinutes <= (endH * 60 + endM);

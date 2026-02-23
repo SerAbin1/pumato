@@ -59,7 +59,7 @@ service cloud.firestore {
 
     // --- Catch-all: admin write only, no public read for unlisted collections ---
     match /{document=**} {
-      allow write: if isAdmin();
+      allow write, read: if isAdmin();
     }
   }
 }

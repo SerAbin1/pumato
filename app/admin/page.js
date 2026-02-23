@@ -55,14 +55,13 @@ export default function AdminPage() {
 
     // Site Settings
     const [orderSettings, setOrderSettings] = useState({
-        slots: [{ start: "18:30", end: "23:00" }],
         baseDeliveryCharge: "30",
         extraItemThreshold: "3",
         extraItemCharge: "10",
         lightItems: [],
         lightItemThreshold: "5"
     });
-    const [grocerySettings, setGrocerySettings] = useState({ slots: [{ start: "10:00", end: "22:00" }] });
+    const [grocerySettings, setGrocerySettings] = useState({});
     const [laundrySettings, setLaundrySettings] = useState({ manualOverride: null });
 
     useEffect(() => {
@@ -187,15 +186,16 @@ export default function AdminPage() {
 
             // Fetch order settings to determine current slot
             const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
-            let currentSlots = [{ start: "18:30", end: "23:00" }]; // Default
+            let currentSlots = []; // Default: empty, fully determined by Firebase
             if (settingsDoc.exists()) {
                 const sData = settingsDoc.data();
-                if (sData.startTime && !sData.slots) {
-                    currentSlots = [{ start: sData.startTime, end: sData.endTime }];
-                } else if (sData.slots) {
+                if (sData.slots) {
                     currentSlots = sData.slots;
+                } else {
+                    // Aggregate slots from deliveryCampusConfig
+                    currentSlots = (sData.deliveryCampusConfig || []).flatMap(c => c.slots || []);
                 }
-                setOrderSettings({ slots: currentSlots, ...sData }); // Set state here too
+                setOrderSettings({ ...sData }); // Set state here too
             }
 
             // Check if we are currently in a slot

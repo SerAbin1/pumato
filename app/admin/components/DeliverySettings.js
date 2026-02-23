@@ -75,7 +75,7 @@ export default function DeliverySettings({
                                                         const config = [...(orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG)];
                                                         config[idx] = {
                                                             ...config[idx],
-                                                            slots: [...slots, { start: "18:30", end: "23:00" }]
+                                                            slots: [...slots, { start: "", end: "" }]
                                                         };
                                                         setOrderSettings({ ...orderSettings, deliveryCampusConfig: config });
                                                     }}

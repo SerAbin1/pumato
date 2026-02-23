@@ -34,7 +34,7 @@ export default function GrocerySettings({
                                 <h3 className="text-xl font-bold text-white">Grocery Service Hours</h3>
                             </div>
                             <button
-                                onClick={() => setGrocerySettings({ ...grocerySettings, slots: [...(grocerySettings.slots || []), { start: "10:00", end: "22:00" }] })}
+                                onClick={() => setGrocerySettings({ ...grocerySettings, slots: [...(grocerySettings.slots || []), { start: "", end: "" }] })}
                                 className="bg-green-600/20 text-green-400 hover:bg-green-600 hover:text-white px-4 py-2 rounded-xl text-xs font-bold transition-all border border-green-500/20 flex items-center gap-2"
                             >
                                 <Plus size={14} /> Add Slot

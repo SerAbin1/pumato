@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Plus, Bell } from "lucide-react";
+import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Plus, Bell, Users } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
@@ -18,6 +18,7 @@ import RestaurantsTab from "./components/RestaurantsTab";
 import OrdersTab from "./components/OrdersTab";
 import CouponsTab from "./components/CouponsTab";
 import BannersTab from "./components/BannersTab";
+import UsersTab from "./components/UsersTab";
 import LaundrySettings from "./components/LaundrySettings";
 import DeliverySettings from "./components/DeliverySettings";
 import GrocerySettings from "./components/GrocerySettings";
@@ -621,6 +622,12 @@ export default function AdminPage() {
                             >
                                 <Sparkles size={16} /> Banners
                             </button>
+                            <button
+                                onClick={() => setActiveSection("users")}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "users" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                            >
+                                <Users size={16} /> Users
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -697,6 +704,13 @@ export default function AdminPage() {
                             banners={banners}
                             setBanners={setBanners}
                             handleFileUpload={handleFileUpload}
+                        />
+                    )}
+
+                    {activeSection === "users" && (
+                        <UsersTab
+                            restaurants={restaurants}
+                            user={user}
                         />
                     )}
                 </div>

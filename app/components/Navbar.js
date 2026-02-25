@@ -251,6 +251,7 @@ export default function Navbar() {
                                 height={48}
                                 className="h-10 md:h-12 w-auto object-contain transition-transform group-hover:scale-105 drop-shadow-[0_0_15px_rgba(255,255,255,0.3)]"
                                 priority
+                                unoptimized
                             />
                         </Link>
                         {/* Mobile Live Indicator & Community */}

@@ -402,7 +402,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                                     <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                                         <div className="col-span-1 space-y-4">
                                             <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white font-bold" placeholder="Item Name" value={item.name} onChange={(e) => updateMenuItem(actualIdx, "name", e.target.value)} />
-                                            <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" type="number" value={item.price} onChange={(e) => updateMenuItem(actualIdx, "price", e.target.value)} />
+                                            <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white" placeholder="Price" value={item.price} onChange={(e) => updateMenuItem(actualIdx, "price", e.target.value)} />
                                             <input className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs" placeholder="Extra Info (e.g. Must Try)" value={item.extraInfo || ""} onChange={(e) => updateMenuItem(actualIdx, "extraInfo", e.target.value)} />
                                             <select
                                                 className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs appearance-none focus:outline-none focus:border-orange-500/50"

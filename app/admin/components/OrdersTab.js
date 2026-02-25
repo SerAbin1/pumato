@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
+import { formatTime } from "@/lib/dateUtils";
 
 const SUB_TABS = [
     { id: "pending", label: "Pending" },
@@ -30,7 +31,7 @@ function TimeAgo({ date }) {
     return (
         <span className="text-xs text-gray-500 flex items-center gap-1">
             <Clock size={11} />
-            {date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            {formatTime(date)}
         </span>
     );
 }
@@ -153,17 +154,17 @@ function OrderCard({ order, showActions = false, user }) {
                         <div className="flex flex-wrap gap-3 pt-1">
                             {order.partnerViewedAt && (
                                 <span className="text-[10px] text-green-400/70 flex items-center gap-1">
-                                    <Eye size={10} /> Viewed {order.partnerViewedAt?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    <Eye size={10} /> Viewed {formatTime(order.partnerViewedAt)}
                                 </span>
                             )}
                             {order.readyAt && (
                                 <span className="text-[10px] text-purple-400/70 flex items-center gap-1">
-                                    <Truck size={10} /> Ready {order.readyAt?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    <Truck size={10} /> Ready {formatTime(order.readyAt)}
                                 </span>
                             )}
                             {order.pickedUpAt && (
                                 <span className="text-[10px] text-orange-400/70 flex items-center gap-1">
-                                    <Package size={10} /> Picked up {order.pickedUpAt?.toDate?.()?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                    <Package size={10} /> Picked up {formatTime(order.pickedUpAt)}
                                 </span>
                             )}
                         </div>

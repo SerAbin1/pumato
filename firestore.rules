@@ -16,6 +16,10 @@ service cloud.firestore {
       return request.auth != null && request.auth.token.restaurantId != null;
     }
 
+    function isDeliveryBoy() {
+      return request.auth != null && request.auth.token.deliveryBoy == true;
+    }
+
     // --- Restaurants: public read, partners update own, admins full ---
     match /restaurants/{restaurantId} {
       allow read: if true;
@@ -43,13 +47,20 @@ service cloud.firestore {
 
     // --- Orders: NO public read ---
     // Admins: full access
-    // Partners: can read + update only orders containing their restaurantId
-    // Public: can only create (place an order)
+    // Partners: read + update orders containing their restaurantId
+    // Delivery boys: read ready_for_delivery orders; claim by updating to picked_up
+    // Public: create only
     match /orders/{orderId} {
       allow create: if true;
       allow read, update, delete: if isAdmin();
       allow read, update: if isAnyPartner()
         && request.auth.token.restaurantId in resource.data.restaurantIds;
+      allow read: if isDeliveryBoy()
+        && resource.data.status == "ready_for_delivery";
+      allow update: if isDeliveryBoy()
+        && resource.data.status == "ready_for_delivery"
+        && request.resource.data.status == "picked_up"
+        && request.resource.data.deliveryBoyUid == request.auth.uid;
     }
 
     // --- FCM Tokens: own user only ---

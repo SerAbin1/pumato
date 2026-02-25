@@ -31,7 +31,9 @@ export default function AdminPage() {
     const { user, isAdmin, loading: authLoading, logout } = useAdminAuth();
 
     const [activeSection, setActiveSection] = useState("orders"); // orders, restaurants, coupons, laundry, delivery, grocery, settings, banners
-    const [orders, setOrders] = useState([]);
+    const [orders, setOrders] = useState([]);          // placed (pending admin action)
+    const [inProgressOrders, setInProgressOrders] = useState([]);  // confirmed → ready_for_delivery + out_of_stock
+    const [pastOrders, setPastOrders] = useState([]);   // picked_up / delivered
     const [loadingOrders, setLoadingOrders] = useState(true);
     const isInitialLoad = useRef(true);
     const audioRef = useRef(null);
@@ -155,6 +157,40 @@ export default function AdminPage() {
 
         return () => unsubscribe();
     }, [user, isAdmin, playNotificationSound]);
+
+    // In-progress orders listener (confirmed/viewed/ready_for_delivery/out_of_stock)
+    useEffect(() => {
+        if (!user || !isAdmin) return;
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const q = query(
+            collection(db, "orders"),
+            where("status", "in", ["confirmed", "viewed", "ready_for_delivery", "out_of_stock"]),
+            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
+            orderBy("createdAt", "asc")
+        );
+        const unsub = onSnapshot(q, snap => {
+            setInProgressOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
+        });
+        return () => unsub();
+    }, [user, isAdmin]);
+
+    // Past orders listener (picked_up / delivered)
+    useEffect(() => {
+        if (!user || !isAdmin) return;
+        const startOfToday = new Date();
+        startOfToday.setHours(0, 0, 0, 0);
+        const q = query(
+            collection(db, "orders"),
+            where("status", "in", ["picked_up", "delivered"]),
+            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
+            orderBy("createdAt", "desc")
+        );
+        const unsub = onSnapshot(q, snap => {
+            setPastOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
+        });
+        return () => unsub();
+    }, [user, isAdmin]);
 
     // Fetch Laundry Slots when date changes or section becomes active
     useEffect(() => {
@@ -592,7 +628,7 @@ export default function AdminPage() {
                 {/* --- CONTENT SECTIONS --- */}
                 <div className="min-h-[500px]">
                     {activeSection === "orders" && (
-                        <OrdersTab orders={orders} loading={loadingOrders} user={user} />
+                        <OrdersTab orders={orders} inProgressOrders={inProgressOrders} pastOrders={pastOrders} loading={loadingOrders} user={user} />
                     )}
 
                     {activeSection === "restaurants" && (

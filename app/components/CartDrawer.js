@@ -115,6 +115,10 @@ export default function CartDrawer() {
     };
 
     const handleCheckout = async () => {
+        if (cartItems.length === 0) {
+            setCheckoutError("Your cart is empty. Please add items before checking out.");
+            return;
+        }
         const trimmedName = userDetails.name.trim();
         const trimmedAddress = userDetails.address.trim();
         if (!trimmedName || !userDetails.phone || !userDetails.campus || !trimmedAddress) {

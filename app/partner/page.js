@@ -87,7 +87,7 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
                         >
                             <p className="text-xs font-black text-red-400 uppercase tracking-widest mb-2">Select unavailable items:</p>
                             {restaurantItems.map((item, idx) => (
-                                <label key={idx} className="flex items-center gap-3 cursor-pointer group">
+                                <div key={idx} onClick={() => toggleOosItem(item.id || item.name)} className="flex items-center gap-3 cursor-pointer group">
                                     <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${oosItems.includes(item.id || item.name)
                                         ? "bg-red-500 border-red-500"
                                         : "border-white/20 group-hover:border-red-400"
@@ -95,7 +95,7 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
                                         {oosItems.includes(item.id || item.name) && <Check size={12} className="text-white" />}
                                     </div>
                                     <span className="text-sm text-white">{item.name} ×{item.quantity}</span>
-                                </label>
+                                </div>
                             ))}
                             <div className="flex gap-2 pt-2">
                                 <button

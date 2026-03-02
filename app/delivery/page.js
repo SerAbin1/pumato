@@ -5,7 +5,7 @@ import RestaurantList from "../components/RestaurantList";
 import FoodCollections from "../components/FoodCollections";
 import TermsFooter from "../components/TermsFooter";
 import Link from "next/link";
-import { Search, Sparkles, Utensils, ArrowRight, Plus, ShoppingBag } from "lucide-react";
+import { Search, Sparkles, Utensils, ArrowRight, Plus, ShoppingBag, Clock } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -48,6 +48,28 @@ export default function DeliveryPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [promoBanners, setPromoBanners] = useState(null);
+    const [recentSearches, setRecentSearches] = useState([]);
+
+    useEffect(() => {
+        try {
+            const saved = localStorage.getItem("recentDeliverySearches");
+            if (saved) {
+                setRecentSearches(JSON.parse(saved));
+            }
+        } catch (e) {
+            console.error("Error loading recent searches", e);
+        }
+    }, []);
+
+    const saveSearch = (term) => {
+        const trimmed = term.trim();
+        if (!trimmed) return;
+        setRecentSearches(prev => {
+            const updated = [trimmed, ...prev.filter(t => t.toLowerCase() !== trimmed.toLowerCase())].slice(0, 3);
+            localStorage.setItem("recentDeliverySearches", JSON.stringify(updated));
+            return updated;
+        });
+    };
 
     // Fetch banners on load
     useEffect(() => {
@@ -242,22 +264,67 @@ export default function DeliveryPage() {
                 <div className="max-w-7xl mx-auto px-4">
                     <div className="flex flex-col md:flex-row gap-4 items-center">
                         {/* Search Bar */}
-                        <div className="w-full flex items-center bg-white/10 border border-white/10 rounded-2xl px-5 py-4 shadow-inner focus-within:bg-black/40 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all group">
-                            <Search className="text-gray-400 mr-3 group-focus-within:text-orange-500 transition-colors" size={20} />
-                            <input
-                                type="text"
-                                placeholder="Search 'Biryani' or 'Pizza'..."
-                                className="w-full bg-transparent border-none outline-none text-white placeholder-gray-500 font-medium"
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                onFocus={() => setIsSearchFocused(true)}
-                                onBlur={() => setIsSearchFocused(false)}
-                                onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
-                                        e.target.blur();
-                                    }
-                                }}
-                            />
+                        <div className="w-full relative">
+                            <div className="w-full flex items-center bg-white/10 border border-white/10 rounded-2xl px-5 py-4 shadow-inner focus-within:bg-black/40 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all group">
+                                <Search className="text-gray-400 mr-3 group-focus-within:text-orange-500 transition-colors" size={20} />
+                                <input
+                                    type="text"
+                                    placeholder="Search 'Biryani' or 'Pizza'..."
+                                    className="w-full bg-transparent border-none outline-none text-white placeholder-gray-500 font-medium"
+                                    value={searchQuery}
+                                    onChange={(e) => setSearchQuery(e.target.value)}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => setIsSearchFocused(false)}
+                                    onKeyDown={(e) => {
+                                        if (e.key === "Enter") {
+                                            e.target.blur();
+                                            saveSearch(searchQuery);
+                                        }
+                                    }}
+                                />
+                            </div>
+
+                            {/* Recent Searches Dropdown */}
+                            <AnimatePresence>
+                                {recentSearches.length > 0 && isSearchFocused && !searchQuery && (
+                                    <motion.div 
+                                        initial={{ opacity: 0, y: -10 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        exit={{ opacity: 0, y: -10 }}
+                                        className="absolute top-full left-0 mt-2 w-full bg-[#111] border border-white/10 rounded-2xl p-4 shadow-2xl backdrop-blur-xl z-50 pointer-events-auto"
+                                    >
+                                        <div className="flex items-center justify-between mb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
+                                            <span>Recent Searches</span>
+                                            <button 
+                                                onMouseDown={(e) => {
+                                                    e.preventDefault();
+                                                    setRecentSearches([]);
+                                                    localStorage.removeItem("recentDeliverySearches");
+                                                }}
+                                                className="hover:text-white transition-colors"
+                                            >
+                                                Clear All
+                                            </button>
+                                        </div>
+                                        <div className="flex flex-wrap gap-2">
+                                            {recentSearches.map((term, i) => (
+                                                <button
+                                                    key={i}
+                                                    onMouseDown={(e) => {
+                                                        e.preventDefault();
+                                                        setSearchQuery(term);
+                                                        saveSearch(term);
+                                                    }}
+                                                    className="bg-white/5 hover:bg-white/10 border border-white/10 px-4 py-2 rounded-xl text-sm font-medium text-white transition-all flex items-center gap-2"
+                                                >
+                                                    <Clock size={14} className="text-gray-500" />
+                                                    {term}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </div>
 
@@ -290,7 +357,7 @@ export default function DeliveryPage() {
                                 const isOutOfStock = item.isVisible === false || categoryOutOfStock;
                                 return (
                                     <div key={`${item.restaurantId}-${idx}`} className={`flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl transition-all group relative ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 overflow-hidden'}`}>
-                                        <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} className="flex items-center gap-4 flex-1 min-w-0">
+                                        <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} onClick={() => saveSearch(searchQuery)} className="flex items-center gap-4 flex-1 min-w-0">
                                             <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
                                                 {item.image ? (
                                                     <Image
@@ -326,6 +393,7 @@ export default function DeliveryPage() {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
+                                                    saveSearch(searchQuery);
                                                     addToCart({ ...item, restaurantId: item.restaurantId, restaurantName: item.restaurantName });
                                                     setToast(`Added ${item.name}`);
                                                     setTimeout(() => setToast(null), 2000);

@@ -5,11 +5,12 @@ import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Check, X, Clock, MapPin, Phone, User, Loader2,
-    AlertTriangle, Truck, Eye, Package
+    AlertTriangle, Truck, Eye, Package, BellOff
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import { formatTime } from "@/lib/dateUtils";
+import ConfirmModal from "@/app/components/ConfirmModal";
 
 const SUB_TABS = [
     { id: "pending", label: "Pending" },
@@ -38,8 +39,24 @@ function TimeAgo({ date }) {
 
 function OrderCard({ order, showActions = false, user }) {
     const [processingId, setProcessingId] = useState(null);
+    const [showAckModal, setShowAckModal] = useState(false);
     const statusInfo = STATUS_INFO[order.status] || { label: order.status, color: "text-gray-400 bg-gray-500/10 border-gray-500/20" };
     const isOos = order.status === "out_of_stock";
+
+    const handleAcknowledge = async () => {
+        setProcessingId(order.id);
+        try {
+            await updateDoc(doc(db, "orders", order.id), {
+                status: "oos_acknowledged",
+                oosAcknowledgedAt: serverTimestamp(),
+            });
+            toast.success("OOS order dismissed");
+        } catch {
+            toast.error("Failed to acknowledge order");
+        } finally {
+            setProcessingId(null);
+        }
+    };
 
     const handleAction = async (orderId, action) => {
         setProcessingId(orderId);
@@ -79,14 +96,35 @@ function OrderCard({ order, showActions = false, user }) {
         >
             {/* OOS banner */}
             {isOos && (
-                <div className="bg-red-500/20 px-5 py-2 flex items-center gap-2 border-b border-red-500/20">
-                    <AlertTriangle size={14} className="text-red-400" />
-                    <span className="text-xs font-black text-red-400 uppercase tracking-widest">Out of Stock</span>
-                    {order.outOfStockItems?.length > 0 && (
-                        <span className="text-xs text-red-300/70">— {order.outOfStockItems.join(", ")}</span>
-                    )}
+                <div className="bg-red-500/20 px-5 py-2 flex items-center justify-between gap-2 border-b border-red-500/20">
+                    <div className="flex items-center gap-2">
+                        <AlertTriangle size={14} className="text-red-400" />
+                        <span className="text-xs font-black text-red-400 uppercase tracking-widest">Out of Stock</span>
+                        {order.outOfStockItems?.length > 0 && (
+                            <span className="text-xs text-red-300/70">— {order.outOfStockItems.join(", ")}</span>
+                        )}
+                    </div>
+                    <button
+                        onClick={() => setShowAckModal(true)}
+                        disabled={processingId === order.id}
+                        className="flex items-center gap-1.5 text-xs font-bold text-red-300 hover:text-white bg-red-500/20 hover:bg-red-600/50 px-3 py-1.5 rounded-lg border border-red-500/30 transition-all active:scale-95 disabled:opacity-50"
+                    >
+                        <BellOff size={12} />
+                        Acknowledge
+                    </button>
                 </div>
             )}
+
+            <ConfirmModal
+                isOpen={showAckModal}
+                onClose={() => setShowAckModal(false)}
+                onConfirm={handleAcknowledge}
+                title="Acknowledge OOS Order?"
+                message={`This will dismiss the out-of-stock alert for order #${order.id?.slice(-6).toUpperCase()}. It will be removed from the In Progress tab.`}
+                confirmLabel="Yes, Dismiss"
+                cancelLabel="Cancel"
+                isDanger={false}
+            />
 
             <div className="flex flex-col md:flex-row gap-0 justify-between">
                 {/* Left: order details */}

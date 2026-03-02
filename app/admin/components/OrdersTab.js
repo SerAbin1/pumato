@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
@@ -37,7 +37,7 @@ function TimeAgo({ date }) {
     );
 }
 
-function OrderCard({ order, showActions = false, user }) {
+function OrderCard({ order, showActions = false, user, isDuplicate = false }) {
     const [processingId, setProcessingId] = useState(null);
     const [showAckModal, setShowAckModal] = useState(false);
     const statusInfo = STATUS_INFO[order.status] || { label: order.status, color: "text-gray-400 bg-gray-500/10 border-gray-500/20" };
@@ -89,11 +89,21 @@ function OrderCard({ order, showActions = false, user }) {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className={`border rounded-3xl overflow-hidden transition-all shadow-xl ${isOos
-                ? "bg-red-950/20 border-red-500/30"
-                : "bg-white/5 border-white/10 hover:border-orange-500/30"
+            className={`border rounded-3xl overflow-hidden transition-all shadow-xl ${isDuplicate
+                ? "bg-yellow-950/20 border-yellow-500/50 shadow-yellow-900/10"
+                : isOos
+                    ? "bg-red-950/20 border-red-500/30"
+                    : "bg-white/5 border-white/10 hover:border-orange-500/30"
                 }`}
         >
+            {/* Duplicate phone warning banner */}
+            {isDuplicate && (
+                <div className="bg-yellow-500/10 px-5 py-2 flex items-center gap-2 border-b border-yellow-500/20">
+                    <span className="text-[14px]">⚠️</span>
+                    <span className="text-xs font-black text-yellow-400 uppercase tracking-widest">Potential duplicate order</span>
+                </div>
+            )}
+
             {/* OOS banner */}
             {isOos && (
                 <div className="bg-red-500/20 px-5 py-2 flex items-center justify-between gap-2 border-b border-red-500/20">
@@ -262,6 +272,23 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
         return 0;
     });
 
+    // Calculate duplicate phones across ALL active orders (pending + in progress)
+    const duplicatePhones = useMemo(() => {
+        const phoneCounts = {};
+        const duplicated = new Set();
+        const activeOrders = [...orders, ...inProgressOrders];
+
+        activeOrders.forEach(o => {
+            if (!o.phone) return;
+            if (phoneCounts[o.phone]) {
+                duplicated.add(o.phone);
+            } else {
+                phoneCounts[o.phone] = 1;
+            }
+        });
+        return duplicated;
+    }, [orders, inProgressOrders]);
+
     const tabCounts = {
         pending: orders.length,
         inprogress: inProgressOrders.length,
@@ -313,7 +340,7 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
                         {orders.length === 0
                             ? <EmptyState message="No pending orders to confirm right now." />
                             : orders.map(order => (
-                                <OrderCard key={order.id} order={order} showActions user={user} />
+                                <OrderCard key={order.id} order={order} showActions user={user} isDuplicate={duplicatePhones.has(order.phone)} />
                             ))
                         }
                     </AnimatePresence>
@@ -327,7 +354,7 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
                         {sortedInProgress.length === 0
                             ? <EmptyState message="No orders currently being prepared." />
                             : sortedInProgress.map(order => (
-                                <OrderCard key={order.id} order={order} user={user} />
+                                <OrderCard key={order.id} order={order} user={user} isDuplicate={duplicatePhones.has(order.phone)} />
                             ))
                         }
                     </AnimatePresence>

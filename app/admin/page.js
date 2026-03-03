@@ -86,7 +86,7 @@ export default function AdminPage() {
     // Global Order Notification Logic
     useEffect(() => {
         // Initialize audio
-        audioRef.current = new Audio("/orderNotif.mpeg");
+        audioRef.current = new Audio("/faaah.mpeg");
         audioRef.current.preload = "auto";
 
         // Click-to-unlock browser policy handler

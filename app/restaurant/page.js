@@ -259,9 +259,9 @@ function RestaurantContent() {
                                 <div className="flex flex-wrap items-center gap-3 md:gap-6 text-gray-300 font-bold text-sm md:text-base">
                                     <div className="flex items-center gap-2 bg-white/10 px-3 py-1.5 rounded-full border border-white/10">
                                         <Utensils size={18} className="text-orange-500" />
-                                        <span>{restaurant.cuisine}</span>
+                                        <span>{restaurant.cuisine || "Cuisine"}</span>
                                     </div>
-                                    <span className="flex items-center gap-1">30-35 mins</span>
+                                    <span className="flex items-center gap-1">{restaurant.deliveryTime || "30-60 mins"}</span>
                                     <span className="flex items-center gap-1">
                                         <div className="w-1 h-1 bg-gray-300 rounded-full"></div> {restaurant.priceForTwo || "Standard Menu"}
                                     </span>

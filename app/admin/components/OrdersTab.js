@@ -197,26 +197,53 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false }) {
                         </div>
                     </div>
 
-                    {/* Partner activity timestamps — only for in-progress */}
-                    {(order.partnerViewedAt || order.readyAt || order.pickedUpAt) && (
-                        <div className="flex flex-wrap gap-3 pt-1">
-                            {order.partnerViewedAt && (
-                                <span className="text-[10px] text-green-400/70 flex items-center gap-1">
-                                    <Eye size={10} /> Viewed {formatTime(order.partnerViewedAt)}
-                                </span>
-                            )}
-                            {order.readyAt && (
-                                <span className="text-[10px] text-purple-400/70 flex items-center gap-1">
-                                    <Truck size={10} /> Ready {formatTime(order.readyAt)}
-                                </span>
-                            )}
-                            {order.pickedUpAt && (
-                                <span className="text-[10px] text-orange-400/70 flex items-center gap-1">
-                                    <Package size={10} /> Picked up {formatTime(order.pickedUpAt)}
-                                </span>
-                            )}
+                    {/* Horizontal Progress Timeline */}
+                    <div className="pt-4 border-t border-white/5 mt-2">
+                        <div className="flex items-start justify-between relative overflow-x-auto scrollbar-hide pb-2">
+                            {/* Background track (drawn manually to connect dots) */}
+                            <div className="absolute top-2.5 left-[8%] right-[8%] h-[2px] bg-white/5 z-0"></div>
+
+                            {[
+                                { key: "createdAt", label: "Placed" },
+                                { key: "adminProcessedAt", label: "Confirmed" },
+                                { key: "partnerViewedAt", label: "Viewed" },
+                                { key: "readyAt", label: "Ready" },
+                                { key: "pickedUpAt", label: "Picked" },
+                                { key: "deliveredAt", label: "Delivered" },
+                            ].map((step, idx, arr) => {
+                                // For Firestore timestamps or dates
+                                const timeObj = order[step.key];
+                                const isCompleted = !!timeObj;
+
+                                // To color the connecting line up to the *last completed* step
+                                const nextStepObj = arr[idx + 1] ? order[arr[idx + 1].key] : null;
+                                const isLineActive = !!nextStepObj;
+
+                                return (
+                                    <div key={step.key} className="relative z-10 flex flex-col items-center gap-1.5 w-[16%] min-w-[60px]">
+                                        {/* Active Line Segment */}
+                                        {idx < arr.length - 1 && isLineActive && (
+                                            <div className="absolute top-2.5 left-1/2 w-full h-[2px] bg-orange-500/50 z-[-1]"></div>
+                                        )}
+
+                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] border transition-colors ${isCompleted ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-zinc-900 border-white/10 text-gray-600"}`}>
+                                            {isCompleted ? <Check size={10} /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>}
+                                        </div>
+                                        <div className="flex flex-col items-center">
+                                            <span className={`text-[9px] font-bold uppercase tracking-widest text-center ${isCompleted ? "text-orange-400/90" : "text-gray-500"}`}>
+                                                {step.label}
+                                            </span>
+                                            {isCompleted && (
+                                                <span className="text-[10px] text-gray-400/80 font-medium whitespace-nowrap mt-0.5 font-mono">
+                                                    {formatTime(timeObj)}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                );
+                            })}
                         </div>
-                    )}
+                    </div>
                 </div>
 
                 {/* Right: amount + actions (only for pending) */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useEffect, useReducer, useMemo } from "react";
+import { createContext, useContext, useEffect, useReducer, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
     useRestaurants,
@@ -16,6 +16,7 @@ const CartContext = createContext();
 
 export function CartProvider({ children }) {
     const [state, dispatch] = useReducer(cartReducer, initialState);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // --- Data Hooks ---
     const { restaurants } = useRestaurants();
@@ -34,6 +35,7 @@ export function CartProvider({ children }) {
                 } catch (e) { console.error("Failed to parse saved user details", e); }
             }
         }
+        setIsLoaded(true);
     }, []);
 
     useEffect(() => {
@@ -137,6 +139,7 @@ export function CartProvider({ children }) {
                 userDetails: state.userDetails,
                 couponCode: state.couponCode,
                 activeCoupon: state.activeCoupon,
+                isLoaded,
 
                 // Data
                 availableCoupons,

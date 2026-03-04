@@ -169,7 +169,7 @@ const CommunityDropdown = ({ groups }) => {
 };
 
 export default function Navbar() {
-    const { setIsCartOpen, totalItems, orderSettings, grocerySettings, laundrySettings, whatsappGroups, userDetails, setUserDetails, getCampusSlots } = useCart();
+    const { setIsCartOpen, totalItems, orderSettings, grocerySettings, laundrySettings, whatsappGroups, userDetails, setUserDetails, getCampusSlots, isLoaded } = useCart();
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const { scrollY } = useScroll();
@@ -286,10 +286,10 @@ export default function Navbar() {
                 </div>
             </motion.nav>
             <CartDrawer />
-            <CampusSelector
+            {isLoaded && <CampusSelector
                 currentCampus={userDetails.campus}
                 onSelect={(campus) => setUserDetails(prev => ({ ...prev, campus }))}
-            />
+            />}
         </>
     );
 }

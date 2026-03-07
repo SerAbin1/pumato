@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Truck, MapPin, Package, LogIn, LogOut, Check, Clock, User } from "lucide-react";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
+import CountdownTimer from "./components/CountdownTimer";
 
 const STATUS_LABELS = {
     picked_up: { label: "Picked Up", color: "text-orange-400" },
@@ -123,7 +124,12 @@ export default function DeliveryPartnerPage() {
         );
 
         const unsub = onSnapshot(q, snap => {
-            setReadyOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
+            setReadyOrders(snap.docs.map(d => ({ 
+                id: d.id, 
+                ...d.data(), 
+                createdAt: d.data().createdAt?.toDate(),
+                readyAt: d.data().readyAt?.toDate ? d.data().readyAt.toDate() : d.data().readyAt
+            })));
         });
         return () => unsub();
     }, [user, isDeliveryPartner]);
@@ -280,10 +286,15 @@ export default function DeliveryPartnerPage() {
                                     >
                                         <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-purple-500/5">
                                             <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Ready for Pickup</span>
-                                            <span className="text-xs text-gray-500 flex items-center gap-1">
-                                                <Clock size={11} />
-                                                {order.createdAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                                            </span>
+                                            <div className="flex items-center gap-3">
+                                                {/* Countdown timer */}
+                                                <CountdownTimer readyAt={order.readyAt} />
+                                                {/* Order time */}
+                                                <span className="text-xs text-gray-500 flex items-center gap-1">
+                                                    <Clock size={11} />
+                                                    {order.createdAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                </span>
+                                            </div>
                                         </div>
                                         <div className="p-5 space-y-4">
                                             {/* Items grouped by restaurant */}

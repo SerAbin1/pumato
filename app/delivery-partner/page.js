@@ -61,9 +61,9 @@ function LoginScreen({ onLogin, loading }) {
     );
 }
 
-export default function DeliveryBoyPage() {
+export default function DeliveryPartnerPage() {
     const [user, setUser] = useState(undefined); // undefined = loading, null = not logged in
-    const [isDeliveryBoy, setIsDeliveryBoy] = useState(false);
+    const [isDeliveryPartner, setIsDeliveryPartner] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
     const [readyOrders, setReadyOrders] = useState([]);
     const [myOrders, setMyOrders] = useState([]);
@@ -73,15 +73,15 @@ export default function DeliveryBoyPage() {
     // Listen for auth state
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (!firebaseUser) { setUser(null); setIsDeliveryBoy(false); return; }
+            if (!firebaseUser) { setUser(null); setIsDeliveryPartner(false); return; }
             const result = await firebaseUser.getIdTokenResult();
-            if (result.claims.deliveryBoy) {
+            if (result.claims.deliveryPartner) {
                 setUser(firebaseUser);
-                setIsDeliveryBoy(true);
+                setIsDeliveryPartner(true);
             } else {
-                // Logged in but not a delivery boy
+                // Logged in but not a delivery partner
                 setUser(firebaseUser);
-                setIsDeliveryBoy(false);
+                setIsDeliveryPartner(false);
             }
         });
         return () => unsub();
@@ -92,9 +92,9 @@ export default function DeliveryBoyPage() {
         try {
             const cred = await signInWithEmailAndPassword(auth, email, password);
             const result = await cred.user.getIdTokenResult();
-            if (!result.claims.deliveryBoy) {
+            if (!result.claims.deliveryPartner) {
                 await signOut(auth);
-                toast.error("Access denied. Not a delivery account.");
+                toast.error("Access denied. Not a delivery partner account.");
             }
         } catch (err) {
             toast.error(err.code === "auth/invalid-credential" ? "Invalid email or password" : "Login failed");
@@ -106,12 +106,12 @@ export default function DeliveryBoyPage() {
     const handleLogout = async () => {
         await signOut(auth);
         setUser(null);
-        setIsDeliveryBoy(false);
+        setIsDeliveryPartner(false);
     };
 
     // Real-time: ready_for_delivery orders
     useEffect(() => {
-        if (!user || !isDeliveryBoy) return;
+        if (!user || !isDeliveryPartner) return;
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
         const q = query(
@@ -126,16 +126,16 @@ export default function DeliveryBoyPage() {
             setReadyOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
         });
         return () => unsub();
-    }, [user, isDeliveryBoy]);
+    }, [user, isDeliveryPartner]);
 
     // Real-time: my picked_up orders today
     useEffect(() => {
-        if (!user || !isDeliveryBoy) return;
+        if (!user || !isDeliveryPartner) return;
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
         const q = query(
             collection(db, "orders"),
-            where("deliveryBoyUid", "==", user.uid),
+            where("deliveryPartnerUid", "==", user.uid),
             where("status", "in", ["picked_up", "delivered"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
             orderBy("createdAt", "desc"),
@@ -146,7 +146,7 @@ export default function DeliveryBoyPage() {
             setMyOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
         });
         return () => unsub();
-    }, [user, isDeliveryBoy]);
+    }, [user, isDeliveryPartner]);
 
     const handlePickup = async (order) => {
         setClaiming(order.id);
@@ -159,8 +159,8 @@ export default function DeliveryBoyPage() {
 
                 tx.update(ref, {
                     status: "picked_up",
-                    deliveryBoyUid: user.uid,
-                    deliveryBoyEmail: user.email,
+                    deliveryPartnerUid: user.uid,
+                    deliveryPartnerEmail: user.email,
                     pickedUpAt: serverTimestamp(),
                 });
             });
@@ -222,7 +222,7 @@ export default function DeliveryBoyPage() {
         );
     }
 
-    if (!user || !isDeliveryBoy) {
+    if (!user || !isDeliveryPartner) {
         return <LoginScreen onLogin={handleLogin} loading={authLoading} />;
     }
 

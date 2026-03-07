@@ -42,13 +42,13 @@ const askQuestion = (query) => {
         }
 
         await admin.auth().setCustomUserClaims(user.uid, {
-            deliveryBoy: true
+            deliveryPartner: true
         });
 
-        console.log("\n✅ Success! Delivery Boy account configured.");
+        console.log("\n✅ Success! Delivery Partner account configured.");
         console.log(`User: ${email}`);
-        console.log("Custom claims set: { deliveryBoy: true }");
-        console.log("They can now login at /delivery-boy");
+        console.log("Custom claims set: { deliveryPartner: true }");
+        console.log("They can now login at /delivery-partner");
 
     } catch (error) {
         console.error("Error:", error.message);

@@ -7,10 +7,10 @@ import { toast } from "react-hot-toast";
 import ConfirmModal from "../../components/ConfirmModal";
 
 export default function UsersTab({ restaurants, user }) {
-    const [activeTab, setActiveTab] = useState("partners"); // "partners" | "deliveryBoys"
+    const [activeTab, setActiveTab] = useState("partners"); // "partners" | "deliveryPartners"
     const [viewState, setViewState] = useState("list"); // "list" | "form"
     const [partners, setPartners] = useState([]);
-    const [deliveryBoys, setDeliveryBoys] = useState([]);
+    const [deliveryPartners, setDeliveryPartners] = useState([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
@@ -36,7 +36,7 @@ export default function UsersTab({ restaurants, user }) {
             });
             if (error) throw error;
             setPartners(data.partners || []);
-            setDeliveryBoys(data.deliveryBoys || []);
+            setDeliveryPartners(data.deliveryPartners || []);
         } catch (error) {
             console.error(error);
             toast.error("Failed to load users");
@@ -84,7 +84,7 @@ export default function UsersTab({ restaurants, user }) {
             return;
         }
 
-        const action = activeTab === "partners" ? "CREATE_PARTNER" : "CREATE_DELIVERY_BOY";
+        const action = activeTab === "partners" ? "CREATE_PARTNER" : "CREATE_DELIVERY_PARTNER";
 
         if (activeTab === "partners" && !form.restaurantId) {
             toast.error("Please select a restaurant for the partner.");
@@ -92,7 +92,7 @@ export default function UsersTab({ restaurants, user }) {
         }
 
         setIsSaving(true);
-        const loadingToast = toast.loading(`Creating ${activeTab === 'partners' ? 'Partner' : 'Delivery Boy'}...`);
+        const loadingToast = toast.loading(`Creating ${activeTab === 'partners' ? 'Partner' : 'Delivery Partner'}...`);
 
         const payload = {
             action,
@@ -112,7 +112,7 @@ export default function UsersTab({ restaurants, user }) {
                 throw new Error(data?.error || fnError?.message || "Failed to create user");
             }
 
-            toast.success(`${activeTab === 'partners' ? 'Partner' : 'Delivery Boy'} account created successfully!`, { id: loadingToast });
+            toast.success(`${activeTab === 'partners' ? 'Partner' : 'Delivery Partner'} account created successfully!`, { id: loadingToast });
             await fetchUsers();
             setViewState("list");
         } catch (error) {
@@ -137,11 +137,11 @@ export default function UsersTab({ restaurants, user }) {
                                 Partners ({partners.length})
                             </button>
                             <button
-                                onClick={() => setActiveTab("deliveryBoys")}
-                                className={`flex-1 md:w-48 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'deliveryBoys' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
+                                onClick={() => setActiveTab("deliveryPartners")}
+                                className={`flex-1 md:w-48 py-3 rounded-xl text-sm font-bold transition-all flex items-center justify-center gap-2 ${activeTab === 'deliveryPartners' ? 'bg-blue-600 text-white shadow-lg' : 'text-gray-400 hover:text-white'}`}
                             >
                                 <Truck size={18} />
-                                Delivery Boys ({deliveryBoys.length})
+                                Delivery Partners ({deliveryPartners.length})
                             </button>
                         </div>
 
@@ -149,7 +149,7 @@ export default function UsersTab({ restaurants, user }) {
                             onClick={handleCreateUser}
                             className={`px-8 py-4 rounded-2xl font-bold text-white shadow-lg hover:scale-105 transition-all flex items-center gap-2 ${activeTab === 'partners' ? 'bg-orange-600 shadow-orange-900/40 hover:bg-orange-500' : 'bg-blue-600 shadow-blue-900/40 hover:bg-blue-500'}`}
                         >
-                            <Plus size={20} /> Create {activeTab === 'partners' ? 'Partner' : 'Delivery Boy'}
+                            <Plus size={20} /> Create {activeTab === 'partners' ? 'Partner' : 'Delivery Partner'}
                         </button>
                     </div>
 
@@ -159,11 +159,11 @@ export default function UsersTab({ restaurants, user }) {
                         </div>
                     ) : (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {(activeTab === 'partners' ? partners : deliveryBoys).map(u => (
+                            {(activeTab === 'partners' ? partners : deliveryPartners).map(u => (
                                 <div key={u.uid} className="bg-white/5 p-6 rounded-[2rem] border border-white/10 relative group hover:bg-white/[0.08] transition-all">
                                     <div className="flex justify-between items-start mb-4">
                                         <div className={`px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider border ${activeTab === 'partners' ? 'bg-orange-500/20 text-orange-400 border-orange-500/30' : 'bg-blue-500/20 text-blue-400 border-blue-500/30'}`}>
-                                            {activeTab === 'partners' ? 'PARTNER' : 'DELIVERY BOY'}
+                                            {activeTab === 'partners' ? 'PARTNER' : 'DELIVERY PARTNER'}
                                         </div>
                                         <button
                                             onClick={() => setConfirmDelete({ isOpen: true, uid: u.uid })}
@@ -193,10 +193,10 @@ export default function UsersTab({ restaurants, user }) {
                                 </div>
                             ))}
 
-                            {(activeTab === 'partners' ? partners : deliveryBoys).length === 0 && (
+                            {(activeTab === 'partners' ? partners : deliveryPartners).length === 0 && (
                                 <div className="col-span-full text-center py-20 bg-white/5 border border-white/5 rounded-3xl border-dashed">
                                     <Users className="mx-auto text-gray-600 mb-4" size={48} />
-                                    <p className="text-gray-400 font-medium text-lg">No {activeTab === 'partners' ? 'Partners' : 'Delivery Boys'} found.</p>
+                                    <p className="text-gray-400 font-medium text-lg">No {activeTab === 'partners' ? 'Partners' : 'Delivery Partners'} found.</p>
                                 </div>
                             )}
                         </div>
@@ -215,7 +215,7 @@ export default function UsersTab({ restaurants, user }) {
             ) : (
                 <div className="bg-white/5 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 max-w-2xl mx-auto shadow-2xl relative pb-24">
                     <h2 className="text-3xl font-black mb-10 text-white border-b border-white/10 pb-6">
-                        Create New {activeTab === 'partners' ? 'Partner' : 'Delivery Boy'}
+                        Create New {activeTab === 'partners' ? 'Partner' : 'Delivery Partner'}
                     </h2>
 
                     <div className="space-y-8">
@@ -256,7 +256,7 @@ export default function UsersTab({ restaurants, user }) {
                         onSave={handleSubmit}
                         onCancel={() => setViewState("list")}
                         isSaving={isSaving}
-                        title={`Creating ${activeTab === 'partners' ? 'Partner' : 'Delivery Boy'}`}
+                        title={`Creating ${activeTab === 'partners' ? 'Partner' : 'Delivery Partner'}`}
                         saveLabel="Create Account"
                     />
                 </div>

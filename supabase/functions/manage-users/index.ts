@@ -234,9 +234,9 @@ Deno.serve(async (req) => {
             })
         }
 
-        if (action === "CREATE_DELIVERY_BOY") {
+        if (action === "CREATE_DELIVERY_PARTNER") {
             const user = await getOrCreateUser(accessToken, email, password)
-            await setClaims(accessToken, user.localId || user.uid, { deliveryBoy: true })
+            await setClaims(accessToken, user.localId || user.uid, { deliveryPartner: true })
             return new Response(JSON.stringify({ success: true, uid: user.localId || user.uid }), {
                 headers: { ...corsHeaders, "Access-Control-Allow-Origin": origin, "Content-Type": "application/json" }
             })
@@ -268,10 +268,10 @@ Deno.serve(async (req) => {
                     }
                 })
 
-            const deliveryBoys = users
+            const deliveryPartners = users
                 .filter((u: any) => {
                     const claims = JSON.parse(u.customAttributes || "{}")
-                    return claims.deliveryBoy === true
+                    return claims.deliveryPartner === true
                 })
                 .map((u: any) => ({
                     uid: u.localId,
@@ -279,7 +279,7 @@ Deno.serve(async (req) => {
                     lastSignInTime: u.lastLoginAt
                 }))
 
-            return new Response(JSON.stringify({ partners, deliveryBoys }), {
+            return new Response(JSON.stringify({ partners, deliveryPartners }), {
                 headers: { ...corsHeaders, "Access-Control-Allow-Origin": origin, "Content-Type": "application/json" }
             })
         }

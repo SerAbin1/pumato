@@ -266,7 +266,7 @@ export default function LaundryPage() {
                 scheduledDate: formData.date,
                 scheduledSlot: formData.time,
                 items: validLaundryItems,
-                status: "ScheduledForPickup",
+                status: "ReadyForPickup",
                 customerPaidAmount: null,
                 paidToShopAmount: null,
                 createdAt: serverTimestamp()

@@ -110,14 +110,14 @@ export default function DeliveryPartnerPage() {
         setIsDeliveryPartner(false);
     };
 
-    // Real-time: ready_for_delivery orders
+    // Real-time: ready_for_delivery and picked_up orders
     useEffect(() => {
         if (!user || !isDeliveryPartner) return;
         const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
 
         const q = query(
             collection(db, "orders"),
-            where("status", "==", "ready_for_delivery"),
+            where("status", "in", ["ready_for_delivery", "picked_up"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
             orderBy("createdAt", "asc"),
             limit(50)
@@ -275,79 +275,120 @@ export default function DeliveryPartnerPage() {
                     ) : (
                         <div className="space-y-4">
                             <AnimatePresence>
-                                {readyOrders.map(order => (
-                                    <motion.div
-                                        key={order.id}
-                                        layout
-                                        initial={{ opacity: 0, y: 16 }}
-                                        animate={{ opacity: 1, y: 0 }}
-                                        exit={{ opacity: 0, x: -20 }}
-                                        className="bg-white/5 border border-purple-500/20 rounded-2xl overflow-hidden"
-                                    >
-                                        <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-purple-500/5">
-                                            <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Ready for Pickup</span>
-                                            <div className="flex items-center gap-3">
-                                                {/* Countdown timer */}
-                                                <CountdownTimer readyAt={order.readyAt} />
-                                                {/* Order time */}
-                                                <span className="text-xs text-gray-500 flex items-center gap-1">
-                                                    <Clock size={11} />
-                                                    {order.createdAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                {readyOrders.map(order => {
+                                    const isPickedUp = order.status === "picked_up";
+                                    const isMyOrder = isPickedUp && order.deliveryPartnerUid === user.uid;
+                                    const isOthersOrder = isPickedUp && order.deliveryPartnerUid !== user.uid;
+                                    
+                                    return (
+                                        <motion.div
+                                            key={order.id}
+                                            layout
+                                            initial={{ opacity: 0, y: 16 }}
+                                            animate={{ opacity: 1, y: 0 }}
+                                            exit={{ opacity: 0, x: -20 }}
+                                            className={`rounded-2xl overflow-hidden ${
+                                                isPickedUp 
+                                                    ? "bg-white/3 border border-white/5 opacity-60" 
+                                                    : "bg-white/5 border border-purple-500/20"
+                                            }`}
+                                        >
+                                            <div className={`flex items-center justify-between px-5 py-3 border-b border-white/5 ${
+                                                isPickedUp ? "bg-orange-500/5" : "bg-purple-500/5"
+                                            }`}>
+                                                <span className={`text-[10px] font-black uppercase tracking-widest ${
+                                                    isPickedUp ? "text-orange-400" : "text-purple-400"
+                                                }`}>
+                                                    {isPickedUp ? "Picked Up" : "Ready for Pickup"}
                                                 </span>
-                                            </div>
-                                        </div>
-                                        <div className="p-5 space-y-4">
-                                            {/* Items grouped by restaurant */}
-                                            <div className="space-y-3">
-                                                {Object.entries(
-                                                    (order.items || []).reduce((acc, item) => {
-                                                        const rName = item.restaurantName || "Restaurant";
-                                                        if (!acc[rName]) acc[rName] = [];
-                                                        acc[rName].push(item);
-                                                        return acc;
-                                                    }, {})
-                                                ).map(([rName, items]) => (
-                                                    <div key={rName}>
-                                                        <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">{rName}</p>
-                                                        {items.map((item, idx) => (
-                                                            <div key={idx} className="flex items-center gap-2 text-sm py-0.5">
-                                                                <span className="text-orange-400 font-bold">×{item.quantity}</span>
-                                                                <span className="text-gray-200">{item.name}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                ))}
-                                            </div>
-
-                                            {/* Delivery address */}
-                                            <div className="flex items-start gap-2 text-sm text-gray-300 bg-white/5 rounded-xl px-3 py-2">
-                                                <MapPin size={15} className="text-gray-500 mt-0.5 shrink-0" />
-                                                <span>
-                                                    <span className="font-bold text-white">{order.campus}</span>
-                                                    {order.address && <span className="text-gray-400"> · {order.address}</span>}
-                                                </span>
-                                            </div>
-
-                                            {order.instructions && (
-                                                <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2">
-                                                    <p className="text-xs text-yellow-200">{order.instructions}</p>
+                                                <div className="flex items-center gap-3">
+                                                    {/* Countdown timer */}
+                                                    <CountdownTimer readyAt={order.readyAt} />
+                                                    {/* Order time */}
+                                                    <span className="text-xs text-gray-500 flex items-center gap-1">
+                                                        <Clock size={11} />
+                                                        {order.createdAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                    </span>
                                                 </div>
-                                            )}
+                                            </div>
+                                            <div className="p-5 space-y-4">
+                                                {/* Show delivery partner info if picked up by someone else */}
+                                                {isOthersOrder && (
+                                                    <div className="flex items-center gap-2 text-xs bg-orange-500/10 text-orange-300 rounded-xl px-3 py-2">
+                                                        <User size={14} />
+                                                        <span>Picked up by {order.deliveryPartnerEmail || "another partner"}</span>
+                                                    </div>
+                                                )}
+                                                
+                                                {/* Items grouped by restaurant */}
+                                                <div className="space-y-3">
+                                                    {Object.entries(
+                                                        (order.items || []).reduce((acc, item) => {
+                                                            const rName = item.restaurantName || "Restaurant";
+                                                            if (!acc[rName]) acc[rName] = [];
+                                                            acc[rName].push(item);
+                                                            return acc;
+                                                        }, {})
+                                                    ).map(([rName, items]) => (
+                                                        <div key={rName}>
+                                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">{rName}</p>
+                                                            {items.map((item, idx) => (
+                                                                <div key={idx} className="flex items-center gap-2 text-sm py-0.5">
+                                                                    <span className="text-orange-400 font-bold">×{item.quantity}</span>
+                                                                    <span className="text-gray-200">{item.name}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ))}
+                                                </div>
 
-                                            <button
-                                                onClick={() => handlePickup(order)}
-                                                disabled={claiming === order.id}
-                                                className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-900/30"
-                                            >
-                                                {claiming === order.id
-                                                    ? <Loader2 size={18} className="animate-spin" />
-                                                    : <Truck size={18} />
-                                                }
-                                                Pick Up Order
-                                            </button>
-                                        </div>
-                                    </motion.div>
-                                ))}
+                                                {/* Delivery address */}
+                                                <div className="flex items-start gap-2 text-sm text-gray-300 bg-white/5 rounded-xl px-3 py-2">
+                                                    <MapPin size={15} className="text-gray-500 mt-0.5 shrink-0" />
+                                                    <span>
+                                                        <span className="font-bold text-white">{order.campus}</span>
+                                                        {order.address && <span className="text-gray-400"> · {order.address}</span>}
+                                                    </span>
+                                                </div>
+
+                                                {order.instructions && (
+                                                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2">
+                                                        <p className="text-xs text-yellow-200">{order.instructions}</p>
+                                                    </div>
+                                                )}
+
+                                                {/* Action buttons */}
+                                                {!isPickedUp && (
+                                                    <button
+                                                        onClick={() => handlePickup(order)}
+                                                        disabled={claiming === order.id}
+                                                        className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-900/30"
+                                                    >
+                                                        {claiming === order.id
+                                                            ? <Loader2 size={18} className="animate-spin" />
+                                                            : <Truck size={18} />
+                                                        }
+                                                        Pick Up Order
+                                                    </button>
+                                                )}
+                                                
+                                                {isMyOrder && (
+                                                    <button
+                                                        onClick={() => handleDeliver(order)}
+                                                        disabled={delivering === order.id}
+                                                        className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
+                                                    >
+                                                        {delivering === order.id
+                                                            ? <Loader2 size={18} className="animate-spin" />
+                                                            : <Check size={18} />
+                                                        }
+                                                        Mark as Delivered
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </motion.div>
+                                    );
+                                })}
                             </AnimatePresence>
                         </div>
                     )}

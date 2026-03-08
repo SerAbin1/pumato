@@ -41,16 +41,29 @@ export default function CountdownTimer({ readyAt, className = "" }) {
 
     if (!readyAt) return null;
 
-    const colorClass = isOverdue ? "text-red-400" : isWarning ? "text-orange-400" : "text-gray-500";
+    const bgClass = isOverdue 
+        ? "bg-red-500/20 border-red-500/40" 
+        : isWarning 
+        ? "bg-orange-500/20 border-orange-500/40" 
+        : "bg-blue-500/20 border-blue-500/40";
+    
+    const textClass = isOverdue 
+        ? "text-red-400" 
+        : isWarning 
+        ? "text-orange-400" 
+        : "text-blue-400";
 
     return (
-        <div className={`flex items-center gap-1 ${colorClass} ${className}`}>
-            <Clock size={11} className={isOverdue ? "animate-pulse" : ""} />
-            <span className={`text-xs font-mono ${isOverdue ? "font-bold" : ""}`}>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border ${bgClass} ${className}`}>
+            <Clock size={16} className={`${textClass} ${isOverdue ? "animate-pulse" : ""}`} />
+            <span className={`text-base font-mono font-bold ${textClass}`}>
                 {timeDisplay}
             </span>
             {isOverdue && (
-                <span className="text-[10px] text-red-400 font-bold ml-1">OVERDUE</span>
+                <span className="text-[10px] text-red-400 font-black ml-1 uppercase tracking-wider">OVERDUE!</span>
+            )}
+            {isWarning && !isOverdue && (
+                <span className="text-[10px] text-orange-400 font-black ml-1 uppercase tracking-wider">URGENT</span>
             )}
         </div>
     );

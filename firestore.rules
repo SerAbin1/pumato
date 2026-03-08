@@ -56,7 +56,7 @@ service cloud.firestore {
       allow read, update: if isAnyPartner()
         && request.auth.token.restaurantId in resource.data.restaurantIds;
       allow read: if isDeliveryPartner()
-        && resource.data.status == "ready_for_delivery";
+        && resource.data.status in ["ready_for_delivery", "picked_up"];
       allow update: if isDeliveryPartner()
         && resource.data.status == "ready_for_delivery"
         && request.resource.data.status == "picked_up"

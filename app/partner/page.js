@@ -191,7 +191,7 @@ export default function PartnerDashboard() {
         }
     }, []);
 
-    // Live orders listener (confirmed / viewed / ready_for_delivery) — oldest first
+    // Live orders listener (confirmed / viewed) — oldest first
     useEffect(() => {
         if (!user?.restaurantId) return;
         const todayStart = new Date();
@@ -200,7 +200,7 @@ export default function PartnerDashboard() {
         const q = query(
             collection(db, "orders"),
             where("restaurantIds", "array-contains", user.restaurantId),
-            where("status", "in", ["confirmed", "viewed", "ready_for_delivery"]),
+            where("status", "in", ["confirmed", "viewed"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
             orderBy("createdAt", "asc"),
             limit(100)
@@ -219,7 +219,7 @@ export default function PartnerDashboard() {
         return () => unsub();
     }, [user, playNotificationSound]);
 
-    // Past orders listener (out_of_stock / picked_up / delivered) — newest first
+    // Past orders listener (ready_for_delivery / out_of_stock / picked_up / delivered) — newest first
     useEffect(() => {
         if (!user?.restaurantId) return;
         const todayStart = new Date();
@@ -228,7 +228,7 @@ export default function PartnerDashboard() {
         const q = query(
             collection(db, "orders"),
             where("restaurantIds", "array-contains", user.restaurantId),
-            where("status", "in", ["out_of_stock", "picked_up", "delivered"]),
+            where("status", "in", ["ready_for_delivery", "out_of_stock", "picked_up", "delivered"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
             orderBy("createdAt", "desc"),
             limit(100)

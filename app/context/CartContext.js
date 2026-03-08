@@ -27,6 +27,7 @@ export function CartProvider({ children }) {
 
     // --- Persistence ---
     useEffect(() => {
+        let loadTimer;
         if (typeof window !== "undefined") {
             const saved = localStorage.getItem("pumato_user_details");
             if (saved) {
@@ -34,8 +35,11 @@ export function CartProvider({ children }) {
                     dispatch({ type: "LOAD_USER_DETAILS", payload: JSON.parse(saved) });
                 } catch (e) { console.error("Failed to parse saved user details", e); }
             }
+            loadTimer = window.setTimeout(() => setIsLoaded(true), 0);
         }
-        setIsLoaded(true);
+        return () => {
+            if (loadTimer) window.clearTimeout(loadTimer);
+        };
     }, []);
 
     useEffect(() => {
@@ -92,13 +96,11 @@ export function CartProvider({ children }) {
     };
 
     const applyCoupon = async (code) => {
-        const uppercaseCode = code.toUpperCase();
+        const uppercaseCode = code.trim().toUpperCase();
         try {
-            const { data: coupon, error } = await supabase
-                .from("promocodes")
-                .select("*")
-                .eq("code", uppercaseCode)
-                .single();
+            const { data: coupon, error } = await supabase.functions.invoke("manage-coupons", {
+                body: { action: "FETCH_BY_CODE", payload: { code: uppercaseCode } }
+            });
 
             if (error || !coupon) return { success: false, message: "Invalid Coupon Code" };
 

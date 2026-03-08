@@ -28,10 +28,9 @@ export function useCoupons() {
     useEffect(() => {
         const fetchCoupons = async () => {
             try {
-                const { data, error } = await supabase
-                    .from("promocodes")
-                    .select("*")
-                    .eq("is_visible", true);
+                const { data, error } = await supabase.functions.invoke("manage-coupons", {
+                    body: { action: "FETCH_VISIBLE" }
+                });
 
                 if (error) throw error;
                 // Map to camelCase for frontend consistency

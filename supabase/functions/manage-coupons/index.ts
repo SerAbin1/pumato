@@ -45,7 +45,65 @@ Deno.serve(async (req) => {
     }
 
     try {
-        // 2. Auth Check
+        // 2. Supabase Client
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')
+        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')
+
+        if (!supabaseUrl || !supabaseKey) {
+            throw new Error('Missing Supabase environment variables')
+        }
+
+        const supabaseClient = createClient(supabaseUrl, supabaseKey)
+
+        // 3. Parse Body
+        let body: any = {}
+        if (req.method !== 'GET') {
+            try {
+                body = await req.json()
+            } catch (e) {
+                console.error('Failed to parse JSON body:', e)
+                return new Response(JSON.stringify({ error: 'invalid-json' }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
+                })
+            }
+        }
+
+        const { action, payload } = body
+
+        if (action === 'FETCH_VISIBLE') {
+            const { data, error } = await supabaseClient
+                .from('promocodes')
+                .select('*')
+                .eq('is_visible', true)
+                .eq('is_active', true)
+            if (error) throw error
+            return new Response(JSON.stringify(data || []), {
+                headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
+            })
+        }
+
+        if (action === 'FETCH_BY_CODE') {
+            const couponCode = String(payload?.code || '').trim().toUpperCase()
+            if (!couponCode) {
+                return new Response(JSON.stringify({ error: 'invalid-argument', message: 'Coupon code is required.' }), {
+                    status: 400,
+                    headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
+                })
+            }
+
+            const { data, error } = await supabaseClient
+                .from('promocodes')
+                .select('*')
+                .eq('code', couponCode)
+                .maybeSingle()
+            if (error) throw error
+            return new Response(JSON.stringify(data), {
+                headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
+            })
+        }
+
+        // 4. Auth Check for admin-only actions
         const authHeader = req.headers.get('Authorization')
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             console.warn('Missing or invalid Authorization header')
@@ -64,32 +122,6 @@ Deno.serve(async (req) => {
                 headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' },
             })
         }
-
-        // 3. Supabase Client
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')
-        const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY')
-
-        if (!supabaseUrl || !supabaseKey) {
-            throw new Error('Missing Supabase environment variables')
-        }
-
-        const supabaseClient = createClient(supabaseUrl, supabaseKey)
-
-        // 4. Parse Body
-        let body: any = {}
-        if (req.method !== 'GET') {
-            try {
-                body = await req.json()
-            } catch (e) {
-                console.error('Failed to parse JSON body:', e)
-                return new Response(JSON.stringify({ error: 'invalid-json' }), {
-                    status: 400,
-                    headers: { ...corsHeaders, 'Access-Control-Allow-Origin': origin, 'Content-Type': 'application/json' }
-                })
-            }
-        }
-
-        const { action, payload } = body
 
         if (action === 'CREATE' || action === 'UPDATE') {
             const { data, error } = await supabaseClient
@@ -149,5 +181,4 @@ Deno.serve(async (req) => {
         })
     }
 })
-
 

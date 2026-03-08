@@ -8,41 +8,41 @@ import LaundryHero from "./components/LaundryHero";
 import LaundryForm from "./components/LaundryForm";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { db } from "@/lib/firebase";
-import { doc, getDoc } from "firebase/firestore";
+import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import TermsFooter from "../components/TermsFooter";
 
 export default function LaundryPage() {
     const newItemRef = useRef(null);
-    const [formData, setFormData] = useState({
-        name: "",
-        phone: "",
-        campus: "",
-        location: "",
-        date: "",
-        time: "",
-        instructions: ""
-    });
+    const [formData, setFormData] = useState(() => {
+        const defaultState = {
+            name: "",
+            phone: "",
+            campus: "",
+            location: "",
+            date: "",
+            time: "",
+            instructions: ""
+        };
 
-    // 1. Load from localStorage on mount
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const saved = localStorage.getItem("pumato_user_details");
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    setFormData(prev => ({
-                        ...prev,
-                        name: parsed.name || prev.name,
-                        phone: parsed.phone || prev.phone,
-                        location: parsed.address || parsed.room || parsed.location || prev.location
-                    }));
-                } catch (e) {
-                    console.error("Failed to parse saved user details", e);
-                }
-            }
+        if (typeof window === "undefined") return defaultState;
+
+        const saved = localStorage.getItem("pumato_user_details");
+        if (!saved) return defaultState;
+
+        try {
+            const parsed = JSON.parse(saved);
+            return {
+                ...defaultState,
+                name: parsed.name || "",
+                phone: parsed.phone || "",
+                location: parsed.address || parsed.room || parsed.location || ""
+            };
+        } catch (e) {
+            console.error("Failed to parse saved user details", e);
+            return defaultState;
         }
-    }, []);
+    });
 
     // 2. Save to localStorage whenever formData changes
     useEffect(() => {
@@ -63,24 +63,22 @@ export default function LaundryPage() {
         }
     }, [formData.name, formData.phone, formData.location]);
 
-    const [items, setItems] = useState([
-        { id: Date.now(), name: "", quantity: "", steamIron: false }
-    ]);
-    const [estimatedWeight, setEstimatedWeight] = useState(5);
+    const [items, setItems] = useState(() => {
+        const fallbackItems = [{ id: Date.now(), name: "", quantity: "", steamIron: false }];
 
-    // Load items from localStorage on mount
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            const savedItems = localStorage.getItem("pumato_laundry_items");
-            if (savedItems) {
-                try {
-                    setItems(JSON.parse(savedItems));
-                } catch (e) {
-                    console.error("Failed to parse saved laundry items", e);
-                }
-            }
+        if (typeof window === "undefined") return fallbackItems;
+
+        const savedItems = localStorage.getItem("pumato_laundry_items");
+        if (!savedItems) return fallbackItems;
+
+        try {
+            return JSON.parse(savedItems);
+        } catch (e) {
+            console.error("Failed to parse saved laundry items", e);
+            return fallbackItems;
         }
-    }, []);
+    });
+    const [estimatedWeight, setEstimatedWeight] = useState(5);
 
     // Save items to localStorage whenever they change
     useEffect(() => {
@@ -227,6 +225,13 @@ export default function LaundryPage() {
         message += `Campus: ${formData.campus}\n`;
 
         const selectedCampus = campusConfig.find(c => c.id === formData.campus);
+        const deliveryCharge = selectedCampus?.deliveryCharge || 0;
+        const validLaundryItems = validItems.map(item => ({
+            name: item.name.trim(),
+            quantity: Number(item.quantity) || 1,
+            steamIron: !!item.steamIron
+        }));
+
         if (selectedCampus && selectedCampus.deliveryCharge > 0) {
             message += `Delivery Charge: ₹${selectedCampus.deliveryCharge}\n`;
         }
@@ -250,6 +255,27 @@ export default function LaundryPage() {
 
         const whatsappUrl = `https://wa.me/${laundryNumber}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, "_blank");
+
+        try {
+            addDoc(collection(db, "laundry_orders"), {
+                name: trimmedName,
+                phone: formData.phone,
+                campus: formData.campus,
+                location: trimmedLocation,
+                instructions: formData.instructions.trim(),
+                scheduledDate: formData.date,
+                scheduledSlot: formData.time,
+                items: validLaundryItems,
+                status: "ScheduledForPickup",
+                customerPaidAmount: null,
+                paidToShopAmount: null,
+                createdAt: serverTimestamp()
+            }).catch((dbError) => {
+                console.error("Failed to record laundry order in Firestore:", dbError);
+            });
+        } catch (dbError) {
+            console.error("Failed to queue laundry order in Firestore:", dbError);
+        }
 
         // Clear only the laundry items, keeping user details
         localStorage.removeItem("pumato_laundry_items");

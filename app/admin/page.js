@@ -55,6 +55,8 @@ export default function AdminPage() {
     const [slotEnd, setSlotEnd] = useState("");
     const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
     const [laundryPricing, setLaundryPricing] = useState({ pricePerKg: "", steamIronPrice: "" });
+    const [laundryOrders, setLaundryOrders] = useState([]);
+    const [loadingLaundryOrders, setLoadingLaundryOrders] = useState(true);
 
     // Site Settings
     const [orderSettings, setOrderSettings] = useState({
@@ -73,12 +75,6 @@ export default function AdminPage() {
             router.push("/admin/login");
         }
     }, [authLoading, user, isAdmin, router]);
-
-    useEffect(() => {
-        if (user && isAdmin) {
-            fetchData();
-        }
-    }, [user, isAdmin]);
 
     // Register FCM token for this device once the admin is confirmed
     useFcmToken(user && isAdmin ? user : null);
@@ -176,6 +172,32 @@ export default function AdminPage() {
         return () => unsub();
     }, [user, isAdmin]);
 
+    useEffect(() => {
+        if (!user || !isAdmin) return;
+
+        const unsub = onSnapshot(collection(db, "laundry_orders"), (snap) => {
+            const ordersData = snap.docs.map((snapshotDoc) => ({
+                id: snapshotDoc.id,
+                ...snapshotDoc.data(),
+                createdAt: snapshotDoc.data().createdAt?.toDate?.() || null,
+            })).sort((a, b) => {
+                const dateCompare = (a.scheduledDate || "").localeCompare(b.scheduledDate || "");
+                if (dateCompare !== 0) return dateCompare;
+                const timeA = a.createdAt?.getTime?.() || 0;
+                const timeB = b.createdAt?.getTime?.() || 0;
+                return timeB - timeA;
+            });
+
+            setLaundryOrders(ordersData);
+            setLoadingLaundryOrders(false);
+        }, (error) => {
+            console.error("Laundry orders listener error:", error);
+            setLoadingLaundryOrders(false);
+        });
+
+        return () => unsub();
+    }, [user, isAdmin]);
+
     // Past orders listener (picked_up / delivered)
     useEffect(() => {
         if (!user || !isAdmin) return;
@@ -201,7 +223,7 @@ export default function AdminPage() {
         }
     }, [activeSection, selectedDay]);
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const [resSnap, promoRes] = await Promise.all([
@@ -354,7 +376,13 @@ export default function AdminPage() {
             alert("Failed to load data");
         }
         setLoading(false);
-    };
+    }, [user]);
+
+    useEffect(() => {
+        if (user && isAdmin) {
+            fetchData();
+        }
+    }, [user, isAdmin, fetchData]);
 
     const fetchLaundrySlots = async (dateOrType) => {
         try {
@@ -685,6 +713,8 @@ export default function AdminPage() {
                             setCampusConfig={setCampusConfig}
                             laundryPricing={laundryPricing}
                             setLaundryPricing={setLaundryPricing}
+                            laundryOrders={laundryOrders}
+                            loadingLaundryOrders={loadingLaundryOrders}
                             onSaveSettings={saveCampusConfig}
                         />
                     )}

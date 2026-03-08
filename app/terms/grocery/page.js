@@ -2,9 +2,10 @@
 
 import Navbar from "../../components/Navbar";
 import { motion } from "framer-motion";
-import { ArrowLeft, ScrollText, ShoppingBasket } from "lucide-react";
+import { ArrowLeft, ShoppingBasket } from "lucide-react";
 import Link from "next/link";
 
+// see this page AI!
 export default function GroceryTermsPage() {
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden selection:bg-green-500 selection:text-white pb-20">

@@ -2,9 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import toast from "react-hot-toast";
-import Link from "next/link";
 import Navbar from "../components/Navbar";
-import { ArrowLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import LaundryHero from "./components/LaundryHero";
 import LaundryForm from "./components/LaundryForm";
@@ -12,6 +10,7 @@ import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import TermsFooter from "../components/TermsFooter";
 
 export default function LaundryPage() {
     const newItemRef = useRef(null);
@@ -306,6 +305,7 @@ export default function LaundryPage() {
                     </motion.div>
                 </div>
             </div>
+            <TermsFooter type="laundry" />
         </main>
     );
 }

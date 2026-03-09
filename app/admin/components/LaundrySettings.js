@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
 import toast from "react-hot-toast";
 import ConfirmModal from "../../components/ConfirmModal";
 import { db } from "@/lib/firebase";
@@ -40,20 +40,20 @@ const PIPELINE_TABS = [
         actionClass: "bg-emerald-600 hover:bg-emerald-500 text-white",
     },
     {
-        id: "PendingShopPayment",
-        label: "Pending Shop Payment",
-        emptyMessage: "No orders waiting for shop payment.",
-        actionLabel: "Record Payment To Shop",
-        actionIcon: CreditCard,
-        actionClass: "bg-violet-600 hover:bg-violet-500 text-white",
-    },
-    {
         id: "DeliveryPending",
         label: "Delivery Pending",
         emptyMessage: "No orders queued for delivery.",
         actionLabel: "Mark Delivered",
         actionIcon: CheckCircle2,
         actionClass: "bg-orange-600 hover:bg-orange-500 text-white",
+    },
+    {
+        id: "PendingShopPayment",
+        label: "Pending Shop Payment",
+        emptyMessage: "No orders waiting for shop payment.",
+        actionLabel: "Record Payment To Shop",
+        actionIcon: CreditCard,
+        actionClass: "bg-violet-600 hover:bg-violet-500 text-white",
     },
     {
         id: "Completed",
@@ -93,14 +93,14 @@ const formatTimestamp = (value) => {
 };
 
 const resolveOrderStage = (order) => {
-    if (order.status === "Completed" || order.status === "Delivered" || order.deliveredToCustomerAt) {
+    if (order.status === "Completed" || order.status === "PaidToShop" || order.paidToShopAt) {
         return "Completed";
     }
-    if (order.status === "DeliveryPending" || order.status === "PaidToShop" || order.paidToShopAt) {
-        return "DeliveryPending";
-    }
-    if (order.status === "PendingShopPayment" || order.status === "CustomerPaid" || order.customerPaidAt) {
+    if (order.status === "PendingShopPayment" || order.status === "Delivered" || order.deliveredToCustomerAt) {
         return "PendingShopPayment";
+    }
+    if (order.status === "DeliveryPending" || order.status === "CustomerPaid" || order.customerPaidAt) {
+        return "DeliveryPending";
     }
     if (order.status === "PendingCustomerPayment" || order.pickedUpFromCustomerAt) {
         return "PendingCustomerPayment";
@@ -220,6 +220,7 @@ function PipelineOrderCard({
     onToggle,
     onPrimaryAction,
     onReschedule,
+    onDelete,
     processing
 }) {
     const itemCount = order.items?.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0) || 0;
@@ -247,12 +248,12 @@ function PipelineOrderCard({
         >
             <div className="p-4 md:p-5">
                 <div className="flex flex-col gap-4">
-                    <button
-                        onClick={onToggle}
-                        className="w-full text-left"
-                    >
-                        <div className="flex items-start justify-between gap-3">
-                            <div className="min-w-0 flex-1 space-y-2">
+                    <div className="flex items-start gap-3">
+                        <button
+                            onClick={onToggle}
+                            className="min-w-0 flex-1 text-left"
+                        >
+                            <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
                                         {stageLabel}
@@ -268,12 +269,21 @@ function PipelineOrderCard({
                                     <span>{order.location || "No address"}</span>
                                 </div>
                             </div>
+                        </button>
+                        <div className="flex flex-col gap-2 shrink-0">
+                            <button
+                                onClick={onDelete}
+                                className="rounded-lg p-2 text-gray-500 hover:bg-red-500/10 hover:text-red-500 transition-colors"
+                                title="Delete order"
+                            >
+                                <Trash size={18} />
+                            </button>
                             <ChevronDown
                                 size={18}
-                                className={`mt-1 shrink-0 text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                                className={`text-gray-500 transition-transform ${isExpanded ? "rotate-180" : ""}`}
                             />
                         </div>
-                    </button>
+                    </div>
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs text-gray-500">
@@ -396,6 +406,7 @@ export default function LaundrySettings({
     loadingLaundryOrders = false
 }) {
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, slotIdx: null, slotName: "" });
+    const [deleteModal, setDeleteModal] = useState({ isOpen: false, order: null });
     const [activeTab, setActiveTab] = useState("ReadyForPickup");
     const [expandedOrderId, setExpandedOrderId] = useState(null);
     const [processingOrderId, setProcessingOrderId] = useState(null);
@@ -438,8 +449,8 @@ export default function LaundrySettings({
         }, {
             ReadyForPickup: 0,
             PendingCustomerPayment: 0,
-            PendingShopPayment: 0,
             DeliveryPending: 0,
+            PendingShopPayment: 0,
             Completed: 0,
         })
     ), [laundryOrders]);
@@ -463,6 +474,14 @@ export default function LaundrySettings({
             return;
         }
 
+        if (stageId === "DeliveryPending") {
+            await updateOrder(order.id, {
+                status: "PendingShopPayment",
+                deliveredToCustomerAt: serverTimestamp(),
+            }, "Delivery recorded");
+            return;
+        }
+
         if (stageId === "PendingShopPayment") {
             setPaymentModal({
                 isOpen: true,
@@ -470,14 +489,6 @@ export default function LaundrySettings({
                 order,
                 amount: order.paidToShopAmount?.toString?.() || "",
             });
-            return;
-        }
-
-        if (stageId === "DeliveryPending") {
-            await updateOrder(order.id, {
-                status: "Completed",
-                deliveredToCustomerAt: serverTimestamp(),
-            }, "Delivery recorded");
         }
     };
 
@@ -490,13 +501,13 @@ export default function LaundrySettings({
 
         if (paymentModal.type === "customer") {
             await updateOrder(paymentModal.order.id, {
-                status: "PendingShopPayment",
+                status: "DeliveryPending",
                 customerPaidAmount: amount,
                 customerPaidAt: serverTimestamp(),
             }, "Customer payment recorded");
         } else {
             await updateOrder(paymentModal.order.id, {
-                status: "DeliveryPending",
+                status: "Completed",
                 paidToShopAmount: amount,
                 paidToShopAt: serverTimestamp(),
             }, "Shop payment recorded");
@@ -529,6 +540,17 @@ export default function LaundrySettings({
         setRescheduleModal({ isOpen: false, order: null, date: "", slot: "" });
     };
 
+    const handleDeleteOrder = async (order) => {
+        try {
+            await deleteDoc(doc(db, "laundry_orders", order.id));
+            toast.success("Order deleted successfully");
+            setDeleteModal({ isOpen: false, order: null });
+        } catch (error) {
+            console.error("Failed to delete order:", error);
+            toast.error("Failed to delete order");
+        }
+    };
+
     return (
         <div className="space-y-8">
             <div className="mx-auto max-w-6xl space-y-8">
@@ -551,7 +573,6 @@ export default function LaundrySettings({
                                 <Package className="text-cyan-500" />
                                 Laundry Pipeline
                             </h2>
-                            <p className="text-sm text-gray-400">Each tab represents one stage. Cards stay compact and expose a single primary action.</p>
                         </div>
 
                         {loadingLaundryOrders ? (
@@ -584,6 +605,7 @@ export default function LaundrySettings({
                                                         onToggle={() => setExpandedOrderId((prev) => prev === order.id ? null : order.id)}
                                                         onPrimaryAction={() => handlePrimaryAction(order, activeTab)}
                                                         onReschedule={() => openRescheduleModal(order)}
+                                                        onDelete={() => setDeleteModal({ isOpen: true, order })}
                                                         processing={processingOrderId === order.id}
                                                     />
                                                 )}
@@ -728,6 +750,16 @@ export default function LaundrySettings({
                 title="Delete Timeslot?"
                 message={`Are you sure you want to delete the timeslot "${confirmModal.slotName}"?`}
                 confirmLabel="Delete"
+            />
+
+            <ConfirmModal
+                isOpen={deleteModal.isOpen}
+                onClose={() => setDeleteModal({ isOpen: false, order: null })}
+                onConfirm={() => handleDeleteOrder(deleteModal.order)}
+                title="Delete Order?"
+                message={deleteModal.order ? `Are you sure you want to delete the order for ${deleteModal.order.name}? This action cannot be undone.` : "Are you sure you want to delete this order?"}
+                confirmLabel="Delete Order"
+                isDanger={true}
             />
         </div>
     );

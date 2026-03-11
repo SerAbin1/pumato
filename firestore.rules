@@ -39,6 +39,11 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
+    // --- Laundry Orders: public write ---
+    match /laundry_orders/{document} {
+      allow create: if true;
+    }
+
     // --- General Settings: public read (campus config etc.) ---
     match /general_settings/{document} {
       allow read: if true;

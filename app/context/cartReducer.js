@@ -3,30 +3,11 @@ export const initialState = {
     cartItems: [],
     isCartOpen: false,
     couponCode: null,
-    activeCoupon: null,
-    userDetails: {
-        name: "",
-        phone: "",
-        campus: "",
-        address: "",
-        instructions: ""
-    }
+    activeCoupon: null
 };
 
 export function cartReducer(state, action) {
     switch (action.type) {
-        case "LOAD_USER_DETAILS":
-            return {
-                ...state,
-                userDetails: { ...state.userDetails, ...action.payload }
-            };
-
-        case "UPDATE_USER_DETAILS":
-            return {
-                ...state,
-                userDetails: action.payload
-            };
-
         case "SET_CART_OPEN":
             return {
                 ...state,

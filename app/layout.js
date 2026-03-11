@@ -1,6 +1,8 @@
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "./context/CartContext";
+import { CustomerProvider } from "./context/CustomerContext";
+import { ServiceSettingsProvider } from "./context/ServiceSettingsContext";
+import { FoodCartProvider } from "./food/context/FoodCartContext";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,15 +26,19 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={inter.className}>
-        <CartProvider>
-          {children}
-          <Toaster position="bottom-center" toastOptions={{
-            style: {
-              background: '#333',
-              color: '#fff',
-            },
-          }} />
-        </CartProvider>
+        <CustomerProvider>
+          <ServiceSettingsProvider>
+            <FoodCartProvider>
+              {children}
+              <Toaster position="bottom-center" toastOptions={{
+                style: {
+                  background: '#333',
+                  color: '#fff',
+                },
+              }} />
+            </FoodCartProvider>
+          </ServiceSettingsProvider>
+        </CustomerProvider>
       </body>
     </html>
   );

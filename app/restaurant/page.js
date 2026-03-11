@@ -2,7 +2,7 @@
 
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
-import { useCart } from "@/app/context/CartContext";
+import { useFoodCart } from "@/app/food/context/FoodCartContext";
 import Navbar from "@/app/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
 import { Star, ArrowLeft, Search, Dot, ShoppingBag, ChevronDown, Utensils, X, ArrowUpDown } from "lucide-react";
@@ -45,7 +45,7 @@ function RestaurantContent() {
     const [searchQuery, setSearchQuery] = useState("");
     const [collapsedSections, setCollapsedSections] = useState({});
 
-    const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
+    const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useFoodCart();
     const { getDocument, loading: dbLoading } = useFirestore();
     const highlight = searchParams.get("highlight");
 

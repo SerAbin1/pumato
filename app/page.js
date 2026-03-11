@@ -6,10 +6,11 @@ import { Utensils, Shirt, Instagram, Mail, MessageCircle, ArrowRight, Sparkles, 
 import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
-import { useCart } from "./context/CartContext";
 import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { getISTTime, getISTObject, checkManualOverride } from "@/lib/dateUtils";
+import { useFoodOrderSettings } from "@/app/context/ServiceSettingsContext";
+import { useGrocerySettings } from "@/app/hooks/useServiceSettings";
 
 // --- COMPONENTS ---
 
@@ -149,7 +150,8 @@ const REVIEWS = [
 ];
 
 export default function GatewayPage() {
-  const { orderSettings, grocerySettings } = useCart();
+  const { orderSettings } = useFoodOrderSettings();
+  const { grocerySettings } = useGrocerySettings();
   const { scrollYProgress } = useScroll();
   const yParallax = useTransform(scrollYProgress, [0, 1], [0, -200]);
 
@@ -159,7 +161,7 @@ export default function GatewayPage() {
   const [isLaundryLive, setIsLaundryLive] = useState(false);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setIsFoodLive(checkIsLive(orderSettings));
     setIsGroceryLive(checkIsLive(grocerySettings));
 

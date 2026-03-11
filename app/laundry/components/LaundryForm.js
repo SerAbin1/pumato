@@ -116,7 +116,6 @@ export default function LaundryForm({
 
                 <hr className="border-white/5 border-dashed my-6" />
 
-// make the items required (atleast one item) and quantity shall be minimum 1 ai!
                 {/* Dynamic Laundry List */}
                 <div className="space-y-4">
                     <label className="block text-sm font-bold text-gray-400 ml-1">Clothing Items</label>

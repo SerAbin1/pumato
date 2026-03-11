@@ -11,8 +11,10 @@ import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import TermsFooter from "../components/TermsFooter";
+import { useCustomerProfile } from "@/app/context/CustomerContext";
 
 export default function LaundryPage() {
+    const { userDetails, setUserDetails, isLoaded } = useCustomerProfile();
     const newItemRef = useRef(null);
     const [formData, setFormData] = useState(() => {
         const defaultState = {
@@ -25,46 +27,66 @@ export default function LaundryPage() {
             instructions: ""
         };
 
-        if (typeof window === "undefined") return defaultState;
-
-        const saved = localStorage.getItem("pumato_user_details");
-        if (!saved) return defaultState;
-
-        try {
-            const parsed = JSON.parse(saved);
-            return {
-                ...defaultState,
-                name: parsed.name || "",
-                phone: parsed.phone || "",
-                location: parsed.address || parsed.room || parsed.location || ""
-            };
-        } catch (e) {
-            console.error("Failed to parse saved user details", e);
-            return defaultState;
-        }
+        return {
+            ...defaultState,
+            name: userDetails.name || "",
+            phone: userDetails.phone || "",
+            campus: userDetails.campus || "",
+            location: userDetails.address || userDetails.room || userDetails.location || ""
+        };
     });
 
-    // 2. Save to localStorage whenever formData changes
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            // Only save if name, phone or location has value to avoid overwriting with empty
-            if (formData.name || formData.phone || formData.location) {
-                // Map location back to address for cross-tab sharing with CartDrawer/Grocery
-                const currentSaved = JSON.parse(localStorage.getItem("pumato_user_details") || "{}");
-                const toSave = {
-                    ...currentSaved,
-                    name: formData.name || currentSaved.name,
-                    phone: formData.phone || currentSaved.phone,
-                    address: formData.location || currentSaved.address,
-                    location: formData.location || currentSaved.location
-                };
-                localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
-            }
+        if (!isLoaded) return;
+
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setFormData((prev) => {
+            const nextState = {
+                ...prev,
+                name: prev.name || userDetails.name || "",
+                phone: prev.phone || userDetails.phone || "",
+                campus: prev.campus || userDetails.campus || "",
+                location: prev.location || userDetails.address || userDetails.room || userDetails.location || ""
+            };
+
+            return (
+                nextState.name === prev.name
+                && nextState.phone === prev.phone
+                && nextState.campus === prev.campus
+                && nextState.location === prev.location
+            )
+                ? prev
+                : nextState;
+        });
+    }, [isLoaded, userDetails.address, userDetails.campus, userDetails.location, userDetails.name, userDetails.phone, userDetails.room]);
+
+    useEffect(() => {
+        if (!isLoaded) return;
+
+        const hasChanges = (
+            userDetails.name !== formData.name
+            || userDetails.phone !== formData.phone
+            || userDetails.campus !== formData.campus
+            || userDetails.address !== formData.location
+            || userDetails.location !== formData.location
+        );
+
+        if (!hasChanges) return;
+
+        if (formData.name || formData.phone || formData.location || formData.campus) {
+            setUserDetails((prev) => ({
+                ...prev,
+                name: formData.name || prev.name,
+                phone: formData.phone || prev.phone,
+                campus: formData.campus || prev.campus,
+                address: formData.location || prev.address,
+                location: formData.location || prev.location
+            }));
         }
-    }, [formData.name, formData.phone, formData.location]);
+    }, [formData.campus, formData.location, formData.name, formData.phone, isLoaded, setUserDetails, userDetails.address, userDetails.campus, userDetails.location, userDetails.name, userDetails.phone]);
 
     const [items, setItems] = useState(() => {
-        const fallbackItems = [{ id: Date.now(), name: "", quantity: "", steamIron: false }];
+        const fallbackItems = [{ id: 1, name: "", quantity: "", steamIron: false }];
 
         if (typeof window === "undefined") return fallbackItems;
 

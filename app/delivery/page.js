@@ -6,7 +6,7 @@ import FoodCollections from "../components/FoodCollections";
 import TermsFooter from "../components/TermsFooter";
 import Link from "next/link";
 import { Search, Sparkles, Utensils, ArrowRight, Plus, ShoppingBag, Clock } from "lucide-react";
-import { useCart } from "@/app/context/CartContext";
+import { useFoodCart } from "@/app/food/context/FoodCartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -39,7 +39,7 @@ const seededShuffle = (array, seed) => {
 };
 
 export default function DeliveryPage() {
-    const { addToCart } = useCart();
+    const { addToCart } = useFoodCart();
     const { getCollection, getDocument, loading: dbLoading } = useFirestore();
     const [toast, setToast] = useState(null);
     const [restaurants, setRestaurants] = useState([]);

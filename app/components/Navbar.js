@@ -1,18 +1,20 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, Search, Menu, X } from "lucide-react";
-import { useCart } from "../context/CartContext";
+import { Search, Menu, X } from "lucide-react";
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
-import CartDrawer from "./CartDrawer";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
 import CampusSelector from "./CampusSelector";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
-
 import { format12h } from "@/lib/utils";
+import { useCustomerProfile } from "@/app/context/CustomerContext";
+import { useFoodOrderSettings } from "@/app/context/ServiceSettingsContext";
+import { useGrocerySettings, useLaundrySettings } from "@/app/hooks/useServiceSettings";
+import { getCampusSlots } from "@/app/food/lib/pricing";
+import FoodCartNavbarActions from "@/app/food/components/FoodCartNavbarActions";
 
 const LiveIndicator = ({ isLive, settings, label, campusSlots = [] }) => {
     const [isOpen, setIsOpen] = useState(false);
@@ -169,7 +171,10 @@ const CommunityDropdown = ({ groups }) => {
 };
 
 export default function Navbar() {
-    const { setIsCartOpen, totalItems, orderSettings, grocerySettings, laundrySettings, whatsappGroups, userDetails, setUserDetails, getCampusSlots, isLoaded } = useCart();
+    const { userDetails, setUserDetails, isLoaded } = useCustomerProfile();
+    const { orderSettings } = useFoodOrderSettings();
+    const { grocerySettings } = useGrocerySettings();
+    const { laundrySettings } = useLaundrySettings();
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const { scrollY } = useScroll();
@@ -182,24 +187,30 @@ export default function Navbar() {
     const isGroceryPage = pathname?.startsWith("/grocery");
     const isLaundryPage = pathname?.startsWith("/laundry");
     const isAdminPage = pathname?.startsWith("/admin");
+    const isFoodPage = pathname?.startsWith("/delivery") || pathname?.startsWith("/restaurant");
+    const whatsappGroups = orderSettings?.whatsappGroups || [];
 
-    let currentSettings = orderSettings;
-    let settingsLabel = "Food Ordering Hours";
+    const currentSettings = useMemo(() => {
+        if (isGroceryPage) return grocerySettings;
+        if (isLaundryPage) return laundrySettings;
+        return orderSettings;
+    }, [grocerySettings, isGroceryPage, isLaundryPage, laundrySettings, orderSettings]);
 
-    if (isGroceryPage) {
-        currentSettings = grocerySettings;
-        settingsLabel = "Grocery Hours";
-    } else if (isLaundryPage) {
-        currentSettings = laundrySettings;
-        settingsLabel = "Laundry Hours";
-    }
+    const settingsLabel = isGroceryPage
+        ? "Grocery Hours"
+        : isLaundryPage
+            ? "Laundry Hours"
+            : "Food Ordering Hours";
 
     const shouldShowLiveIndicator = !isAdminPage && !isLaundryPage;
 
     const [isLive, setIsLive] = useState(false);
 
     // Get slots specific to the user's selected campus
-    const currentCampusSlots = getCampusSlots(userDetails.campus);
+    const currentCampusSlots = useMemo(
+        () => getCampusSlots(orderSettings, userDetails.campus),
+        [orderSettings, userDetails.campus]
+    );
 
     useEffect(() => {
         const checkLive = () => {
@@ -227,7 +238,7 @@ export default function Navbar() {
         checkLive();
         const interval = setInterval(checkLive, 60000);
         return () => clearInterval(interval);
-    }, [currentSettings, currentCampusSlots]);
+    }, [currentCampusSlots, currentSettings, orderSettings]);
 
     const navClass = isScrolled
         ? "bg-black/80 backdrop-blur-xl border-b border-white/10 shadow-lg"
@@ -271,21 +282,10 @@ export default function Navbar() {
                             {shouldShowLiveIndicator && <LiveIndicator isLive={isLive} settings={currentSettings} label={settingsLabel} />}
                         </div>
 
-                        <button
-                            onClick={() => setIsCartOpen(true)}
-                            className="relative p-2 rounded-full hover:bg-white/10 transition-colors group"
-                        >
-                            <ShoppingBag size={24} className="text-gray-200 group-hover:text-white transition-colors" />
-                            {totalItems > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg border border-black transform scale-100 group-hover:scale-110 transition-transform">
-                                    {totalItems}
-                                </span>
-                            )}
-                        </button>
+                        {isFoodPage && <FoodCartNavbarActions />}
                     </div>
                 </div>
             </motion.nav>
-            <CartDrawer />
             {isLoaded && <CampusSelector
                 currentCampus={userDetails.campus}
                 onSelect={(campus) => setUserDetails(prev => ({ ...prev, campus }))}

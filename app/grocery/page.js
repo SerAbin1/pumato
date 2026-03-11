@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
-import { useCart } from "../context/CartContext";
 import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2, Clock, AlertCircle } from "lucide-react";
 import TermsFooter from "../components/TermsFooter";
 import toast from "react-hot-toast";
@@ -13,9 +12,13 @@ import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
+import { useCustomerProfile } from "@/app/context/CustomerContext";
+import { useGrocerySettings } from "@/app/hooks/useServiceSettings";
 
 export default function GroceryPage() {
-    const { grocerySettings, groceryNumber } = useCart();
+    const { grocerySettings } = useGrocerySettings();
+    const { userDetails, setUserDetails, isLoaded } = useCustomerProfile();
+    const groceryNumber = grocerySettings?.whatsappNumber || "919048086503";
     const [isLive, setIsLive] = useState(true);
     const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
 
@@ -51,45 +54,58 @@ export default function GroceryPage() {
     }, [grocerySettings]);
 
     const [formData, setFormData] = useState({
-        name: "",
-        phone: "",
-        campus: "",
-        hostel: ""
+        name: userDetails.name || "",
+        phone: userDetails.phone || "",
+        campus: userDetails.campus || "",
+        hostel: userDetails.address || userDetails.room || userDetails.hostel || ""
     });
 
-    // 1. Load from localStorage on mount
     useEffect(() => {
-        if (typeof window !== "undefined") {
-            const saved = localStorage.getItem("pumato_user_details");
-            if (saved) {
-                try {
-                    const parsed = JSON.parse(saved);
-                    setFormData(prev => ({
-                        ...prev,
-                        name: parsed.name || prev.name,
-                        phone: parsed.phone || prev.phone,
-                        hostel: parsed.address || parsed.room || parsed.hostel || prev.hostel
-                    }));
-                } catch (e) {
-                    console.error("Failed to parse saved user details", e);
-                }
-            }
-        }
-    }, []);
+        if (!isLoaded) return;
 
-    // 2. Save to localStorage whenever formData changes
-    useEffect(() => {
-        if (typeof window !== "undefined") {
-            // Map room back to address for cross-tab sharing with CartDrawer
-            const toSave = {
-                name: formData.name,
-                phone: formData.phone,
-                address: formData.hostel,
-                hostel: formData.hostel
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setFormData((prev) => {
+            const nextState = {
+                ...prev,
+                name: prev.name || userDetails.name || "",
+                phone: prev.phone || userDetails.phone || "",
+                campus: prev.campus || userDetails.campus || "",
+                hostel: prev.hostel || userDetails.address || userDetails.room || userDetails.hostel || ""
             };
-            localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
-        }
-    }, [formData]);
+
+            return (
+                nextState.name === prev.name
+                && nextState.phone === prev.phone
+                && nextState.campus === prev.campus
+                && nextState.hostel === prev.hostel
+            )
+                ? prev
+                : nextState;
+        });
+    }, [isLoaded, userDetails.address, userDetails.campus, userDetails.hostel, userDetails.name, userDetails.phone, userDetails.room]);
+
+    useEffect(() => {
+        if (!isLoaded) return;
+
+        const hasChanges = (
+            userDetails.name !== formData.name
+            || userDetails.phone !== formData.phone
+            || userDetails.campus !== formData.campus
+            || userDetails.address !== formData.hostel
+            || userDetails.hostel !== formData.hostel
+        );
+
+        if (!hasChanges) return;
+
+        setUserDetails((prev) => ({
+            ...prev,
+            name: formData.name,
+            phone: formData.phone,
+            campus: formData.campus,
+            address: formData.hostel,
+            hostel: formData.hostel
+        }));
+    }, [formData, isLoaded, setUserDetails, userDetails.address, userDetails.campus, userDetails.hostel, userDetails.name, userDetails.phone]);
 
     const [items, setItems] = useState([
         { id: 1, name: "", quantity: "" }
@@ -203,7 +219,7 @@ export default function GroceryPage() {
                         transition={{ delay: 0.1 }}
                         className="text-gray-400 text-lg max-w-lg mx-auto"
                     >
-                        Need essentials? Add them to your list below and we'll deliver them to your door.
+                        Need essentials? Add them to your list below and we&apos;ll deliver them to your door.
                     </motion.p>
                 </div>
 

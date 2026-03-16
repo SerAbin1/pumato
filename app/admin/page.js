@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Plus, Bell, Users } from "lucide-react";
+import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Plus, Bell, Users, BarChart3 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
@@ -656,6 +656,12 @@ export default function AdminPage() {
                             >
                                 <Users size={16} /> Users
                             </button>
+                            <Link
+                                href="/admin/analytics"
+                                className="px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none text-gray-400 hover:text-white hover:bg-white/5"
+                            >
+                                <BarChart3 size={16} /> Analytics
+                            </Link>
                         </div>
                     </div>
                 </div>

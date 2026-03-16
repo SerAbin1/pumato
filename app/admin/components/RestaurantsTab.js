@@ -7,7 +7,7 @@ import { doc, setDoc, deleteDoc } from "firebase/firestore";
 import RestaurantForm from "./RestaurantForm";
 import ConfirmModal from "../../components/ConfirmModal";
 
-export default function RestaurantsTab({ restaurants, fetchData }) {
+export default function RestaurantsTab({ restaurants, fetchData, orderSettings }) {
     const [activeTab, setActiveTab] = useState("list");
     const [editingId, setEditingId] = useState(null);
     const [selectedRestaurant, setSelectedRestaurant] = useState(null);
@@ -165,6 +165,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
                     initialData={selectedRestaurant}
                     onSave={handleSaveRestaurant}
                     onCancel={() => setActiveTab("list")}
+                    orderSettings={orderSettings}
                 />
             )}
 

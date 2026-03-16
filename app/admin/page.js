@@ -670,6 +670,7 @@ export default function AdminPage() {
                         <RestaurantsTab
                             restaurants={restaurants}
                             fetchData={fetchData}
+                            orderSettings={orderSettings}
                         />
                     )}
 

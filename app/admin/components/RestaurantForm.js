@@ -8,7 +8,7 @@ import StickyActionBar from "./StickyActionBar";
 import CustomSelect from "../../components/CustomSelect";
 import ConfirmModal from "../../components/ConfirmModal";
 
-export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false, isPartnerView = false }) {
+export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false, isPartnerView = false, orderSettings }) {
     const [formData, setFormData] = useState({
         name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
         baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10", minOrderAmount: "0",
@@ -35,6 +35,12 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
     const [menuSearchQuery, setMenuSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, targetId: null, targetName: "" });
+    const [priceIncreaseAmount, setPriceIncreaseAmount] = useState(0);
+    const [excludedCategories, setExcludedCategories] = useState([]);
+    const [excludedItemIds, setExcludedItemIds] = useState([]);
+    const [itemSearchQuery, setItemSearchQuery] = useState("");
+    const [priceIncreaseApplied, setPriceIncreaseApplied] = useState(false);
+    const [priceIncreaseModal, setPriceIncreaseModal] = useState({ isOpen: false, message: "", isApplying: false, affectedCount: 0 });
 
     const handleFileUpload = async (e, setUrlCallback) => {
         const file = e.target.files[0];
@@ -80,6 +86,110 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
     const removeMenuItem = (index) => {
         const newMenu = formData.menu.filter((_, i) => i !== index);
         setFormData({ ...formData, menu: newMenu });
+    };
+
+    const getLightItemIds = () => orderSettings?.lightItems || [];
+    const getHeavyItemIds = () => orderSettings?.heavyItems || [];
+
+    const getAffectedItemsCount = () => {
+        const amount = parseFloat(priceIncreaseAmount) || 0;
+        if (amount === 0) return 0;
+        
+        const excludeLight = excludedItemIds.includes("__light_items__");
+        const excludeHeavy = excludedItemIds.includes("__heavy_items__");
+        
+        return (formData.menu || []).filter(item => {
+            if (excludedItemIds.includes(item.id)) return false;
+            if (excludedCategories.includes(item.category)) return false;
+            if (excludeLight && getLightItemIds().includes(item.id)) return false;
+            if (excludeHeavy && getHeavyItemIds().includes(item.id)) return false;
+            return true;
+        }).length;
+    };
+
+    const applyPriceIncrease = () => {
+        const amount = parseFloat(priceIncreaseAmount) || 0;
+        if (amount === 0) {
+            alert("Please enter a valid price change amount");
+            return;
+        }
+
+        const excludeLight = excludedItemIds.includes("__light_items__");
+        const excludeHeavy = excludedItemIds.includes("__heavy_items__");
+
+        const affectedCount = (formData.menu || []).filter(item => {
+            const isExcluded = excludedItemIds.includes(item.id) || 
+                              excludedCategories.includes(item.category) ||
+                              (excludeLight && getLightItemIds().includes(item.id)) ||
+                              (excludeHeavy && getHeavyItemIds().includes(item.id));
+            return !isExcluded;
+        }).length;
+
+        const action = amount > 0 ? "increase" : "decrease";
+        const absAmount = Math.abs(amount);
+
+        setPriceIncreaseModal({
+            isOpen: true,
+            message: `Applying price ${action} of ₹${absAmount}...`,
+            isApplying: true,
+            affectedCount
+        });
+
+        setTimeout(() => {
+            const updatedMenu = (formData.menu || []).map(item => {
+                const isExcluded = excludedItemIds.includes(item.id) || 
+                                  excludedCategories.includes(item.category) ||
+                                  (excludeLight && getLightItemIds().includes(item.id)) ||
+                                  (excludeHeavy && getHeavyItemIds().includes(item.id));
+                
+                if (!isExcluded) {
+                    const currentPrice = parseFloat(item.price) || 0;
+                    return { ...item, price: (currentPrice + amount).toString() };
+                }
+                return item;
+            });
+
+            setFormData({ ...formData, menu: updatedMenu });
+            setPriceIncreaseApplied(true);
+            
+            setPriceIncreaseModal(prev => ({
+                ...prev,
+                isApplying: false,
+                message: `Price ${action} of ₹${absAmount} applied to ${affectedCount} items.\n\nNote: The price change will only be saved to the database when you click "Update Restaurant".`
+            }));
+        }, 500);
+    };
+
+    const resetPrices = () => {
+        const amount = parseFloat(priceIncreaseAmount) || 0;
+        if (amount === 0) return;
+
+        const updatedMenu = (formData.menu || []).map(item => {
+            const currentPrice = parseFloat(item.price) || 0;
+            return { ...item, price: Math.max(0, currentPrice - amount).toString() };
+        });
+
+        setFormData({ ...formData, menu: updatedMenu });
+        setPriceIncreaseAmount(0);
+        setExcludedCategories([]);
+        setExcludedItemIds([]);
+        setPriceIncreaseApplied(false);
+    };
+
+    const toggleCategory = (category) => {
+        setExcludedCategories(prev => 
+            prev.includes(category) 
+                ? prev.filter(c => c !== category)
+                : [...prev, category]
+        );
+    };
+
+    const toggleItemExclusion = (itemId) => {
+        setExcludedItemIds(prev => 
+            prev.includes(itemId) 
+                ? prev.filter(id => id !== itemId)
+                : [...prev, itemId]
+        );
     };
 
     const handleSave = () => {
@@ -254,6 +364,182 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                 <p className="text-xs text-gray-500 mt-4 italic">
                     * Click IN/OUT to toggle category availability. OUT categories hide all items in that section.
                 </p>
+            </div>
+
+            {/* Price Increase/Decrease Configuration */}
+            <div className="border-t border-white/10 pt-10 mb-10">
+                <h3 className="font-bold text-2xl text-white mb-6">Price Increase/Decrease</h3>
+                
+                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2 block">
+                                Price Change Amount (₹)
+                            </label>
+                            <input
+                                type="text"
+                                value={priceIncreaseAmount}
+                                onChange={(e) => setPriceIncreaseAmount(parseFloat(e.target.value) || 0)}
+                                className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
+                                placeholder=""
+                            />
+                        </div>
+                        <div className="flex items-end">
+                            <div className="text-sm text-gray-400">
+                                <span className="text-orange-400 font-bold">{getAffectedItemsCount()}</span> items will be affected
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Excluded Categories */}
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-3 block">
+                            Excluded Categories
+                        </label>
+                        <div className="flex flex-wrap gap-2">
+                            {(formData.categories || []).map(cat => (
+                                <button
+                                    key={cat}
+                                    onClick={() => toggleCategory(cat)}
+                                    className={`px-4 py-2 rounded-full text-xs font-bold border transition-all ${
+                                        excludedCategories.includes(cat)
+                                            ? 'bg-orange-500/20 border-orange-500 text-orange-400'
+                                            : 'bg-white/10 border-white/10 text-gray-400 hover:border-white/30'
+                                    }`}
+                                >
+                                    {cat}
+                                </button>
+                            ))}
+                            {(!formData.categories || formData.categories.length === 0) && (
+                                <span className="text-gray-500 text-xs italic">No categories defined</span>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Exclude Light Items */}
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="checkbox"
+                            id="exclude-light-items"
+                            checked={excludedItemIds.includes("__light_items__")}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    setExcludedItemIds(prev => [...prev, "__light_items__"]);
+                                } else {
+                                    setExcludedItemIds(prev => prev.filter(id => id !== "__light_items__"));
+                                }
+                            }}
+                            className="w-5 h-5 accent-orange-500 rounded"
+                        />
+                        <label htmlFor="exclude-light-items" className="text-sm font-bold text-orange-400">
+                            Exclude Light Items
+                        </label>
+                    </div>
+
+                    {/* Exclude Heavy Items */}
+                    <div className="flex items-center gap-3">
+                        <input
+                            type="checkbox"
+                            id="exclude-heavy-items"
+                            checked={excludedItemIds.includes("__heavy_items__")}
+                            onChange={(e) => {
+                                if (e.target.checked) {
+                                    setExcludedItemIds(prev => [...prev, "__heavy_items__"]);
+                                } else {
+                                    setExcludedItemIds(prev => prev.filter(id => id !== "__heavy_items__"));
+                                }
+                            }}
+                            className="w-5 h-5 accent-red-500 rounded"
+                        />
+                        <label htmlFor="exclude-heavy-items" className="text-sm font-bold text-red-400">
+                            Exclude Heavy Items
+                        </label>
+                    </div>
+
+                    {/* Exclude Specific Items */}
+                    <div>
+                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-3 block">
+                            Exclude Specific Items
+                        </label>
+                        <div className="relative">
+                            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
+                            <input
+                                type="text"
+                                placeholder="Search items to exclude..."
+                                value={itemSearchQuery}
+                                onChange={(e) => setItemSearchQuery(e.target.value)}
+                                className="w-full bg-black/20 border border-white/10 pl-10 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium placeholder-gray-500"
+                            />
+                            {itemSearchQuery && (
+                                <button
+                                    onClick={() => setItemSearchQuery("")}
+                                    className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white"
+                                >
+                                    <X size={14} />
+                                </button>
+                            )}
+                        </div>
+                        {itemSearchQuery.trim().length > 0 && (
+                            <div className="mt-2 max-h-32 overflow-y-auto bg-black/40 border border-white/10 rounded-xl">
+                                {(formData.menu || [])
+                                    .filter(item => 
+                                        item.name.toLowerCase().includes(itemSearchQuery.toLowerCase()) &&
+                                        !excludedItemIds.includes(item.id) &&
+                                        !excludedCategories.includes(item.category) &&
+                                        !getLightItemIds().includes(item.id) &&
+                                        !getHeavyItemIds().includes(item.id)
+                                    )
+                                    .slice(0, 5)
+                                    .map(item => (
+                                        <button
+                                            key={item.id}
+                                            onClick={() => toggleItemExclusion(item.id)}
+                                            className="w-full text-left px-4 py-2 hover:bg-white/10 text-sm text-white flex justify-between items-center border-b border-white/5 last:border-0"
+                                        >
+                                            <span>{item.name}</span>
+                                            <span className="text-gray-500 text-xs">₹{item.price}</span>
+                                        </button>
+                                    ))}
+                            </div>
+                        )}
+                        {excludedItemIds.length > 0 && (
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {excludedItemIds.map(itemId => {
+                                    const item = (formData.menu || []).find(i => i.id === itemId);
+                                    return item ? (
+                                        <button
+                                            key={itemId}
+                                            onClick={() => toggleItemExclusion(itemId)}
+                                            className="px-3 py-1 rounded-full text-xs font-bold bg-purple-500/20 border border-purple-500 text-purple-400 flex items-center gap-1"
+                                        >
+                                            {item.name}
+                                            <X size={10} />
+                                        </button>
+                                    ) : null;
+                                })}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-4 pt-4 border-t border-white/10">
+                        <button
+                            onClick={applyPriceIncrease}
+                            disabled={priceIncreaseAmount === 0 || priceIncreaseApplied}
+                            className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            {priceIncreaseApplied ? "Applied" : "Apply Price Change"}
+                        </button>
+                        {priceIncreaseApplied && (
+                            <button
+                                onClick={resetPrices}
+                                className="bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-colors"
+                            >
+                                Reset Prices
+                            </button>
+                        )}
+                    </div>
+                </div>
             </div>
 
             <div className="border-t border-white/10 pt-10">
@@ -498,6 +784,15 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                 title={confirmModal.type === "menuItem" ? "Delete Menu Item?" : "Delete Category?"}
                 message={`Are you sure you want to delete "${confirmModal.targetName}"?`}
                 confirmLabel="Delete"
+            />
+
+            <ConfirmModal
+                isOpen={priceIncreaseModal.isOpen}
+                onClose={() => setPriceIncreaseModal({ ...priceIncreaseModal, isOpen: false })}
+                onConfirm={() => setPriceIncreaseModal({ ...priceIncreaseModal, isOpen: false })}
+                title={priceIncreaseModal.isApplying ? "Applying..." : "Price Increase Applied"}
+                message={priceIncreaseModal.message}
+                confirmLabel="OK"
             />
         </div>
     );

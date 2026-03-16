@@ -35,7 +35,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
     const [menuSearchQuery, setMenuSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
     const [confirmModal, setConfirmModal] = useState({ isOpen: false, type: null, targetId: null, targetName: "" });
-    const [priceIncreaseAmount, setPriceIncreaseAmount] = useState(0);
+    const [priceIncreaseAmount, setPriceIncreaseAmount] = useState("");
     const [excludedCategories, setExcludedCategories] = useState([]);
     const [excludedItemIds, setExcludedItemIds] = useState([]);
     const [itemSearchQuery, setItemSearchQuery] = useState("");
@@ -379,9 +379,9 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                             <input
                                 type="text"
                                 value={priceIncreaseAmount}
-                                onChange={(e) => setPriceIncreaseAmount(parseFloat(e.target.value) || 0)}
+                                onChange={(e) => setPriceIncreaseAmount(e.target.value)}
                                 className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
-                                placeholder=""
+                                placeholder="e.g. 15 or -15"
                             />
                         </div>
                         <div className="flex items-end">
@@ -525,7 +525,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                     <div className="flex gap-4 pt-4 border-t border-white/10">
                         <button
                             onClick={applyPriceIncrease}
-                            disabled={priceIncreaseAmount === 0 || priceIncreaseApplied}
+                            disabled={(parseFloat(priceIncreaseAmount) || 0) === 0 || priceIncreaseApplied}
                             className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             {priceIncreaseApplied ? "Applied" : "Apply Price Change"}

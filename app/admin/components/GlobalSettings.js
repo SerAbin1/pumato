@@ -206,7 +206,7 @@ export default function GlobalSettings({
                                 <Plus size={14} /> Add Group
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mb-4">Add WhatsApp group invite links. These will appear in the navbar under "Community".</p>
+                        <p className="text-xs text-gray-500 mb-4">Add WhatsApp group invite links. These will appear in the navbar under &quot;Community&quot;.</p>
 
                         {(orderSettings.whatsappGroups || []).length === 0 ? (
                             <p className="text-sm text-gray-500 italic text-center py-4">No community groups added yet.</p>

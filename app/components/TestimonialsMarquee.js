@@ -39,7 +39,7 @@ export default function TestimonialsMarquee({ reviews, dark = true }) {
                                 ))}
                             </div>
                             <p className={`${dark ? "text-gray-300" : "text-gray-600"} leading-relaxed mb-6 text-sm italic line-clamp-4`}>
-                                "{review.text}"
+                                &quot;{review.text}&quot;
                             </p>
                             <div className={`flex items-center gap-3 border-t pt-4 ${dark ? "border-white/5" : "border-gray-200"}`}>
                                 <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold ${dark ? "bg-gradient-to-br from-orange-500 to-purple-600" : "bg-red-100 text-red-600"

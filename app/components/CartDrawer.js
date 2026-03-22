@@ -292,7 +292,7 @@ export default function CartDrawer() {
                                         </div>
                                         <div className="text-center space-y-2">
                                             <h3 className="text-xl font-bold text-white">Your cart is empty</h3>
-                                            <p className="text-gray-500 max-w-xs mx-auto">Looks like you haven't added anything to your cart yet.</p>
+                                            <p className="text-gray-500 max-w-xs mx-auto">Looks like you haven&apos;t added anything to your cart yet.</p>
                                         </div>
                                         <button
                                             onClick={() => setIsCartOpen(false)}

@@ -55,7 +55,7 @@ export default function Home() {
                         transition={{ delay: 0.3, duration: 0.8 }}
                         className="text-xl md:text-3xl font-light mb-10 opacity-90"
                     >
-                        Fueling Pondicherry's Students, One Meal at a Time.
+                        Fueling Pondicherry&apos;s Students, One Meal at a Time.
                     </motion.p>
 
                     <motion.div
@@ -76,7 +76,7 @@ export default function Home() {
                 <div className="grid md:grid-cols-2 gap-12 items-center text-left">
                     <div className="space-y-6 text-lg text-gray-600 leading-relaxed">
                         <p>
-                            We are a group of students from Pondicherry College who realized that good food shouldn't be hard to get while living in a hostel.
+                            We are a group of students from Pondicherry College who realized that good food shouldn&apos;t be hard to get while living in a hostel.
                         </p>
                         <p>
                             Pumato started in a dorm room with a simple vision: to connect every student with the best local food spots, delivered fast and without hassle.

@@ -203,7 +203,7 @@ export default function GroceryPage() {
                         transition={{ delay: 0.1 }}
                         className="text-gray-400 text-lg max-w-lg mx-auto"
                     >
-                        Need essentials? Add them to your list below and we'll deliver them to your door.
+                        Need essentials? Add them to your list below and we&apos;ll deliver them to your door.
                     </motion.p>
                 </div>
 

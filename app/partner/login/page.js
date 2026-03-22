@@ -107,7 +107,6 @@ export default function PartnerLoginPage() {
                         <div className="relative">
                             <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
                             <input
-                                type="text" // Changed to text temporarily to debug showPassword logic if needed, but actually standard is generic input
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

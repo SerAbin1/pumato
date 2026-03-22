@@ -201,6 +201,7 @@ export default function CartDrawer() {
                 addDoc(collection(db, "orders"), {
                     ...userDetails,
                     items: cartItems.map(item => ({
+                        id: item.id,
                         name: item.name,
                         quantity: item.quantity,
                         restaurantId: item.restaurantId,

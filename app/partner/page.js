@@ -267,11 +267,18 @@ export default function PartnerDashboard() {
                 updates.outOfStockItems = oosItemIds;
                 updates.outOfStockAt = serverTimestamp();
 
-                // Mark these items as OOS in the restaurant doc for today
                 if (oosItemIds.length > 0 && user.restaurantId) {
-                    await updateDoc(doc(db, "restaurants", user.restaurantId), {
-                        outOfStockToday: arrayUnion(...oosItemIds)
-                    });
+                    const restSnap = await getDoc(doc(db, "restaurants", user.restaurantId));
+                    if (restSnap.exists()) {
+                        const rData = restSnap.data();
+                        const updatedMenu = (rData.menu || []).map(item => {
+                            if (oosItemIds.includes(item.id)) {
+                                return { ...item, isVisible: false, hiddenAt: new Date().toISOString() };
+                            }
+                            return item;
+                        });
+                        await setDoc(doc(db, "restaurants", user.restaurantId), { menu: updatedMenu }, { merge: true });
+                    }
                 }
             }
 

@@ -239,106 +239,12 @@ export default function AdminPage() {
 
             const restaurantsData = resSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
 
-            // --- AUTO-REVERT LOGIC (LAZY CHECK) ---
-            const now = new Date();
-            const timeInMinutes = now.getHours() * 60 + now.getMinutes();
-
-            // Fetch order settings to determine current slot
             const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
-            let currentSlots = []; // Default: empty, fully determined by Firebase
             if (settingsDoc.exists()) {
-                const sData = settingsDoc.data();
-                if (sData.slots) {
-                    currentSlots = sData.slots;
-                } else {
-                    // Aggregate slots from deliveryCampusConfig
-                    currentSlots = (sData.deliveryCampusConfig || []).flatMap(c => c.slots || []);
-                }
-                setOrderSettings({ ...sData }); // Set state here too
+                setOrderSettings({ ...settingsDoc.data() });
             }
 
-            // Check if we are currently in a slot
-            const isInSlot = currentSlots.some(slot => {
-                const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
-                const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
-                const startMins = startH * 60 + startM;
-                const endMins = endH * 60 + endM;
-                return timeInMinutes >= startMins && timeInMinutes <= endMins;
-            });
-
-            const todayStr = now.toISOString().split('T')[0];
-            const updates = [];
-
-            const updatedRestaurants = restaurantsData.map(r => {
-                if (!r.menu) return r;
-                let hasChanges = false;
-                const updatedMenu = r.menu.map(item => {
-                    if (item.isVisible === false && item.hiddenAt) {
-                        const hiddenDate = new Date(item.hiddenAt);
-                        const hiddenDay = hiddenDate.toISOString().split('T')[0];
-
-                        // 1. If hidden on a previous day, unhide
-                        if (hiddenDay < todayStr) {
-                            hasChanges = true;
-                            return { ...item, isVisible: true, hiddenAt: null };
-                        }
-
-                        // 2. If hidden today, check multiple conditions
-                        const hiddenTimeMins = hiddenDate.getHours() * 60 + hiddenDate.getMinutes();
-                        const slotHiddenIn = currentSlots.find(slot => {
-                            const [sH, sM] = (slot.start || "00:00").split(":").map(Number);
-                            const [eH, eM] = (slot.end || "23:59").split(":").map(Number);
-                            const start = sH * 60 + sM;
-                            const end = eH * 60 + eM;
-                            return hiddenTimeMins >= start && hiddenTimeMins <= end;
-                        });
-
-                        if (slotHiddenIn) {
-                            const [eH, eM] = (slotHiddenIn.end || "23:59").split(":").map(Number);
-                            const slotEndMins = eH * 60 + eM;
-
-                            // If Update Time (Now) is past the end of the slot where it was hidden -> UNHIDE
-                            if (timeInMinutes > slotEndMins) {
-                                hasChanges = true;
-                                return { ...item, isVisible: true, hiddenAt: null };
-                            }
-                        }
-
-                        // 3. Fallback: If currently in a slot, check if hidden before this slot started
-                        if (isInSlot) {
-                            const activeSlot = currentSlots.find(slot => {
-                                const [sH, sM] = (slot.start || "00:00").split(":").map(Number);
-                                const [eH, eM] = (slot.end || "23:59").split(":").map(Number);
-                                const startMins = sH * 60 + sM;
-                                const endMins = eH * 60 + eM;
-                                return timeInMinutes >= startMins && timeInMinutes <= endMins;
-                            });
-
-                            if (activeSlot) {
-                                const [sH, sM] = (activeSlot.start || "00:00").split(":").map(Number);
-                                const slotStartMins = sH * 60 + sM;
-
-                                if (hiddenTimeMins < slotStartMins) {
-                                    hasChanges = true;
-                                    return { ...item, isVisible: true, hiddenAt: null };
-                                }
-                            }
-                        }
-                    }
-                    return item;
-                });
-
-                if (hasChanges) {
-                    updates.push(setDoc(doc(db, "restaurants", r.id), { ...r, menu: updatedMenu }));
-                    return { ...r, menu: updatedMenu };
-                }
-                return r;
-            });
-
-            if (updates.length > 0) {
-                await Promise.all(updates);
-                console.log(`Auto-reverted ${updates.length} restaurants' items.`);
-            }
+            const updatedRestaurants = restaurantsData;
 
             setRestaurants(updatedRestaurants);
 

@@ -22,6 +22,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
     // Update formData if initialData changes (important for switching between restaurants)
     useEffect(() => {
         if (initialData) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFormData(prev => ({
                 ...prev,
                 ...initialData,

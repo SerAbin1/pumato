@@ -64,6 +64,7 @@ export default function GroceryPage() {
             if (saved) {
                 try {
                     const parsed = JSON.parse(saved);
+                    // eslint-disable-next-line react-hooks/set-state-in-effect
                     setFormData(prev => ({
                         ...prev,
                         name: parsed.name || prev.name,

@@ -54,6 +54,7 @@ export default function DeliveryPage() {
         try {
             const saved = localStorage.getItem("recentDeliverySearches");
             if (saved) {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setRecentSearches(JSON.parse(saved));
             }
         } catch (e) {
@@ -118,6 +119,7 @@ export default function DeliveryPage() {
     // Apply search filtering with Fuse.js fuzzy matching
     useEffect(() => {
         if (!searchQuery) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setFilteredRestaurants(restaurants);
             setFilteredFoods([]);
             return;

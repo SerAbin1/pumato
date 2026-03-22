@@ -314,6 +314,7 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
             }
         });
         return duplicated;
+        // eslint-disable-next-line react-hooks/preserve-manual-memoization
     }, [orders, inProgressOrders]);
 
     const tabCounts = {

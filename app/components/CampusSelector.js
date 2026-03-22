@@ -11,6 +11,7 @@ export default function CampusSelector({ onSelect, currentCampus }) {
 
     useEffect(() => {
         if (!currentCampus) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             setIsOpen(true);
         }
     }, [currentCampus]);

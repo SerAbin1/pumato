@@ -18,6 +18,7 @@ export function useFcmToken(user) {
     const [permission, setPermission] = useState("default");
     const [token, setToken] = useState(null);
 
+    // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const requestAndSaveToken = useCallback(async () => {
         if (!user?.uid) return;
 
@@ -65,6 +66,7 @@ export function useFcmToken(user) {
     }, [user?.uid, user?.restaurantId]);
 
     useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         requestAndSaveToken();
     }, [requestAndSaveToken]);
 

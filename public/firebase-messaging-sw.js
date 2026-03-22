@@ -39,7 +39,7 @@ messaging.onBackgroundMessage((payload) => {
 self.addEventListener("notificationclick", (event) => {
     event.notification.close();
 
-    const targetUrl = event.notification.data?.targetUrl || "/admin";
+    const targetUrl = event.notification.data?.targetUrl || "/partner";
 
     event.waitUntil(
         clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {

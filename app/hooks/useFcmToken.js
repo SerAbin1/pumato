@@ -62,7 +62,7 @@ export function useFcmToken(user) {
         } catch (err) {
             console.warn("FCM token save failed:", err);
         }
-    }, [user?.uid]);
+    }, [user?.uid, user?.restaurantId]);
 
     useEffect(() => {
         requestAndSaveToken();

@@ -227,7 +227,7 @@ export default function Navbar() {
         checkLive();
         const interval = setInterval(checkLive, 60000);
         return () => clearInterval(interval);
-    }, [currentSettings, currentCampusSlots]);
+    }, [currentSettings, currentCampusSlots, orderSettings]);
 
     const navClass = isScrolled
         ? "bg-black/80 backdrop-blur-xl border-b border-white/10 shadow-lg"

@@ -87,7 +87,7 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
                         >
                             <p className="text-xs font-black text-red-400 uppercase tracking-widest mb-2">Select unavailable items:</p>
                             {restaurantItems.map((item, idx) => (
-                                <div key={idx} onClick={() => toggleOosItem(item.id || item.name)} className="flex items-center gap-3 cursor-pointer group">
+                                <div key={idx} onClick={() => toggleOosItem(item.id || item.name)} className="flex items-center gap-3 cursor-pointer group" data-testid={`oos-item-checkbox-${item.id || item.name}`}>
                                     <div className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${oosItems.includes(item.id || item.name)
                                         ? "bg-red-500 border-red-500"
                                         : "border-white/20 group-hover:border-red-400"
@@ -99,6 +99,7 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
                             ))}
                             <div className="flex gap-2 pt-2">
                                 <button
+                                    data-testid="confirm-oos"
                                     disabled={oosItems.length === 0 || processing === order.id}
                                     onClick={() => onAction(order, "out_of_stock", oosItems)}
                                     className="flex-1 bg-red-600 hover:bg-red-500 disabled:opacity-40 text-white font-bold py-2 rounded-xl text-sm flex items-center justify-center gap-2 transition-all"
@@ -141,6 +142,7 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
                             </button>
                         )}
                         <button
+                            data-testid="oos-button"
                             disabled={processing === order.id}
                             onClick={() => setShowOosPicker(true)}
                             className="w-full bg-red-600/10 hover:bg-red-600/20 border border-red-500/20 text-red-400 font-bold py-2.5 rounded-xl text-sm flex items-center justify-center gap-2 transition-all active:scale-95"

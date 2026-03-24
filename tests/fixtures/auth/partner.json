@@ -1,0 +1,14 @@
+{
+  "cookies": [],
+  "origins": [
+    {
+      "origin": "http://localhost:3005",
+      "localStorage": [
+        {
+          "name": "pumato_user_details",
+          "value": "{\"name\":\"\",\"phone\":\"\",\"campus\":\"\",\"address\":\"\",\"instructions\":\"\"}"
+        }
+      ]
+    }
+  ]
+}

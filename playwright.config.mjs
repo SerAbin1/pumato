@@ -7,8 +7,7 @@ export default defineConfig({
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     reporter: "list",
-    globalSetup: "./tests/e2e/global-setup.js",
-    globalTeardown: "./tests/e2e/global-teardown.js",
+    globalTeardown: "./tests/e2e/global-teardown.mjs",
 
     use: {
         baseURL: "http://localhost:3005",
@@ -27,7 +26,7 @@ export default defineConfig({
     ],
 
     webServer: {
-        command: "npx dotenv -e .env.production -- pnpm dev -p 3005",
+        command: "npx dotenv -e .env.test -- pnpm dev -p 3005",
         url: "http://localhost:3005",
         reuseExistingServer: !process.env.CI,
         timeout: 30_000,

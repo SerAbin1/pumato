@@ -1,4 +1,4 @@
-import { shutdownFirebaseAdmin } from "./utils/firebase-helper.js";
+import { shutdownFirebaseAdmin } from "./utils/firebase-helper.mjs";
 
 export default async function globalTeardown() {
     await shutdownFirebaseAdmin();

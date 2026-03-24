@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import path from "path";
 import fs from "fs";
-import { loadTestEnv } from "./env.js";
+import { loadTestEnv } from "./env.mjs";
 
 let _app = null;
 let _db = null;
@@ -112,6 +112,32 @@ export async function cleanupTestData({ restaurantId, orderId } = {}) {
     }
 
     await batch.commit();
+}
+
+/**
+ * Dynamically create a test partner user to avoid relying on .env credentials.
+ */
+export async function createTestPartnerUser(email, password, restaurantId) {
+    if (!_app) initFirebaseAdmin();
+    const userRecord = await admin.auth().createUser({
+        email,
+        password,
+        displayName: "Automated Test Partner"
+    });
+    await admin.auth().setCustomUserClaims(userRecord.uid, {
+        restaurantId,
+        partner: true
+    });
+    return userRecord.uid;
+}
+
+/**
+ * Cleanup dynamically generated test user
+ */
+export async function deleteTestUser(uid) {
+    if (uid && _app) {
+        await admin.auth().deleteUser(uid).catch(() => {});
+    }
 }
 
 /**

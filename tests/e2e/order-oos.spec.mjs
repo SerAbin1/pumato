@@ -8,8 +8,10 @@ import {
     getRestaurantDoc,
     getOrderDoc,
     cleanupTestData,
-} from "./utils/firebase-helper.js";
-import { loadTestEnv } from "./utils/env.js";
+    createTestPartnerUser,
+    deleteTestUser
+} from "./utils/firebase-helper.mjs";
+import { loadTestEnv } from "./utils/env.mjs";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,8 +20,12 @@ const env = loadTestEnv();
 
 // --- Test Data ---
 const TEST_RUN_ID = `test_${Date.now()}`;
-const RESTAURANT_ID = env.TEST_PARTNER_RESTAURANT_ID;
+const RESTAURANT_ID = `${TEST_RUN_ID}_rest`; // Fully dynamic
 const ORDER_ID = `${TEST_RUN_ID}_order`;
+
+const TEST_PARTNER_EMAIL = `${TEST_RUN_ID}@pumato.local`;
+const TEST_PARTNER_PASSWORD = "testpassword123";
+let TEST_PARTNER_UID = null;
 
 const ITEM_A = {
     id: `${TEST_RUN_ID}_item_a`,
@@ -46,6 +52,12 @@ const ITEM_B = {
 test.describe("OOS Rejection Flow", () => {
     // Setup: create test restaurant and order directly in Firestore
     test.beforeAll(async () => {
+        // Create full isolated partner user
+        TEST_PARTNER_UID = await createTestPartnerUser(
+            TEST_PARTNER_EMAIL,
+            TEST_PARTNER_PASSWORD,
+            RESTAURANT_ID
+        );
         // Create restaurant with 2 menu items (both visible)
         await createTestRestaurant(RESTAURANT_ID, {
             name: `Test Restaurant ${TEST_RUN_ID}`,
@@ -90,23 +102,34 @@ test.describe("OOS Rejection Flow", () => {
             restaurantId: RESTAURANT_ID,
             orderId: ORDER_ID,
         });
+        if (TEST_PARTNER_UID) {
+            await deleteTestUser(TEST_PARTNER_UID);
+        }
     });
 
     test("partner rejects order with OOS — selected item marked invisible, other unchanged", async ({
-        browser,
+        page,
     }) => {
-        // Use saved partner session
-        const partnerContext = await browser.newContext({
-            storageState: path.resolve(
-                __dirname,
-                "../fixtures/auth/partner.json"
-            ),
-        });
-        const page = await partnerContext.newPage();
+        // Log in directly
+        await page.goto("/partner/login");
+        await page.fill('input[type="email"]', TEST_PARTNER_EMAIL);
+        await page.fill('input[type="password"]', TEST_PARTNER_PASSWORD);
+        await page.click('button[type="submit"]');
 
-        // Navigate to partner dashboard
-        await page.goto("/partner");
-        await page.waitForLoadState("networkidle");
+        // Wait for either the partner dashboard URL or the campus selector modal
+        await page.waitForFunction(() => 
+            window.location.pathname === '/partner' || 
+            window.location.pathname === '/partner/' ||
+            document.body.innerText.includes('Choose Your Campus'), 
+            { timeout: 15_000 }
+        );
+        
+        // Handle optional campus selector if it appears
+        const campusPU = page.locator('text="PU"').first();
+        if (await campusPU.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await campusPU.click();
+            await page.waitForLoadState('networkidle');
+        }
 
         // Wait for the confirmed order to appear in the live orders tab
         // The order card should show our test items
@@ -209,6 +232,5 @@ test.describe("OOS Rejection Flow", () => {
             `Unexpected mutation: non-selected item "${ITEM_B.name}" has hiddenAt: ${updatedItemB.hiddenAt}, expected it to remain unchanged (undefined/null)`
         ).toBeFalsy();
 
-        await partnerContext.close();
     });
 });

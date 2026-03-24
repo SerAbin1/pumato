@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const serviceAccount = require("./pumato-84497-firebase-adminsdk-fbsvc-6fc31148e4.json");
+const serviceAccount = require("./test-pumato-firebase-adminsdk-fbsvc-c9312153a9.json");
 const readline = require("readline");
 
 admin.initializeApp({

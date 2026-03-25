@@ -2,6 +2,7 @@
   "name": "pumato",
   "version": "0.1.0",
   "private": true,
+  "type": "module",
   "scripts": {
     "dev": "dotenv -e .env.production -- next dev",
     "dev:test": "dotenv -e .env.test -- next dev",

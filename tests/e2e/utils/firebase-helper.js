@@ -1,7 +1,7 @@
 import admin from "firebase-admin";
 import path from "path";
 import fs from "fs";
-import { loadTestEnv } from "./env.mjs";
+import { loadTestEnv } from "./env.js";
 
 let _app = null;
 let _db = null;

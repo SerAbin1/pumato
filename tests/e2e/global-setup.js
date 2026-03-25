@@ -1,7 +1,7 @@
 import { chromium } from "@playwright/test";
 import path from "path";
-import { loadTestEnv } from "./utils/env.mjs";
-import { initFirebaseAdmin } from "./utils/firebase-helper.mjs";
+import { loadTestEnv } from "./utils/env.js";
+import { initFirebaseAdmin } from "./utils/firebase-helper.js";
 
 const FIXTURES_DIR = path.resolve(process.cwd(), "tests/fixtures/auth");
 

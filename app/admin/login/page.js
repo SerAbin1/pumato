@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { motion } from "framer-motion";
@@ -16,11 +16,11 @@ export default function AdminLoginPage() {
     const { login, isAdmin, loading } = useAdminAuth();
     const router = useRouter();
 
-    // If already logged in as admin, redirect
-    if (!loading && isAdmin) {
-        router.push("/admin");
-        return null;
-    }
+    useEffect(() => {
+        if (!loading && isAdmin) {
+            router.push("/admin");
+        }
+    }, [loading, isAdmin, router]);
 
     const handleSubmit = async (e) => {
         e.preventDefault();

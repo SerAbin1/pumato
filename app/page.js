@@ -220,6 +220,7 @@ export default function GatewayPage() {
               className="h-40 md:h-64 lg:h-72 w-auto drop-shadow-[0_0_50px_rgba(249,115,22,0.5)] relative z-10"
               alt="Pumato Logo"
               priority
+              unoptimized
             />
           </motion.div>
 
@@ -465,7 +466,7 @@ export default function GatewayPage() {
           </a>
         </div>
         <div className="flex flex-col items-center justify-center gap-2 opacity-50 relative">
-          <Image src="/logo.png" width={80} height={24} className="h-6 w-auto grayscale mb-1" alt="Logo" />
+          <Image src="/logo.png" width={80} height={24} className="h-6 w-auto grayscale mb-1" alt="Logo" unoptimized />
           <span className="text-sm">© 2024 Pumato.</span>
           <Link href="/terms" className="text-xs hover:text-white hover:underline transition-all">
             Terms & Conditions

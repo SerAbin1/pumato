@@ -7,7 +7,7 @@ export default defineConfig({
     fullyParallel: false,
     forbidOnly: !!process.env.CI,
     reporter: "list",
-    globalTeardown: "./tests/e2e/global-teardown.mjs",
+    globalTeardown: "./tests/e2e/global-teardown.js",
 
     use: {
         baseURL: "http://localhost:3005",

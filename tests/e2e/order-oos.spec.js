@@ -10,8 +10,8 @@ import {
     cleanupTestData,
     createTestPartnerUser,
     deleteTestUser
-} from "./utils/firebase-helper.mjs";
-import { loadTestEnv } from "./utils/env.mjs";
+} from "./utils/firebase-helper.js";
+import { loadTestEnv } from "./utils/env.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

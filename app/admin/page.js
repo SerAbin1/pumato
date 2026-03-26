@@ -69,12 +69,10 @@ export default function AdminPage() {
     const [grocerySettings, setGrocerySettings] = useState({});
     const [laundrySettings, setLaundrySettings] = useState({ manualOverride: null });
 
-    useEffect(() => {
         // Redirect to login if not authenticated or not admin
         if (!authLoading && (!user || !isAdmin)) {
             router.push("/admin/login");
         }
-    }, [authLoading, user, isAdmin, router]);
 
     // Register FCM token for this device once the admin is confirmed
     useFcmToken(user && isAdmin ? user : null);

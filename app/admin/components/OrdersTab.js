@@ -37,7 +37,7 @@ function TimeAgo({ date }) {
     );
 }
 
-function OrderCard({ order, showActions = false, user, isDuplicate = false }) {
+function OrderCard({ order, showActions = false, user, isDuplicate = false, duplicateLocation = null }) {
     const [processingId, setProcessingId] = useState(null);
     const [showAckModal, setShowAckModal] = useState(false);
     const statusInfo = STATUS_INFO[order.status] || { label: order.status, color: "text-gray-400 bg-gray-500/10 border-gray-500/20" };
@@ -100,7 +100,9 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false }) {
             {isDuplicate && (
                 <div className="bg-yellow-500/10 px-5 py-2 flex items-center gap-2 border-b border-yellow-500/20">
                     <span className="text-[14px]">⚠️</span>
-                    <span className="text-xs font-black text-yellow-400 uppercase tracking-widest">Potential duplicate order</span>
+                    <span className="text-xs font-black text-yellow-400 uppercase tracking-widest">
+                        {duplicateLocation === "in_progress" ? "Duplicate already in Progress" : "Potential duplicate order"}
+                    </span>
                 </div>
             )}
 
@@ -317,6 +319,41 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
         // eslint-disable-next-line react-hooks/preserve-manual-memoization
     }, [orders, inProgressOrders]);
 
+    // Group duplicate pending orders side-by-side while preserving original time order
+    // Passes through Firestore's createdAt order, but reorders duplicates to sit directly below their first occurrence
+    const sortedPending = useMemo(() => {
+        const result = [];
+        const seen = new Set();
+
+        orders.forEach(order => {
+            if (seen.has(order.phone)) {
+                const firstIdx = result.findIndex(o => o.phone === order.phone);
+                result.splice(firstIdx + 1, 0, order);
+            } else {
+                seen.add(order.phone);
+                result.push(order);
+            }
+        });
+
+        return result;
+    }, [orders]);
+
+    // Calculate duplicate location for each order: "same" = duplicate in pending, "in_progress" = duplicate only in in-progress
+    const duplicateLocationMap = useMemo(() => {
+        const map = {};
+        const pendingPhones = new Set(orders.map(o => o.phone).filter(Boolean));
+        
+        orders.forEach(order => {
+            const phone = order.phone;
+            if (!phone) return;
+            if (duplicatePhones.has(phone)) {
+                map[phone] = pendingPhones.has(phone) ? "same" : "in_progress";
+            }
+        });
+        
+        return map;
+    }, [orders, duplicatePhones]);
+
     const tabCounts = {
         pending: orders.length,
         inprogress: inProgressOrders.length,
@@ -365,10 +402,10 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
             {subTab === "pending" && (
                 <div className="grid gap-6">
                     <AnimatePresence>
-                        {orders.length === 0
+                        {sortedPending.length === 0
                             ? <EmptyState message="No pending orders to confirm right now." />
-                            : orders.map(order => (
-                                <OrderCard key={order.id} order={order} showActions user={user} isDuplicate={duplicatePhones.has(order.phone)} />
+                            : sortedPending.map(order => (
+                                <OrderCard key={order.id} order={order} showActions user={user} isDuplicate={duplicatePhones.has(order.phone)} duplicateLocation={duplicateLocationMap[order.phone]} />
                             ))
                         }
                     </AnimatePresence>

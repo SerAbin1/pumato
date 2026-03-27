@@ -410,7 +410,7 @@ export default function LaundrySettings({
     const [activeTab, setActiveTab] = useState("ReadyForPickup");
     const [expandedOrderId, setExpandedOrderId] = useState(null);
     const [processingOrderId, setProcessingOrderId] = useState(null);
-    const [paymentModal, setPaymentModal] = useState({ isOpen: false, type: null, order: null, amount: "" });
+    const [paymentModal, setPaymentModal] = useState({ isOpen: false, type: null, order: null, amount: "", weight: "" });
     const [rescheduleModal, setRescheduleModal] = useState({ isOpen: false, order: null, date: "", slot: "" });
 
     const updateOrder = async (orderId, updates, successMessage) => {
@@ -470,6 +470,7 @@ export default function LaundrySettings({
                 type: "customer",
                 order,
                 amount: order.customerPaidAmount?.toString?.() || "",
+                weight: order.weight?.toString?.() || "",
             });
             return;
         }
@@ -500,10 +501,16 @@ export default function LaundrySettings({
         }
 
         if (paymentModal.type === "customer") {
+            const weight = Number(paymentModal.weight);
+            if (Number.isNaN(weight) || weight <= 0) {
+                toast.error("Enter a valid weight");
+                return;
+            }
             await updateOrder(paymentModal.order.id, {
                 status: "DeliveryPending",
                 customerPaidAmount: amount,
                 customerPaidAt: serverTimestamp(),
+                weight,
             }, "Customer payment recorded");
         } else {
             await updateOrder(paymentModal.order.id, {
@@ -513,7 +520,7 @@ export default function LaundrySettings({
             }, "Shop payment recorded");
         }
 
-        setPaymentModal({ isOpen: false, type: null, order: null, amount: "" });
+        setPaymentModal({ isOpen: false, type: null, order: null, amount: "", weight: "" });
     };
 
     const openRescheduleModal = (order) => {
@@ -721,9 +728,13 @@ export default function LaundrySettings({
                 setValue={(value) => setPaymentModal((prev) => ({ ...prev, amount: value }))}
                 placeholder="Enter amount"
                 confirmLabel="Save Payment"
-                onClose={() => setPaymentModal({ isOpen: false, type: null, order: null, amount: "" })}
+                onClose={() => setPaymentModal({ isOpen: false, type: null, order: null, amount: "", weight: "" })}
                 onConfirm={submitPaymentModal}
                 loading={!!processingOrderId}
+                secondaryValue={paymentModal.type === "customer" ? paymentModal.weight : undefined}
+                setSecondaryValue={paymentModal.type === "customer" ? (value) => setPaymentModal((prev) => ({ ...prev, weight: value })) : undefined}
+                secondaryPlaceholder="Weight (kg)"
+                secondaryType="number"
             />
 
             <InputModal

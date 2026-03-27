@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 
 test('test', async ({ page }) => {
-  await page.goto('http://localhost:3005/');
+  await page.goto('http://localhost:3000/');
   await page.getByRole('link', { name: 'Food Live Food. Craving' }).click();
   await page.getByRole('button', { name: 'P PU' }).click();
   await page.getByRole('link', { name: 'mins DASD Menu View Menu →' }).first().click();
@@ -17,7 +17,7 @@ test('test', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Hostel' }).fill('test');
   const page1Promise = page.waitForEvent('popup');
   await page.getByRole('button', { name: 'Place Order via WhatsApp' }).click();
-  await page.goto('http://localhost:3005/admin/login/');
+  await page.goto('http://localhost:3000/admin/login/');
   await page.getByRole('textbox', { name: 'admin@example.com' }).click();
   await page.getByRole('textbox', { name: 'admin@example.com' }).fill('testadmin@pumato.online');
   await page.getByRole('textbox', { name: '••••••••' }).click();

@@ -27,7 +27,15 @@ test('test', async ({ page }) => {
     dialog.dismiss().catch(() => {});
   });
   await page.getByRole('button', { name: 'Sign In' }).click();
-  await expect(page.getByText('placed').first()).toBeVisible();
+  await page.waitForURL('**/admin**', { timeout: 10000 });
+  
+  const campusPU = page.locator('text="PU"').first();
+  if (await campusPU.isVisible({ timeout: 3000 }).catch(() => false)) {
+    await campusPU.click();
+  }
+  
+  await page.waitForTimeout(2000);
+  await expect(page.getByText(/PLACED/i).first()).toBeVisible({ timeout: 10000 });
   await expect(page.locator('body')).toContainText('Confirm Order');
   await page.getByRole('button', { name: 'Confirm Order' }).first().click();
   await page.getByRole('button', { name: 'In Progress' }).click();

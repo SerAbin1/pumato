@@ -338,21 +338,22 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
         return result;
     }, [orders]);
 
-    // Calculate duplicate location for each order: "same" = duplicate in pending, "in_progress" = duplicate only in in-progress
+    // Calculate duplicate location for each order: "same" = duplicate in pending (both in pending), "in_progress" = duplicate in in-progress tab
     const duplicateLocationMap = useMemo(() => {
         const map = {};
-        const pendingPhones = new Set(orders.map(o => o.phone).filter(Boolean));
+        const inProgressPhones = new Set(inProgressOrders.map(o => o.phone).filter(Boolean));
         
         orders.forEach(order => {
             const phone = order.phone;
             if (!phone) return;
             if (duplicatePhones.has(phone)) {
-                map[phone] = pendingPhones.has(phone) ? "same" : "in_progress";
+                // If phone also appears in in-progress, show cross-tab message
+                map[phone] = inProgressPhones.has(phone) ? "in_progress" : "same";
             }
         });
         
         return map;
-    }, [orders, duplicatePhones]);
+    }, [orders, inProgressOrders, duplicatePhones]);
 
     const tabCounts = {
         pending: orders.length,
@@ -379,6 +380,7 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
                 {SUB_TABS.map(tab => (
                     <button
                         key={tab.id}
+                        data-testid={`${tab.id}-tab`}
                         onClick={() => setSubTab(tab.id)}
                         className={`px-5 py-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${subTab === tab.id
                             ? "text-white border-orange-500"

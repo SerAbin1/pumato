@@ -100,7 +100,7 @@ export async function getOrderDoc(orderId) {
 /**
  * Delete test documents (cleanup).
  */
-export async function cleanupTestData({ restaurantId, orderId } = {}) {
+export async function cleanupTestData({ restaurantId, orderId, orderIds } = {}) {
     const db = getDb();
     const batch = db.batch();
 
@@ -109,6 +109,11 @@ export async function cleanupTestData({ restaurantId, orderId } = {}) {
     }
     if (orderId) {
         batch.delete(db.collection("orders").doc(orderId));
+    }
+    if (orderIds && Array.isArray(orderIds)) {
+        orderIds.forEach(id => {
+            batch.delete(db.collection("orders").doc(id));
+        });
     }
 
     await batch.commit();

@@ -376,7 +376,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
             </div>
 
             {/* Price Increase/Decrease Configuration */}
-            <div className="border-t border-white/10 pt-10 mb-10">
+            {!isPartnerView && <div className="border-t border-white/10 pt-10 mb-10">
                 <h3 className="font-bold text-2xl text-white mb-6">Price Increase/Decrease</h3>
                 
                 <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6">
@@ -549,7 +549,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                         )}
                     </div>
                 </div>
-            </div>
+            </div>}
 
             <div className="border-t border-white/10 pt-10">
                 <div className="flex justify-between items-center mb-6">

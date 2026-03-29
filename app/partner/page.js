@@ -481,7 +481,7 @@ export default function PartnerDashboard() {
                                     toast("Changes discarded.");
                                 }}
                                 isSaving={isSaving}
-                                isPartnerView={true}
+                                isPartnerPage={true}
                             />
                         ) : (
                             <div className="text-center py-20 text-gray-400">No restaurant data found.</div>

@@ -8,7 +8,7 @@ import StickyActionBar from "./StickyActionBar";
 import CustomSelect from "../../components/CustomSelect";
 import ConfirmModal from "../../components/ConfirmModal";
 
-export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false, isPartnerView = false, orderSettings }) {
+export default function RestaurantForm({ initialData, onSave, onCancel, isSaving = false, isPartnerPage = false, orderSettings }) {
     const [formData, setFormData] = useState({
         name: "", image: "", cuisine: "", deliveryTime: "30 mins", offer: "", priceForTwo: "",
         baseDeliveryCharge: "30", extraItemThreshold: "3", extraItemCharge: "10", minOrderAmount: "0",
@@ -221,7 +221,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
                 <FormInput label="Restaurant Name" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} />
-                {!isPartnerView && (
+                {!isPartnerPage && (
                     <div className="space-y-3">
                         <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Image URL</label>
                         <div className="flex gap-2">
@@ -233,20 +233,20 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                         </div>
                     </div>
                 )}
-                {!isPartnerView && (
+                {!isPartnerPage && (
                     <FormInput label="Cuisine" value={formData.cuisine} onChange={(e) => setFormData({ ...formData, cuisine: e.target.value })} />
                 )}
-                {!isPartnerView && (
+                {!isPartnerPage && (
                     <FormInput label="Delivery Time" value={formData.deliveryTime} onChange={(e) => setFormData({ ...formData, deliveryTime: e.target.value })} />
                 )}
-                {!isPartnerView && (
+                {!isPartnerPage && (
                     <FormInput label="Offer Badge" value={formData.offer} onChange={(e) => setFormData({ ...formData, offer: e.target.value })} placeholder="e.g 50% OFF" />
                 )}
-                {!isPartnerView && (
+                {!isPartnerPage && (
                     <FormInput label="Extra Info / Offer" value={formData.priceForTwo} onChange={(e) => setFormData({ ...formData, priceForTwo: e.target.value })} placeholder="e.g. Buy 1 Get 1 Free" />
                 )}
 
-                {!isPartnerView && (
+                {!isPartnerPage && (
                     <div className="col-span-full grid grid-cols-1 md:grid-cols-4 gap-6 bg-white/5 p-6 rounded-2xl border border-white/5">
                         <FormInput label="Base Del. Charge (₹)" type="number" value={formData.baseDeliveryCharge} onChange={(e) => setFormData({ ...formData, baseDeliveryCharge: e.target.value })} />
                         <FormInput label="Extra Item Threshold" type="number" value={formData.extraItemThreshold} onChange={(e) => setFormData({ ...formData, extraItemThreshold: e.target.value })} />
@@ -376,7 +376,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
             </div>
 
             {/* Price Increase/Decrease Configuration */}
-            {!isPartnerView && <div className="border-t border-white/10 pt-10 mb-10">
+            {!isPartnerPage && <div className="border-t border-white/10 pt-10 mb-10">
                 <h3 className="font-bold text-2xl text-white mb-6">Price Increase/Decrease</h3>
                 
                 <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6">

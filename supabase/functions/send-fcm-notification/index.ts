@@ -121,33 +121,6 @@ async function getFcmTokens(uids: string[], accessToken: string): Promise<string
     return tokens
 }
 
-// ---------------------------------------------------------------------------
-// Read all admin UIDs from Firestore (documents with admin custom claim stored
-// in fcm_tokens — we query the entire fcm_tokens collection and return all tokens).
-// For simplicity: admins store their token under their UID; we can't filter by
-// claim from REST easily, so for "admin" role we just broadcast to ALL tokens.
-// ---------------------------------------------------------------------------
-async function getAllFcmTokens(accessToken: string): Promise<string[]> {
-    const baseUrl = `https://firestore.googleapis.com/v1/projects/${FIREBASE_PROJECT_ID}/databases/(default)/documents`
-    console.log(`[getAllFcmTokens] fetching all tokens`)
-    const res = await fetch(`${baseUrl}/fcm_tokens`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-    })
-    console.log(`[getAllFcmTokens] status=${res.status}`)
-    if (!res.ok) {
-        const err = await res.text()
-        console.warn(`[getAllFcmTokens] error:`, err)
-        return []
-    }
-    const data = await res.json()
-    if (!data.documents) {
-        console.warn(`[getAllFcmTokens] no documents field in response`)
-        return []
-    }
-    const tokens = data.documents.map((d: any) => d.fields?.token?.stringValue).filter(Boolean)
-    console.log(`[getAllFcmTokens] total tokens:`, tokens.length)
-    return tokens
-}
 
 // ---------------------------------------------------------------------------
 // Get FCM tokens for specific restaurant IDs (for partner notifications)
@@ -285,15 +258,18 @@ Deno.serve(async (req) => {
         const accessToken = await getGoogleAccessToken(serviceAccountJson)
 
         // 4. Resolve FCM tokens
-        let fcmTokens: string[]
+        let fcmTokens: string[] = []
+        if (role === "admin" || !role) {
+            return new Response(JSON.stringify({ sent: 0, message: "Admin notifications disabled" }), {
+                headers: { ...corsHeaders, "Access-Control-Allow-Origin": origin, "Content-Type": "application/json" },
+            })
+        }
+
         if (targetUids && Array.isArray(targetUids) && targetUids.length > 0) {
             fcmTokens = await getFcmTokens(targetUids, accessToken)
         } else if (role === "partner" && body.restaurantIds && Array.isArray(body.restaurantIds) && body.restaurantIds.length > 0) {
             // Notify only partners registered for these restaurants
             fcmTokens = await getFcmTokensByRestaurantIds(body.restaurantIds, accessToken)
-        } else {
-            // Broadcast to all registered tokens (admin broadcast use-case)
-            fcmTokens = await getAllFcmTokens(accessToken)
         }
 
         if (fcmTokens.length === 0) {

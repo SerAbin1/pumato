@@ -286,16 +286,6 @@ export default function PartnerDashboard() {
 
             await updateDoc(doc(db, "orders", order.id), updates);
 
-            // Notify admin via FCM
-            if (action !== "viewed" || true) { // Always notify admin
-                user.getIdToken().then(idToken => {
-                    supabase.functions.invoke("send-fcm-notification", {
-                        body: { role: "admin", orderId: order.id, event: action },
-                        headers: { Authorization: `Bearer ${idToken}` },
-                    }).catch(() => { });
-                }).catch(() => { });
-            }
-
             const labels = { viewed: "Marked as Viewed", ready_for_delivery: "Marked as Ready!", out_of_stock: "Order marked Out of Stock" };
             toast.success(labels[action] || "Updated");
         } catch (err) {

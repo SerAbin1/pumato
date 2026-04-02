@@ -8,7 +8,7 @@
     "dev:prod": "dotenv -e .env.production -- next dev",
     "build": "dotenv -e .env.production next build",
     "lint": "eslint",
-    "deploy": "dotenv -e .env.production pnpm run build && firebase deploy",
+    "deploy": "pnpm run test && dotenv -e .env.production pnpm run build && firebase deploy",
     "test": "dotenv -e .env.test -- playwright test",
     "test:ui": "dotenv -e .env.test -- playwright test --ui",
     "test:debug": "dotenv -e .env.test -- playwright test --debug",

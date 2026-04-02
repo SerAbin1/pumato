@@ -131,16 +131,6 @@ export default function AdminPage() {
             } else if (snapshot.docChanges().some(change => change.type === 'added')) {
                 playNotificationSound();
                 toast("New Order Received!", { icon: "🔔" });
-
-                // Fire-and-forget: notify any admin devices that may be offline
-                const newestChange = snapshot.docChanges().find(c => c.type === 'added');
-                const orderId = newestChange?.doc?.id;
-                user.getIdToken().then(idToken => {
-                    supabase.functions.invoke("send-fcm-notification", {
-                        body: { role: "admin", orderId },
-                        headers: { Authorization: `Bearer ${idToken}` },
-                    }).catch(err => console.warn("FCM invoke error:", err));
-                }).catch(() => { });
             }
 
             setOrders(newOrders);

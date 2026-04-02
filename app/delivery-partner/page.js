@@ -198,14 +198,6 @@ export default function DeliveryPartnerPage() {
                 });
             });
 
-            // Notify admin
-            user.getIdToken().then(idToken => {
-                supabase.functions.invoke("send-fcm-notification", {
-                    body: { role: "admin", orderId: order.id, event: "delivered" },
-                    headers: { Authorization: `Bearer ${idToken}` },
-                }).catch(() => { });
-            }).catch(() => { });
-
             toast.success("Order marked as Delivered! ✅");
         } catch (err) {
             if (err.message === "Order not in picked_up state") {

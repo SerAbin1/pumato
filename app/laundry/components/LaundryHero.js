@@ -15,7 +15,7 @@ export default function LaundryHero({ pricing }) {
                 </div>
             </div>
             <p className="text-gray-400 mb-8 text-lg font-light leading-relaxed">
-                Professional care for your clothes. Schedule a pickup from your hostel and get fresh, ironed clothes within 24 hours.
+                Professional care for your clothes. Schedule a pickup from your hostel and get fresh, ironed clothes.
             </p>
 
             <ul className="space-y-6">

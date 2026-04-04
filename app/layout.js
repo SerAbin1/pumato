@@ -9,6 +9,9 @@ import { Toaster } from "react-hot-toast";
 export const metadata = {
   title: "Pumato - Food Delivery",
   description: "Delicious food delivered to your hostel.",
+  other: {
+    "google-adsense-account": "ca-pub-9528740605995472",
+  },
   icons: {
     icon: [
       { url: "/favicon.ico?v=2" },

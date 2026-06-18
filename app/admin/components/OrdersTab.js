@@ -1,11 +1,20 @@
-
 import { useState, useMemo } from "react";
 import { db } from "@/lib/firebase";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-    Check, X, Clock, MapPin, Phone, User, Loader2,
-    AlertTriangle, Truck, Eye, Package, BellOff
+    Check,
+    X,
+    Clock,
+    MapPin,
+    Phone,
+    User,
+    Loader2,
+    AlertTriangle,
+    Truck,
+    Eye,
+    Package,
+    BellOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
@@ -20,10 +29,19 @@ const SUB_TABS = [
 
 const STATUS_INFO = {
     confirmed: { label: "Confirmed", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
-    viewed: { label: "Viewed by Partner", color: "text-green-400 bg-green-500/10 border-green-500/20" },
-    ready_for_delivery: { label: "Ready for Delivery", color: "text-purple-400 bg-purple-500/10 border-purple-500/20" },
+    viewed: {
+        label: "Viewed by Partner",
+        color: "text-green-400 bg-green-500/10 border-green-500/20",
+    },
+    ready_for_delivery: {
+        label: "Ready for Delivery",
+        color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
+    },
     out_of_stock: { label: "Out of Stock", color: "text-red-400 bg-red-500/10 border-red-500/20" },
-    picked_up: { label: "Picked Up", color: "text-orange-400 bg-orange-500/10 border-orange-500/20" },
+    picked_up: {
+        label: "Picked Up",
+        color: "text-orange-400 bg-orange-500/10 border-orange-500/20",
+    },
     delivered: { label: "Delivered", color: "text-gray-400 bg-gray-500/10 border-gray-500/20" },
 };
 
@@ -37,10 +55,19 @@ function TimeAgo({ date }) {
     );
 }
 
-function OrderCard({ order, showActions = false, user, isDuplicate = false, duplicateLocation = null }) {
+function OrderCard({
+    order,
+    showActions = false,
+    user,
+    isDuplicate = false,
+    duplicateLocation = null,
+}) {
     const [processingId, setProcessingId] = useState(null);
     const [showAckModal, setShowAckModal] = useState(false);
-    const statusInfo = STATUS_INFO[order.status] || { label: order.status, color: "text-gray-400 bg-gray-500/10 border-gray-500/20" };
+    const statusInfo = STATUS_INFO[order.status] || {
+        label: order.status,
+        color: "text-gray-400 bg-gray-500/10 border-gray-500/20",
+    };
     const isOos = order.status === "out_of_stock";
 
     const handleAcknowledge = async () => {
@@ -64,17 +91,25 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
             const newStatus = action === "confirm" ? "confirmed" : "cancelled";
             await updateDoc(doc(db, "orders", orderId), {
                 status: newStatus,
-                adminProcessedAt: serverTimestamp()
+                adminProcessedAt: serverTimestamp(),
             });
             toast.success(`Order ${action === "confirm" ? "Confirmed" : "Cancelled"}`);
 
             if (action === "confirm" && user && order?.restaurantIds?.length > 0) {
-                user.getIdToken().then(idToken => {
-                    supabase.functions.invoke("send-fcm-notification", {
-                        body: { role: "partner", restaurantIds: order.restaurantIds, orderId },
-                        headers: { Authorization: `Bearer ${idToken}` },
-                    }).catch(err => console.warn("Partner FCM error:", err));
-                }).catch(() => { });
+                user.getIdToken()
+                    .then((idToken) => {
+                        supabase.functions
+                            .invoke("send-fcm-notification", {
+                                body: {
+                                    role: "partner",
+                                    restaurantIds: order.restaurantIds,
+                                    orderId,
+                                },
+                                headers: { Authorization: `Bearer ${idToken}` },
+                            })
+                            .catch((err) => console.warn("Partner FCM error:", err));
+                    })
+                    .catch(() => {});
             }
         } catch {
             toast.error("Failed to update order");
@@ -89,19 +124,22 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95 }}
-            className={`border rounded-3xl overflow-hidden transition-all shadow-xl ${isDuplicate
-                ? "bg-yellow-950/20 border-yellow-500/50 shadow-yellow-900/10"
-                : isOos
-                    ? "bg-red-950/20 border-red-500/30"
-                    : "bg-white/5 border-white/10 hover:border-orange-500/30"
-                }`}
+            className={`border rounded-3xl overflow-hidden transition-all shadow-xl ${
+                isDuplicate
+                    ? "bg-yellow-950/20 border-yellow-500/50 shadow-yellow-900/10"
+                    : isOos
+                      ? "bg-red-950/20 border-red-500/30"
+                      : "bg-white/5 border-white/10 hover:border-orange-500/30"
+            }`}
         >
             {/* Duplicate phone warning banner */}
             {isDuplicate && (
                 <div className="bg-yellow-500/10 px-5 py-2 flex items-center gap-2 border-b border-yellow-500/20">
                     <span className="text-[14px]">⚠️</span>
                     <span className="text-xs font-black text-yellow-400 uppercase tracking-widest">
-                        {duplicateLocation === "in_progress" ? "Duplicate already in Progress" : "Potential duplicate order"}
+                        {duplicateLocation === "in_progress"
+                            ? "Duplicate already in Progress"
+                            : "Potential duplicate order"}
                     </span>
                 </div>
             )}
@@ -111,9 +149,13 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                 <div className="bg-red-500/20 px-5 py-2 flex items-center justify-between gap-2 border-b border-red-500/20">
                     <div className="flex items-center gap-2">
                         <AlertTriangle size={14} className="text-red-400" />
-                        <span className="text-xs font-black text-red-400 uppercase tracking-widest">Out of Stock</span>
+                        <span className="text-xs font-black text-red-400 uppercase tracking-widest">
+                            Out of Stock
+                        </span>
                         {order.outOfStockItems?.length > 0 && (
-                            <span className="text-xs text-red-300/70">— {order.outOfStockItems.join(", ")}</span>
+                            <span className="text-xs text-red-300/70">
+                                — {order.outOfStockItems.join(", ")}
+                            </span>
                         )}
                     </div>
                     <button
@@ -142,7 +184,9 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                 {/* Left: order details */}
                 <div className="flex-1 p-6 space-y-4">
                     <div className="flex items-center gap-3">
-                        <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}>
+                        <span
+                            className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
+                        >
                             {statusInfo.label}
                         </span>
                         <TimeAgo date={order.createdAt} />
@@ -152,17 +196,25 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                     <div className="space-y-2">
                         {order.items?.map((item, idx) => (
                             <div key={idx} className="flex items-start gap-3">
-                                <span className={`font-bold w-6 h-6 flex items-center justify-center rounded text-sm shrink-0 ${isOos && order.outOfStockItems?.includes(item.id || item.name)
-                                    ? "bg-red-500/20 text-red-400 line-through"
-                                    : "bg-white/10 text-white"
-                                    }`}>
+                                <span
+                                    className={`font-bold w-6 h-6 flex items-center justify-center rounded text-sm shrink-0 ${
+                                        isOos &&
+                                        order.outOfStockItems?.includes(item.id || item.name)
+                                            ? "bg-red-500/20 text-red-400 line-through"
+                                            : "bg-white/10 text-white"
+                                    }`}
+                                >
                                     {item.quantity}
                                 </span>
                                 <div>
-                                    <p className={`font-bold text-sm ${isOos && order.outOfStockItems?.includes(item.id || item.name) ? "text-red-400/60 line-through" : "text-white"}`}>
+                                    <p
+                                        className={`font-bold text-sm ${isOos && order.outOfStockItems?.includes(item.id || item.name) ? "text-red-400/60 line-through" : "text-white"}`}
+                                    >
                                         {item.name}
                                     </p>
-                                    <p className="text-[10px] text-gray-500">{item.restaurantName}</p>
+                                    <p className="text-[10px] text-gray-500">
+                                        {item.restaurantName}
+                                    </p>
                                 </div>
                             </div>
                         ))}
@@ -171,7 +223,9 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                     {/* Instructions */}
                     {order.instructions && (
                         <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2">
-                            <p className="text-[10px] font-black text-yellow-400/70 uppercase tracking-widest mb-0.5">Note</p>
+                            <p className="text-[10px] font-black text-yellow-400/70 uppercase tracking-widest mb-0.5">
+                                Note
+                            </p>
                             <p className="text-xs text-yellow-200">{order.instructions}</p>
                         </div>
                     )}
@@ -194,7 +248,9 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                             <MapPin size={14} className="text-gray-500 mt-0.5 shrink-0" />
                             <span>
                                 <span className="text-white font-bold">{order.campus}</span>
-                                {order.address && <span className="text-gray-400"> · {order.address}</span>}
+                                {order.address && (
+                                    <span className="text-gray-400"> · {order.address}</span>
+                                )}
                             </span>
                         </div>
                     </div>
@@ -222,17 +278,28 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                                 const isLineActive = !!nextStepObj;
 
                                 return (
-                                    <div key={step.key} className="relative z-10 flex flex-col items-center gap-1.5 w-[16%] min-w-[60px]">
+                                    <div
+                                        key={step.key}
+                                        className="relative z-10 flex flex-col items-center gap-1.5 w-[16%] min-w-[60px]"
+                                    >
                                         {/* Active Line Segment */}
                                         {idx < arr.length - 1 && isLineActive && (
                                             <div className="absolute top-2.5 left-1/2 w-full h-[2px] bg-orange-500/50 z-[-1]"></div>
                                         )}
 
-                                        <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] border transition-colors ${isCompleted ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-zinc-900 border-white/10 text-gray-600"}`}>
-                                            {isCompleted ? <Check size={10} /> : <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>}
+                                        <div
+                                            className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] border transition-colors ${isCompleted ? "bg-orange-500/20 border-orange-500/50 text-orange-400" : "bg-zinc-900 border-white/10 text-gray-600"}`}
+                                        >
+                                            {isCompleted ? (
+                                                <Check size={10} />
+                                            ) : (
+                                                <div className="w-1.5 h-1.5 rounded-full bg-gray-700"></div>
+                                            )}
                                         </div>
                                         <div className="flex flex-col items-center">
-                                            <span className={`text-[9px] font-bold uppercase tracking-widest text-center ${isCompleted ? "text-orange-400/90" : "text-gray-500"}`}>
+                                            <span
+                                                className={`text-[9px] font-bold uppercase tracking-widest text-center ${isCompleted ? "text-orange-400/90" : "text-gray-500"}`}
+                                            >
                                                 {step.label}
                                             </span>
                                             {isCompleted && (
@@ -253,7 +320,9 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                     <div className="flex flex-col justify-between items-end gap-5 border-t md:border-t-0 md:border-l border-white/5 p-6 md:min-w-[190px]">
                         <div className="text-right">
                             <p className="text-xs text-gray-400 mb-1">Total</p>
-                            <p className="text-3xl font-black text-white">₹{order.finalTotal || order.total || "0"}</p>
+                            <p className="text-3xl font-black text-white">
+                                ₹{order.finalTotal || order.total || "0"}
+                            </p>
                         </div>
                         <div className="flex flex-col gap-3 w-full">
                             <button
@@ -261,7 +330,11 @@ function OrderCard({ order, showActions = false, user, isDuplicate = false, dupl
                                 disabled={processingId === order.id}
                                 className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-50"
                             >
-                                {processingId === order.id ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                {processingId === order.id ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <Check size={16} />
+                                )}
                                 Confirm Order
                             </button>
                             <button
@@ -291,7 +364,13 @@ function EmptyState({ message }) {
     );
 }
 
-export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = [], loading, user }) {
+export default function OrdersTab({
+    orders,
+    inProgressOrders = [],
+    pastOrders = [],
+    loading,
+    user,
+}) {
     const [subTab, setSubTab] = useState("pending");
 
     // OOS orders float to top within the in-progress list
@@ -307,7 +386,7 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
         const duplicated = new Set();
         const activeOrders = [...orders, ...inProgressOrders];
 
-        activeOrders.forEach(o => {
+        activeOrders.forEach((o) => {
             if (!o.phone) return;
             if (phoneCounts[o.phone]) {
                 duplicated.add(o.phone);
@@ -316,7 +395,6 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
             }
         });
         return duplicated;
-        // eslint-disable-next-line react-hooks/preserve-manual-memoization
     }, [orders, inProgressOrders]);
 
     // Group duplicate pending orders side-by-side while preserving original time order
@@ -325,9 +403,9 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
         const result = [];
         const seen = new Set();
 
-        orders.forEach(order => {
+        orders.forEach((order) => {
             if (seen.has(order.phone)) {
-                const firstIdx = result.findIndex(o => o.phone === order.phone);
+                const firstIdx = result.findIndex((o) => o.phone === order.phone);
                 result.splice(firstIdx + 1, 0, order);
             } else {
                 seen.add(order.phone);
@@ -341,9 +419,9 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
     // Calculate duplicate location for each order: "same" = duplicate in pending (both in pending), "in_progress" = duplicate in in-progress tab
     const duplicateLocationMap = useMemo(() => {
         const map = {};
-        const inProgressPhones = new Set(inProgressOrders.map(o => o.phone).filter(Boolean));
-        
-        orders.forEach(order => {
+        const inProgressPhones = new Set(inProgressOrders.map((o) => o.phone).filter(Boolean));
+
+        orders.forEach((order) => {
             const phone = order.phone;
             if (!phone) return;
             if (duplicatePhones.has(phone)) {
@@ -351,7 +429,7 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
                 map[phone] = inProgressPhones.has(phone) ? "in_progress" : "same";
             }
         });
-        
+
         return map;
     }, [orders, inProgressOrders, duplicatePhones]);
 
@@ -377,22 +455,28 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
 
             {/* Sub-tabs */}
             <div className="flex gap-1 mb-8 border-b border-white/10">
-                {SUB_TABS.map(tab => (
+                {SUB_TABS.map((tab) => (
                     <button
                         key={tab.id}
                         data-testid={`${tab.id}-tab`}
                         onClick={() => setSubTab(tab.id)}
-                        className={`px-5 py-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${subTab === tab.id
-                            ? "text-white border-orange-500"
-                            : "text-gray-500 border-transparent hover:text-gray-300"
-                            }`}
+                        className={`px-5 py-3 text-sm font-bold transition-all border-b-2 flex items-center gap-2 ${
+                            subTab === tab.id
+                                ? "text-white border-orange-500"
+                                : "text-gray-500 border-transparent hover:text-gray-300"
+                        }`}
                     >
                         {tab.label}
                         {tabCounts[tab.id] > 0 && (
-                            <span className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${tab.id === "pending" ? "bg-orange-500 text-white" :
-                                tab.id === "inprogress" ? "bg-blue-500/20 text-blue-400" :
-                                    "bg-gray-500/20 text-gray-400"
-                                }`}>
+                            <span
+                                className={`text-[10px] font-black px-1.5 py-0.5 rounded-full ${
+                                    tab.id === "pending"
+                                        ? "bg-orange-500 text-white"
+                                        : tab.id === "inprogress"
+                                          ? "bg-blue-500/20 text-blue-400"
+                                          : "bg-gray-500/20 text-gray-400"
+                                }`}
+                            >
                                 {tabCounts[tab.id]}
                             </span>
                         )}
@@ -404,12 +488,20 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
             {subTab === "pending" && (
                 <div className="grid gap-6">
                     <AnimatePresence>
-                        {sortedPending.length === 0
-                            ? <EmptyState message="No pending orders to confirm right now." />
-                            : sortedPending.map(order => (
-                                <OrderCard key={order.id} order={order} showActions user={user} isDuplicate={duplicatePhones.has(order.phone)} duplicateLocation={duplicateLocationMap[order.phone]} />
+                        {sortedPending.length === 0 ? (
+                            <EmptyState message="No pending orders to confirm right now." />
+                        ) : (
+                            sortedPending.map((order) => (
+                                <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    showActions
+                                    user={user}
+                                    isDuplicate={duplicatePhones.has(order.phone)}
+                                    duplicateLocation={duplicateLocationMap[order.phone]}
+                                />
                             ))
-                        }
+                        )}
                     </AnimatePresence>
                 </div>
             )}
@@ -418,12 +510,18 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
             {subTab === "inprogress" && (
                 <div className="grid gap-6">
                     <AnimatePresence>
-                        {sortedInProgress.length === 0
-                            ? <EmptyState message="No orders currently being prepared." />
-                            : sortedInProgress.map(order => (
-                                <OrderCard key={order.id} order={order} user={user} isDuplicate={duplicatePhones.has(order.phone)} />
+                        {sortedInProgress.length === 0 ? (
+                            <EmptyState message="No orders currently being prepared." />
+                        ) : (
+                            sortedInProgress.map((order) => (
+                                <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    user={user}
+                                    isDuplicate={duplicatePhones.has(order.phone)}
+                                />
                             ))
-                        }
+                        )}
                     </AnimatePresence>
                 </div>
             )}
@@ -432,12 +530,13 @@ export default function OrdersTab({ orders, inProgressOrders = [], pastOrders = 
             {subTab === "past" && (
                 <div className="grid gap-6">
                     <AnimatePresence>
-                        {pastOrders.length === 0
-                            ? <EmptyState message="No completed orders today yet." />
-                            : pastOrders.map(order => (
+                        {pastOrders.length === 0 ? (
+                            <EmptyState message="No completed orders today yet." />
+                        ) : (
+                            pastOrders.map((order) => (
                                 <OrderCard key={order.id} order={order} user={user} />
                             ))
-                        }
+                        )}
                     </AnimatePresence>
                 </div>
             )}

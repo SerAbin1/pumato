@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Lock, Unlock, Zap } from "lucide-react";
-import { getISTObject } from "@/lib/dateUtils";
 
 /**
  * Component to manually override service status (force open/close).
@@ -12,19 +11,10 @@ import { getISTObject } from "@/lib/dateUtils";
 export default function ServiceOverrideControl({ settings, onUpdate, serviceName }) {
     const [updating, setUpdating] = useState(false);
 
-    // Determine current active status from settings
-    // If date matches today, show that status. Else show 'auto'.
     const getCurrentStatus = () => {
-        if (!settings?.manualOverride) return 'auto';
-        const { status, validForDate } = settings.manualOverride;
+      const status = settings?.manualOverride?.status;
 
-        const { year, month, day } = getISTObject();
-        const today = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-        if (validForDate === today) {
-            return status;
-        }
-        return 'auto';
+      return ["open", "closed"].includes(status) ? status : "auto";
     };
 
     const currentStatus = getCurrentStatus();
@@ -32,12 +22,8 @@ export default function ServiceOverrideControl({ settings, onUpdate, serviceName
     const handleOverride = async (status) => {
         setUpdating(true);
         try {
-            const { year, month, day } = getISTObject();
-            const today = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
             const overrideData = {
                 status,
-                validForDate: today,
                 updatedAt: new Date().toISOString()
             };
 
@@ -67,7 +53,7 @@ export default function ServiceOverrideControl({ settings, onUpdate, serviceName
                         </span>
                     </h3>
                     <p className="text-gray-400 text-sm mt-1">
-                        Force open/close for <strong>Today Only.</strong> Resets automatically at midnight IST.
+                        Force open/close.
                     </p>
                 </div>
             </div>

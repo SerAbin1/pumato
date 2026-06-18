@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from "framer-motion";
-import { Sparkles, Phone, Plus, Trash, Upload, X, Database } from "lucide-react";
+import { Sparkles, Phone, Plus, Trash, Upload, Database } from "lucide-react";
 import Image from "next/image";
 import FormInput from './FormInput';
 import ConfirmModal from "../../components/ConfirmModal";

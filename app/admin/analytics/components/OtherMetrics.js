@@ -1,6 +1,6 @@
 "use client";
 
-import { Package, XCircle, CheckCircle, Clock, DollarSign, Zap } from "lucide-react";
+import { Package, XCircle, CheckCircle, DollarSign, Zap } from "lucide-react";
 
 function formatCurrency(amount) {
   return new Intl.NumberFormat("en-IN", {

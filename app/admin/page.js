@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Plus, Bell, Users, BarChart3 } from "lucide-react";
+import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Bell, Users, BarChart3} from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, deleteDoc, getDoc, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
+import { collection, getDocs, doc, setDoc, getDoc, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
@@ -45,7 +45,6 @@ export default function AdminPage() {
         banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
         banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
     });
-    const [loading, setLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     // Laundry Slots State
@@ -203,9 +202,43 @@ export default function AdminPage() {
         return () => unsub();
     }, [user, isAdmin]);
 
+    const fetchLaundrySlots = async (dateOrType) => {
+        try {
+            const docRef = doc(db, "laundry_slots", dateOrType);
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                setLaundrySlots(docSnap.data().slots || []);
+            } else {
+                setLaundrySlots([]);
+            }
+        } catch (error) {
+            console.error("Error fetching slots:", error);
+        }
+    };
+
+    const fetchCampusConfig = async () => {
+        try {
+            const docRef = doc(db, "general_settings", "laundry");
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                const data = docSnap.data();
+                if (data.campuses) setCampusConfig(data.campuses);
+                setLaundryPricing(data.pricing || { pricePerKg: "79", steamIronPrice: "15" });
+                setLaundrySettings(data);
+            } else {
+                setCampusConfig(DEFAULT_CAMPUS_CONFIG);
+                setLaundryPricing({ pricePerKg: "79", steamIronPrice: "15" });
+                setLaundrySettings({ manualOverride: null });
+            }
+        } catch (error) {
+            console.error("Error fetching campus config:", error);
+        }
+    };
+
     // Fetch Laundry Slots when date changes or section becomes active
     useEffect(() => {
         if (activeSection === 'laundry') {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             fetchLaundrySlots(selectedDay);
             fetchCampusConfig();
         }
@@ -274,42 +307,10 @@ export default function AdminPage() {
 
     useEffect(() => {
         if (user && isAdmin) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
             fetchData();
         }
     }, [user, isAdmin, fetchData]);
-
-    const fetchLaundrySlots = async (dateOrType) => {
-        try {
-            const docRef = doc(db, "laundry_slots", dateOrType);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setLaundrySlots(docSnap.data().slots || []);
-            } else {
-                setLaundrySlots([]); // No custom slots for this date
-            }
-        } catch (error) {
-            console.error("Error fetching slots:", error);
-        }
-    };
-
-    const fetchCampusConfig = async () => {
-        try {
-            const docRef = doc(db, "general_settings", "laundry");
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (data.campuses) setCampusConfig(data.campuses);
-                setLaundryPricing(data.pricing || { pricePerKg: "79", steamIronPrice: "15" });
-                setLaundrySettings(data); // Capture everything including manualOverride
-            } else {
-                setCampusConfig(DEFAULT_CAMPUS_CONFIG);
-                setLaundryPricing({ pricePerKg: "79", steamIronPrice: "15" });
-                setLaundrySettings({ manualOverride: null });
-            }
-        } catch (error) {
-            console.error("Error fetching campus config:", error);
-        }
-    };
 
     // --- SAVE HANDLERS ---
 

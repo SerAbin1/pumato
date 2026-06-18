@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Tag, Trash, Eye, EyeOff, Search, Utensils, Plus, Check, X } from "lucide-react";
+import { Trash, Search, Utensils, Plus, Check, X } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import Fuse from "fuse.js";
 import FormInput from "./FormInput";

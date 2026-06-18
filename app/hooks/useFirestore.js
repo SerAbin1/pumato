@@ -1,5 +1,4 @@
 import { useState, useCallback } from 'react';
-import { db } from '@/lib/firebase';
 import {
     collection,
     getDocs,
@@ -9,10 +8,7 @@ import {
     addDoc,
     updateDoc,
     deleteDoc,
-    query,
-    where,
-    orderBy,
-    limit as firestoreLimit
+    query
 } from 'firebase/firestore';
 
 /**

@@ -3,7 +3,7 @@
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import Link from "next/link";
-import { Instagram, Linkedin, Twitter, Sparkles } from "lucide-react";
+import { Instagram, Linkedin, Twitter } from "lucide-react";
 import Image from "next/image";
 import TestimonialsMarquee from "../components/TestimonialsMarquee";
 

@@ -104,7 +104,7 @@ export default function DelayBreakdown({ breakdown }) {
                 border: "1px solid #333",
                 borderRadius: "8px",
               }}
-              formatter={(value, name) => [formatMinutes(value), "Avg Time"]}
+              formatter={(value) => [formatMinutes(value), "Avg Time"]}
             />
             <Bar dataKey="avg" radius={[0, 4, 4, 0]}>
               {data.map((entry, index) => (
@@ -116,7 +116,7 @@ export default function DelayBreakdown({ breakdown }) {
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        {data.map((stage, idx) => (
+        {data.map((stage) => (
           <div
             key={stage.key}
             className={`p-3 rounded-xl border ${

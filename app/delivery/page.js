@@ -2,20 +2,16 @@
 
 import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
-import FoodCollections from "../components/FoodCollections";
 import TermsFooter from "../components/TermsFooter";
 import Link from "next/link";
-import { Search, Sparkles, Utensils, ArrowRight, Plus, ShoppingBag, Clock } from "lucide-react";
+import { Search, Sparkles, Utensils, ShoppingBag, Clock } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 
-import { db } from "@/lib/firebase";
-import { doc, where } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
 import { RestaurantSkeleton } from "../components/Skeleton";
-import { useMemo } from "react";
 import Fuse from "fuse.js";
 
 // Simple seeded shuffle to keep order stable for the day
@@ -87,7 +83,7 @@ export default function DeliveryPage() {
                         banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
                     });
                 }
-            } catch (err) {
+            } catch {
                 // Fallback on error (handled by hook, but we need default state)
                 setPromoBanners({
                     banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
@@ -109,7 +105,7 @@ export default function DeliveryPage() {
 
                 setRestaurants(shuffledData);
                 setFilteredRestaurants(shuffledData);
-            } catch (err) {
+            } catch {
                 // Error already logged by hook
             }
         };

@@ -20,7 +20,7 @@ const messaging = firebase.messaging();
 // Data messages don't auto-display a notification — we build one manually
 // so we can play the custom sound.
 messaging.onBackgroundMessage((payload) => {
-    const { title = "New Order Received", body = "A new order has been placed.", sound } = payload.data || {};
+    const { title = "New Order Received", body = "A new order has been placed." } = payload.data || {};
 
     const notificationOptions = {
         body,

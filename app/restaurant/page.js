@@ -5,11 +5,9 @@ import { useSearchParams } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 import Navbar from "@/app/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
-import { Star, ArrowLeft, Search, Dot, ShoppingBag, ChevronDown, Utensils, X, ArrowUpDown } from "lucide-react";
+import { ArrowLeft, Search, ShoppingBag, ChevronDown, Utensils, ArrowUpDown } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
-import { db } from "@/lib/firebase";
-import { doc } from "firebase/firestore";
 import useFirestore from "@/app/hooks/useFirestore";
 import Skeleton, { MenuSkeleton } from "../components/Skeleton";
 import CustomSelect from "../components/CustomSelect";
@@ -46,7 +44,7 @@ function RestaurantContent() {
     const [collapsedSections, setCollapsedSections] = useState({});
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
-    const { getDocument, loading: dbLoading } = useFirestore();
+    const { getDocument } = useFirestore();
     const highlight = searchParams.get("highlight");
 
     // Scroll to highlighted item
@@ -65,7 +63,7 @@ function RestaurantContent() {
         }
     }, [highlight, loading, restaurant]);
 
-    useEffect(() => {
+    useEffect(() {
         if (!id) return;
         const fetchRestaurant = async () => {
             try {
@@ -75,7 +73,7 @@ function RestaurantContent() {
                 } else {
                     setRestaurant(null);
                 }
-            } catch (error) {
+            } catch {
                 // Error handled by hook
             }
             setLoading(false);

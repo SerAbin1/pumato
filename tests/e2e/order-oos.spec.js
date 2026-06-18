@@ -1,6 +1,4 @@
 import { test, expect } from "@playwright/test";
-import path from "path";
-import { fileURLToPath } from "url";
 import {
     createTestRestaurant,
     createTestOrder,
@@ -9,14 +7,8 @@ import {
     getOrderDoc,
     cleanupTestData,
     createTestPartnerUser,
-    deleteTestUser
+    deleteTestUser,
 } from "./utils/firebase-helper.js";
-import { loadTestEnv } from "./utils/env.js";
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-const env = loadTestEnv();
 
 // --- Test Data ---
 const TEST_RUN_ID = `test_${Date.now()}`;
@@ -117,25 +109,24 @@ test.describe("OOS Rejection Flow", () => {
         await page.click('button[type="submit"]');
 
         // Wait for either the partner dashboard URL or the campus selector modal
-        await page.waitForFunction(() => 
-            window.location.pathname === '/partner' || 
-            window.location.pathname === '/partner/' ||
-            document.body.innerText.includes('Choose Your Campus'), 
+        await page.waitForFunction(
+            () =>
+                window.location.pathname === "/partner" ||
+                window.location.pathname === "/partner/" ||
+                document.body.innerText.includes("Choose Your Campus"),
             { timeout: 15_000 }
         );
-        
+
         // Handle optional campus selector if it appears
         const campusPU = page.locator('text="PU"').first();
         if (await campusPU.isVisible({ timeout: 3000 }).catch(() => false)) {
             await campusPU.click();
-            await page.waitForLoadState('networkidle');
+            await page.waitForLoadState("networkidle");
         }
 
         // Wait for the confirmed order to appear in the live orders tab
         // The order card should show our test items
-        const orderCard = page.locator(
-            `text=${ITEM_A.name}`
-        ).first();
+        const orderCard = page.locator(`text=${ITEM_A.name}`).first();
         await expect(orderCard).toBeVisible({ timeout: 15_000 });
 
         // Click the "Out of Stock" button to open OOS picker
@@ -144,15 +135,11 @@ test.describe("OOS Rejection Flow", () => {
         await oosButton.click();
 
         // Wait for OOS picker to appear
-        const oosPicker = page.locator(
-            'text=Select unavailable items'
-        );
+        const oosPicker = page.locator("text=Select unavailable items");
         await expect(oosPicker).toBeVisible({ timeout: 5_000 });
 
         // Select ONLY item A as out of stock
-        const itemACheckbox = page.locator(
-            `[data-testid="oos-item-checkbox-${ITEM_A.id}"]`
-        );
+        const itemACheckbox = page.locator(`[data-testid="oos-item-checkbox-${ITEM_A.id}"]`);
         await expect(itemACheckbox).toBeVisible({ timeout: 5_000 });
         await itemACheckbox.click();
 
@@ -172,10 +159,7 @@ test.describe("OOS Rejection Flow", () => {
         expect(orderDoc, "Order document should exist after OOS action").toBeTruthy();
 
         expect(orderDoc.status).toBe("out_of_stock");
-        expect(
-            orderDoc.outOfStockItems,
-            "Order should have outOfStockItems array"
-        ).toBeDefined();
+        expect(orderDoc.outOfStockItems, "Order should have outOfStockItems array").toBeDefined();
         expect(orderDoc.outOfStockItems).toContain(ITEM_A.id);
         expect(
             orderDoc.outOfStockItems,
@@ -184,10 +168,7 @@ test.describe("OOS Rejection Flow", () => {
 
         // 2. Check restaurant document — menu state
         const restaurantDoc = await getRestaurantDoc(RESTAURANT_ID);
-        expect(
-            restaurantDoc,
-            "Restaurant document should exist after OOS action"
-        ).toBeTruthy();
+        expect(restaurantDoc, "Restaurant document should exist after OOS action").toBeTruthy();
 
         const menu = restaurantDoc.menu;
         expect(menu, "Restaurant should have a menu array").toBeDefined();
@@ -196,14 +177,8 @@ test.describe("OOS Rejection Flow", () => {
         const updatedItemA = menu.find((item) => item.id === ITEM_A.id);
         const updatedItemB = menu.find((item) => item.id === ITEM_B.id);
 
-        expect(
-            updatedItemA,
-            `Menu should contain item with id "${ITEM_A.id}"`
-        ).toBeTruthy();
-        expect(
-            updatedItemB,
-            `Menu should contain item with id "${ITEM_B.id}"`
-        ).toBeTruthy();
+        expect(updatedItemA, `Menu should contain item with id "${ITEM_A.id}"`).toBeTruthy();
+        expect(updatedItemB, `Menu should contain item with id "${ITEM_B.id}"`).toBeTruthy();
 
         // 3. STRICT assertion: selected item MUST be marked OOS
         expect(
@@ -231,6 +206,5 @@ test.describe("OOS Rejection Flow", () => {
             updatedItemB.hiddenAt,
             `Unexpected mutation: non-selected item "${ITEM_B.name}" has hiddenAt: ${updatedItemB.hiddenAt}, expected it to remain unchanged (undefined/null)`
         ).toBeFalsy();
-
     });
 });

@@ -2,7 +2,7 @@
 
 import Navbar from "../../components/Navbar";
 import { motion } from "framer-motion";
-import { ArrowLeft, ScrollText, Utensils } from "lucide-react";
+import { ArrowLeft, Utensils } from "lucide-react";
 import Link from "next/link";
 
 export default function DeliveryTermsPage() {

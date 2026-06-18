@@ -1,17 +1,16 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import {
     collection, query, where, orderBy, onSnapshot, Timestamp,
-    runTransaction, doc, serverTimestamp, limit, updateDoc
+    runTransaction, doc, serverTimestamp, limit
 } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Truck, MapPin, Package, LogIn, LogOut, Check, Clock, User } from "lucide-react";
 import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabase";
+
 import CountdownTimer from "./components/CountdownTimer";
 
 const STATUS_LABELS = {

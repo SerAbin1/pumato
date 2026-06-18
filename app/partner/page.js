@@ -3,19 +3,17 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
-import { db } from "@/lib/firebase";
 import {
     doc, getDoc, setDoc, updateDoc, collection, query,
-    where, orderBy, limit, onSnapshot, Timestamp, serverTimestamp, arrayUnion
+    where, orderBy, limit, onSnapshot, Timestamp, serverTimestamp
 } from "firebase/firestore";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
-import { LogOut, Loader2, Bell, Check, X, AlertTriangle, Truck, Clock, UtensilsCrossed, ChevronDown, ChevronUp } from "lucide-react";
+import { LogOut, Loader2, Bell, Check, AlertTriangle, Truck, Clock, UtensilsCrossed } from "lucide-react";
 import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabase";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { motion, AnimatePresence } from "framer-motion";
 
-const TABS = ["orders", "past", "menu"];
+
 
 const STATUS_LABELS = {
     confirmed: { label: "Confirmed", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },

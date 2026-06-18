@@ -3,7 +3,7 @@ import { motion } from "framer-motion";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp";
 import { getISTDate } from "@/lib/dateUtils";
 
-export default function SlotSelector({ formData, setFormData, availableSlots, loadingSlots, today }) {
+export default function SlotSelector({ formData, setFormData, availableSlots, loadingSlots }) {
 
     const scrollRef = useRef(null);
 

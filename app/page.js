@@ -2,12 +2,11 @@
 
 import Link from "next/link";
 import { motion, useScroll, useTransform, useSpring, useInView, useMotionValue, useMotionTemplate } from "framer-motion";
-import { Utensils, Shirt, Instagram, Mail, MessageCircle, ArrowRight, Sparkles, Zap, Wallet, ShieldCheck, Clock } from "lucide-react";
+import { Instagram, Mail, MessageCircle, ArrowRight, Zap, Wallet, ShieldCheck } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
-import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { getISTTime, getISTObject, checkManualOverride } from "@/lib/dateUtils";
 
@@ -156,7 +155,6 @@ export default function GatewayPage() {
   // Use state for live status to prevent hydration mismatch
   const [isFoodLive, setIsFoodLive] = useState(false);
   const [isGroceryLive, setIsGroceryLive] = useState(false);
-  const [isLaundryLive, setIsLaundryLive] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect

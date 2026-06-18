@@ -10,7 +10,8 @@ import Image from "next/image";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { supabase } from "@/lib/supabase";
-import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
+import { getISTTime } from "@/lib/dateUtils";
+import { isServiceLive } from "@/lib/serviceStatus";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -47,7 +48,6 @@ export default function CartDrawer() {
         googleSheetUrl,
         minOrderShortfalls,
         campusConfig,
-        campusDeliveryCharge,
         hasHeavyItems
     } = useCart();
 
@@ -70,16 +70,6 @@ export default function CartDrawer() {
             setInputCode("");
             setCheckoutError(null);
         } else {
-            // Check time when cart opens
-
-            // 1. Check Manual Override
-            const overrideStatus = checkManualOverride(orderSettings);
-            if (overrideStatus !== null) {
-                setIsStoreOpen(overrideStatus === 'open');
-                return;
-            }
-
-            // 2. Fallback to per-campus Slot Check
             const { timeInMinutes } = getISTTime();
             const campusConfig = orderSettings?.deliveryCampusConfig || [];
 
@@ -91,15 +81,7 @@ export default function CartDrawer() {
                 ? (selectedCampus.slots || [])
                 : campusConfig.flatMap(c => c.slots || []);
 
-            const isOpen = slotsToCheck.some(slot => {
-                const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
-                const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
-                const START = startH * 60 + startM;
-                const END = endH * 60 + endM;
-                return timeInMinutes >= START && timeInMinutes <= END;
-            });
-
-            setIsStoreOpen(isOpen);
+            setIsStoreOpen(isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes));
         }
     }, [isCartOpen, orderSettings, userDetails?.campus]);
 

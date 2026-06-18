@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { MapPin, ArrowRight, GraduationCap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
-import Image from "next/image";
 
 export default function CampusSelector({ onSelect, currentCampus }) {
     const [isOpen, setIsOpen] = useState(false);
@@ -19,12 +18,6 @@ export default function CampusSelector({ onSelect, currentCampus }) {
     const handleSelect = (campusId) => {
         onSelect(campusId);
         setIsOpen(false);
-    };
-
-    const campusImages = {
-        'PU': '/campus/pu.jpg',
-        'PTU': '/campus/ptu.jpg',
-        'PIMS': '/campus/pims.jpg'
     };
 
     return (

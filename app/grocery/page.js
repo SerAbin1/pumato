@@ -4,15 +4,15 @@ import { useState, useEffect } from "react";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
-import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Trash2, Clock, AlertCircle } from "lucide-react";
+import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Clock, AlertCircle } from "lucide-react";
 import TermsFooter from "../components/TermsFooter";
 import toast from "react-hot-toast";
 // Fallback is defined in context
 
-import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
-import { getISTTime, checkManualOverride } from "@/lib/dateUtils";
+import { getISTTime } from "@/lib/dateUtils";
+import { isServiceLive } from "@/lib/serviceStatus";
 
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
@@ -21,28 +21,9 @@ export default function GroceryPage() {
 
     useEffect(() => {
         const checkLiveStatus = () => {
-            // 1. Check Manual Override
-            const overrideStatus = checkManualOverride(grocerySettings);
-            if (overrideStatus !== null) {
-                setIsLive(overrideStatus === 'open');
-                return;
-            }
-
-            // 2. Fallback to Slot Check
             const { timeInMinutes } = getISTTime();
             const slots = grocerySettings?.slots || [];
-
-            if (slots.length === 0) {
-                setIsLive(false);
-                return;
-            }
-
-            const active = slots.some(slot => {
-                const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
-                const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
-                return timeInMinutes >= (startH * 60 + startM) && timeInMinutes <= (endH * 60 + endM);
-            });
-            setIsLive(active);
+            setIsLive(isServiceLive(grocerySettings.manualOverride?.status, slots, timeInMinutes));
         };
 
         checkLiveStatus();

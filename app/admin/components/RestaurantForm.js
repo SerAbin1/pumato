@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
-import Image from "next/image";
-import { Utensils, Trash, Save, Eye, EyeOff, Upload, Plus, X, Search, Clock } from "lucide-react";
+import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock } from "lucide-react";
 import Fuse from "fuse.js";
 import { toTitleCase } from "@/lib/formatters";
 import FormInput from "./FormInput";
@@ -667,7 +666,7 @@ export default function RestaurantForm({ initialData, onSave, onCancel, isSaving
                         return allMatches.map(m => m.item);
                     })()
                         .sort((a, b) => (a.isVisible === false ? 0 : 1) - (b.isVisible === false ? 0 : 1))
-                        .map((item, idx) => {
+                        .map((item) => {
                             const actualIdx = (formData.menu || []).indexOf(item);
                             return (
                                 <div key={item.id} className={`p-6 border border-white/10 rounded-3xl bg-black/20 relative group ${item.isVisible === false ? 'opacity-60' : ''}`}>

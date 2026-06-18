@@ -7,7 +7,6 @@ import { motion } from "framer-motion";
 import LaundryHero from "./components/LaundryHero";
 import LaundryForm from "./components/LaundryForm";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
-import { db } from "@/lib/firebase";
 import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import TermsFooter from "../components/TermsFooter";
@@ -225,7 +224,6 @@ export default function LaundryPage() {
         message += `Campus: ${formData.campus}\n`;
 
         const selectedCampus = campusConfig.find(c => c.id === formData.campus);
-        const deliveryCharge = selectedCampus?.deliveryCharge || 0;
         const validLaundryItems = validItems.map(item => ({
             name: item.name.trim(),
             quantity: Number(item.quantity) || 1,

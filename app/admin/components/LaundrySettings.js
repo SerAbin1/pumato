@@ -1,5 +1,4 @@
 import {
-    Calendar,
     CheckCircle2,
     ChevronDown,
     Clock,
@@ -441,19 +440,6 @@ export default function LaundrySettings({
             return acc;
         }, {});
     }, [filteredOrders]);
-
-    const tabCounts = useMemo(() => (
-        laundryOrders.reduce((acc, order) => {
-            acc[resolveOrderStage(order)] += 1;
-            return acc;
-        }, {
-            ReadyForPickup: 0,
-            PendingCustomerPayment: 0,
-            DeliveryPending: 0,
-            PendingShopPayment: 0,
-            Completed: 0,
-        })
-    ), [laundryOrders]);
 
     const handlePrimaryAction = async (order, stageId) => {
         if (stageId === "ReadyForPickup") {

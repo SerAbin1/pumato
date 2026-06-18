@@ -7,7 +7,7 @@ import {
     useCoupons,
     useOrderSettings,
     useGrocerySettings,
-    useLaundrySettings
+    useLaundrySettings,
 } from "@/app/hooks/useCartData";
 import { cartReducer, initialState } from "./cartReducer";
 import * as Pricing from "@/lib/cartPricing";
@@ -33,7 +33,9 @@ export function CartProvider({ children }) {
             if (saved) {
                 try {
                     dispatch({ type: "LOAD_USER_DETAILS", payload: JSON.parse(saved) });
-                } catch (e) { console.error("Failed to parse saved user details", e); }
+                } catch (e) {
+                    console.error("Failed to parse saved user details", e);
+                }
             }
             loadTimer = window.setTimeout(() => setIsLoaded(true), 0);
         }
@@ -48,50 +50,54 @@ export function CartProvider({ children }) {
         }
     }, [state.userDetails]);
 
-
     // --- Derived State (Memoized Calculation) ---
 
     const itemTotal = useMemo(() => Pricing.calculateItemTotal(state.cartItems), [state.cartItems]);
-    const totalItems = useMemo(() => Pricing.calculateTotalItems(state.cartItems), [state.cartItems]);
+    const totalItems = useMemo(
+        () => Pricing.calculateTotalItems(state.cartItems),
+        [state.cartItems]
+    );
 
-    const currentRestaurant = useMemo(() =>
-        Pricing.getCurrentRestaurant(state.cartItems, restaurants),
+    const currentRestaurant = useMemo(
+        () => Pricing.getCurrentRestaurant(state.cartItems, restaurants),
         [state.cartItems, restaurants]
     );
 
-    const deliveryMetrics = useMemo(() =>
-        Pricing.calculateDeliveryCharge(
-            state.cartItems,
-            orderSettings,
-            currentRestaurant,
-            state.userDetails
-        ),
+    const deliveryMetrics = useMemo(
+        () =>
+            Pricing.calculateDeliveryCharge(
+                state.cartItems,
+                orderSettings,
+                currentRestaurant,
+                state.userDetails
+            ),
         [state.cartItems, orderSettings, currentRestaurant, state.userDetails]
     );
 
-    const discount = useMemo(() =>
-        Pricing.calculateDiscount(state.activeCoupon, state.cartItems, itemTotal),
+    const discount = useMemo(
+        () => Pricing.calculateDiscount(state.activeCoupon, state.cartItems, itemTotal),
         [state.activeCoupon, state.cartItems, itemTotal]
     );
 
-    const minOrderShortfalls = useMemo(() =>
-        Pricing.calculateMinOrderShortfalls(state.cartItems, restaurants),
+    const minOrderShortfalls = useMemo(
+        () => Pricing.calculateMinOrderShortfalls(state.cartItems, restaurants),
         [state.cartItems, restaurants]
     );
 
     const finalTotal = Math.max(0, itemTotal + deliveryMetrics.deliveryCharge - discount);
 
-
     // --- Actions ---
 
-    const addToCart = (item, quantityDelta = 1) => dispatch({ type: "ADD_ITEM", payload: { item, quantityDelta } });
+    const addToCart = (item, quantityDelta = 1) =>
+        dispatch({ type: "ADD_ITEM", payload: { item, quantityDelta } });
     const removeFromCart = (id) => dispatch({ type: "REMOVE_ITEM", payload: id });
-    const updateQuantity = (id, delta) => dispatch({ type: "UPDATE_QUANTITY", payload: { id, delta } });
+    const updateQuantity = (id, delta) =>
+        dispatch({ type: "UPDATE_QUANTITY", payload: { id, delta } });
     const clearCart = () => dispatch({ type: "CLEAR_CART" });
     const setIsCartOpen = (isOpen) => dispatch({ type: "SET_CART_OPEN", payload: isOpen });
     const setUserDetails = (details) => {
         // Handle both functional updates and direct values to match useState API
-        const newDetails = typeof details === 'function' ? details(state.userDetails) : details;
+        const newDetails = typeof details === "function" ? details(state.userDetails) : details;
         dispatch({ type: "UPDATE_USER_DETAILS", payload: newDetails });
     };
 
@@ -99,26 +105,28 @@ export function CartProvider({ children }) {
         const uppercaseCode = code.trim().toUpperCase();
         try {
             const { data: coupon, error } = await supabase.functions.invoke("manage-coupons", {
-                body: { action: "FETCH_BY_CODE", payload: { code: uppercaseCode } }
+                body: { action: "FETCH_BY_CODE", payload: { code: uppercaseCode } },
             });
 
             if (error || !coupon) return { success: false, message: "Invalid Coupon Code" };
 
-            const validation = Pricing.validateCoupon(coupon, itemTotal, state.cartItems);
+            const validation = Pricing.validateCoupon(coupon, itemTotal);
 
             if (!validation.success) return { success: false, message: validation.message };
 
             // Update local available coupons list if needed
-            setAvailableCoupons(prev => {
-                const exists = prev.find(c => c.code === validation.mappedCoupon.code);
+            setAvailableCoupons((prev) => {
+                const exists = prev.find((c) => c.code === validation.mappedCoupon.code);
                 return exists
-                    ? prev.map(c => c.code === validation.mappedCoupon.code ? validation.mappedCoupon : c)
+                    ? prev.map((c) =>
+                          c.code === validation.mappedCoupon.code ? validation.mappedCoupon : c
+                      )
                     : [...prev, validation.mappedCoupon];
             });
 
             dispatch({
                 type: "APPLY_COUPON",
-                payload: { code: validation.mappedCoupon.code, coupon: validation.mappedCoupon }
+                payload: { code: validation.mappedCoupon.code, coupon: validation.mappedCoupon },
             });
 
             return { success: true, message: "Coupon Applied!" };
@@ -130,7 +138,6 @@ export function CartProvider({ children }) {
 
     const removeCoupon = () => dispatch({ type: "REMOVE_COUPON" });
     const getCampusSlots = (campusId) => Pricing.getCampusSlots(orderSettings, campusId);
-
 
     return (
         <CartContext.Provider

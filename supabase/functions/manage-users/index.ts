@@ -29,7 +29,7 @@ async function verifyIsAdmin(token: string): Promise<boolean> {
             audience: FIREBASE_PROJECT_ID,
         });
         return payload.admin === true;
-    } catch () {
+    } catch {
         return false;
     }
 }
@@ -107,7 +107,7 @@ async function getOrCreateUser(accessToken: string, email: string, password?: st
         if (lookupData.users && lookupData.users.length > 0) {
             return lookupData.users[0];
         }
-    } catch (e) {
+    } catch {
         throw new Error("Lookup API returned non-JSON");
     }
 
@@ -126,7 +126,7 @@ async function getOrCreateUser(accessToken: string, email: string, password?: st
     let createData;
     try {
         createData = JSON.parse(createResText);
-    } catch (e) {
+    } catch {
         throw new Error("Create API returned non-JSON");
     }
     if (createData.error) throw new Error(createData.error.message || "Failed to create user");
@@ -150,7 +150,7 @@ async function setClaims(accessToken: string, uid: string, claims: any) {
     let data;
     try {
         data = JSON.parse(updateResText);
-    } catch (e) {
+    } catch {
         throw new Error("Update API returned non-JSON");
     }
     if (data.error) throw new Error(data.error.message || "Failed to set claims");
@@ -171,7 +171,7 @@ async function listUsers(accessToken: string) {
     let data;
     try {
         data = JSON.parse(listResText);
-    } catch (e) {
+    } catch {
         throw new Error("List API returned non-JSON");
     }
 
@@ -194,7 +194,7 @@ async function deleteUser(accessToken: string, uid: string) {
     let data;
     try {
         data = JSON.parse(deleteResText);
-    } catch (e) {
+    } catch {
         throw new Error("Delete API returned non-JSON");
     }
     if (data.error) throw new Error(data.error.message || "Failed to delete user");

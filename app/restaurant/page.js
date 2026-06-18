@@ -15,7 +15,9 @@ import Fuse from "fuse.js";
 
 // Simple seeded shuffle to keep order stable for the day
 const seededShuffle = (array, seed) => {
-    let m = array.length, t, i;
+    let m = array.length,
+        t,
+        i;
     const random = (s) => {
         const x = Math.sin(s++) * 10000;
         return x - Math.floor(x);
@@ -50,20 +52,23 @@ function RestaurantContent() {
     // Scroll to highlighted item
     useEffect(() => {
         if (highlight && !loading && restaurant) {
-            const idString = `menu-item-${highlight.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`;
+            const idString = `menu-item-${highlight.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}`;
             // Small delay to ensure rendering
             setTimeout(() => {
                 const element = document.getElementById(idString);
                 if (element) {
-                    element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    element.classList.add('ring-2', 'ring-orange-500', 'bg-white/10');
-                    setTimeout(() => element.classList.remove('ring-2', 'ring-orange-500', 'bg-white/10'), 2500);
+                    element.scrollIntoView({ behavior: "smooth", block: "center" });
+                    element.classList.add("ring-2", "ring-orange-500", "bg-white/10");
+                    setTimeout(
+                        () => element.classList.remove("ring-2", "ring-orange-500", "bg-white/10"),
+                        2500
+                    );
                 }
             }, 500);
         }
     }, [highlight, loading, restaurant]);
 
-    useEffect(() {
+    useEffect(() => {
         if (!id) return;
         const fetchRestaurant = async () => {
             try {
@@ -86,14 +91,15 @@ function RestaurantContent() {
         if (!restaurant || !restaurant.menu) return {};
 
         const seedString = new Date().toDateString();
-        const seed = seedString.split('').reduce((a, b) => a + b.charCodeAt(0), 0);
+        const seed = seedString.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
 
-        let items = restaurant.menu.filter(item => {
-            const matchesFilter = filter === "all"
-                ? true
-                : filter === "veg"
-                    ? item.isVeg === true
-                    : item.isVeg === false;
+        let items = restaurant.menu.filter((item) => {
+            const matchesFilter =
+                filter === "all"
+                    ? true
+                    : filter === "veg"
+                      ? item.isVeg === true
+                      : item.isVeg === false;
             return matchesFilter;
         });
 
@@ -101,14 +107,14 @@ function RestaurantContent() {
         if (searchQuery) {
             const query = searchQuery.toLowerCase().trim();
             const fuse = new Fuse(items, {
-                keys: ['name'],
+                keys: ["name"],
                 threshold: 0.3,
-                includeScore: true
+                includeScore: true,
             });
             const results = fuse.search(searchQuery);
 
             // Boost scores for exact matches
-            const scoredResults = results.map(result => {
+            const scoredResults = results.map((result) => {
                 const itemName = result.item.name.toLowerCase();
                 let adjustedScore = result.score;
                 if (itemName === query) adjustedScore -= 0.5;
@@ -118,18 +124,20 @@ function RestaurantContent() {
             });
 
             // Include substring matches that Fuse might have missed
-            const substringMatches = items.filter(item => {
+            const substringMatches = items.filter((item) => {
                 const itemName = item.name.toLowerCase();
-                return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
+                return (
+                    itemName.includes(query) && !scoredResults.find((r) => r.item.id === item.id)
+                );
             });
 
             const allMatches = [
                 ...scoredResults,
-                ...substringMatches.map(item => ({ item, score: 0 }))
+                ...substringMatches.map((item) => ({ item, score: 0 })),
             ];
 
             allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
-            items = allMatches.map(m => m.item);
+            items = allMatches.map((m) => m.item);
         }
 
         // 1. Shuffle items if default sorting
@@ -156,59 +164,69 @@ function RestaurantContent() {
         const shuffledCategories = seededShuffle(categories, seed + 2); // Different seed for categories
 
         const finalMenu = {};
-        shuffledCategories.forEach(cat => {
+        shuffledCategories.forEach((cat) => {
             finalMenu[cat] = grouped[cat];
         });
 
         return finalMenu;
     }, [restaurant, searchQuery, filter, sortOrder]);
 
-
     const toggleSection = (category) => {
-        setCollapsedSections(prev => ({
+        setCollapsedSections((prev) => ({
             ...prev,
-            [category]: !prev[category]
+            [category]: !prev[category],
         }));
     };
 
-    if (loading) return (
-        <div className="min-h-screen bg-black text-white pb-32">
-            <Navbar />
-            <div className="relative h-[300px] md:h-[400px] w-full">
-                <Skeleton className="w-full h-full rounded-none" />
-            </div>
-            <div className="max-w-4xl mx-auto px-4 py-8">
-                <div className="space-y-4 mb-12">
-                    <Skeleton className="h-12 w-3/4 rounded-2xl" />
-                    <Skeleton className="h-6 w-1/2 rounded-xl" />
+    if (loading)
+        return (
+            <div className="min-h-screen bg-black text-white pb-32">
+                <Navbar />
+                <div className="relative h-[300px] md:h-[400px] w-full">
+                    <Skeleton className="w-full h-full rounded-none" />
                 </div>
-                <div className="space-y-8">
-                    {[...Array(3)].map((_, i) => (
-                        <div key={i} className="space-y-6">
-                            <Skeleton className="h-8 w-1/4 rounded-xl" />
-                            <div className="grid gap-6">
-                                {[...Array(2)].map((_, j) => <MenuSkeleton key={j} />)}
+                <div className="max-w-4xl mx-auto px-4 py-8">
+                    <div className="space-y-4 mb-12">
+                        <Skeleton className="h-12 w-3/4 rounded-2xl" />
+                        <Skeleton className="h-6 w-1/2 rounded-xl" />
+                    </div>
+                    <div className="space-y-8">
+                        {[...Array(3)].map((_, i) => (
+                            <div key={i} className="space-y-6">
+                                <Skeleton className="h-8 w-1/4 rounded-xl" />
+                                <div className="grid gap-6">
+                                    {[...Array(2)].map((_, j) => (
+                                        <MenuSkeleton key={j} />
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
-        </div>
-    );
+        );
 
-    if (!restaurant) return (
-        <div className="min-h-screen flex items-center justify-center bg-black text-white">
-            <div className="text-center">
-                <h2 className="text-2xl font-bold mb-4">Restaurant not found</h2>
-                <Link href="/delivery" className="text-orange-500 hover:underline">Go back to Delivery</Link>
+    if (!restaurant)
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-black text-white">
+                <div className="text-center">
+                    <h2 className="text-2xl font-bold mb-4">Restaurant not found</h2>
+                    <Link href="/delivery" className="text-orange-500 hover:underline">
+                        Go back to Delivery
+                    </Link>
+                </div>
             </div>
-        </div>
-    );
+        );
 
     return (
         <main className="min-h-screen bg-black text-white pb-32 relative overflow-x-hidden selection:bg-orange-500 selection:text-white">
             {/* Noise Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+            <div
+                className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                }}
+            ></div>
 
             {/* Ambient Glow */}
             <div className="fixed top-0 right-0 w-[500px] h-[500px] bg-orange-900/10 rounded-full blur-[120px] pointer-events-none" />
@@ -228,20 +246,27 @@ function RestaurantContent() {
                         alt={restaurant.name}
                         fill
                         priority
-                        className={`object-cover ${restaurant.isVisible === false ? 'grayscale-[0.8] opacity-60' : ''}`}
+                        className={`object-cover ${restaurant.isVisible === false ? "grayscale-[0.8] opacity-60" : ""}`}
                     />
                 </motion.div>
                 {restaurant.isVisible === false && (
                     <div className="absolute inset-0 z-20 flex items-center justify-center p-4">
                         <div className="bg-red-600/90 backdrop-blur-md text-white px-8 py-4 rounded-3xl shadow-2xl border border-white/20 text-center scale-110">
-                            <h2 className="text-2xl font-black uppercase tracking-widest mb-1">Temporarily Closed</h2>
-                            <p className="text-sm font-medium opacity-90">This restaurant is not accepting orders right now</p>
+                            <h2 className="text-2xl font-black uppercase tracking-widest mb-1">
+                                Temporarily Closed
+                            </h2>
+                            <p className="text-sm font-medium opacity-90">
+                                This restaurant is not accepting orders right now
+                            </p>
                         </div>
                     </div>
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent flex items-end p-4 md:p-8">
                     <div className="w-full max-w-7xl mx-auto z-10">
-                        <Link href="/delivery" className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors text-sm font-bold backdrop-blur-md bg-white/10 px-4 py-2 rounded-full border border-white/10 hover:bg-white/20">
+                        <Link
+                            href="/delivery"
+                            className="inline-flex items-center gap-2 text-white/80 hover:text-white mb-6 transition-colors text-sm font-bold backdrop-blur-md bg-white/10 px-4 py-2 rounded-full border border-white/10 hover:bg-white/20"
+                        >
                             <ArrowLeft size={16} /> Back to Restaurants
                         </Link>
                         <div className="flex flex-col md:flex-row justify-between items-end gap-4">
@@ -259,9 +284,12 @@ function RestaurantContent() {
                                         <Utensils size={18} className="text-orange-500" />
                                         <span>{restaurant.cuisine || "Cuisine"}</span>
                                     </div>
-                                    <span className="flex items-center gap-1">{restaurant.deliveryTime || "30-60 mins"}</span>
                                     <span className="flex items-center gap-1">
-                                        <div className="w-1 h-1 bg-gray-300 rounded-full"></div> {restaurant.priceForTwo || "Standard Menu"}
+                                        {restaurant.deliveryTime || "30-60 mins"}
+                                    </span>
+                                    <span className="flex items-center gap-1">
+                                        <div className="w-1 h-1 bg-gray-300 rounded-full"></div>{" "}
+                                        {restaurant.priceForTwo || "Standard Menu"}
                                     </span>
                                 </div>
                             </div>
@@ -280,11 +308,13 @@ function RestaurantContent() {
             </div>
 
             <div className="max-w-4xl mx-auto px-4 py-8 relative z-10">
-
                 {/* Filters & Search Toolbar */}
                 <div className="sticky top-20 z-20 bg-black/80 backdrop-blur-xl py-4 mb-8 flex flex-col md:flex-row gap-4 items-center justify-between border-b border-white/10">
                     <div className="relative w-full md:w-auto flex-1 max-w-md group">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-orange-500 transition-colors" size={18} />
+                        <Search
+                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-orange-500 transition-colors"
+                            size={18}
+                        />
                         <input
                             type="text"
                             placeholder="Search for dishes..."
@@ -298,18 +328,23 @@ function RestaurantContent() {
                         {/* Category Dropdown */}
                         <div className="relative">
                             <CustomSelect
-                                options={Object.keys(processedMenu).map(cat => ({ label: cat, value: cat }))}
+                                options={Object.keys(processedMenu).map((cat) => ({
+                                    label: cat,
+                                    value: cat,
+                                }))}
                                 value=""
                                 onChange={(category) => {
                                     if (category) {
                                         const element = document.getElementById(category);
                                         if (element) {
                                             const offset = 180; // Adjust for sticky headers
-                                            const elementPosition = element.getBoundingClientRect().top + window.scrollY;
+                                            const elementPosition =
+                                                element.getBoundingClientRect().top +
+                                                window.scrollY;
                                             const offsetPosition = elementPosition - offset;
                                             window.scrollTo({
                                                 top: offsetPosition,
-                                                behavior: "smooth"
+                                                behavior: "smooth",
                                             });
                                         }
                                     }
@@ -321,15 +356,23 @@ function RestaurantContent() {
                         <div className="w-px h-6 bg-white/10 mx-1 flex-shrink-0"></div>
 
                         <button
-                            onClick={() => setSortOrder(prev => prev === "default" ? "asc" : (prev === "asc" ? "desc" : "default"))}
+                            onClick={() =>
+                                setSortOrder((prev) =>
+                                    prev === "default" ? "asc" : prev === "asc" ? "desc" : "default"
+                                )
+                            }
                             className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border flex items-center gap-2 whitespace-nowrap ${sortOrder !== "default" ? "bg-white text-black border-white shadow-lg" : "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white"}`}
                         >
                             <ArrowUpDown size={14} />
-                            {sortOrder === "default" ? "Sort" : (sortOrder === "asc" ? "Low-High" : "High-Low")}
+                            {sortOrder === "default"
+                                ? "Sort"
+                                : sortOrder === "asc"
+                                  ? "Low-High"
+                                  : "High-Low"}
                         </button>
                         <div className="w-px h-6 bg-white/10 mx-1 flex-shrink-0"></div>
 
-                        {['all', 'veg', 'non-veg'].map((f) => (
+                        {["all", "veg", "non-veg"].map((f) => (
                             <button
                                 key={f}
                                 onClick={() => setFilter(f)}
@@ -344,21 +387,34 @@ function RestaurantContent() {
                 {/* Categorized Menu */}
                 <div className="space-y-12">
                     {Object.entries(processedMenu).map(([category, items]) => {
-                        const isCategoryOutOfStock = (restaurant.outOfStockCategories || []).includes(category);
+                        const isCategoryOutOfStock = (
+                            restaurant.outOfStockCategories || []
+                        ).includes(category);
                         return (
                             <div key={category} id={category} className="scroll-mt-40">
                                 <button
                                     onClick={() => toggleSection(category)}
                                     className="w-full text-2xl font-bold text-white mb-6 flex items-center justify-between gap-3 hover:text-orange-400 transition-colors group"
                                 >
-                                    <h2 id={category} className={`text-2xl font-black mb-6 flex items-center gap-3 sticky top-0 py-4 bg-black/80 backdrop-blur-md z-10 ${isCategoryOutOfStock ? 'text-gray-500' : 'text-white'}`}>
-                                        <div className={`w-1.5 h-8 rounded-full ${isCategoryOutOfStock ? 'bg-red-600' : 'bg-orange-600'}`}></div>
-                                        <span className={isCategoryOutOfStock ? 'line-through' : ''}>{category}</span>
+                                    <h2
+                                        id={category}
+                                        className={`text-2xl font-black mb-6 flex items-center gap-3 sticky top-0 py-4 bg-black/80 backdrop-blur-md z-10 ${isCategoryOutOfStock ? "text-gray-500" : "text-white"}`}
+                                    >
+                                        <div
+                                            className={`w-1.5 h-8 rounded-full ${isCategoryOutOfStock ? "bg-red-600" : "bg-orange-600"}`}
+                                        ></div>
+                                        <span
+                                            className={isCategoryOutOfStock ? "line-through" : ""}
+                                        >
+                                            {category}
+                                        </span>
                                         {isCategoryOutOfStock && (
-                                            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">Section Unavailable</span>
+                                            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">
+                                                Section Unavailable
+                                            </span>
                                         )}
                                         <span className="text-sm font-bold bg-white/10 text-gray-400 px-3 py-1 rounded-full border border-white/10 ml-auto md:ml-0">
-                                            {items.length} {items.length === 1 ? 'item' : 'items'}
+                                            {items.length} {items.length === 1 ? "item" : "items"}
                                         </span>
                                     </h2>
                                     <motion.div
@@ -380,19 +436,30 @@ function RestaurantContent() {
                                         >
                                             <div className="grid gap-6">
                                                 {items.map((item, idx) => {
-                                                    const cartItem = cartItems.find(c => c.id === item.id);
-                                                    const quantity = cartItem ? cartItem.quantity : 0;
-                                                    const categoryOutOfStock = (restaurant.outOfStockCategories || []).includes(item.category);
-                                                    const isOutOfStock = item.isVisible === false || categoryOutOfStock;
+                                                    const cartItem = cartItems.find(
+                                                        (c) => c.id === item.id
+                                                    );
+                                                    const quantity = cartItem
+                                                        ? cartItem.quantity
+                                                        : 0;
+                                                    const categoryOutOfStock = (
+                                                        restaurant.outOfStockCategories || []
+                                                    ).includes(item.category);
+                                                    const isOutOfStock =
+                                                        item.isVisible === false ||
+                                                        categoryOutOfStock;
                                                     return (
                                                         <motion.div
                                                             key={item.id}
-                                                            id={`menu-item-${item.name.replace(/[^a-zA-Z0-9]/g, '-').toLowerCase()}`}
+                                                            id={`menu-item-${item.name.replace(/[^a-zA-Z0-9]/g, "-").toLowerCase()}`}
                                                             initial={{ opacity: 0, y: 20 }}
                                                             whileInView={{ opacity: 1, y: 0 }}
-                                                            viewport={{ once: true, margin: "-50px" }}
+                                                            viewport={{
+                                                                once: true,
+                                                                margin: "-50px",
+                                                            }}
                                                             transition={{ delay: idx * 0.05 }}
-                                                            className={`bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group transition-all ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 hover:border-white/10 hover:shadow-2xl'}`}
+                                                            className={`bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group transition-all ${isOutOfStock ? "opacity-50" : "hover:bg-white/10 hover:border-white/10 hover:shadow-2xl"}`}
                                                         >
                                                             <div className="flex-1">
                                                                 <div className="flex items-start justify-between mb-2">
@@ -408,19 +475,31 @@ function RestaurantContent() {
                                                                             </div>
                                                                         )}
                                                                         {item.isBestSeller && (
-                                                                            <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-orange-500/20">Bestseller</span>
+                                                                            <span className="text-[10px] font-bold text-orange-400 bg-orange-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-orange-500/20">
+                                                                                Bestseller
+                                                                            </span>
                                                                         )}
                                                                         {item.extraInfo && (
-                                                                            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/20">{item.extraInfo}</span>
+                                                                            <span className="text-[10px] font-bold text-blue-400 bg-blue-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-blue-500/20">
+                                                                                {item.extraInfo}
+                                                                            </span>
                                                                         )}
                                                                         {isOutOfStock && (
-                                                                            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">Out of Stock</span>
+                                                                            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider border border-red-500/20">
+                                                                                Out of Stock
+                                                                            </span>
                                                                         )}
                                                                     </div>
                                                                 </div>
-                                                                <h4 className="font-bold text-white text-base md:text-lg mb-1 group-hover:text-orange-400 transition-colors">{item.name}</h4>
-                                                                <p className="font-bold text-gray-300">₹{item.price}</p>
-                                                                <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">{item.description}</p>
+                                                                <h4 className="font-bold text-white text-base md:text-lg mb-1 group-hover:text-orange-400 transition-colors">
+                                                                    {item.name}
+                                                                </h4>
+                                                                <p className="font-bold text-gray-300">
+                                                                    ₹{item.price}
+                                                                </p>
+                                                                <p className="text-gray-500 text-sm mt-3 line-clamp-2 leading-relaxed font-medium">
+                                                                    {item.description}
+                                                                </p>
                                                             </div>
 
                                                             <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 cursor-default">
@@ -434,11 +513,15 @@ function RestaurantContent() {
                                                                     />
                                                                 ) : (
                                                                     <div className="w-full h-full bg-white/5 rounded-2xl border border-white/5 flex items-center justify-center">
-                                                                        <Utensils className="text-white/20" size={32} />
+                                                                        <Utensils
+                                                                            className="text-white/20"
+                                                                            size={32}
+                                                                        />
                                                                     </div>
                                                                 )}
                                                                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
-                                                                    {restaurant.isVisible === false ? (
+                                                                    {restaurant.isVisible ===
+                                                                    false ? (
                                                                         <div className="w-full bg-gray-800 text-gray-500 border border-gray-700 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
                                                                             Offline
                                                                         </div>
@@ -448,17 +531,61 @@ function RestaurantContent() {
                                                                         </div>
                                                                     ) : quantity === 0 ? (
                                                                         <motion.button
-                                                                            whileTap={{ scale: 0.95 }}
-                                                                            onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name })}
+                                                                            whileTap={{
+                                                                                scale: 0.95,
+                                                                            }}
+                                                                            onClick={() =>
+                                                                                addToCart({
+                                                                                    ...item,
+                                                                                    restaurantId:
+                                                                                        restaurant.id,
+                                                                                    restaurantName:
+                                                                                        restaurant.name,
+                                                                                })
+                                                                            }
                                                                             className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
                                                                         >
                                                                             ADD
                                                                         </motion.button>
                                                                     ) : (
                                                                         <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
-                                                                            <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, -1)} className="hover:text-orange-500 transition-colors w-6">-</button>
-                                                                            <span className="text-sm">{quantity}</span>
-                                                                            <button onClick={() => addToCart({ ...item, restaurantId: restaurant.id, restaurantName: restaurant.name }, 1)} className="hover:text-orange-500 transition-colors w-6">+</button>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    addToCart(
+                                                                                        {
+                                                                                            ...item,
+                                                                                            restaurantId:
+                                                                                                restaurant.id,
+                                                                                            restaurantName:
+                                                                                                restaurant.name,
+                                                                                        },
+                                                                                        -1
+                                                                                    )
+                                                                                }
+                                                                                className="hover:text-orange-500 transition-colors w-6"
+                                                                            >
+                                                                                -
+                                                                            </button>
+                                                                            <span className="text-sm">
+                                                                                {quantity}
+                                                                            </span>
+                                                                            <button
+                                                                                onClick={() =>
+                                                                                    addToCart(
+                                                                                        {
+                                                                                            ...item,
+                                                                                            restaurantId:
+                                                                                                restaurant.id,
+                                                                                            restaurantName:
+                                                                                                restaurant.name,
+                                                                                        },
+                                                                                        1
+                                                                                    )
+                                                                                }
+                                                                                className="hover:text-orange-500 transition-colors w-6"
+                                                                            >
+                                                                                +
+                                                                            </button>
                                                                         </div>
                                                                     )}
                                                                 </div>
@@ -479,12 +606,19 @@ function RestaurantContent() {
                         <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/5 border-dashed">
                             <Utensils className="mx-auto text-gray-600 mb-4" size={48} />
                             <p className="text-gray-400 text-lg">No items match your filters.</p>
-                            <button onClick={() => { setFilter("all"); setSearchQuery(""); }} className="mt-4 text-orange-500 font-bold hover:text-white transition-colors">Clear Filters</button>
+                            <button
+                                onClick={() => {
+                                    setFilter("all");
+                                    setSearchQuery("");
+                                }}
+                                className="mt-4 text-orange-500 font-bold hover:text-white transition-colors"
+                            >
+                                Clear Filters
+                            </button>
                         </div>
                     )}
                 </div>
             </div>
-
 
             {/* Sticky Cart Footer */}
             <AnimatePresence>
@@ -500,8 +634,13 @@ function RestaurantContent() {
                             onClick={() => setIsCartOpen(true)}
                         >
                             <div className="flex flex-col">
-                                <span className="font-black text-xs uppercase tracking-widest opacity-80">{totalItems} ITEMS ADDED</span>
-                                <span className="font-bold text-xl">₹{itemTotal} <span className="font-normal text-sm opacity-80">+ taxes</span></span>
+                                <span className="font-black text-xs uppercase tracking-widest opacity-80">
+                                    {totalItems} ITEMS ADDED
+                                </span>
+                                <span className="font-bold text-xl">
+                                    ₹{itemTotal}{" "}
+                                    <span className="font-normal text-sm opacity-80">+ taxes</span>
+                                </span>
                             </div>
                             <div className="flex items-center gap-2 font-bold text-lg bg-black/20 px-4 py-2 rounded-xl backdrop-blur-md">
                                 View Cart <ShoppingBag size={20} fill="currentColor" />
@@ -510,14 +649,19 @@ function RestaurantContent() {
                     </motion.div>
                 )}
             </AnimatePresence>
-
         </main>
     );
 }
 
 export default function RestaurantPage() {
     return (
-        <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-black"><div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div></div>}>
+        <Suspense
+            fallback={
+                <div className="min-h-screen flex items-center justify-center bg-black">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-500"></div>
+                </div>
+            }
+        >
             <RestaurantContent />
         </Suspense>
     );

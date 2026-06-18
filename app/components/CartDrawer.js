@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, ShoppingBag, Send, Trash2, MapPin, User, Phone, Check, Tag, Loader2 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
-import { useEffect, useState } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
@@ -60,30 +60,25 @@ export default function CartDrawer() {
     const [checkoutError, setCheckoutError] = useState(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
 
-    const [isStoreOpen, setIsStoreOpen] = useState(true);
+    const resetCheckoutState = () => {
+        setIsCheckingOut(false);
+        setCouponMsg(null);
+        setInputCode("");
+        setCheckoutError(null);
+    };
 
-    // Reset checkout state when closing cart
-    useEffect(() => {
-        if (!isCartOpen) {
-            setIsCheckingOut(false);
-            setCouponMsg(null);
-            setInputCode("");
-            setCheckoutError(null);
-        } else {
-            const { timeInMinutes } = getISTTime();
-            const campusConfig = orderSettings?.deliveryCampusConfig || [];
-
-            // Use the selected campus's slots if available, else check all campuses
-            const selectedCampus = campusConfig.find(
-                c => c.name === userDetails?.campus || c.id === userDetails?.campus
-            );
-            const slotsToCheck = selectedCampus
-                ? (selectedCampus.slots || [])
-                : campusConfig.flatMap(c => c.slots || []);
-
-            setIsStoreOpen(isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes));
-        }
-    }, [isCartOpen, orderSettings, userDetails?.campus]);
+    const isStoreOpen = useMemo(() => {
+        if (!isCartOpen) return true;
+        const { timeInMinutes } = getISTTime();
+        const campusConfig = orderSettings?.deliveryCampusConfig || [];
+        const selectedCampus = campusConfig.find(
+            c => c.name === userDetails?.campus || c.id === userDetails?.campus
+        );
+        const slotsToCheck = selectedCampus
+            ? (selectedCampus.slots || [])
+            : campusConfig.flatMap(c => c.slots || []);
+        return isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes);
+    }, [isCartOpen, orderSettings, userDetails.campus]);
 
     const handleApplyCoupon = async () => {
         if (!inputCode.trim()) return;
@@ -175,6 +170,7 @@ export default function CartDrawer() {
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.open(whatsappUrl, "_blank");
             setIsCartOpen(false);
+            resetCheckoutState();
 
             // --- FIREBASE ORDER NOTIFICATION (fire-and-forget) ---
             try {
@@ -234,7 +230,7 @@ export default function CartDrawer() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => setIsCartOpen(false)}
+                            onClick={() => { setIsCartOpen(false); resetCheckoutState(); }}
                             className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60]"
                         />
 
@@ -258,7 +254,7 @@ export default function CartDrawer() {
                                     <p className="text-xs text-gray-400 font-medium tracking-wide uppercase mt-0.5">Pumato Delivery</p>
                                 </div>
                                 <button
-                                    onClick={() => setIsCartOpen(false)}
+                                    onClick={() => { setIsCartOpen(false); resetCheckoutState(); }}
                                     className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
                                 >
                                     <X size={24} />
@@ -277,7 +273,7 @@ export default function CartDrawer() {
                                             <p className="text-gray-500 max-w-xs mx-auto">Looks like you haven&apos;t added anything to your cart yet.</p>
                                         </div>
                                         <button
-                                            onClick={() => setIsCartOpen(false)}
+                                            onClick={() => { setIsCartOpen(false); resetCheckoutState(); }}
                                             className="bg-white text-black px-8 py-3 rounded-xl font-bold hover:bg-gray-200 hover:scale-105 transition-all shadow-lg"
                                         >
                                             Start Ordering

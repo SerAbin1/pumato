@@ -16,32 +16,17 @@ import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
 import { doc, getDoc } from "firebase/firestore";
-import { getISTTime, getISTObject, checkManualOverride } from "@/lib/dateUtils";
+import { getISTTime, getISTObject } from "@/lib/dateUtils";
+import { isServiceLive } from "@/lib/serviceStatus";
 
 // --- COMPONENTS ---
 
 // --- HELPER FUNCTION ---
 const checkIsLive = (settings) => {
-    // 1. Check Manual Override
-    const overrideStatus = checkManualOverride(settings);
-    if (overrideStatus !== null) {
-        return overrideStatus === "open";
-    }
-
-    // 2. Check per-campus slots from deliveryCampusConfig
-    const campusConfig = settings?.deliveryCampusConfig;
-    if (!campusConfig || campusConfig.length === 0) return false;
-
-    // Collect all slots across all campuses
-    const allSlots = campusConfig.flatMap((campus) => campus.slots || []);
-    if (allSlots.length === 0) return false;
-
     const { timeInMinutes } = getISTTime();
-    return allSlots.some((slot) => {
-        const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
-        const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
-        return timeInMinutes >= startH * 60 + startM && timeInMinutes <= endH * 60 + endM;
-    });
+    const campusConfig = settings?.deliveryCampusConfig || [];
+    const allSlots = campusConfig.flatMap((campus) => campus.slots || []);
+    return isServiceLive(settings?.manualOverride?.status, allSlots, timeInMinutes);
 };
 
 // 1. 3D Tilt Card Component

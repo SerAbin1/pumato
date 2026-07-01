@@ -2,6 +2,9 @@
     "firestore": {
         "rules": "firestore.rules"
     },
+    "storage": {
+        "rules": "storage.rules"
+    },
     "hosting": {
         "public": "out",
         "cleanUrls": true,
@@ -17,3 +20,4 @@
         "rewrites": []
     }
 }
+

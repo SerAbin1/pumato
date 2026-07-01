@@ -3,9 +3,35 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
-import { LogOut, ArrowLeft, Utensils, Truck, ShoppingCart, Clock, Settings, Tag, Sparkles, Loader2, Bell, Users, BarChart3} from "lucide-react";
+import {
+    LogOut,
+    ArrowLeft,
+    Utensils,
+    Truck,
+    ShoppingCart,
+    Clock,
+    Settings,
+    Tag,
+    Sparkles,
+    Loader2,
+    Bell,
+    Users,
+    BarChart3,
+    Store,
+} from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, getDoc, query, where, orderBy, onSnapshot, Timestamp } from "firebase/firestore";
+import {
+    collection,
+    getDocs,
+    doc,
+    setDoc,
+    getDoc,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    Timestamp,
+} from "firebase/firestore";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
@@ -24,6 +50,7 @@ import DeliverySettings from "./components/DeliverySettings";
 import GrocerySettings from "./components/GrocerySettings";
 import GlobalSettings from "./components/GlobalSettings";
 import StickyActionBar from "./components/StickyActionBar";
+import MarketplaceTab from "./components/MarketplaceTab";
 
 import { format12h } from "@/lib/formatters";
 
@@ -32,9 +59,9 @@ export default function AdminPage() {
     const { user, isAdmin, loading: authLoading, logout } = useAdminAuth();
 
     const [activeSection, setActiveSection] = useState("orders"); // orders, restaurants, coupons, laundry, delivery, grocery, settings, banners
-    const [orders, setOrders] = useState([]);          // placed (pending admin action)
-    const [inProgressOrders, setInProgressOrders] = useState([]);  // confirmed → ready_for_delivery + out_of_stock
-    const [pastOrders, setPastOrders] = useState([]);   // picked_up / delivered
+    const [orders, setOrders] = useState([]); // placed (pending admin action)
+    const [inProgressOrders, setInProgressOrders] = useState([]); // confirmed → ready_for_delivery + out_of_stock
+    const [pastOrders, setPastOrders] = useState([]); // picked_up / delivered
     const [loadingOrders, setLoadingOrders] = useState(true);
     const isInitialLoad = useRef(true);
     const audioRef = useRef(null);
@@ -43,7 +70,7 @@ export default function AdminPage() {
     const [banners, setBanners] = useState({
         banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
         banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
-        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
+        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false },
     });
     const [isSaving, setIsSaving] = useState(false);
 
@@ -63,15 +90,15 @@ export default function AdminPage() {
         extraItemThreshold: "3",
         extraItemCharge: "10",
         lightItems: [],
-        lightItemThreshold: "5"
+        lightItemThreshold: "5",
     });
     const [grocerySettings, setGrocerySettings] = useState({});
     const [laundrySettings, setLaundrySettings] = useState({ manualOverride: null });
 
-        // Redirect to login if not authenticated or not admin
-        if (!authLoading && (!user || !isAdmin)) {
-            router.push("/admin/login");
-        }
+    // Redirect to login if not authenticated or not admin
+    if (!authLoading && (!user || !isAdmin)) {
+        router.push("/admin/login");
+    }
 
     // Register FCM token for this device once the admin is confirmed
     useFcmToken(user && isAdmin ? user : null);
@@ -85,10 +112,13 @@ export default function AdminPage() {
         // Click-to-unlock browser policy handler
         const unlock = () => {
             if (audioRef.current) {
-                audioRef.current.play().then(() => {
-                    audioRef.current.pause();
-                    audioRef.current.currentTime = 0;
-                }).catch(() => { });
+                audioRef.current
+                    .play()
+                    .then(() => {
+                        audioRef.current.pause();
+                        audioRef.current.currentTime = 0;
+                    })
+                    .catch(() => {});
             }
             document.removeEventListener("click", unlock);
         };
@@ -99,7 +129,7 @@ export default function AdminPage() {
     const playNotificationSound = useCallback(() => {
         if (audioRef.current) {
             audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(e => console.log("Sound play failed:", e));
+            audioRef.current.play().catch((e) => console.log("Sound play failed:", e));
         }
     }, []);
 
@@ -117,27 +147,31 @@ export default function AdminPage() {
             orderBy("createdAt", "asc")
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-            const newOrders = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate()
-            }));
+        const unsubscribe = onSnapshot(
+            q,
+            (snapshot) => {
+                const newOrders = snapshot.docs.map((doc) => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate(),
+                }));
 
-            // Play sound for new orders (not on initial load)
-            if (isInitialLoad.current) {
-                isInitialLoad.current = false;
-            } else if (snapshot.docChanges().some(change => change.type === 'added')) {
-                playNotificationSound();
-                toast("New Order Received!", { icon: "🔔" });
+                // Play sound for new orders (not on initial load)
+                if (isInitialLoad.current) {
+                    isInitialLoad.current = false;
+                } else if (snapshot.docChanges().some((change) => change.type === "added")) {
+                    playNotificationSound();
+                    toast("New Order Received!", { icon: "🔔" });
+                }
+
+                setOrders(newOrders);
+                setLoadingOrders(false);
+            },
+            (error) => {
+                console.error("Orders listener error:", error);
+                setLoadingOrders(false);
             }
-
-            setOrders(newOrders);
-            setLoadingOrders(false);
-        }, (error) => {
-            console.error("Orders listener error:", error);
-            setLoadingOrders(false);
-        });
+        );
 
         return () => unsubscribe();
     }, [user, isAdmin, playNotificationSound]);
@@ -153,8 +187,14 @@ export default function AdminPage() {
             where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
             orderBy("createdAt", "asc")
         );
-        const unsub = onSnapshot(q, snap => {
-            setInProgressOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
+        const unsub = onSnapshot(q, (snap) => {
+            setInProgressOrders(
+                snap.docs.map((d) => ({
+                    id: d.id,
+                    ...d.data(),
+                    createdAt: d.data().createdAt?.toDate(),
+                }))
+            );
         });
         return () => unsub();
     }, [user, isAdmin]);
@@ -162,25 +202,33 @@ export default function AdminPage() {
     useEffect(() => {
         if (!user || !isAdmin) return;
 
-        const unsub = onSnapshot(collection(db, "laundry_orders"), (snap) => {
-            const ordersData = snap.docs.map((snapshotDoc) => ({
-                id: snapshotDoc.id,
-                ...snapshotDoc.data(),
-                createdAt: snapshotDoc.data().createdAt?.toDate?.() || null,
-            })).sort((a, b) => {
-                const dateCompare = (a.scheduledDate || "").localeCompare(b.scheduledDate || "");
-                if (dateCompare !== 0) return dateCompare;
-                const timeA = a.createdAt?.getTime?.() || 0;
-                const timeB = b.createdAt?.getTime?.() || 0;
-                return timeB - timeA;
-            });
+        const unsub = onSnapshot(
+            collection(db, "laundry_orders"),
+            (snap) => {
+                const ordersData = snap.docs
+                    .map((snapshotDoc) => ({
+                        id: snapshotDoc.id,
+                        ...snapshotDoc.data(),
+                        createdAt: snapshotDoc.data().createdAt?.toDate?.() || null,
+                    }))
+                    .sort((a, b) => {
+                        const dateCompare = (a.scheduledDate || "").localeCompare(
+                            b.scheduledDate || ""
+                        );
+                        if (dateCompare !== 0) return dateCompare;
+                        const timeA = a.createdAt?.getTime?.() || 0;
+                        const timeB = b.createdAt?.getTime?.() || 0;
+                        return timeB - timeA;
+                    });
 
-            setLaundryOrders(ordersData);
-            setLoadingLaundryOrders(false);
-        }, (error) => {
-            console.error("Laundry orders listener error:", error);
-            setLoadingLaundryOrders(false);
-        });
+                setLaundryOrders(ordersData);
+                setLoadingLaundryOrders(false);
+            },
+            (error) => {
+                console.error("Laundry orders listener error:", error);
+                setLoadingLaundryOrders(false);
+            }
+        );
 
         return () => unsub();
     }, [user, isAdmin]);
@@ -196,8 +244,14 @@ export default function AdminPage() {
             where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
             orderBy("createdAt", "desc")
         );
-        const unsub = onSnapshot(q, snap => {
-            setPastOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
+        const unsub = onSnapshot(q, (snap) => {
+            setPastOrders(
+                snap.docs.map((d) => ({
+                    id: d.id,
+                    ...d.data(),
+                    createdAt: d.data().createdAt?.toDate(),
+                }))
+            );
         });
         return () => unsub();
     }, [user, isAdmin]);
@@ -237,7 +291,7 @@ export default function AdminPage() {
 
     // Fetch Laundry Slots when date changes or section becomes active
     useEffect(() => {
-        if (activeSection === 'laundry') {
+        if (activeSection === "laundry") {
             // eslint-disable-next-line react-hooks/set-state-in-effect
             fetchLaundrySlots(selectedDay);
             fetchCampusConfig();
@@ -253,12 +307,12 @@ export default function AdminPage() {
                     const idToken = await user.getIdToken();
                     return supabase.functions.invoke("manage-coupons", {
                         body: { action: "FETCH_ALL" },
-                        headers: { "Authorization": `Bearer ${idToken}` }
+                        headers: { Authorization: `Bearer ${idToken}` },
                     });
-                })()
+                })(),
             ]);
 
-            const restaurantsData = resSnap.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+            const restaurantsData = resSnap.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
 
             const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
             if (settingsDoc.exists()) {
@@ -270,7 +324,7 @@ export default function AdminPage() {
             setRestaurants(updatedRestaurants);
 
             if (promoRes.error) throw promoRes.error;
-            const mappedCoupons = (promoRes.data || []).map(c => ({
+            const mappedCoupons = (promoRes.data || []).map((c) => ({
                 id: c.id,
                 code: c.code,
                 type: c.type,
@@ -282,7 +336,7 @@ export default function AdminPage() {
                 usageLimit: c.usage_limit,
                 usedCount: c.used_count,
                 restaurantId: c.restaurant_id,
-                itemId: c.item_id
+                itemId: c.item_id,
             }));
             setCoupons(mappedCoupons);
 
@@ -297,7 +351,6 @@ export default function AdminPage() {
             if (groceryDoc.exists()) {
                 setGrocerySettings(groceryDoc.data());
             }
-
         } catch (error) {
             console.error("Error fetching data:", error);
             alert("Failed to load data");
@@ -319,7 +372,7 @@ export default function AdminPage() {
             await setDoc(doc(db, "general_settings", "laundry"), {
                 ...laundrySettings, // Persist manualOverride
                 campuses: campusConfig,
-                pricing: laundryPricing
+                pricing: laundryPricing,
             });
             alert("Campus & Pricing settings saved!");
         } catch (error) {
@@ -346,7 +399,7 @@ export default function AdminPage() {
         try {
             await Promise.all([
                 setDoc(doc(db, "site_content", "order_settings"), orderSettings),
-                setDoc(doc(db, "site_content", "grocery_settings"), grocerySettings)
+                setDoc(doc(db, "site_content", "grocery_settings"), grocerySettings),
             ]);
             alert("Settings updated successfully!");
         } catch (error) {
@@ -381,13 +434,13 @@ export default function AdminPage() {
 
         const updatedSlots = [...laundrySlots, formattedSlot].sort((a, b) => {
             const getMinutes = (s) => {
-                const parts = s.split(' - ')[0].match(/(\d+):(\d+) (AM|PM)/);
+                const parts = s.split(" - ")[0].match(/(\d+):(\d+) (AM|PM)/);
                 if (!parts) return 0;
                 let h = parseInt(parts[1]);
                 const m = parseInt(parts[2]);
                 const amp = parts[3];
-                if (amp === 'PM' && h !== 12) h += 12;
-                if (amp === 'AM' && h === 12) h = 0;
+                if (amp === "PM" && h !== 12) h += 12;
+                if (amp === "AM" && h === 12) h = 0;
                 return h * 60 + m;
             };
             return getMinutes(a) - getMinutes(b);
@@ -401,7 +454,7 @@ export default function AdminPage() {
 
         try {
             await setDoc(doc(db, "laundry_slots", targetDoc), {
-                slots: updatedSlots
+                slots: updatedSlots,
             });
         } catch (error) {
             console.error("Error saving slot:", error);
@@ -432,7 +485,7 @@ export default function AdminPage() {
         try {
             const res = await fetch("https://api.cloudinary.com/v1_1/dykcjfxx5/image/upload", {
                 method: "POST",
-                body: data
+                body: data,
             });
             const result = await res.json();
             if (result.secure_url) {
@@ -445,7 +498,6 @@ export default function AdminPage() {
             alert("Upload failed");
         }
     };
-
 
     // Loading / Auth guards
     if (authLoading) {
@@ -466,7 +518,12 @@ export default function AdminPage() {
     return (
         <div className="min-h-screen bg-black text-white pb-40 overflow-x-hidden">
             {/* Noise Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.04] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+            <div
+                className="fixed inset-0 pointer-events-none opacity-[0.04] z-[0] mix-blend-overlay"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                }}
+            ></div>
 
             {/* Background Glows */}
             <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
@@ -474,12 +531,16 @@ export default function AdminPage() {
 
             <Navbar />
             <div className="max-w-7xl mx-auto px-4 py-8 pt-24 relative z-10">
-
                 {/* Header & Toggle */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
                     <div>
                         <div className="flex items-center gap-4 mb-2">
-                            <Link href="/" className="inline-flex items-center text-gray-400 hover:text-white text-sm font-medium transition-colors"><ArrowLeft size={16} className="mr-2" /> Back to Store</Link>
+                            <Link
+                                href="/"
+                                className="inline-flex items-center text-gray-400 hover:text-white text-sm font-medium transition-colors"
+                            >
+                                <ArrowLeft size={16} className="mr-2" /> Back to Store
+                            </Link>
                             <button
                                 onClick={logout}
                                 className="inline-flex items-center text-gray-400 hover:text-red-400 text-sm font-medium transition-colors gap-1"
@@ -487,14 +548,16 @@ export default function AdminPage() {
                                 <LogOut size={14} /> Logout
                             </button>
                         </div>
-                        <h1 className="text-4xl font-black text-white tracking-tight">Admin Dashboard</h1>
+                        <h1 className="text-4xl font-black text-white tracking-tight">
+                            Admin Dashboard
+                        </h1>
                     </div>
 
                     <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
                         <div className="flex bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-md min-w-max">
                             <button
                                 onClick={() => setActiveSection("orders")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none relative ${activeSection === "orders" ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none relative ${activeSection === "orders" ? "bg-orange-600 text-white shadow-lg shadow-orange-900/40" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Bell size={16} /> Live Orders
                                 {orders.length > 0 && (
@@ -505,51 +568,57 @@ export default function AdminPage() {
                             </button>
                             <button
                                 onClick={() => setActiveSection("restaurants")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "restaurants" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "restaurants" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Utensils size={16} /> Restaurants
                             </button>
                             <button
                                 onClick={() => setActiveSection("delivery")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "delivery" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "delivery" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Truck size={16} /> Delivery
                             </button>
                             <button
                                 onClick={() => setActiveSection("grocery")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "grocery" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "grocery" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <ShoppingCart size={16} /> Grocery
                             </button>
                             <button
                                 onClick={() => setActiveSection("laundry")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "laundry" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "laundry" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Clock size={16} /> Laundry
                             </button>
                             <button
                                 onClick={() => setActiveSection("settings")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "settings" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "settings" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Settings size={16} /> Global
                             </button>
                             <button
                                 onClick={() => setActiveSection("coupons")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "coupons" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "coupons" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Tag size={16} /> Promo Codes
                             </button>
                             <button
                                 onClick={() => setActiveSection("banners")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "banners" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "banners" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Sparkles size={16} /> Banners
                             </button>
                             <button
                                 onClick={() => setActiveSection("users")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "users" ? 'bg-white/10 text-white shadow-lg border border-white/10' : 'text-gray-400 hover:text-white hover:bg-white/5'}`}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "users" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
                             >
                                 <Users size={16} /> Users
+                            </button>
+                            <button
+                                onClick={() => setActiveSection("marketplace")}
+                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "marketplace" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
+                            >
+                                <Store size={16} /> Marketplace
                             </button>
                             <Link
                                 href="/admin/analytics"
@@ -564,7 +633,13 @@ export default function AdminPage() {
                 {/* --- CONTENT SECTIONS --- */}
                 <div className="min-h-[500px]">
                     {activeSection === "orders" && (
-                        <OrdersTab orders={orders} inProgressOrders={inProgressOrders} pastOrders={pastOrders} loading={loadingOrders} user={user} />
+                        <OrdersTab
+                            orders={orders}
+                            inProgressOrders={inProgressOrders}
+                            pastOrders={pastOrders}
+                            loading={loadingOrders}
+                            user={user}
+                        />
                     )}
 
                     {activeSection === "restaurants" && (
@@ -640,35 +715,43 @@ export default function AdminPage() {
                     )}
 
                     {activeSection === "users" && (
-                        <UsersTab
-                            restaurants={restaurants}
-                            user={user}
-                        />
+                        <UsersTab restaurants={restaurants} user={user} />
                     )}
+
+                    {activeSection === "marketplace" && <MarketplaceTab />}
                 </div>
             </div>
 
             {/* Sticky Action Bar for Global Settings Sections */}
-            {(activeSection === "delivery" || activeSection === "grocery" || activeSection === "settings" || activeSection === "banners" || activeSection === "laundry") && (
+            {(activeSection === "delivery" ||
+                activeSection === "grocery" ||
+                activeSection === "settings" ||
+                activeSection === "banners" ||
+                activeSection === "laundry") && (
                 <StickyActionBar
                     onSave={
-                        activeSection === "banners" ? handleSaveBanners :
-                            activeSection === "laundry" ? saveCampusConfig :
-                                handleSaveSettings
+                        activeSection === "banners"
+                            ? handleSaveBanners
+                            : activeSection === "laundry"
+                              ? saveCampusConfig
+                              : handleSaveSettings
                     }
                     onCancel={() => fetchData()}
                     isSaving={isSaving}
                     title={
-                        activeSection === "delivery" ? "Delivery Settings" :
-                            activeSection === "grocery" ? "Grocery Settings" :
-                                activeSection === "laundry" ? "Managing Laundry Slots & Charges" :
-                                    activeSection === "banners" ? "Managing Promo Banners" :
-                                        "Global Settings"
+                        activeSection === "delivery"
+                            ? "Delivery Settings"
+                            : activeSection === "grocery"
+                              ? "Grocery Settings"
+                              : activeSection === "laundry"
+                                ? "Managing Laundry Slots & Charges"
+                                : activeSection === "banners"
+                                  ? "Managing Promo Banners"
+                                  : "Global Settings"
                     }
                     saveLabel={activeSection === "laundry" ? "Save Config" : "Save Settings"}
                 />
             )}
-
         </div>
     );
 }

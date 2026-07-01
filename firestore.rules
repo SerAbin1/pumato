@@ -77,6 +77,18 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // --- Marketplace Requests: public create (seller's sell request), admin-only inbox ---
+    match /marketplace_requests/{document} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // --- Marketplace Listings: public read, admin-authored ---
+    match /marketplace_listings/{document} {
+      allow read: if true;
+      allow create, update, delete: if isAdmin();
+    }
+
     // --- Catch-all: admin write only, no public read for unlisted collections ---
     match /{document=**} {
       allow write, read: if isAdmin();

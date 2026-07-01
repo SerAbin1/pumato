@@ -39,6 +39,17 @@ const TYPE_CONFIG = {
             "Orders cannot be cancelled once collected for processing",
         ],
     },
+    marketplace: {
+        color: "purple",
+        termsLink: "/terms",
+        terms: [
+            "PUMATO Marketplace only connects buyers and sellers; it is not a party to any sale",
+            "Listings are created by PUMATO admins after a seller's request is verified over WhatsApp",
+            "Item condition, pricing, and final negotiation are between buyer and seller directly",
+            "PUMATO is not responsible for payment, delivery, or disputes arising from a listing",
+            "Listings automatically stop showing after their set expiry date",
+        ],
+    },
 };
 
 const COLOR_CLASSES = {
@@ -56,6 +67,11 @@ const COLOR_CLASSES = {
         icon: "text-blue-500/50",
         dot: "bg-blue-500/30",
         link: "text-blue-500/60 hover:text-blue-400",
+    },
+    purple: {
+        icon: "text-purple-500/50",
+        dot: "bg-purple-500/30",
+        link: "text-purple-500/60 hover:text-purple-400",
     },
 };
 
@@ -76,8 +92,13 @@ export default function TermsFooter({ type = "delivery" }) {
                         </div>
                         <ul className="grid sm:grid-cols-1 gap-2">
                             {config.terms.map((term, i) => (
-                                <li key={i} className="flex items-start gap-2 text-gray-500 text-[10px] leading-relaxed">
-                                    <span className={`w-1 h-1 rounded-full mt-1.5 flex-shrink-0 ${colors.dot}`} />
+                                <li
+                                    key={i}
+                                    className="flex items-start gap-2 text-gray-500 text-[10px] leading-relaxed"
+                                >
+                                    <span
+                                        className={`w-1 h-1 rounded-full mt-1.5 flex-shrink-0 ${colors.dot}`}
+                                    />
                                     {term}
                                 </li>
                             ))}
@@ -103,8 +124,18 @@ export default function TermsFooter({ type = "delivery" }) {
                         </p>
                     </div>
                     <div className="flex gap-8">
-                        <Link href="/terms" className="text-[10px] font-medium text-gray-600 hover:text-white transition-colors">Common Terms</Link>
-                        <Link href="https://wa.me/919048086503" className="text-[10px] font-medium text-gray-600 hover:text-white transition-colors">Support</Link>
+                        <Link
+                            href="/terms"
+                            className="text-[10px] font-medium text-gray-600 hover:text-white transition-colors"
+                        >
+                            Common Terms
+                        </Link>
+                        <Link
+                            href="https://wa.me/919048086503"
+                            className="text-[10px] font-medium text-gray-600 hover:text-white transition-colors"
+                        >
+                            Support
+                        </Link>
                     </div>
                 </div>
             </div>

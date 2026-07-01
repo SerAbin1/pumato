@@ -1,4 +1,5 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback } from "react";
+import { db } from "@/lib/firebase";
 import {
     collection,
     getDocs,
@@ -8,8 +9,8 @@ import {
     addDoc,
     updateDoc,
     deleteDoc,
-    query
-} from 'firebase/firestore';
+    query,
+} from "firebase/firestore";
 
 /**
  * Custom hook for generic Firestore operations
@@ -31,9 +32,9 @@ export default function useFirestore() {
             }
 
             const querySnapshot = await getDocs(q);
-            const data = querySnapshot.docs.map(doc => ({
+            const data = querySnapshot.docs.map((doc) => ({
                 id: doc.id,
-                ...doc.data()
+                ...doc.data(),
             }));
             return data;
         } catch (err) {
@@ -142,6 +143,6 @@ export default function useFirestore() {
         addDocument,
         setDocument,
         updateDocument,
-        removeDocument
+        removeDocument,
     };
 }

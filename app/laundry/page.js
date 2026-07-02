@@ -199,7 +199,7 @@ export default function LaundryPage() {
         });
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         const trimmedName = formData.name.trim();
@@ -228,18 +228,44 @@ export default function LaundryPage() {
             return;
         }
 
-        let message = `*New Laundry Pickup Request* 🧺\n\n`;
-        message += `*Customer Details:*\n`;
-        message += `Name: ${trimmedName}\n`;
-        message += `Phone: ${formData.phone}\n`;
-        message += `Campus: ${formData.campus}\n`;
-
         const selectedCampus = campusConfig.find((c) => c.id === formData.campus);
         const validLaundryItems = validItems.map((item) => ({
             name: item.name.trim(),
             quantity: Number(item.quantity) || 1,
             steamIron: !!item.steamIron,
         }));
+
+        // --- SAVE TO DB FIRST, THEN OPEN WHATSAPP ---
+        try {
+            await createLaundryOrder({
+                name: trimmedName,
+                phone: formData.phone,
+                campus: formData.campus,
+                location: trimmedLocation,
+                instructions: formData.instructions.trim(),
+                scheduledDate: formData.date,
+                scheduledSlot: formData.time,
+                items: validLaundryItems,
+                status: "ReadyForPickup",
+                customerPaidAmount: null,
+                paidToShopAmount: null,
+                createdAt: serverTimestamp(),
+            });
+        } catch (dbError) {
+            console.error("Failed to record laundry order in Firestore:", dbError);
+            toast.error("Failed to save your order. Please try again.");
+            return;
+        }
+
+        // Clear only the laundry items, keeping user details
+        localStorage.removeItem("pumato_laundry_items");
+        setItems([{ id: Date.now(), name: "", quantity: "", steamIron: false }]);
+
+        let message = `*New Laundry Pickup Request* 🧺\n\n`;
+        message += `*Customer Details:*\n`;
+        message += `Name: ${trimmedName}\n`;
+        message += `Phone: ${formData.phone}\n`;
+        message += `Campus: ${formData.campus}\n`;
 
         if (selectedCampus && selectedCampus.deliveryCharge > 0) {
             message += `Delivery Charge: ₹${selectedCampus.deliveryCharge}\n`;
@@ -263,32 +289,7 @@ export default function LaundryPage() {
         }
 
         const whatsappUrl = `https://wa.me/${laundryNumber}?text=${encodeURIComponent(message)}`;
-        window.open(whatsappUrl, "_blank");
-
-        try {
-            createLaundryOrder({
-                name: trimmedName,
-                phone: formData.phone,
-                campus: formData.campus,
-                location: trimmedLocation,
-                instructions: formData.instructions.trim(),
-                scheduledDate: formData.date,
-                scheduledSlot: formData.time,
-                items: validLaundryItems,
-                status: "ReadyForPickup",
-                customerPaidAmount: null,
-                paidToShopAmount: null,
-                createdAt: serverTimestamp(),
-            }).catch((dbError) => {
-                console.error("Failed to record laundry order in Firestore:", dbError);
-            });
-        } catch (dbError) {
-            console.error("Failed to queue laundry order in Firestore:", dbError);
-        }
-
-        // Clear only the laundry items, keeping user details
-        localStorage.removeItem("pumato_laundry_items");
-        setItems([{ id: Date.now(), name: "", quantity: "", steamIron: false }]);
+        window.location.href = whatsappUrl;
     };
 
     return (

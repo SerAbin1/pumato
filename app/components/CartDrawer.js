@@ -25,6 +25,7 @@ import { createOrder } from "@/lib/repositories";
 import { supabase } from "@/lib/supabase";
 import { getISTTime } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
+import toast from "react-hot-toast";
 
 const format12h = (time24) => {
     if (!time24) return "";
@@ -183,10 +184,102 @@ export default function CartDrawer() {
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
                     body: JSON.stringify(orderData),
-                }).catch((err) => console.error("Sheet log error:", err));
+                }).catch((err) => {
+                    console.error("Sheet log error:", err);
+                    toast.error("Failed to log order to Google Sheet.");
+                });
             }
 
-            // Open WhatsApp FIRST — must be synchronous in click handler for iOS Safari
+            // this code works in IOS
+            // // Open WhatsApp FIRST — must be synchronous in click handler for iOS Safari
+            // const message = formatWhatsAppMessage(cartItems, userDetails, {
+            //     itemTotal,
+            //     deliveryCharge,
+            //     finalTotal,
+            //     discount,
+            //     couponCode,
+            //     paymentQR,
+            //     upiId,
+            // });
+            // const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
+            // window.open(whatsappUrl, "_blank");
+            // setIsCartOpen(false);
+            // resetCheckoutState();
+            //
+            // // --- FIREBASE ORDER NOTIFICATION (fire-and-forget) ---
+            // try {
+            //     const uniqueRestaurantIds = [
+            //         ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
+            //     ];
+            //     createOrder({
+            //         ...userDetails,
+            //         items: cartItems.map((item) => ({
+            //             id: item.id,
+            //             name: item.name,
+            //             quantity: item.quantity,
+            //             restaurantId: item.restaurantId,
+            //             restaurantName: item.restaurantName,
+            //         })),
+            //         restaurantIds: uniqueRestaurantIds,
+            //         status: "placed",
+            //         finalTotal: finalTotal,
+            //         createdAt: serverTimestamp(),
+            //     }).then(() => {
+            //         // Persist last order for duplicate guard
+            //         try {
+            //             localStorage.setItem(
+            //                 "pumato_last_order",
+            //                 JSON.stringify({
+            //                     phone: userDetails.phone,
+            //                     number: foodDeliveryNumber,
+            //                     timestamp: Date.now(),
+            //                 })
+            //             );
+            //         } catch {
+            //             /* ignore */
+            //         }
+            //     });
+            // } catch (dbError) {
+            //     console.error("Failed to record order in Firestore:", dbError);
+            // }
+
+            // --- NEW: SAVE TO DB FIRST, THEN OPEN WHATSAPP ---
+            const uniqueRestaurantIds = [
+                ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
+            ];
+
+            await createOrder({
+                ...userDetails,
+                items: cartItems.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    price: Number(item.price),
+                    quantity: item.quantity,
+                    restaurantId: item.restaurantId,
+                    restaurantName: item.restaurantName,
+                    category: item.category,
+                    image: item.image || "",
+                })),
+                restaurantIds: uniqueRestaurantIds,
+                status: "placed",
+                finalTotal: finalTotal,
+                createdAt: serverTimestamp(),
+            });
+
+            // Persist last order for duplicate guard
+            try {
+                localStorage.setItem(
+                    "pumato_last_order",
+                    JSON.stringify({
+                        phone: userDetails.phone,
+                        number: foodDeliveryNumber,
+                        timestamp: Date.now(),
+                    })
+                );
+            } catch {
+                /* ignore */
+            }
+
             const message = formatWhatsAppMessage(cartItems, userDetails, {
                 itemTotal,
                 deliveryCharge,
@@ -197,47 +290,9 @@ export default function CartDrawer() {
                 upiId,
             });
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
-            window.open(whatsappUrl, "_blank");
+            window.location.href = whatsappUrl;
             setIsCartOpen(false);
             resetCheckoutState();
-
-            // --- FIREBASE ORDER NOTIFICATION (fire-and-forget) ---
-            try {
-                const uniqueRestaurantIds = [
-                    ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
-                ];
-
-                createOrder({
-                    ...userDetails,
-                    items: cartItems.map((item) => ({
-                        id: item.id,
-                        name: item.name,
-                        quantity: item.quantity,
-                        restaurantId: item.restaurantId,
-                        restaurantName: item.restaurantName,
-                    })),
-                    restaurantIds: uniqueRestaurantIds,
-                    status: "placed",
-                    finalTotal: finalTotal,
-                    createdAt: serverTimestamp(),
-                }).then(() => {
-                    // Persist last order for duplicate guard
-                    try {
-                        localStorage.setItem(
-                            "pumato_last_order",
-                            JSON.stringify({
-                                phone: userDetails.phone,
-                                number: foodDeliveryNumber,
-                                timestamp: Date.now(),
-                            })
-                        );
-                    } catch {
-                        /* ignore */
-                    }
-                });
-            } catch (dbError) {
-                console.error("Failed to record order in Firestore:", dbError);
-            }
         } catch (error) {
             console.error("Checkout error:", error);
             if (error.code === "resource-exhausted" || error.message?.includes("limit reached")) {

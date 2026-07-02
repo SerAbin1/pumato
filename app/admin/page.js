@@ -380,10 +380,10 @@ export default function AdminPage() {
                 campuses: campusConfig,
                 pricing: laundryPricing,
             });
-            alert("Campus & Pricing settings saved!");
+            toast.success("Campus & Pricing settings saved!");
         } catch (error) {
             console.error("Error saving campus config:", error);
-            alert("Failed to save settings.");
+            toast.error("Failed to save settings.");
         }
     };
 
@@ -391,10 +391,10 @@ export default function AdminPage() {
         setIsSaving(true);
         try {
             await savePromoBanners(banners);
-            alert("Banners updated successfully!");
+            toast.success("Banners updated successfully!");
         } catch (error) {
             console.error("Error saving banners:", error);
-            alert("Failed to update banners");
+            toast.error("Failed to update banners");
         } finally {
             setIsSaving(false);
         }
@@ -407,10 +407,10 @@ export default function AdminPage() {
                 saveOrderSettings(orderSettings),
                 saveGrocerySettings(grocerySettings),
             ]);
-            alert("Settings updated successfully!");
+            toast.success("Settings updated successfully!");
         } catch (error) {
             console.error("Error saving settings:", error);
-            alert("Failed to update settings");
+            toast.error("Failed to update settings");
         } finally {
             setIsSaving(false);
         }
@@ -462,7 +462,7 @@ export default function AdminPage() {
             await saveLaundrySlots(targetDoc, { slots: updatedSlots });
         } catch (error) {
             console.error("Error saving slot:", error);
-            alert("Failed to save slot");
+            toast.error("Failed to save slot");
         }
     };
 
@@ -474,6 +474,7 @@ export default function AdminPage() {
             await saveLaundrySlots(targetDoc, { slots: updatedSlots });
         } catch (error) {
             console.error("Error deleting slot:", error);
+            toast.error("Failed to delete slot");
         }
     };
 

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
+import toast from "react-hot-toast";
 import { Trash, Save, Eye, EyeOff, Plus } from "lucide-react";
 import { saveRestaurant, updateRestaurant, deleteRestaurant } from "@/lib/repositories";
 import RestaurantForm from "./RestaurantForm";
@@ -55,7 +56,7 @@ export default function RestaurantsTab({ restaurants, fetchData, orderSettings }
             await fetchData();
         } catch (error) {
             console.error(error);
-            alert("Failed to delete");
+            toast.error("Failed to delete restaurant");
         }
     };
 
@@ -73,7 +74,7 @@ export default function RestaurantsTab({ restaurants, fetchData, orderSettings }
             setActiveTab("list");
         } catch (error) {
             console.error(error);
-            alert("Failed to save");
+            toast.error("Failed to save restaurant");
         }
     };
 
@@ -148,7 +149,7 @@ export default function RestaurantsTab({ restaurants, fetchData, orderSettings }
                                                         await fetchData();
                                                     } catch (error) {
                                                         console.error(error);
-                                                        alert("Failed to toggle visibility");
+                                                        toast.error("Failed to toggle visibility");
                                                     }
                                                 }}
                                                 className="bg-white/10 backdrop-blur-md p-2.5 rounded-full hover:bg-purple-600 hover:text-white text-white transition-all"

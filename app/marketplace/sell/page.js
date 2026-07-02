@@ -80,20 +80,21 @@ export default function MarketplaceSellPage() {
             sellerWhatsApp: formData.sellerWhatsApp,
         };
 
-        const whatsappUrl = `https://wa.me/${LAUNDRY_NUMBER}?text=${formatMarketplaceRequestMessage(request)}`;
-        window.open(whatsappUrl, "_blank");
-
         try {
             await createMarketplaceRequest({
                 ...request,
                 status: "pending",
                 createdAt: serverTimestamp(),
             });
-            toast.success("Request submitted! Complete the details on WhatsApp.");
         } catch (err) {
             console.error("Failed to save marketplace request", err);
-            toast.error("Something went wrong saving your request, but WhatsApp was opened.");
+            toast.error("Failed to save your request. Please try again.");
+            return;
         }
+
+        const whatsappUrl = `https://wa.me/${LAUNDRY_NUMBER}?text=${formatMarketplaceRequestMessage(request)}`;
+        window.location.href = whatsappUrl;
+        toast.success("Request submitted! Complete the details on WhatsApp.");
     };
 
     return (

@@ -8,6 +8,7 @@ import {
     deleteListing,
     updateMarketplaceRequest,
 } from "@/lib/repositories";
+import toast from "react-hot-toast";
 import { Trash, Eye, EyeOff, Plus, MessageCircle, Check, Clock } from "lucide-react";
 import MarketplaceListingForm from "./MarketplaceListingForm";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -79,7 +80,7 @@ export default function MarketplaceTab() {
             await fetchData();
         } catch (error) {
             console.error(error);
-            alert("Failed to dismiss request");
+            toast.error("Failed to dismiss request");
         }
     };
 
@@ -109,7 +110,7 @@ export default function MarketplaceTab() {
             setListingView("list");
         } catch (error) {
             console.error(error);
-            alert("Failed to save listing");
+            toast.error("Failed to save listing");
         } finally {
             setIsSaving(false);
         }
@@ -123,7 +124,7 @@ export default function MarketplaceTab() {
             await fetchData();
         } catch (error) {
             console.error(error);
-            alert("Failed to toggle visibility");
+            toast.error("Failed to toggle visibility");
         }
     };
 
@@ -133,7 +134,7 @@ export default function MarketplaceTab() {
             await fetchData();
         } catch (error) {
             console.error(error);
-            alert("Failed to delete listing");
+            toast.error("Failed to delete listing");
         }
     };
 

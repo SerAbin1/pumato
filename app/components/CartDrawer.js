@@ -18,7 +18,6 @@ import {
 import { useCart } from "../context/CartContext";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useState, useMemo } from "react";
-import Image from "next/image";
 
 import { serverTimestamp } from "firebase/firestore";
 import { createOrder } from "@/lib/repositories";
@@ -258,7 +257,6 @@ export default function CartDrawer() {
                     restaurantId: item.restaurantId,
                     restaurantName: item.restaurantName,
                     category: item.category,
-                    image: item.image || "",
                 })),
                 restaurantIds: uniqueRestaurantIds,
                 status: "placed",
@@ -400,17 +398,6 @@ export default function CartDrawer() {
                                                     key={item.id}
                                                     className="bg-white/5 p-4 rounded-2xl border border-white/5 shadow-sm flex gap-4 group hover:bg-white/10 transition-colors"
                                                 >
-                                                    {item.image && (
-                                                        <div className="w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-black/50 border border-white/10 relative">
-                                                            <Image
-                                                                src={item.image}
-                                                                alt={item.name}
-                                                                fill
-                                                                sizes="80px"
-                                                                className="object-cover group-hover:scale-110 transition-transform duration-500"
-                                                            />
-                                                        </div>
-                                                    )}
                                                     <div className="flex-1 flex flex-col justify-between py-0.5">
                                                         <div>
                                                             <div className="flex justify-between items-start gap-2">

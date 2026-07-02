@@ -459,9 +459,9 @@ function RestaurantContent() {
                                                                 margin: "-50px",
                                                             }}
                                                             transition={{ delay: idx * 0.05 }}
-                                                            className={`bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex gap-4 md:gap-8 group transition-all ${isOutOfStock ? "opacity-50" : "hover:bg-white/10 hover:border-white/10 hover:shadow-2xl"}`}
+                                                            className={`bg-white/5 p-4 md:p-6 rounded-[2rem] border border-white/5 flex items-center gap-4 md:gap-8 group transition-all ${isOutOfStock ? "opacity-50" : "hover:bg-white/10 hover:border-white/10 hover:shadow-2xl"}`}
                                                         >
-                                                            <div className="flex-1">
+                                                            <div className="flex-1 min-w-0">
                                                                 <div className="flex items-start justify-between mb-2">
                                                                     <div className="flex items-center gap-2">
                                                                         {item.isVeg === true && (
@@ -502,93 +502,74 @@ function RestaurantContent() {
                                                                 </p>
                                                             </div>
 
-                                                            <div className="relative w-32 h-32 md:w-40 md:h-40 flex-shrink-0 cursor-default">
-                                                                {item.image ? (
-                                                                    <Image
-                                                                        src={item.image}
-                                                                        alt={item.name}
-                                                                        fill
-                                                                        sizes="(max-width: 768px) 128px, 160px"
-                                                                        className="object-cover rounded-2xl shadow-lg border border-white/5"
-                                                                    />
+                                                            <div className="w-28 md:w-32 flex-shrink-0">
+                                                                {restaurant.isVisible === false ? (
+                                                                    <div className="w-full bg-gray-800 text-gray-500 border border-gray-700 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
+                                                                        Offline
+                                                                    </div>
+                                                                ) : isOutOfStock ? (
+                                                                    <div className="w-full bg-gray-600 text-gray-300 border border-gray-500 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
+                                                                        Unavailable
+                                                                    </div>
+                                                                ) : quantity === 0 ? (
+                                                                    <motion.button
+                                                                        whileTap={{
+                                                                            scale: 0.95,
+                                                                        }}
+                                                                        onClick={() =>
+                                                                            addToCart({
+                                                                                ...item,
+                                                                                restaurantId:
+                                                                                    restaurant.id,
+                                                                                restaurantName:
+                                                                                    restaurant.name,
+                                                                            })
+                                                                        }
+                                                                        className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
+                                                                    >
+                                                                        ADD
+                                                                    </motion.button>
                                                                 ) : (
-                                                                    <div className="w-full h-full bg-white/5 rounded-2xl border border-white/5 flex items-center justify-center">
-                                                                        <Utensils
-                                                                            className="text-white/20"
-                                                                            size={32}
-                                                                        />
+                                                                    <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                addToCart(
+                                                                                    {
+                                                                                        ...item,
+                                                                                        restaurantId:
+                                                                                            restaurant.id,
+                                                                                        restaurantName:
+                                                                                            restaurant.name,
+                                                                                    },
+                                                                                    -1
+                                                                                )
+                                                                            }
+                                                                            className="hover:text-orange-500 transition-colors w-6"
+                                                                        >
+                                                                            -
+                                                                        </button>
+                                                                        <span className="text-sm">
+                                                                            {quantity}
+                                                                        </span>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                addToCart(
+                                                                                    {
+                                                                                        ...item,
+                                                                                        restaurantId:
+                                                                                            restaurant.id,
+                                                                                        restaurantName:
+                                                                                            restaurant.name,
+                                                                                    },
+                                                                                    1
+                                                                                )
+                                                                            }
+                                                                            className="hover:text-orange-500 transition-colors w-6"
+                                                                        >
+                                                                            +
+                                                                        </button>
                                                                     </div>
                                                                 )}
-                                                                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[90%] shadow-xl">
-                                                                    {restaurant.isVisible ===
-                                                                    false ? (
-                                                                        <div className="w-full bg-gray-800 text-gray-500 border border-gray-700 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
-                                                                            Offline
-                                                                        </div>
-                                                                    ) : isOutOfStock ? (
-                                                                        <div className="w-full bg-gray-600 text-gray-300 border border-gray-500 py-2 rounded-xl font-bold uppercase text-xs text-center tracking-widest cursor-not-allowed">
-                                                                            Unavailable
-                                                                        </div>
-                                                                    ) : quantity === 0 ? (
-                                                                        <motion.button
-                                                                            whileTap={{
-                                                                                scale: 0.95,
-                                                                            }}
-                                                                            onClick={() =>
-                                                                                addToCart({
-                                                                                    ...item,
-                                                                                    restaurantId:
-                                                                                        restaurant.id,
-                                                                                    restaurantName:
-                                                                                        restaurant.name,
-                                                                                })
-                                                                            }
-                                                                            className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
-                                                                        >
-                                                                            ADD
-                                                                        </motion.button>
-                                                                    ) : (
-                                                                        <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    addToCart(
-                                                                                        {
-                                                                                            ...item,
-                                                                                            restaurantId:
-                                                                                                restaurant.id,
-                                                                                            restaurantName:
-                                                                                                restaurant.name,
-                                                                                        },
-                                                                                        -1
-                                                                                    )
-                                                                                }
-                                                                                className="hover:text-orange-500 transition-colors w-6"
-                                                                            >
-                                                                                -
-                                                                            </button>
-                                                                            <span className="text-sm">
-                                                                                {quantity}
-                                                                            </span>
-                                                                            <button
-                                                                                onClick={() =>
-                                                                                    addToCart(
-                                                                                        {
-                                                                                            ...item,
-                                                                                            restaurantId:
-                                                                                                restaurant.id,
-                                                                                            restaurantName:
-                                                                                                restaurant.name,
-                                                                                        },
-                                                                                        1
-                                                                                    )
-                                                                                }
-                                                                                className="hover:text-orange-500 transition-colors w-6"
-                                                                            >
-                                                                                +
-                                                                            </button>
-                                                                        </div>
-                                                                    )}
-                                                                </div>
                                                             </div>
                                                         </motion.div>
                                                     );

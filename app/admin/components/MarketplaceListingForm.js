@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { Upload, X, Loader2 } from "lucide-react";
-import { storage } from "@/lib/firebase";
-import { ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { uploadImage } from "@/lib/uploadImage";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
 import { MARKETPLACE_CATEGORIES, DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
@@ -34,11 +33,7 @@ export default function MarketplaceListingForm({
         setUploading(true);
         try {
             const uploadedUrls = await Promise.all(
-                files.map(async (file) => {
-                    const storageRef = ref(storage, `marketplace/${Date.now()}-${file.name}`);
-                    await uploadBytes(storageRef, file);
-                    return getDownloadURL(storageRef);
-                })
+                files.map((file) => uploadImage(file, "marketplace"))
             );
             setFormData((prev) => ({ ...prev, images: [...(prev.images || []), ...uploadedUrls] }));
         } catch (err) {

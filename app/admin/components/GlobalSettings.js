@@ -1,93 +1,29 @@
-import { useState } from 'react';
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { Sparkles, Phone, Plus, Trash, Upload, Database } from "lucide-react";
+import { Sparkles, Phone, Plus, Trash, Upload } from "lucide-react";
 import Image from "next/image";
-import FormInput from './FormInput';
+import FormInput from "./FormInput";
 import ConfirmModal from "../../components/ConfirmModal";
-import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, writeBatch } from "firebase/firestore";
-import { toTitleCase } from "@/lib/formatters";
-import toast from "react-hot-toast";
 
 export default function GlobalSettings({
     orderSettings,
     setOrderSettings,
     grocerySettings,
     setGrocerySettings,
-    handleFileUpload
+    handleFileUpload,
 }) {
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, groupIdx: null, groupName: "" });
-    const [isMigrating, setIsMigrating] = useState(false);
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        groupIdx: null,
+        groupName: "",
+    });
 
-    const handleStandardizeData = async () => {
-        if (!confirm("Are you sure you want to standardize all restaurant data? This will convert all categories to UPPERCASE and menu items to Title Case.")) return;
-
-        setIsMigrating(true);
-        const toastId = toast.loading("Standardizing data...");
-
-        try {
-            const querySnapshot = await getDocs(collection(db, "restaurants"));
-            const batch = writeBatch(db);
-            let count = 0;
-
-            querySnapshot.forEach((docSnap) => {
-                const data = docSnap.data();
-                const ref = doc(db, "restaurants", docSnap.id);
-                let hasChanges = false;
-                const updates = {};
-
-                // 1. Standardize Categories
-                if (data.categories && Array.isArray(data.categories)) {
-                    const newCategories = data.categories.map(c => c.trim().toUpperCase());
-                    // Check if different
-                    if (JSON.stringify(newCategories) !== JSON.stringify(data.categories)) {
-                        updates.categories = newCategories;
-                        hasChanges = true;
-                    }
-                }
-
-                // 2. Standardize Menu
-                if (data.menu && Array.isArray(data.menu)) {
-                    const newMenu = data.menu.map(item => ({
-                        ...item,
-                        name: toTitleCase((item.name || "").trim()),
-                        price: (item.price || "").toString().trim(),
-                        description: (item.description || "").trim(),
-                        image: (item.image || "").trim(),
-                        extraInfo: (item.extraInfo || "").trim(),
-                        category: (item.category || "").trim().toUpperCase()
-                    }));
-
-                    // Detailed check might be expensive, so we'll just assume changes if we processed it, 
-                    // or do a stringify compare which is fine for this size.
-                    if (JSON.stringify(newMenu) !== JSON.stringify(data.menu)) {
-                        updates.menu = newMenu;
-                        hasChanges = true;
-                    }
-                }
-
-                if (hasChanges) {
-                    batch.update(ref, updates);
-                    count++;
-                }
-            });
-
-            if (count > 0) {
-                await batch.commit();
-                toast.success(`Updated ${count} restaurants!`, { id: toastId });
-            } else {
-                toast.success("All data is already standardized!", { id: toastId });
-            }
-
-        } catch (error) {
-            console.error("Migration failed:", error);
-            toast.error("Migration failed: " + error.message, { id: toastId });
-        } finally {
-            setIsMigrating(false);
-        }
-    };
     return (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
+        <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="space-y-8"
+        >
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>
                 <h2 className="text-3xl font-black text-white mb-8">Global Settings</h2>
@@ -102,30 +38,58 @@ export default function GlobalSettings({
                                 <h3 className="text-xl font-bold text-white">Payment Settings</h3>
                             </div>
                         </div>
-                        <p className="text-gray-400 text-sm pl-13">Upload your Payment QR code. This will be sent as a link in the WhatsApp order message.</p>
+                        <p className="text-gray-400 text-sm pl-13">
+                            Upload your Payment QR code. This will be sent as a link in the WhatsApp
+                            order message.
+                        </p>
 
                         <div className="pl-13 space-y-4">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Payment QR Image URL</label>
+                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                Payment QR Image URL
+                            </label>
                             <div className="flex gap-4">
                                 <div className="flex-1 relative group">
                                     <input
                                         type="text"
                                         className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium placeholder-gray-600"
                                         value={orderSettings.paymentQR || ""}
-                                        onChange={(e) => setOrderSettings({ ...orderSettings, paymentQR: e.target.value })}
+                                        onChange={(e) =>
+                                            setOrderSettings({
+                                                ...orderSettings,
+                                                paymentQR: e.target.value,
+                                            })
+                                        }
                                         placeholder="QR Code Image URL..."
                                     />
                                 </div>
                                 <label className="bg-white/10 hover:bg-white/20 p-4 rounded-2xl cursor-pointer text-white transition-colors flex items-center justify-center min-w-[60px] border border-white/10">
                                     <Upload size={20} />
-                                    <input type="file" className="hidden" onChange={(e) => handleFileUpload(e, (url) => setOrderSettings({ ...orderSettings, paymentQR: url }))} />
+                                    <input
+                                        type="file"
+                                        className="hidden"
+                                        onChange={(e) =>
+                                            handleFileUpload(e, (url) =>
+                                                setOrderSettings({
+                                                    ...orderSettings,
+                                                    paymentQR: url,
+                                                })
+                                            )
+                                        }
+                                    />
                                 </label>
                             </div>
                             {orderSettings.paymentQR && (
                                 <div className="mt-4 p-4 bg-black/40 rounded-2xl border border-white/5 inline-block">
-                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">Preview</p>
+                                    <p className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 px-1">
+                                        Preview
+                                    </p>
                                     <div className="relative w-32 h-32 rounded-lg overflow-hidden border border-white/10">
-                                        <Image src={orderSettings.paymentQR} alt="Payment QR Preview" fill className="object-cover" />
+                                        <Image
+                                            src={orderSettings.paymentQR}
+                                            alt="Payment QR Preview"
+                                            fill
+                                            className="object-cover"
+                                        />
                                     </div>
                                 </div>
                             )}
@@ -141,28 +105,46 @@ export default function GlobalSettings({
                                 <h3 className="text-xl font-bold text-white">WhatsApp Numbers</h3>
                             </div>
                         </div>
-                        <p className="text-gray-400 text-sm pl-13">Configure the WhatsApp numbers for order redirects. Include country code without + (e.g., 919048086503).</p>
+                        <p className="text-gray-400 text-sm pl-13">
+                            Configure the WhatsApp numbers for order redirects. Include country code
+                            without + (e.g., 919048086503).
+                        </p>
 
                         <div className="pl-13 grid grid-cols-1 md:grid-cols-3 gap-6">
                             <FormInput
                                 label="Food Delivery"
                                 type="tel"
                                 value={orderSettings.whatsappNumber || ""}
-                                onChange={(e) => setOrderSettings({ ...orderSettings, whatsappNumber: e.target.value.replace(/\D/g, '') })}
+                                onChange={(e) =>
+                                    setOrderSettings({
+                                        ...orderSettings,
+                                        whatsappNumber: e.target.value.replace(/\D/g, ""),
+                                    })
+                                }
                                 placeholder="919048086503"
                             />
                             <FormInput
                                 label="Laundry"
                                 type="tel"
                                 value={orderSettings.laundryWhatsappNumber || ""}
-                                onChange={(e) => setOrderSettings({ ...orderSettings, laundryWhatsappNumber: e.target.value.replace(/\D/g, '') })}
+                                onChange={(e) =>
+                                    setOrderSettings({
+                                        ...orderSettings,
+                                        laundryWhatsappNumber: e.target.value.replace(/\D/g, ""),
+                                    })
+                                }
                                 placeholder="919048086503"
                             />
                             <FormInput
                                 label="Grocery"
                                 type="tel"
                                 value={grocerySettings.whatsappNumber || ""}
-                                onChange={(e) => setGrocerySettings({ ...grocerySettings, whatsappNumber: e.target.value.replace(/\D/g, '') })}
+                                onChange={(e) =>
+                                    setGrocerySettings({
+                                        ...grocerySettings,
+                                        whatsappNumber: e.target.value.replace(/\D/g, ""),
+                                    })
+                                }
                                 placeholder="919048086503"
                             />
                         </div>
@@ -172,10 +154,15 @@ export default function GlobalSettings({
                                 label="UPI ID (for order message)"
                                 type="text"
                                 value={orderSettings.upiId || ""}
-                                onChange={(e) => setOrderSettings({ ...orderSettings, upiId: e.target.value })}
+                                onChange={(e) =>
+                                    setOrderSettings({ ...orderSettings, upiId: e.target.value })
+                                }
                                 placeholder="example@upi"
                             />
-                            <p className="text-xs text-gray-500 mt-2">This UPI ID will be included in the WhatsApp order message for payment.</p>
+                            <p className="text-xs text-gray-500 mt-2">
+                                This UPI ID will be included in the WhatsApp order message for
+                                payment.
+                            </p>
                         </div>
 
                         <div className="pl-13 mt-4">
@@ -183,9 +170,17 @@ export default function GlobalSettings({
                                 label="Google Sheet URL (for orders)"
                                 type="url"
                                 value={orderSettings.googleSheetUrl || ""}
-                                onChange={(e) => setOrderSettings({ ...orderSettings, googleSheetUrl: e.target.value })}
+                                onChange={(e) =>
+                                    setOrderSettings({
+                                        ...orderSettings,
+                                        googleSheetUrl: e.target.value,
+                                    })
+                                }
                             />
-                            <p className="text-xs text-gray-500 mt-2">Orders will be logged to this Google Apps Script URL. Leave empty to disable.</p>
+                            <p className="text-xs text-gray-500 mt-2">
+                                Orders will be logged to this Google Apps Script URL. Leave empty to
+                                disable.
+                            </p>
                         </div>
                     </div>
 
@@ -197,19 +192,29 @@ export default function GlobalSettings({
                             </h3>
                             <button
                                 type="button"
-                                onClick={() => setOrderSettings({
-                                    ...orderSettings,
-                                    whatsappGroups: [...(orderSettings.whatsappGroups || []), { name: "", link: "" }]
-                                })}
+                                onClick={() =>
+                                    setOrderSettings({
+                                        ...orderSettings,
+                                        whatsappGroups: [
+                                            ...(orderSettings.whatsappGroups || []),
+                                            { name: "", link: "" },
+                                        ],
+                                    })
+                                }
                                 className="text-xs bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-bold flex items-center gap-1"
                             >
                                 <Plus size={14} /> Add Group
                             </button>
                         </div>
-                        <p className="text-xs text-gray-500 mb-4">Add WhatsApp group invite links. These will appear in the navbar under &quot;Community&quot;.</p>
+                        <p className="text-xs text-gray-500 mb-4">
+                            Add WhatsApp group invite links. These will appear in the navbar under
+                            &quot;Community&quot;.
+                        </p>
 
                         {(orderSettings.whatsappGroups || []).length === 0 ? (
-                            <p className="text-sm text-gray-500 italic text-center py-4">No community groups added yet.</p>
+                            <p className="text-sm text-gray-500 italic text-center py-4">
+                                No community groups added yet.
+                            </p>
                         ) : (
                             <div className="space-y-3">
                                 {(orderSettings.whatsappGroups || []).map((group, idx) => (
@@ -221,7 +226,10 @@ export default function GlobalSettings({
                                             onChange={(e) => {
                                                 const updated = [...orderSettings.whatsappGroups];
                                                 updated[idx].name = e.target.value;
-                                                setOrderSettings({ ...orderSettings, whatsappGroups: updated });
+                                                setOrderSettings({
+                                                    ...orderSettings,
+                                                    whatsappGroups: updated,
+                                                });
                                             }}
                                             className="flex-1 bg-white/5 border border-white/10 px-3 py-2 rounded-lg text-sm text-white placeholder-gray-500"
                                         />
@@ -232,7 +240,10 @@ export default function GlobalSettings({
                                             onChange={(e) => {
                                                 const updated = [...orderSettings.whatsappGroups];
                                                 updated[idx].link = e.target.value;
-                                                setOrderSettings({ ...orderSettings, whatsappGroups: updated });
+                                                setOrderSettings({
+                                                    ...orderSettings,
+                                                    whatsappGroups: updated,
+                                                });
                                             }}
                                             className="flex-[2] bg-white/5 border border-white/10 px-3 py-2 rounded-lg text-sm text-white placeholder-gray-500"
                                         />
@@ -242,7 +253,7 @@ export default function GlobalSettings({
                                                 setConfirmModal({
                                                     isOpen: true,
                                                     groupIdx: idx,
-                                                    groupName: group.name || 'Untitled'
+                                                    groupName: group.name || "Untitled",
                                                 });
                                             }}
                                             className="p-2 text-red-500 hover:bg-red-500/10 rounded-lg"
@@ -254,38 +265,6 @@ export default function GlobalSettings({
                             </div>
                         )}
                     </div>
-
-                    {/* Data Maintenance Section */}
-                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-orange-500/10 flex items-center justify-center text-orange-400 border border-orange-500/20">
-                                <Database size={18} />
-                            </div>
-                            <h3 className="text-xl font-bold text-white">Data Maintenance</h3>
-                        </div>
-                        <p className="text-gray-400 text-sm">
-                            Run this tool to fix inconsistent data formats (e.g., lowercase categories, untrimmed text).
-                            This will force all categories to UPPERCASE and menu items to Title Case.
-                        </p>
-                        <button
-                            onClick={handleStandardizeData}
-                            disabled={isMigrating}
-                            className={`w-full py-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 ${isMigrating
-                                ? "bg-gray-600 text-gray-400 cursor-not-allowed"
-                                : "bg-orange-600 text-white hover:bg-orange-500 shadow-lg shadow-orange-900/40"
-                                }`}
-                        >
-                            {isMigrating ? (
-                                <>
-                                    <Sparkles size={18} className="animate-spin" /> Processing...
-                                </>
-                            ) : (
-                                <>
-                                    <Sparkles size={18} /> Standardize Restaurant Data
-                                </>
-                            )}
-                        </button>
-                    </div>
                 </div>
             </div>
 
@@ -293,7 +272,9 @@ export default function GlobalSettings({
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
                 onConfirm={() => {
-                    const updated = orderSettings.whatsappGroups.filter((_, i) => i !== confirmModal.groupIdx);
+                    const updated = orderSettings.whatsappGroups.filter(
+                        (_, i) => i !== confirmModal.groupIdx
+                    );
                     setOrderSettings({ ...orderSettings, whatsappGroups: updated });
                 }}
                 title="Remove Community Group?"

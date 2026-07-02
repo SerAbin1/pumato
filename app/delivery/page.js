@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
 import TermsFooter from "../components/TermsFooter";
 import Link from "next/link";
-import { Search, Sparkles, Utensils, ShoppingBag, Clock } from "lucide-react";
+import { Search, Sparkles, ShoppingBag, Clock } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect } from "react";
@@ -386,28 +386,6 @@ export default function DeliveryPage() {
                                             onClick={() => saveSearch(searchQuery)}
                                             className="flex items-center gap-4 flex-1 min-w-0"
                                         >
-                                            <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
-                                                {item.image ? (
-                                                    <Image
-                                                        src={item.image}
-                                                        fill
-                                                        sizes="80px"
-                                                        className="object-cover"
-                                                        alt={item.name}
-                                                    />
-                                                ) : (
-                                                    <div className="flex items-center justify-center w-full h-full text-gray-500">
-                                                        <Utensils size={20} />
-                                                    </div>
-                                                )}
-                                                {isOutOfStock && (
-                                                    <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                                        <span className="text-[8px] font-black text-white bg-red-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">
-                                                            Sold Out
-                                                        </span>
-                                                    </div>
-                                                )}
-                                            </div>
                                             <div className="flex-1 min-w-0">
                                                 <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">
                                                     {item.name}

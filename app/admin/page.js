@@ -59,6 +59,9 @@ import StickyActionBar from "./components/StickyActionBar";
 import MarketplaceTab from "./components/MarketplaceTab";
 
 import { format12h } from "@/lib/formatters";
+import { createFileUploadHandler } from "@/lib/uploadImage";
+
+const handleFileUpload = createFileUploadHandler("site-content");
 
 export default function AdminPage() {
     const router = useRouter();
@@ -477,32 +480,6 @@ export default function AdminPage() {
         } catch (error) {
             console.error("Error deleting slot:", error);
             toast.error("Failed to delete slot");
-        }
-    };
-
-    // --- FILE UPLOAD HANDLER ---
-    const handleFileUpload = async (e, setUrlCallback) => {
-        const file = e.target.files[0];
-        if (!file) return;
-
-        const data = new FormData();
-        data.append("file", file);
-        data.append("upload_preset", "pumato");
-
-        try {
-            const res = await fetch("https://api.cloudinary.com/v1_1/dykcjfxx5/image/upload", {
-                method: "POST",
-                body: data,
-            });
-            const result = await res.json();
-            if (result.secure_url) {
-                setUrlCallback(result.secure_url);
-            } else {
-                alert("Upload failed: " + (result.error?.message || "Unknown error"));
-            }
-        } catch (err) {
-            console.error("Upload error", err);
-            alert("Upload failed");
         }
     };
 

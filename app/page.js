@@ -395,6 +395,35 @@ export default function GatewayPage() {
                                 </div>
                             </Link>
                         </TiltCard>
+
+                        {/* Marketplace Card */}
+                        <TiltCard className="relative h-[50vh] md:h-[70vh] w-full rounded-[2.5rem] overflow-hidden group border border-white/10 cursor-pointer">
+                            <Link href="/marketplace" className="block h-full w-full">
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
+                                <div className="absolute inset-0 z-0">
+                                    <Image
+                                        src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?q=80&w=1000&auto=format&fit=crop"
+                                        fill
+                                        sizes="(max-width: 768px) 100vw, 25vw"
+                                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                        alt="Marketplace"
+                                    />
+                                </div>
+                                {/* LIVE BADGE REMOVED */}
+
+                                <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
+                                    <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter">
+                                        Marketplace.
+                                    </h2>
+                                    <p className="text-gray-300 text-sm md:text-base max-w-sm mb-4 line-clamp-2">
+                                        Buy, sell, and trade. Your campus bazaar, always open.
+                                    </p>
+                                    <span className="inline-flex items-center gap-2 text-white font-bold border-b border-white/30 pb-1 group-hover:border-purple-500 group-hover:text-purple-500 transition-colors text-sm">
+                                        Explore <ArrowRight size={16} />
+                                    </span>
+                                </div>
+                            </Link>
+                        </TiltCard>
                     </div>
                 </div>
             </section>

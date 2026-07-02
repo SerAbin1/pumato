@@ -11,6 +11,7 @@ import { RestaurantSkeleton } from "../components/Skeleton";
 import useFirestore from "@/app/hooks/useFirestore";
 import { MARKETPLACE_CATEGORIES } from "@/lib/constants";
 import { Search, Plus } from "lucide-react";
+import CustomSelect from "../components/CustomSelect";
 
 function isListingLive(listing) {
     if (listing.isVisible === false) return false;
@@ -107,17 +108,16 @@ function MarketplaceContent() {
                         className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all font-medium placeholder-gray-500"
                     />
                 </div>
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                    {["all", ...MARKETPLACE_CATEGORIES].map((cat) => (
-                        <button
-                            key={cat}
-                            onClick={() => setCategory(cat)}
-                            className={`px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider transition-all border whitespace-nowrap ${category === cat ? "bg-white text-black border-white shadow-lg" : "bg-white/5 text-gray-400 border-white/10 hover:bg-white/10 hover:text-white"}`}
-                        >
-                            {cat === "all" ? "All" : cat}
-                        </button>
-                    ))}
-                </div>
+                <CustomSelect
+                    options={[
+                        { label: "All Categories", value: "all" },
+                        ...MARKETPLACE_CATEGORIES.map((cat) => ({ label: cat, value: cat })),
+                    ]}
+                    value={category}
+                    onChange={setCategory}
+                    placeholder="Category"
+                    className="min-w-[180px]"
+                />
             </div>
 
             {loading ? (

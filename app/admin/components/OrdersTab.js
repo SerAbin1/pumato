@@ -106,7 +106,7 @@ function OrderCard({
                             })
                             .catch((err) => console.warn("Partner FCM error:", err));
                     })
-                    .catch(() => {});
+                    .catch((err) => console.error("Error getting ID token:", err));
             }
         } catch {
             toast.error("Failed to update order");

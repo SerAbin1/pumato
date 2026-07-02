@@ -138,8 +138,8 @@ export default function CartDrawer() {
                     return;
                 }
             }
-        } catch {
-            /* ignore localStorage errors */
+        } catch (err) {
+            console.warn("localStorage error (duplicate order guard):", err);
         }
 
         try {
@@ -276,8 +276,8 @@ export default function CartDrawer() {
                         timestamp: Date.now(),
                     })
                 );
-            } catch {
-                /* ignore */
+            } catch (err) {
+                console.warn("localStorage error (persist last order):", err);
             }
 
             const message = formatWhatsAppMessage(cartItems, userDetails, {

@@ -246,7 +246,7 @@ export default function PartnerDashboard() {
                     audioRef.current.pause();
                     audioRef.current.currentTime = 0;
                 })
-                .catch(() => {});
+                .catch((err) => console.warn("Audio playback error:", err));
             document.removeEventListener("click", unlock);
         };
         document.addEventListener("click", unlock);

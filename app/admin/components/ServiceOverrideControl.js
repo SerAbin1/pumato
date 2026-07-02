@@ -22,10 +22,14 @@ export default function ServiceOverrideControl({ settings, onUpdate, serviceName
     const handleOverride = async (status) => {
         setUpdating(true);
         try {
-            const overrideData = {
-                status,
-                updatedAt: new Date().toISOString(),
-            };
+            // "auto" means no override — set to null to let slots decide
+            const overrideData =
+                status === "auto"
+                    ? null
+                    : {
+                          status,
+                          updatedAt: new Date().toISOString(),
+                      };
 
             // Call parent update handler (which writes to Firestore)
             await onUpdate({

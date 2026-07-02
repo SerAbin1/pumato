@@ -13,10 +13,13 @@ import Image from "next/image";
 import useFirestore from "@/app/hooks/useFirestore";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import Fuse from "fuse.js";
+import { where } from "firebase/firestore";
 
 // Simple seeded shuffle to keep order stable for the day
 const seededShuffle = (array, seed) => {
-    let m = array.length, t, i;
+    let m = array.length,
+        t,
+        i;
     // Simple seeded pseudo-random generator
     const random = (s) => {
         const x = Math.sin(s++) * 10000;
@@ -61,8 +64,11 @@ export default function DeliveryPage() {
     const saveSearch = (term) => {
         const trimmed = term.trim();
         if (!trimmed) return;
-        setRecentSearches(prev => {
-            const updated = [trimmed, ...prev.filter(t => t.toLowerCase() !== trimmed.toLowerCase())].slice(0, 3);
+        setRecentSearches((prev) => {
+            const updated = [
+                trimmed,
+                ...prev.filter((t) => t.toLowerCase() !== trimmed.toLowerCase()),
+            ].slice(0, 3);
             localStorage.setItem("recentDeliverySearches", JSON.stringify(updated));
             return updated;
         });
@@ -80,7 +86,7 @@ export default function DeliveryPage() {
                     setPromoBanners({
                         banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
                         banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
-                        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
+                        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false },
                     });
                 }
             } catch {
@@ -88,7 +94,7 @@ export default function DeliveryPage() {
                 setPromoBanners({
                     banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
                     banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
-                    banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false }
+                    banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false },
                 });
             }
         };
@@ -101,12 +107,15 @@ export default function DeliveryPage() {
             try {
                 const data = await getCollection("restaurants", [where("isAvailable", "==", true)]);
                 const seed = new Date().toDateString(); // Changes daily
-                const shuffledData = seededShuffle(data, seed.split('').reduce((a, b) => a + b.charCodeAt(0), 0));
+                const shuffledData = seededShuffle(
+                    data,
+                    seed.split("").reduce((a, b) => a + b.charCodeAt(0), 0)
+                );
 
                 setRestaurants(shuffledData);
                 setFilteredRestaurants(shuffledData);
-            } catch {
-                // Error already logged by hook
+            } catch (err) {
+                console.error("Error fetching restaurants:", err);
             }
         };
         fetchRestaurants();
@@ -125,50 +134,48 @@ export default function DeliveryPage() {
 
         // 1. Filter Restaurants using Fuse.js (name, cuisine, or has matching menu item)
         const restaurantFuse = new Fuse(restaurants, {
-            keys: ['name', 'cuisine'],
+            keys: ["name", "cuisine"],
             threshold: 0.3, // Stricter threshold
-            includeScore: true
+            includeScore: true,
         });
 
         const restaurantResults = restaurantFuse.search(searchQuery);
-        const matchedByRestaurant = restaurantResults.map(r => r.item);
+        const matchedByRestaurant = restaurantResults.map((r) => r.item);
 
         // Also check menu items for restaurant matching
-        const restaurantsWithMenuMatch = restaurants.filter(r => {
+        const restaurantsWithMenuMatch = restaurants.filter((r) => {
             if (!r.menu || r.menu.length === 0) return false;
             // First check exact substring match
-            const exactMatch = r.menu.some(item => 
-                item.name.toLowerCase().includes(query)
-            );
+            const exactMatch = r.menu.some((item) => item.name.toLowerCase().includes(query));
             if (exactMatch) return true;
             // Then check fuzzy match
             const menuFuse = new Fuse(r.menu, {
-                keys: ['name'],
-                threshold: 0.3 // Stricter for menu items too
+                keys: ["name"],
+                threshold: 0.3, // Stricter for menu items too
             });
             return menuFuse.search(searchQuery).length > 0;
         });
 
         // Combine and deduplicate restaurant results
         const allMatchedRestaurants = [...matchedByRestaurant];
-        restaurantsWithMenuMatch.forEach(r => {
-            if (!allMatchedRestaurants.find(existing => existing.id === r.id)) {
+        restaurantsWithMenuMatch.forEach((r) => {
+            if (!allMatchedRestaurants.find((existing) => existing.id === r.id)) {
                 allMatchedRestaurants.push(r);
             }
         });
 
         // 2. Find specific matching foods (Global Search)
         const matchedFoods = [];
-        restaurants.forEach(r => {
+        restaurants.forEach((r) => {
             if (r.menu && r.menu.length > 0) {
                 const menuFuse = new Fuse(r.menu, {
-                    keys: ['name'],
+                    keys: ["name"],
                     threshold: 0.3, // Stricter threshold
-                    includeScore: true
+                    includeScore: true,
                 });
                 const menuResults = menuFuse.search(searchQuery);
-                
-                menuResults.forEach(result => {
+
+                menuResults.forEach((result) => {
                     const itemName = result.item.name.toLowerCase();
                     // Boost score for exact substring matches
                     let adjustedScore = result.score;
@@ -179,13 +186,13 @@ export default function DeliveryPage() {
                     } else if (itemName.includes(query)) {
                         adjustedScore -= 0.2; // Contains query gets small boost
                     }
-                    
+
                     matchedFoods.push({
                         ...result.item,
                         restaurantId: r.id,
                         restaurantName: r.name,
                         outOfStockCategories: r.outOfStockCategories || [],
-                        score: adjustedScore
+                        score: adjustedScore,
                     });
                 });
             }
@@ -198,12 +205,15 @@ export default function DeliveryPage() {
         setFilteredFoods(matchedFoods);
     }, [restaurants, searchQuery]);
 
-
-
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
             {/* Noise Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+            <div
+                className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                }}
+            ></div>
 
             {/* Ambient Backgrounds */}
             <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-orange-600/10 rounded-full blur-[100px] pointer-events-none"></div>
@@ -223,35 +233,45 @@ export default function DeliveryPage() {
                             {[
                                 { ...promoBanners.banner1, key: "banner1" },
                                 { ...promoBanners.banner2, key: "banner2" },
-                                { ...promoBanners.banner3, key: "banner3" }
-                            ].filter(promo => !promo.hidden).map((promo, i) => (
-                                <motion.div
-                                    key={promo.key}
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: i * 0.1 }}
-                                    whileHover={{ y: -5, scale: 1.02 }}
-                                    className={`bg-gradient-to-br ${promo.gradient || "from-gray-800 to-black"} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
-                                >
-                                    <div className={`relative z-10 ${promo.image ? 'w-2/3' : 'w-full'}`}>
-                                        <span className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1"><Sparkles size={10} /> Limited Time</span>
-                                        <h3 className="text-3xl font-black italic tracking-tighter shadow-black/50 drop-shadow-lg">{promo.title}</h3>
-                                        <p className="font-medium opacity-90 text-sm mt-1 text-white/90 drop-shadow-md">{promo.sub}</p>
-                                    </div>
-                                    {promo.image && (
-                                        <div className="absolute -right-10 -bottom-10 w-48 h-48 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl overflow-hidden rounded-full border-4 border-white/10">
-                                            <Image
-                                                src={promo.image}
-                                                fill
-                                                sizes="192px"
-                                                className="object-cover"
-                                                alt="Offer"
-                                                priority={i === 0}
-                                            />
+                                { ...promoBanners.banner3, key: "banner3" },
+                            ]
+                                .filter((promo) => !promo.hidden)
+                                .map((promo, i) => (
+                                    <motion.div
+                                        key={promo.key}
+                                        initial={{ opacity: 0, y: 20 }}
+                                        animate={{ opacity: 1, y: 0 }}
+                                        transition={{ delay: i * 0.1 }}
+                                        whileHover={{ y: -5, scale: 1.02 }}
+                                        className={`bg-gradient-to-br ${promo.gradient || "from-gray-800 to-black"} rounded-[2rem] p-8 text-white relative overflow-hidden h-48 flex flex-col justify-center shadow-lg border border-white/10 group cursor-pointer`}
+                                    >
+                                        <div
+                                            className={`relative z-10 ${promo.image ? "w-2/3" : "w-full"}`}
+                                        >
+                                            <span className="bg-black/20 backdrop-blur-md px-3 py-1 rounded-lg text-xs font-bold uppercase tracking-wider mb-2 inline-flex items-center gap-1">
+                                                <Sparkles size={10} /> Limited Time
+                                            </span>
+                                            <h3 className="text-3xl font-black italic tracking-tighter shadow-black/50 drop-shadow-lg">
+                                                {promo.title}
+                                            </h3>
+                                            <p className="font-medium opacity-90 text-sm mt-1 text-white/90 drop-shadow-md">
+                                                {promo.sub}
+                                            </p>
                                         </div>
-                                    )}
-                                </motion.div>
-                            ))}
+                                        {promo.image && (
+                                            <div className="absolute -right-10 -bottom-10 w-48 h-48 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500 shadow-2xl overflow-hidden rounded-full border-4 border-white/10">
+                                                <Image
+                                                    src={promo.image}
+                                                    fill
+                                                    sizes="192px"
+                                                    className="object-cover"
+                                                    alt="Offer"
+                                                    priority={i === 0}
+                                                />
+                                            </div>
+                                        )}
+                                    </motion.div>
+                                ))}
                         </div>
                     </motion.div>
                 )}
@@ -264,7 +284,10 @@ export default function DeliveryPage() {
                         {/* Search Bar */}
                         <div className="w-full relative">
                             <div className="w-full flex items-center bg-white/10 border border-white/10 rounded-2xl px-5 py-4 shadow-inner focus-within:bg-black/40 focus-within:border-orange-500/50 focus-within:ring-1 focus-within:ring-orange-500/20 transition-all group">
-                                <Search className="text-gray-400 mr-3 group-focus-within:text-orange-500 transition-colors" size={20} />
+                                <Search
+                                    className="text-gray-400 mr-3 group-focus-within:text-orange-500 transition-colors"
+                                    size={20}
+                                />
                                 <input
                                     type="text"
                                     placeholder="Search 'Biryani' or 'Pizza'..."
@@ -285,7 +308,7 @@ export default function DeliveryPage() {
                             {/* Recent Searches Dropdown */}
                             <AnimatePresence>
                                 {recentSearches.length > 0 && isSearchFocused && !searchQuery && (
-                                    <motion.div 
+                                    <motion.div
                                         initial={{ opacity: 0, y: -10 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0, y: -10 }}
@@ -293,11 +316,13 @@ export default function DeliveryPage() {
                                     >
                                         <div className="flex items-center justify-between mb-3 text-xs font-bold text-gray-400 uppercase tracking-wider">
                                             <span>Recent Searches</span>
-                                            <button 
+                                            <button
                                                 onMouseDown={(e) => {
                                                     e.preventDefault();
                                                     setRecentSearches([]);
-                                                    localStorage.removeItem("recentDeliverySearches");
+                                                    localStorage.removeItem(
+                                                        "recentDeliverySearches"
+                                                    );
                                                 }}
                                                 className="hover:text-white transition-colors"
                                             >
@@ -325,37 +350,42 @@ export default function DeliveryPage() {
                             </AnimatePresence>
                         </div>
                     </div>
-
-
                 </div>
             </div>
 
             <div className="max-w-7xl mx-auto px-4 space-y-16 py-12 relative z-10">
-
-
-
                 {/* Food Collections (Horizontal Scroll) */}
                 {/* Note: FoodCollections component will need its own dark mode update, skipping for now to keep focus on page layout */}
                 {/* <FoodCollections /> */}
-
-
 
                 {/* Search Results: Global Menu Items */}
                 {searchQuery && filteredFoods.length > 0 && (
                     <section className="mb-12">
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                                <span className="w-1.5 h-6 bg-green-500 rounded-full"></span> Matching Dishes
+                                <span className="w-1.5 h-6 bg-green-500 rounded-full"></span>{" "}
+                                Matching Dishes
                             </h2>
-                            <span className="text-gray-500 font-medium px-3 py-1 bg-white/5 rounded-full text-xs">{filteredFoods.length} items</span>
+                            <span className="text-gray-500 font-medium px-3 py-1 bg-white/5 rounded-full text-xs">
+                                {filteredFoods.length} items
+                            </span>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                             {filteredFoods.map((item, idx) => {
-                                const categoryOutOfStock = (item.outOfStockCategories || []).includes(item.category);
+                                const categoryOutOfStock = (
+                                    item.outOfStockCategories || []
+                                ).includes(item.category);
                                 const isOutOfStock = item.isVisible === false || categoryOutOfStock;
                                 return (
-                                    <div key={`${item.restaurantId}-${idx}`} className={`flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl transition-all group relative ${isOutOfStock ? 'opacity-50' : 'hover:bg-white/10 overflow-hidden'}`}>
-                                        <Link href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`} onClick={() => saveSearch(searchQuery)} className="flex items-center gap-4 flex-1 min-w-0">
+                                    <div
+                                        key={`${item.restaurantId}-${idx}`}
+                                        className={`flex items-center gap-4 bg-white/5 border border-white/10 p-4 rounded-2xl transition-all group relative ${isOutOfStock ? "opacity-50" : "hover:bg-white/10 overflow-hidden"}`}
+                                    >
+                                        <Link
+                                            href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
+                                            onClick={() => saveSearch(searchQuery)}
+                                            className="flex items-center gap-4 flex-1 min-w-0"
+                                        >
                                             <div className="w-20 h-20 flex-shrink-0 bg-white/5 rounded-xl overflow-hidden relative">
                                                 {item.image ? (
                                                     <Image
@@ -366,20 +396,34 @@ export default function DeliveryPage() {
                                                         alt={item.name}
                                                     />
                                                 ) : (
-                                                    <div className="flex items-center justify-center w-full h-full text-gray-500"><Utensils size={20} /></div>
+                                                    <div className="flex items-center justify-center w-full h-full text-gray-500">
+                                                        <Utensils size={20} />
+                                                    </div>
                                                 )}
                                                 {isOutOfStock && (
                                                     <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                                                        <span className="text-[8px] font-black text-white bg-red-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">Sold Out</span>
+                                                        <span className="text-[8px] font-black text-white bg-red-600 px-1.5 py-0.5 rounded uppercase tracking-tighter">
+                                                            Sold Out
+                                                        </span>
                                                     </div>
                                                 )}
                                             </div>
                                             <div className="flex-1 min-w-0">
-                                                <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">{item.name}</h4>
-                                                <p className="text-xs text-gray-400 mb-1">{item.restaurantName}</p>
+                                                <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">
+                                                    {item.name}
+                                                </h4>
+                                                <p className="text-xs text-gray-400 mb-1">
+                                                    {item.restaurantName}
+                                                </p>
                                                 <div className="flex items-center gap-2">
-                                                    <p className="font-bold text-green-400">₹{item.price}</p>
-                                                    {isOutOfStock && <span className="text-[10px] font-bold text-red-400 uppercase tracking-tighter">Out of stock</span>}
+                                                    <p className="font-bold text-green-400">
+                                                        ₹{item.price}
+                                                    </p>
+                                                    {isOutOfStock && (
+                                                        <span className="text-[10px] font-bold text-red-400 uppercase tracking-tighter">
+                                                            Out of stock
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </Link>
@@ -392,7 +436,11 @@ export default function DeliveryPage() {
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     saveSearch(searchQuery);
-                                                    addToCart({ ...item, restaurantId: item.restaurantId, restaurantName: item.restaurantName });
+                                                    addToCart({
+                                                        ...item,
+                                                        restaurantId: item.restaurantId,
+                                                        restaurantName: item.restaurantName,
+                                                    });
                                                     setToast(`Added ${item.name}`);
                                                     setTimeout(() => setToast(null), 2000);
                                                 }}
@@ -412,13 +460,18 @@ export default function DeliveryPage() {
                 <section>
                     <div className="flex items-center justify-between mb-8">
                         <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                            <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span> All Restaurants
+                            <span className="w-1.5 h-6 bg-orange-500 rounded-full"></span> All
+                            Restaurants
                         </h2>
-                        <span className="text-gray-500 font-medium px-3 py-1 bg-white/5 rounded-full text-xs">{filteredRestaurants.length} active</span>
+                        <span className="text-gray-500 font-medium px-3 py-1 bg-white/5 rounded-full text-xs">
+                            {filteredRestaurants.length} active
+                        </span>
                     </div>
                     {dbLoading ? (
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                            {[...Array(6)].map((_, i) => <RestaurantSkeleton key={i} />)}
+                            {[...Array(6)].map((_, i) => (
+                                <RestaurantSkeleton key={i} />
+                            ))}
                         </div>
                     ) : (
                         <RestaurantList restaurants={filteredRestaurants} />
@@ -437,8 +490,7 @@ export default function DeliveryPage() {
                     >
                         <ShoppingBag size={18} /> {toast}
                     </motion.div>
-                )
-                }
+                )}
             </AnimatePresence>
 
             <TermsFooter type="delivery" />

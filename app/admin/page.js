@@ -68,6 +68,7 @@ export default function AdminPage() {
     const [orders, setOrders] = useState([]); // placed (pending admin action)
     const [inProgressOrders, setInProgressOrders] = useState([]); // confirmed → ready_for_delivery + out_of_stock
     const [pastOrders, setPastOrders] = useState([]); // picked_up / delivered
+    const [loading, setLoading] = useState(false);
     const [loadingOrders, setLoadingOrders] = useState(true);
     const isInitialLoad = useRef(true);
     const audioRef = useRef(null);
@@ -95,6 +96,7 @@ export default function AdminPage() {
         baseDeliveryCharge: "30",
         extraItemThreshold: "3",
         extraItemCharge: "10",
+        minOrderAmount: "0",
         lightItems: [],
         lightItemThreshold: "5",
     });
@@ -124,7 +126,7 @@ export default function AdminPage() {
                         audioRef.current.pause();
                         audioRef.current.currentTime = 0;
                     })
-                    .catch(() => {});
+                    .catch((err) => console.warn("Audio playback error:", err));
             }
             document.removeEventListener("click", unlock);
         };
@@ -322,7 +324,7 @@ export default function AdminPage() {
 
             const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
             if (settingsDoc.exists()) {
-                setOrderSettings({ ...settingsDoc.data() });
+                setOrderSettings((prev) => ({ ...prev, ...settingsDoc.data() }));
             }
 
             const updatedRestaurants = restaurantsData;

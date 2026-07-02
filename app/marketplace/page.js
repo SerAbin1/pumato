@@ -33,8 +33,8 @@ function MarketplaceContent() {
             try {
                 const data = await getCollection("marketplace_listings");
                 setListings(data.filter(isListingLive));
-            } catch {
-                // Error already logged by hook
+            } catch (err) {
+                console.error("Error fetching marketplace listings:", err);
             }
         };
         fetchListings();

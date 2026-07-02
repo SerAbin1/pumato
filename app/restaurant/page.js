@@ -78,8 +78,8 @@ function RestaurantContent() {
                 } else {
                     setRestaurant(null);
                 }
-            } catch {
-                // Error handled by hook
+            } catch (err) {
+                console.error("Error fetching restaurant:", err);
             }
             setLoading(false);
         };

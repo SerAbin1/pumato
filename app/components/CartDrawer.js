@@ -1,14 +1,27 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, ShoppingBag, Send, Trash2, MapPin, User, Phone, Check, Tag, Loader2 } from "lucide-react";
+import {
+    X,
+    Plus,
+    Minus,
+    ShoppingBag,
+    Send,
+    Trash2,
+    MapPin,
+    User,
+    Phone,
+    Check,
+    Tag,
+    Loader2,
+} from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useState, useMemo } from "react";
 import Image from "next/image";
 
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { serverTimestamp } from "firebase/firestore";
+import { createOrder } from "@/lib/repositories";
 import { supabase } from "@/lib/supabase";
 import { getISTTime } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
@@ -48,7 +61,7 @@ export default function CartDrawer() {
         googleSheetUrl,
         minOrderShortfalls,
         campusConfig,
-        hasHeavyItems
+        hasHeavyItems,
     } = useCart();
 
     const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
@@ -72,11 +85,11 @@ export default function CartDrawer() {
         const { timeInMinutes } = getISTTime();
         const campusConfig = orderSettings?.deliveryCampusConfig || [];
         const selectedCampus = campusConfig.find(
-            c => c.name === userDetails?.campus || c.id === userDetails?.campus
+            (c) => c.name === userDetails?.campus || c.id === userDetails?.campus
         );
         const slotsToCheck = selectedCampus
-            ? (selectedCampus.slots || [])
-            : campusConfig.flatMap(c => c.slots || []);
+            ? selectedCampus.slots || []
+            : campusConfig.flatMap((c) => c.slots || []);
         return isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes);
     }, [isCartOpen, orderSettings, userDetails.campus]);
 
@@ -117,20 +130,26 @@ export default function CartDrawer() {
             const lastOrder = JSON.parse(localStorage.getItem("pumato_last_order") || "null");
             if (lastOrder && lastOrder.phone === userDetails.phone) {
                 const elapsed = Date.now() - lastOrder.timestamp;
-                if (elapsed < 60 * 1000) { // within 1 minute
+                if (elapsed < 60 * 1000) {
+                    // within 1 minute
                     setIsCheckingOut(false);
                     setShowDuplicateModal(true);
                     return;
                 }
             }
-        } catch { /* ignore localStorage errors */ }
+        } catch {
+            /* ignore localStorage errors */
+        }
 
         try {
             // If coupon is applied, validate with cloud function first
             if (couponCode) {
-                const { data, error: funcError } = await supabase.functions.invoke("checkout-coupon", {
-                    body: { couponCode }
-                });
+                const { data, error: funcError } = await supabase.functions.invoke(
+                    "checkout-coupon",
+                    {
+                        body: { couponCode },
+                    }
+                );
 
                 if (funcError) throw funcError;
                 if (data?.error) {
@@ -150,23 +169,33 @@ export default function CartDrawer() {
                     campus: userDetails.campus || "",
                     address: userDetails.address,
                     instructions: userDetails.instructions || "",
-                    items: cartItems.map(item => `${item.name} x${item.quantity} (${item.restaurantName})`).join(", "),
+                    items: cartItems
+                        .map((item) => `${item.name} x${item.quantity} (${item.restaurantName})`)
+                        .join(", "),
                     itemTotal,
                     deliveryCharge,
                     discount: discount || 0,
                     couponCode: couponCode || "",
-                    finalTotal
+                    finalTotal,
                 };
                 fetch(googleSheetUrl, {
                     redirect: "follow",
                     method: "POST",
                     headers: { "Content-Type": "text/plain;charset=utf-8" },
-                    body: JSON.stringify(orderData)
-                }).catch(err => console.error("Sheet log error:", err));
+                    body: JSON.stringify(orderData),
+                }).catch((err) => console.error("Sheet log error:", err));
             }
 
             // Open WhatsApp FIRST — must be synchronous in click handler for iOS Safari
-            const message = formatWhatsAppMessage(cartItems, userDetails, { itemTotal, deliveryCharge, finalTotal, discount, couponCode, paymentQR, upiId });
+            const message = formatWhatsAppMessage(cartItems, userDetails, {
+                itemTotal,
+                deliveryCharge,
+                finalTotal,
+                discount,
+                couponCode,
+                paymentQR,
+                upiId,
+            });
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.open(whatsappUrl, "_blank");
             setIsCartOpen(false);
@@ -174,30 +203,37 @@ export default function CartDrawer() {
 
             // --- FIREBASE ORDER NOTIFICATION (fire-and-forget) ---
             try {
-                const uniqueRestaurantIds = [...new Set(cartItems.map(item => item.restaurantId).filter(Boolean))];
+                const uniqueRestaurantIds = [
+                    ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
+                ];
 
-                addDoc(collection(db, "orders"), {
+                createOrder({
                     ...userDetails,
-                    items: cartItems.map(item => ({
+                    items: cartItems.map((item) => ({
                         id: item.id,
                         name: item.name,
                         quantity: item.quantity,
                         restaurantId: item.restaurantId,
-                        restaurantName: item.restaurantName
+                        restaurantName: item.restaurantName,
                     })),
                     restaurantIds: uniqueRestaurantIds,
                     status: "placed",
                     finalTotal: finalTotal,
-                    createdAt: serverTimestamp()
+                    createdAt: serverTimestamp(),
                 }).then(() => {
                     // Persist last order for duplicate guard
                     try {
-                        localStorage.setItem("pumato_last_order", JSON.stringify({
-                            phone: userDetails.phone,
-                            number: foodDeliveryNumber,
-                            timestamp: Date.now()
-                        }));
-                    } catch { /* ignore */ }
+                        localStorage.setItem(
+                            "pumato_last_order",
+                            JSON.stringify({
+                                phone: userDetails.phone,
+                                number: foodDeliveryNumber,
+                                timestamp: Date.now(),
+                            })
+                        );
+                    } catch {
+                        /* ignore */
+                    }
                 });
             } catch (dbError) {
                 console.error("Failed to record order in Firestore:", dbError);
@@ -218,7 +254,11 @@ export default function CartDrawer() {
         }
     };
 
-    const isFormValid = userDetails.name?.trim() && userDetails.phone?.length === 10 && userDetails.campus && userDetails.address?.trim();
+    const isFormValid =
+        userDetails.name?.trim() &&
+        userDetails.phone?.length === 10 &&
+        userDetails.campus &&
+        userDetails.address?.trim();
 
     return (
         <>
@@ -230,7 +270,10 @@ export default function CartDrawer() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            onClick={() => { setIsCartOpen(false); resetCheckoutState(); }}
+                            onClick={() => {
+                                setIsCartOpen(false);
+                                resetCheckoutState();
+                            }}
                             className="fixed inset-0 bg-black/80 backdrop-blur-md z-[60]"
                         />
 
@@ -251,10 +294,15 @@ export default function CartDrawer() {
                                             {totalItems} items
                                         </span>
                                     </h2>
-                                    <p className="text-xs text-gray-400 font-medium tracking-wide uppercase mt-0.5">Pumato Delivery</p>
+                                    <p className="text-xs text-gray-400 font-medium tracking-wide uppercase mt-0.5">
+                                        Pumato Delivery
+                                    </p>
                                 </div>
                                 <button
-                                    onClick={() => { setIsCartOpen(false); resetCheckoutState(); }}
+                                    onClick={() => {
+                                        setIsCartOpen(false);
+                                        resetCheckoutState();
+                                    }}
                                     className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
                                 >
                                     <X size={24} />
@@ -269,11 +317,19 @@ export default function CartDrawer() {
                                             <ShoppingBag size={48} />
                                         </div>
                                         <div className="text-center space-y-2">
-                                            <h3 className="text-xl font-bold text-white">Your cart is empty</h3>
-                                            <p className="text-gray-500 max-w-xs mx-auto">Looks like you haven&apos;t added anything to your cart yet.</p>
+                                            <h3 className="text-xl font-bold text-white">
+                                                Your cart is empty
+                                            </h3>
+                                            <p className="text-gray-500 max-w-xs mx-auto">
+                                                Looks like you haven&apos;t added anything to your
+                                                cart yet.
+                                            </p>
                                         </div>
                                         <button
-                                            onClick={() => { setIsCartOpen(false); resetCheckoutState(); }}
+                                            onClick={() => {
+                                                setIsCartOpen(false);
+                                                resetCheckoutState();
+                                            }}
                                             className="bg-white text-black px-8 py-3 rounded-xl font-bold hover:bg-gray-200 hover:scale-105 transition-all shadow-lg"
                                         >
                                             Start Ordering
@@ -281,7 +337,6 @@ export default function CartDrawer() {
                                     </div>
                                 ) : (
                                     <div className="p-6 space-y-8">
-
                                         {/* Items List */}
                                         <div className="space-y-4">
                                             {cartItems.map((item) => (
@@ -304,30 +359,44 @@ export default function CartDrawer() {
                                                     <div className="flex-1 flex flex-col justify-between py-0.5">
                                                         <div>
                                                             <div className="flex justify-between items-start gap-2">
-                                                                <h4 className="font-bold text-white leading-tight line-clamp-2 text-sm md:text-base">{item.name}</h4>
-                                                                <p className="font-bold text-white whitespace-nowrap">₹{item.price * item.quantity}</p>
+                                                                <h4 className="font-bold text-white leading-tight line-clamp-2 text-sm md:text-base">
+                                                                    {item.name}
+                                                                </h4>
+                                                                <p className="font-bold text-white whitespace-nowrap">
+                                                                    ₹{item.price * item.quantity}
+                                                                </p>
                                                             </div>
-                                                            <p className="text-xs text-gray-400 mt-1">₹{item.price} per item</p>
+                                                            <p className="text-xs text-gray-400 mt-1">
+                                                                ₹{item.price} per item
+                                                            </p>
                                                         </div>
 
                                                         <div className="flex justify-between items-end mt-2">
                                                             <div className="flex items-center gap-3 bg-black/30 rounded-lg p-1 border border-white/10">
                                                                 <button
-                                                                    onClick={() => updateQuantity(item.id, -1)}
+                                                                    onClick={() =>
+                                                                        updateQuantity(item.id, -1)
+                                                                    }
                                                                     className="w-7 h-7 rounded-md bg-white/10 border border-transparent flex items-center justify-center text-white hover:bg-red-500/20 hover:text-red-400 transition-colors"
                                                                 >
                                                                     <Minus size={14} />
                                                                 </button>
-                                                                <span className="font-bold text-sm w-4 text-center text-white">{item.quantity}</span>
+                                                                <span className="font-bold text-sm w-4 text-center text-white">
+                                                                    {item.quantity}
+                                                                </span>
                                                                 <button
-                                                                    onClick={() => updateQuantity(item.id, 1)}
+                                                                    onClick={() =>
+                                                                        updateQuantity(item.id, 1)
+                                                                    }
                                                                     className="w-7 h-7 rounded-md bg-white/10 border border-transparent flex items-center justify-center text-white hover:bg-green-500/20 hover:text-green-400 transition-colors"
                                                                 >
                                                                     <Plus size={14} />
                                                                 </button>
                                                             </div>
                                                             <button
-                                                                onClick={() => removeFromCart(item.id)}
+                                                                onClick={() =>
+                                                                    removeFromCart(item.id)
+                                                                }
                                                                 className="text-gray-500 hover:text-red-500 transition-colors p-1"
                                                             >
                                                                 <Trash2 size={16} />
@@ -337,10 +406,11 @@ export default function CartDrawer() {
                                                 </motion.div>
                                             ))}
                                         </div>
-
                                         {/* Coupon Section */}
                                         <div className="space-y-2">
-                                            <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider pl-1">Coupon Code</h3>
+                                            <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider pl-1">
+                                                Coupon Code
+                                            </h3>
 
                                             {!couponCode ? (
                                                 <div className="bg-white/5 border border-white/10 rounded-xl p-2 flex gap-2 focus-within:bg-white/10 transition-all shadow-sm">
@@ -352,7 +422,9 @@ export default function CartDrawer() {
                                                         placeholder="Enter promo code"
                                                         className="flex-1 bg-transparent border-none outline-none text-sm font-medium text-white placeholder-gray-600 uppercase"
                                                         value={inputCode}
-                                                        onChange={(e) => setInputCode(e.target.value)}
+                                                        onChange={(e) =>
+                                                            setInputCode(e.target.value)
+                                                        }
                                                     />
                                                     <button
                                                         onClick={handleApplyCoupon}
@@ -369,8 +441,12 @@ export default function CartDrawer() {
                                                             <Check size={16} />
                                                         </div>
                                                         <div>
-                                                            <p className="font-bold text-green-400 text-sm">{couponCode} APPLIED</p>
-                                                            <p className="text-xs text-green-500/80">You saved ₹{discount}!</p>
+                                                            <p className="font-bold text-green-400 text-sm">
+                                                                {couponCode} APPLIED
+                                                            </p>
+                                                            <p className="text-xs text-green-500/80">
+                                                                You saved ₹{discount}!
+                                                            </p>
                                                         </div>
                                                     </div>
                                                     <button
@@ -388,17 +464,58 @@ export default function CartDrawer() {
                                                     {activeCoupon.item_id && (
                                                         <div className="space-y-1">
                                                             {(() => {
-                                                                const targetItem = cartItems.find(i => i.id === activeCoupon.item_id);
-                                                                const qty = targetItem?.quantity || 0;
-                                                                const itemName = targetItem?.name || "the target item";
+                                                                const targetItem = cartItems.find(
+                                                                    (i) =>
+                                                                        i.id ===
+                                                                        activeCoupon.item_id
+                                                                );
+                                                                const qty =
+                                                                    targetItem?.quantity || 0;
+                                                                const itemName =
+                                                                    targetItem?.name ||
+                                                                    "the target item";
 
                                                                 if (activeCoupon.type === "BOGO") {
-                                                                    if (qty === 0) return <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1"><Plus size={10} /> Add {itemName} to get 1 FREE!</p>;
-                                                                    if (qty % 2 !== 0) return <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1"><Plus size={10} /> Add one more {itemName} for a FREE unit!</p>;
-                                                                    return <p className="text-[10px] text-green-400 font-bold flex items-center gap-1"><Check size={10} /> {Math.floor(qty / 2)} Free {itemName} Applied!</p>;
+                                                                    if (qty === 0)
+                                                                        return (
+                                                                            <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                                                                                <Plus size={10} />{" "}
+                                                                                Add {itemName} to
+                                                                                get 1 FREE!
+                                                                            </p>
+                                                                        );
+                                                                    if (qty % 2 !== 0)
+                                                                        return (
+                                                                            <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                                                                                <Plus size={10} />{" "}
+                                                                                Add one more{" "}
+                                                                                {itemName} for a
+                                                                                FREE unit!
+                                                                            </p>
+                                                                        );
+                                                                    return (
+                                                                        <p className="text-[10px] text-green-400 font-bold flex items-center gap-1">
+                                                                            <Check size={10} />{" "}
+                                                                            {Math.floor(qty / 2)}{" "}
+                                                                            Free {itemName} Applied!
+                                                                        </p>
+                                                                    );
                                                                 } else {
-                                                                    if (qty === 0) return <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1"><Plus size={10} /> Add {itemName} to apply discount!</p>;
-                                                                    return <p className="text-[10px] text-green-400 font-bold flex items-center gap-1"><Check size={10} /> Discount applied to {itemName}!</p>;
+                                                                    if (qty === 0)
+                                                                        return (
+                                                                            <p className="text-[10px] text-orange-400 font-bold flex items-center gap-1">
+                                                                                <Plus size={10} />{" "}
+                                                                                Add {itemName} to
+                                                                                apply discount!
+                                                                            </p>
+                                                                        );
+                                                                    return (
+                                                                        <p className="text-[10px] text-green-400 font-bold flex items-center gap-1">
+                                                                            <Check size={10} />{" "}
+                                                                            Discount applied to{" "}
+                                                                            {itemName}!
+                                                                        </p>
+                                                                    );
                                                                 }
                                                             })()}
                                                         </div>
@@ -410,42 +527,59 @@ export default function CartDrawer() {
                                                 <motion.p
                                                     initial={{ opacity: 0, y: -5 }}
                                                     animate={{ opacity: 1, y: 0 }}
-                                                    className={`text-xs px-2 font-medium ${couponMsg.success ? 'text-green-400' : 'text-red-400'}`}
+                                                    className={`text-xs px-2 font-medium ${couponMsg.success ? "text-green-400" : "text-red-400"}`}
                                                 >
                                                     {couponMsg.message}
                                                 </motion.p>
                                             )}
 
-                                            {!couponCode && availableCoupons.some(c => c.isVisible) && (
-                                                <div className="flex gap-2 px-1 overflow-x-auto pb-1 scrollbar-hide">
-                                                    {availableCoupons.filter(c => c.isVisible).map(c => (
-                                                        <button
-                                                            key={c.code}
-                                                            onClick={() => { setInputCode(c.code); handleApplyCoupon(); }}
-                                                            className="text-[10px] border border-white/10 bg-white/5 text-gray-400 px-2 py-1 rounded-md font-bold whitespace-nowrap hover:bg-white/10 hover:text-white uppercase transition-colors"
-                                                        >
-                                                            {c.code}
-                                                        </button>
-                                                    ))}
-                                                </div>
-                                            )}
+                                            {!couponCode &&
+                                                availableCoupons.some((c) => c.isVisible) && (
+                                                    <div className="flex gap-2 px-1 overflow-x-auto pb-1 scrollbar-hide">
+                                                        {availableCoupons
+                                                            .filter((c) => c.isVisible)
+                                                            .map((c) => (
+                                                                <button
+                                                                    key={c.code}
+                                                                    onClick={() => {
+                                                                        setInputCode(c.code);
+                                                                        handleApplyCoupon();
+                                                                    }}
+                                                                    className="text-[10px] border border-white/10 bg-white/5 text-gray-400 px-2 py-1 rounded-md font-bold whitespace-nowrap hover:bg-white/10 hover:text-white uppercase transition-colors"
+                                                                >
+                                                                    {c.code}
+                                                                </button>
+                                                            ))}
+                                                    </div>
+                                                )}
                                         </div>
-
-
                                         {/* Bill Details */}
                                         <div className="bg-white/5 p-5 rounded-2xl border border-white/5 shadow-sm space-y-3">
-                                            <h3 className="font-bold text-gray-400 mb-4 text-xs uppercase tracking-wider">Bill Summary</h3>
+                                            <h3 className="font-bold text-gray-400 mb-4 text-xs uppercase tracking-wider">
+                                                Bill Summary
+                                            </h3>
 
                                             <div className="flex justify-between text-sm text-gray-400">
                                                 <span>Item Total</span>
-                                                <span className="font-medium text-white">₹{itemTotal}</span>
+                                                <span className="font-medium text-white">
+                                                    ₹{itemTotal}
+                                                </span>
                                             </div>
                                             <div className="flex justify-between text-sm text-gray-400">
-                                                <span className="flex items-center gap-1">Delivery Charge <span className="text-xs bg-white/10 text-gray-500 px-1 rounded">Info</span></span>
+                                                <span className="flex items-center gap-1">
+                                                    Delivery Charge{" "}
+                                                    <span className="text-xs bg-white/10 text-gray-500 px-1 rounded">
+                                                        Info
+                                                    </span>
+                                                </span>
                                                 {userDetails.campus ? (
-                                                    <span className="font-medium text-white">₹{deliveryCharge}</span>
+                                                    <span className="font-medium text-white">
+                                                        ₹{deliveryCharge}
+                                                    </span>
                                                 ) : (
-                                                    <span className="font-medium text-orange-400 text-xs">Select Campus</span>
+                                                    <span className="font-medium text-orange-400 text-xs">
+                                                        Select Campus
+                                                    </span>
                                                 )}
                                             </div>
 
@@ -476,38 +610,59 @@ export default function CartDrawer() {
 
                                             <div className="border-t border-dashed border-white/10 my-2 pt-2">
                                                 <div className="flex justify-between items-center">
-                                                    <span className="font-bold text-white text-lg">To Pay</span>
-                                                    <span className="font-black text-white text-xl">₹{finalTotal}</span>
+                                                    <span className="font-bold text-white text-lg">
+                                                        To Pay
+                                                    </span>
+                                                    <span className="font-black text-white text-xl">
+                                                        ₹{finalTotal}
+                                                    </span>
                                                 </div>
                                             </div>
                                         </div>
-
                                         {/* Delivery Details Input */}
                                         <div className="space-y-4">
-                                            <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider pl-1">Delivery Details</h3>
+                                            <h3 className="font-bold text-gray-400 text-xs uppercase tracking-wider pl-1">
+                                                Delivery Details
+                                            </h3>
 
                                             <div className="space-y-3">
                                                 <div className="relative group">
-                                                    <User className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors" size={20} />
+                                                    <User
+                                                        className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors"
+                                                        size={20}
+                                                    />
                                                     <input
                                                         type="text"
                                                         placeholder="Your Name"
                                                         value={userDetails.name}
-                                                        onChange={(e) => setUserDetails({ ...userDetails, name: e.target.value })}
+                                                        onChange={(e) =>
+                                                            setUserDetails({
+                                                                ...userDetails,
+                                                                name: e.target.value,
+                                                            })
+                                                        }
                                                         className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600"
                                                     />
                                                 </div>
 
                                                 <div className="relative group">
-                                                    <Phone className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors" size={20} />
+                                                    <Phone
+                                                        className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors"
+                                                        size={20}
+                                                    />
                                                     <input
                                                         type="tel"
                                                         placeholder="Phone Number"
                                                         maxLength={10}
                                                         value={userDetails.phone}
                                                         onChange={(e) => {
-                                                            const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                                                            setUserDetails({ ...userDetails, phone: val });
+                                                            const val = e.target.value
+                                                                .replace(/\D/g, "")
+                                                                .slice(0, 10);
+                                                            setUserDetails({
+                                                                ...userDetails,
+                                                                phone: val,
+                                                            });
                                                         }}
                                                         className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600"
                                                     />
@@ -517,24 +672,38 @@ export default function CartDrawer() {
                                                     <textarea
                                                         placeholder="Custom Instructions (e.g. Biryani should be spicy)"
                                                         value={userDetails.instructions || ""}
-                                                        onChange={(e) => setUserDetails({ ...userDetails, instructions: e.target.value })}
+                                                        onChange={(e) =>
+                                                            setUserDetails({
+                                                                ...userDetails,
+                                                                instructions: e.target.value,
+                                                            })
+                                                        }
                                                         className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600 h-20 resize-none text-sm"
                                                     />
                                                 </div>
 
                                                 {/* Campus Selection */}
                                                 <div>
-                                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 block">Campus</label>
+                                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 block">
+                                                        Campus
+                                                    </label>
                                                     <div className="flex gap-2">
                                                         {campusConfig.map((campus) => (
                                                             <button
                                                                 key={campus.id}
                                                                 type="button"
-                                                                onClick={() => setUserDetails({ ...userDetails, campus: campus.name })}
-                                                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border ${userDetails.campus === campus.name
-                                                                    ? 'bg-orange-500/20 border-orange-500/50 text-orange-400'
-                                                                    : 'bg-white/5 border-white/10 text-gray-400 hover:bg-white/10'
-                                                                    }`}
+                                                                onClick={() =>
+                                                                    setUserDetails({
+                                                                        ...userDetails,
+                                                                        campus: campus.name,
+                                                                    })
+                                                                }
+                                                                className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                                                                    userDetails.campus ===
+                                                                    campus.name
+                                                                        ? "bg-orange-500/20 border-orange-500/50 text-orange-400"
+                                                                        : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                                                                }`}
                                                             >
                                                                 {campus.name}
                                                             </button>
@@ -543,18 +712,26 @@ export default function CartDrawer() {
                                                 </div>
 
                                                 <div className="relative group">
-                                                    <MapPin className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors" size={20} />
+                                                    <MapPin
+                                                        className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors"
+                                                        size={20}
+                                                    />
                                                     <textarea
                                                         placeholder="Hostel"
                                                         value={userDetails.address}
-                                                        onChange={(e) => setUserDetails({ ...userDetails, address: e.target.value })}
+                                                        onChange={(e) =>
+                                                            setUserDetails({
+                                                                ...userDetails,
+                                                                address: e.target.value,
+                                                            })
+                                                        }
                                                         className="w-full pl-12 pr-4 py-3 bg-white/5 border border-white/10 rounded-xl focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium text-white placeholder-gray-600 h-24 resize-none"
                                                     />
                                                 </div>
                                             </div>
                                         </div>
-
-                                        <div className="h-20"></div> {/* Spacer for sticky footer */}
+                                        <div className="h-20"></div>{" "}
+                                        {/* Spacer for sticky footer */}
                                     </div>
                                 )}
                             </div>
@@ -563,21 +740,33 @@ export default function CartDrawer() {
                             {cartItems.length > 0 && (
                                 <div className="p-6 bg-zinc-900 border-t border-white/5 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] z-20 sticky bottom-0">
                                     {(() => {
-                                        const campusConfig = orderSettings?.deliveryCampusConfig || [];
+                                        const campusConfig =
+                                            orderSettings?.deliveryCampusConfig || [];
                                         const selectedCampus = campusConfig.find(
-                                            c => c.name === userDetails?.campus || c.id === userDetails?.campus
+                                            (c) =>
+                                                c.name === userDetails?.campus ||
+                                                c.id === userDetails?.campus
                                         );
                                         const displaySlots = selectedCampus
-                                            ? (selectedCampus.slots || [])
-                                            : campusConfig.flatMap(c => c.slots || []);
+                                            ? selectedCampus.slots || []
+                                            : campusConfig.flatMap((c) => c.slots || []);
                                         const hasSlots = displaySlots.length > 0;
                                         return hasSlots && !isStoreOpen ? (
                                             <div className="mb-3 text-center">
                                                 <div className="text-xs text-red-400 bg-red-500/10 px-4 py-2 rounded-2xl border border-red-500/20 font-bold space-y-1">
-                                                    <p className="uppercase tracking-widest text-[10px] opacity-70 mb-1">Store Currently Closed</p>
+                                                    <p className="uppercase tracking-widest text-[10px] opacity-70 mb-1">
+                                                        Store Currently Closed
+                                                    </p>
                                                     <div className="flex flex-wrap justify-center gap-x-3 gap-y-1">
                                                         {displaySlots.map((slot, i) => (
-                                                            <span key={i} className="whitespace-nowrap">Slot {i + 1}: {format12h(slot.start)} - {format12h(slot.end)}</span>
+                                                            <span
+                                                                key={i}
+                                                                className="whitespace-nowrap"
+                                                            >
+                                                                Slot {i + 1}:{" "}
+                                                                {format12h(slot.start)} -{" "}
+                                                                {format12h(slot.end)}
+                                                            </span>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -601,9 +790,17 @@ export default function CartDrawer() {
                                     {hasMinOrderIssue && isStoreOpen && (
                                         <div className="mb-3 space-y-2">
                                             {minOrderShortfalls.map((item) => (
-                                                <div key={item.restaurantId} className="text-xs text-orange-400 bg-orange-500/10 px-4 py-2 rounded-lg border border-orange-500/20 font-bold text-center">
-                                                    🛍️ Add ₹{item.shortfall} more from <span className="text-white">{item.restaurantName}</span>
-                                                    <span className="text-gray-500 ml-1">(Min: ₹{item.minAmount})</span>
+                                                <div
+                                                    key={item.restaurantId}
+                                                    className="text-xs text-orange-400 bg-orange-500/10 px-4 py-2 rounded-lg border border-orange-500/20 font-bold text-center"
+                                                >
+                                                    🛍️ Add ₹{item.shortfall} more from{" "}
+                                                    <span className="text-white">
+                                                        {item.restaurantName}
+                                                    </span>
+                                                    <span className="text-gray-500 ml-1">
+                                                        (Min: ₹{item.minAmount})
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
@@ -611,7 +808,12 @@ export default function CartDrawer() {
                                     <button
                                         id="checkout-btn"
                                         onClick={handleCheckout}
-                                        disabled={!isFormValid || !isStoreOpen || isCheckingOut || hasMinOrderIssue}
+                                        disabled={
+                                            !isFormValid ||
+                                            !isStoreOpen ||
+                                            isCheckingOut ||
+                                            hasMinOrderIssue
+                                        }
                                         className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-gray-600 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-900/20 active:scale-[0.98] border border-white/5"
                                     >
                                         {isCheckingOut ? (
@@ -622,7 +824,12 @@ export default function CartDrawer() {
                                         ) : (
                                             <>
                                                 <span>Place Order via WhatsApp</span>
-                                                <Send size={20} className={isFormValid ? "animate-bounce-x" : ""} />
+                                                <Send
+                                                    size={20}
+                                                    className={
+                                                        isFormValid ? "animate-bounce-x" : ""
+                                                    }
+                                                />
                                             </>
                                         )}
                                     </button>
@@ -653,9 +860,12 @@ export default function CartDrawer() {
                             <div className="w-16 h-16 bg-orange-500/10 rounded-2xl flex items-center justify-center mx-auto mb-5 border border-orange-500/20 text-3xl">
                                 🛵
                             </div>
-                            <h3 className="text-xl font-black text-white mb-2">Order Already Placed!</h3>
+                            <h3 className="text-xl font-black text-white mb-2">
+                                Order Already Placed!
+                            </h3>
                             <p className="text-gray-400 text-sm leading-relaxed mb-6">
-                                It looks like you already placed an order a moment ago. Your order is on its way! Check WhatsApp for your order status.
+                                It looks like you already placed an order a moment ago. Your order
+                                is on its way! Check WhatsApp for your order status.
                             </p>
                             <div className="flex flex-col gap-3">
                                 <a
@@ -664,7 +874,13 @@ export default function CartDrawer() {
                                     rel="noopener noreferrer"
                                     className="w-full bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg"
                                 >
-                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" /></svg>
+                                    <svg
+                                        className="w-5 h-5"
+                                        fill="currentColor"
+                                        viewBox="0 0 24 24"
+                                    >
+                                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z" />
+                                    </svg>
                                     View Order on WhatsApp
                                 </a>
                                 <button
@@ -676,8 +892,7 @@ export default function CartDrawer() {
                             </div>
                         </motion.div>
                     </div>
-                )
-                }
+                )}
             </AnimatePresence>
         </>
     );

@@ -12,14 +12,14 @@ import {
     Shirt,
     Trash,
     Truck,
-    User
+    User,
 } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useMemo, useState } from "react";
-import { deleteDoc, doc, serverTimestamp, updateDoc } from "firebase/firestore";
+import { serverTimestamp } from "firebase/firestore";
+import { updateLaundryOrder, deleteLaundryOrder } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import ConfirmModal from "../../components/ConfirmModal";
-import { db } from "@/lib/firebase";
 
 const PIPELINE_TABS = [
     {
@@ -95,10 +95,18 @@ const resolveOrderStage = (order) => {
     if (order.status === "Completed" || order.status === "PaidToShop" || order.paidToShopAt) {
         return "Completed";
     }
-    if (order.status === "PendingShopPayment" || order.status === "Delivered" || order.deliveredToCustomerAt) {
+    if (
+        order.status === "PendingShopPayment" ||
+        order.status === "Delivered" ||
+        order.deliveredToCustomerAt
+    ) {
         return "PendingShopPayment";
     }
-    if (order.status === "DeliveryPending" || order.status === "CustomerPaid" || order.customerPaidAt) {
+    if (
+        order.status === "DeliveryPending" ||
+        order.status === "CustomerPaid" ||
+        order.customerPaidAt
+    ) {
         return "DeliveryPending";
     }
     if (order.status === "PendingCustomerPayment" || order.pickedUpFromCustomerAt) {
@@ -121,12 +129,12 @@ function OrderDateGroup({ title, orders, renderOrder }) {
         <div className="space-y-4">
             <div className="flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/10" />
-                <h4 className="text-[11px] font-black tracking-[0.25em] text-cyan-300 uppercase">{title}</h4>
+                <h4 className="text-[11px] font-black tracking-[0.25em] text-cyan-300 uppercase">
+                    {title}
+                </h4>
                 <div className="h-px flex-1 bg-white/10" />
             </div>
-            <div className="space-y-3">
-                {orders.map(renderOrder)}
-            </div>
+            <div className="space-y-3">{orders.map(renderOrder)}</div>
         </div>
     );
 }
@@ -146,7 +154,7 @@ function InputModal({
     secondaryValue,
     setSecondaryValue,
     secondaryPlaceholder,
-    secondaryType = "text"
+    secondaryType = "text",
 }) {
     return (
         <AnimatePresence>
@@ -220,19 +228,24 @@ function PipelineOrderCard({
     onPrimaryAction,
     onReschedule,
     onDelete,
-    processing
+    processing,
 }) {
-    const itemCount = order.items?.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0) || 0;
+    const itemCount =
+        order.items?.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0) || 0;
     const history = [
         { label: "Order created", value: order.createdAt },
         { label: "Pickup recorded", value: order.pickedUpFromCustomerAt },
         {
-            label: order.customerPaidAmount ? `Customer paid ₹${order.customerPaidAmount}` : "Customer payment pending",
-            value: order.customerPaidAt
+            label: order.customerPaidAmount
+                ? `Customer paid ₹${order.customerPaidAmount}`
+                : "Customer payment pending",
+            value: order.customerPaidAt,
         },
         {
-            label: order.paidToShopAmount ? `Paid to shop ₹${order.paidToShopAmount}` : "Shop payment pending",
-            value: order.paidToShopAt
+            label: order.paidToShopAmount
+                ? `Paid to shop ₹${order.paidToShopAmount}`
+                : "Shop payment pending",
+            value: order.paidToShopAt,
         },
         { label: "Delivered", value: order.deliveredToCustomerAt },
         { label: "Rescheduled", value: order.rescheduledAt },
@@ -248,20 +261,24 @@ function PipelineOrderCard({
             <div className="p-4 md:p-5">
                 <div className="flex flex-col gap-4">
                     <div className="flex items-start gap-3">
-                        <button
-                            onClick={onToggle}
-                            className="min-w-0 flex-1 text-left"
-                        >
+                        <button onClick={onToggle} className="min-w-0 flex-1 text-left">
                             <div className="space-y-2">
                                 <div className="flex flex-wrap items-center gap-2">
                                     <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-widest text-cyan-300">
                                         {stageLabel}
                                     </span>
-                                    <span className="text-xs text-gray-500">{formatDisplayDate(order.scheduledDate)} · {order.scheduledSlot || "No slot"}</span>
+                                    <span className="text-xs text-gray-500">
+                                        {formatDisplayDate(order.scheduledDate)} ·{" "}
+                                        {order.scheduledSlot || "No slot"}
+                                    </span>
                                 </div>
                                 <div>
-                                    <h3 className="truncate text-lg font-black text-white">{order.name || "Unnamed Customer"}</h3>
-                                    <p className="truncate text-sm text-gray-400">{order.phone || "No phone"} · {order.campus || "No campus"}</p>
+                                    <h3 className="truncate text-lg font-black text-white">
+                                        {order.name || "Unnamed Customer"}
+                                    </h3>
+                                    <p className="truncate text-sm text-gray-400">
+                                        {order.phone || "No phone"} · {order.campus || "No campus"}
+                                    </p>
                                 </div>
                                 <div className="flex flex-wrap gap-3 text-xs text-gray-400">
                                     <span>{itemCount} items</span>
@@ -286,7 +303,9 @@ function PipelineOrderCard({
 
                     <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                         <div className="text-xs text-gray-500">
-                            {order.createdAt ? `Placed ${formatTimestamp(order.createdAt)}` : "Recently placed"}
+                            {order.createdAt
+                                ? `Placed ${formatTimestamp(order.createdAt)}`
+                                : "Recently placed"}
                         </div>
                         {actionLabel ? (
                             <button
@@ -294,11 +313,17 @@ function PipelineOrderCard({
                                 disabled={processing}
                                 className={`inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition-colors sm:w-auto ${actionClass} disabled:opacity-60`}
                             >
-                                {processing ? <Loader2 size={16} className="animate-spin" /> : <ActionIcon size={16} />}
+                                {processing ? (
+                                    <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                    <ActionIcon size={16} />
+                                )}
                                 {actionLabel}
                             </button>
                         ) : (
-                            <div className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">Read only</div>
+                            <div className="text-xs font-bold uppercase tracking-[0.2em] text-gray-500">
+                                Read only
+                            </div>
                         )}
                     </div>
                 </div>
@@ -314,22 +339,48 @@ function PipelineOrderCard({
                             <div className="mt-5 grid gap-4 border-t border-white/10 pt-5 md:grid-cols-[1.05fr_0.95fr]">
                                 <div className="space-y-4">
                                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">Customer</p>
+                                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+                                            Customer
+                                        </p>
                                         <div className="space-y-2 text-sm text-gray-300">
-                                            <p className="flex items-center gap-2"><User size={14} className="text-gray-500" /> {order.name || "Unnamed Customer"}</p>
-                                            <p className="flex items-center gap-2"><Phone size={14} className="text-gray-500" /> {order.phone || "No phone"}</p>
-                                            <p className="flex items-start gap-2"><MapPin size={14} className="mt-0.5 shrink-0 text-gray-500" /> {order.location || "No address provided"}</p>
-                                            {order.distance && <p className="text-gray-400">Distance: {order.distance}</p>}
+                                            <p className="flex items-center gap-2">
+                                                <User size={14} className="text-gray-500" />{" "}
+                                                {order.name || "Unnamed Customer"}
+                                            </p>
+                                            <p className="flex items-center gap-2">
+                                                <Phone size={14} className="text-gray-500" />{" "}
+                                                {order.phone || "No phone"}
+                                            </p>
+                                            <p className="flex items-start gap-2">
+                                                <MapPin
+                                                    size={14}
+                                                    className="mt-0.5 shrink-0 text-gray-500"
+                                                />{" "}
+                                                {order.location || "No address provided"}
+                                            </p>
+                                            {order.distance && (
+                                                <p className="text-gray-400">
+                                                    Distance: {order.distance}
+                                                </p>
+                                            )}
                                         </div>
                                     </div>
 
                                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">Items</p>
+                                        <p className="mb-3 text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+                                            Items
+                                        </p>
                                         <div className="space-y-2">
                                             {order.items?.map((item, idx) => (
-                                                <div key={`${item.name}-${idx}`} className="flex items-center justify-between gap-3 text-sm text-gray-200">
+                                                <div
+                                                    key={`${item.name}-${idx}`}
+                                                    className="flex items-center justify-between gap-3 text-sm text-gray-200"
+                                                >
                                                     <div className="flex items-center gap-3">
-                                                        <Shirt size={14} className="text-gray-500" />
+                                                        <Shirt
+                                                            size={14}
+                                                            className="text-gray-500"
+                                                        />
                                                         <span>{item.name}</span>
                                                         {item.steamIron && (
                                                             <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-300">
@@ -337,7 +388,9 @@ function PipelineOrderCard({
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <span className="font-bold text-white">x{item.quantity || 1}</span>
+                                                    <span className="font-bold text-white">
+                                                        x{item.quantity || 1}
+                                                    </span>
                                                 </div>
                                             ))}
                                         </div>
@@ -345,8 +398,12 @@ function PipelineOrderCard({
 
                                     {order.instructions && (
                                         <div className="rounded-2xl border border-yellow-500/20 bg-yellow-500/10 p-4">
-                                            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-300">Instructions</p>
-                                            <p className="text-sm text-yellow-100/90">{order.instructions}</p>
+                                            <p className="mb-2 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-300">
+                                                Instructions
+                                            </p>
+                                            <p className="text-sm text-yellow-100/90">
+                                                {order.instructions}
+                                            </p>
                                         </div>
                                     )}
                                 </div>
@@ -354,7 +411,9 @@ function PipelineOrderCard({
                                 <div className="space-y-4">
                                     <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                                         <div className="mb-3 flex items-center justify-between">
-                                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">Workflow History</p>
+                                            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-gray-500">
+                                                Workflow History
+                                            </p>
                                             {stageId !== "Completed" && (
                                                 <button
                                                     onClick={onReschedule}
@@ -367,15 +426,25 @@ function PipelineOrderCard({
                                         </div>
                                         <div className="space-y-3">
                                             <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
-                                                Pickup: {formatDisplayDate(order.scheduledDate)} · {order.scheduledSlot || "No slot"}
+                                                Pickup: {formatDisplayDate(order.scheduledDate)} ·{" "}
+                                                {order.scheduledSlot || "No slot"}
                                             </div>
                                             {history.length === 0 ? (
-                                                <p className="text-sm text-gray-500">No workflow actions recorded yet.</p>
+                                                <p className="text-sm text-gray-500">
+                                                    No workflow actions recorded yet.
+                                                </p>
                                             ) : (
                                                 history.map((entry) => (
-                                                    <div key={`${entry.label}-${entry.value?.seconds || entry.value}`} className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm">
-                                                        <span className="text-gray-300">{entry.label}</span>
-                                                        <span className="shrink-0 text-xs text-gray-500">{formatTimestamp(entry.value)}</span>
+                                                    <div
+                                                        key={`${entry.label}-${entry.value?.seconds || entry.value}`}
+                                                        className="flex items-start justify-between gap-3 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm"
+                                                    >
+                                                        <span className="text-gray-300">
+                                                            {entry.label}
+                                                        </span>
+                                                        <span className="shrink-0 text-xs text-gray-500">
+                                                            {formatTimestamp(entry.value)}
+                                                        </span>
                                                     </div>
                                                 ))
                                             )}
@@ -402,20 +471,35 @@ export default function LaundrySettings({
     handleAddSlot,
     handleDeleteSlot,
     laundryOrders = [],
-    loadingLaundryOrders = false
+    loadingLaundryOrders = false,
 }) {
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, slotIdx: null, slotName: "" });
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        slotIdx: null,
+        slotName: "",
+    });
     const [deleteModal, setDeleteModal] = useState({ isOpen: false, order: null });
     const [activeTab, setActiveTab] = useState("ReadyForPickup");
     const [expandedOrderId, setExpandedOrderId] = useState(null);
     const [processingOrderId, setProcessingOrderId] = useState(null);
-    const [paymentModal, setPaymentModal] = useState({ isOpen: false, type: null, order: null, amount: "", weight: "" });
-    const [rescheduleModal, setRescheduleModal] = useState({ isOpen: false, order: null, date: "", slot: "" });
+    const [paymentModal, setPaymentModal] = useState({
+        isOpen: false,
+        type: null,
+        order: null,
+        amount: "",
+        weight: "",
+    });
+    const [rescheduleModal, setRescheduleModal] = useState({
+        isOpen: false,
+        order: null,
+        date: "",
+        slot: "",
+    });
 
     const updateOrder = async (orderId, updates, successMessage) => {
         setProcessingOrderId(orderId);
         try {
-            await updateDoc(doc(db, "laundry_orders", orderId), {
+            await updateLaundryOrder(orderId, {
                 ...updates,
                 updatedAt: serverTimestamp(),
             });
@@ -443,10 +527,14 @@ export default function LaundrySettings({
 
     const handlePrimaryAction = async (order, stageId) => {
         if (stageId === "ReadyForPickup") {
-            await updateOrder(order.id, {
-                status: "PendingCustomerPayment",
-                pickedUpFromCustomerAt: serverTimestamp(),
-            }, "Pickup recorded");
+            await updateOrder(
+                order.id,
+                {
+                    status: "PendingCustomerPayment",
+                    pickedUpFromCustomerAt: serverTimestamp(),
+                },
+                "Pickup recorded"
+            );
             return;
         }
 
@@ -462,10 +550,14 @@ export default function LaundrySettings({
         }
 
         if (stageId === "DeliveryPending") {
-            await updateOrder(order.id, {
-                status: "PendingShopPayment",
-                deliveredToCustomerAt: serverTimestamp(),
-            }, "Delivery recorded");
+            await updateOrder(
+                order.id,
+                {
+                    status: "PendingShopPayment",
+                    deliveredToCustomerAt: serverTimestamp(),
+                },
+                "Delivery recorded"
+            );
             return;
         }
 
@@ -492,18 +584,26 @@ export default function LaundrySettings({
                 toast.error("Enter a valid weight");
                 return;
             }
-            await updateOrder(paymentModal.order.id, {
-                status: "DeliveryPending",
-                customerPaidAmount: amount,
-                customerPaidAt: serverTimestamp(),
-                weight,
-            }, "Customer payment recorded");
+            await updateOrder(
+                paymentModal.order.id,
+                {
+                    status: "DeliveryPending",
+                    customerPaidAmount: amount,
+                    customerPaidAt: serverTimestamp(),
+                    weight,
+                },
+                "Customer payment recorded"
+            );
         } else {
-            await updateOrder(paymentModal.order.id, {
-                status: "Completed",
-                paidToShopAmount: amount,
-                paidToShopAt: serverTimestamp(),
-            }, "Shop payment recorded");
+            await updateOrder(
+                paymentModal.order.id,
+                {
+                    status: "Completed",
+                    paidToShopAmount: amount,
+                    paidToShopAt: serverTimestamp(),
+                },
+                "Shop payment recorded"
+            );
         }
 
         setPaymentModal({ isOpen: false, type: null, order: null, amount: "", weight: "" });
@@ -524,18 +624,22 @@ export default function LaundrySettings({
             return;
         }
 
-        await updateOrder(rescheduleModal.order.id, {
-            scheduledDate: rescheduleModal.date,
-            scheduledSlot: rescheduleModal.slot.trim(),
-            rescheduledAt: serverTimestamp(),
-        }, "Order rescheduled");
+        await updateOrder(
+            rescheduleModal.order.id,
+            {
+                scheduledDate: rescheduleModal.date,
+                scheduledSlot: rescheduleModal.slot.trim(),
+                rescheduledAt: serverTimestamp(),
+            },
+            "Order rescheduled"
+        );
 
         setRescheduleModal({ isOpen: false, order: null, date: "", slot: "" });
     };
 
     const handleDeleteOrder = async (order) => {
         try {
-            await deleteDoc(doc(db, "laundry_orders", order.id));
+            await deleteLaundryOrder(order.id);
             toast.success("Order deleted successfully");
             setDeleteModal({ isOpen: false, order: null });
         } catch (error) {
@@ -573,13 +677,19 @@ export default function LaundrySettings({
                                 <Loader2 className="mr-2 animate-spin" /> Loading laundry orders...
                             </div>
                         ) : filteredOrders.length === 0 ? (
-                            <EmptyOrdersState message={PIPELINE_TABS.find((tab) => tab.id === activeTab)?.emptyMessage} />
+                            <EmptyOrdersState
+                                message={
+                                    PIPELINE_TABS.find((tab) => tab.id === activeTab)?.emptyMessage
+                                }
+                            />
                         ) : (
                             <div className="space-y-8">
                                 {Object.entries(groupedOrders)
                                     .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
                                     .map(([date, ordersForDate]) => {
-                                        const currentTab = PIPELINE_TABS.find((tab) => tab.id === activeTab);
+                                        const currentTab = PIPELINE_TABS.find(
+                                            (tab) => tab.id === activeTab
+                                        );
                                         return (
                                             <OrderDateGroup
                                                 key={date}
@@ -595,10 +705,20 @@ export default function LaundrySettings({
                                                         ActionIcon={currentTab.actionIcon}
                                                         actionClass={currentTab.actionClass}
                                                         isExpanded={expandedOrderId === order.id}
-                                                        onToggle={() => setExpandedOrderId((prev) => prev === order.id ? null : order.id)}
-                                                        onPrimaryAction={() => handlePrimaryAction(order, activeTab)}
-                                                        onReschedule={() => openRescheduleModal(order)}
-                                                        onDelete={() => setDeleteModal({ isOpen: true, order })}
+                                                        onToggle={() =>
+                                                            setExpandedOrderId((prev) =>
+                                                                prev === order.id ? null : order.id
+                                                            )
+                                                        }
+                                                        onPrimaryAction={() =>
+                                                            handlePrimaryAction(order, activeTab)
+                                                        }
+                                                        onReschedule={() =>
+                                                            openRescheduleModal(order)
+                                                        }
+                                                        onDelete={() =>
+                                                            setDeleteModal({ isOpen: true, order })
+                                                        }
                                                         processing={processingOrderId === order.id}
                                                     />
                                                 )}
@@ -619,7 +739,16 @@ export default function LaundrySettings({
                         <div className="grid gap-12 md:grid-cols-2">
                             <div className="space-y-6">
                                 <div className="mb-6 flex flex-wrap gap-2">
-                                    {["default", "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"].map((day) => (
+                                    {[
+                                        "default",
+                                        "Sunday",
+                                        "Monday",
+                                        "Tuesday",
+                                        "Wednesday",
+                                        "Thursday",
+                                        "Friday",
+                                        "Saturday",
+                                    ].map((day) => (
                                         <button
                                             key={day}
                                             onClick={() => setSelectedDay(day)}
@@ -632,7 +761,12 @@ export default function LaundrySettings({
 
                                 <div className="mb-6 rounded-2xl border border-cyan-500/20 bg-cyan-500/10 p-6">
                                     <h4 className="mb-2 text-xl font-bold text-cyan-400">
-                                        Managing: <span className="text-white underline decoration-cyan-500/50">{selectedDay === "default" ? "Default Schedule" : selectedDay}</span>
+                                        Managing:{" "}
+                                        <span className="text-white underline decoration-cyan-500/50">
+                                            {selectedDay === "default"
+                                                ? "Default Schedule"
+                                                : selectedDay}
+                                        </span>
                                     </h4>
                                     <p className="text-sm text-cyan-200/70">
                                         {selectedDay === "default"
@@ -642,20 +776,27 @@ export default function LaundrySettings({
                                 </div>
 
                                 <div className="rounded-2xl border border-blue-500/20 bg-blue-500/10 p-6">
-                                    <h4 className="mb-2 flex items-center gap-2 font-bold text-blue-400"><Clock size={16} /> How it works</h4>
+                                    <h4 className="mb-2 flex items-center gap-2 font-bold text-blue-400">
+                                        <Clock size={16} /> How it works
+                                    </h4>
                                     <p className="text-sm leading-relaxed text-blue-200/70">
-                                        Add available pickup time slots for the selected date. These appear in the Laundry booking form for users.
+                                        Add available pickup time slots for the selected date. These
+                                        appear in the Laundry booking form for users.
                                     </p>
                                 </div>
                             </div>
 
                             <div className="space-y-6">
-                                <label className="ml-1 block text-sm font-bold uppercase tracking-widest text-gray-400">Available Slots</label>
+                                <label className="ml-1 block text-sm font-bold uppercase tracking-widest text-gray-400">
+                                    Available Slots
+                                </label>
 
                                 <div className="flex items-end gap-2">
                                     <div className="grid flex-1 grid-cols-2 gap-2">
                                         <div className="space-y-1">
-                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">Start</label>
+                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                                Start
+                                            </label>
                                             <input
                                                 type="time"
                                                 value={slotStart}
@@ -664,7 +805,9 @@ export default function LaundrySettings({
                                             />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">End</label>
+                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                                End
+                                            </label>
                                             <input
                                                 type="time"
                                                 value={slotEnd}
@@ -689,10 +832,19 @@ export default function LaundrySettings({
                                         </div>
                                     )}
                                     {laundrySlots.map((slot, idx) => (
-                                        <div key={idx} className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10">
+                                        <div
+                                            key={idx}
+                                            className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10"
+                                        >
                                             <span className="font-bold text-gray-200">{slot}</span>
                                             <button
-                                                onClick={() => setConfirmModal({ isOpen: true, slotIdx: idx, slotName: slot })}
+                                                onClick={() =>
+                                                    setConfirmModal({
+                                                        isOpen: true,
+                                                        slotIdx: idx,
+                                                        slotName: slot,
+                                                    })
+                                                }
                                                 className="rounded-lg p-2 text-gray-500 transition-all hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 md:opacity-0"
                                             >
                                                 <Trash size={18} />
@@ -708,17 +860,37 @@ export default function LaundrySettings({
 
             <InputModal
                 isOpen={paymentModal.isOpen}
-                title={paymentModal.type === "customer" ? "Record Customer Payment" : "Record Payment To Shop"}
-                description={paymentModal.order ? `${paymentModal.order.name} · ${formatDisplayDate(paymentModal.order.scheduledDate)} · ${paymentModal.order.scheduledSlot || "No slot"}` : ""}
+                title={
+                    paymentModal.type === "customer"
+                        ? "Record Customer Payment"
+                        : "Record Payment To Shop"
+                }
+                description={
+                    paymentModal.order
+                        ? `${paymentModal.order.name} · ${formatDisplayDate(paymentModal.order.scheduledDate)} · ${paymentModal.order.scheduledSlot || "No slot"}`
+                        : ""
+                }
                 value={paymentModal.amount}
                 setValue={(value) => setPaymentModal((prev) => ({ ...prev, amount: value }))}
                 placeholder="Enter amount"
                 confirmLabel="Save Payment"
-                onClose={() => setPaymentModal({ isOpen: false, type: null, order: null, amount: "", weight: "" })}
+                onClose={() =>
+                    setPaymentModal({
+                        isOpen: false,
+                        type: null,
+                        order: null,
+                        amount: "",
+                        weight: "",
+                    })
+                }
                 onConfirm={submitPaymentModal}
                 loading={!!processingOrderId}
                 secondaryValue={paymentModal.type === "customer" ? paymentModal.weight : undefined}
-                setSecondaryValue={paymentModal.type === "customer" ? (value) => setPaymentModal((prev) => ({ ...prev, weight: value })) : undefined}
+                setSecondaryValue={
+                    paymentModal.type === "customer"
+                        ? (value) => setPaymentModal((prev) => ({ ...prev, weight: value }))
+                        : undefined
+                }
                 secondaryPlaceholder="Weight (kg)"
                 secondaryType="number"
             />
@@ -726,17 +898,25 @@ export default function LaundrySettings({
             <InputModal
                 isOpen={rescheduleModal.isOpen}
                 title="Reschedule Order"
-                description={rescheduleModal.order ? `Update pickup schedule for ${rescheduleModal.order.name}.` : ""}
+                description={
+                    rescheduleModal.order
+                        ? `Update pickup schedule for ${rescheduleModal.order.name}.`
+                        : ""
+                }
                 value={rescheduleModal.date}
                 setValue={(value) => setRescheduleModal((prev) => ({ ...prev, date: value }))}
                 placeholder="Pickup date"
                 confirmLabel="Save Schedule"
-                onClose={() => setRescheduleModal({ isOpen: false, order: null, date: "", slot: "" })}
+                onClose={() =>
+                    setRescheduleModal({ isOpen: false, order: null, date: "", slot: "" })
+                }
                 onConfirm={submitReschedule}
                 loading={!!processingOrderId}
                 inputType="date"
                 secondaryValue={rescheduleModal.slot}
-                setSecondaryValue={(value) => setRescheduleModal((prev) => ({ ...prev, slot: value }))}
+                setSecondaryValue={(value) =>
+                    setRescheduleModal((prev) => ({ ...prev, slot: value }))
+                }
                 secondaryPlaceholder="Pickup time slot"
             />
 
@@ -754,7 +934,11 @@ export default function LaundrySettings({
                 onClose={() => setDeleteModal({ isOpen: false, order: null })}
                 onConfirm={() => handleDeleteOrder(deleteModal.order)}
                 title="Delete Order?"
-                message={deleteModal.order ? `Are you sure you want to delete the order for ${deleteModal.order.name}? This action cannot be undone.` : "Are you sure you want to delete this order?"}
+                message={
+                    deleteModal.order
+                        ? `Are you sure you want to delete the order for ${deleteModal.order.name}? This action cannot be undone.`
+                        : "Are you sure you want to delete this order?"
+                }
                 confirmLabel="Delete Order"
                 isDanger={true}
             />

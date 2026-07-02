@@ -7,7 +7,8 @@ import { motion } from "framer-motion";
 import LaundryHero from "./components/LaundryHero";
 import LaundryForm from "./components/LaundryForm";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
-import { addDoc, collection, doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { createLaundryOrder } from "@/lib/repositories";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import TermsFooter from "../components/TermsFooter";
 
@@ -21,7 +22,7 @@ export default function LaundryPage() {
             location: "",
             date: "",
             time: "",
-            instructions: ""
+            instructions: "",
         };
 
         if (typeof window === "undefined") return defaultState;
@@ -35,7 +36,7 @@ export default function LaundryPage() {
                 ...defaultState,
                 name: parsed.name || "",
                 phone: parsed.phone || "",
-                location: parsed.address || parsed.room || parsed.location || ""
+                location: parsed.address || parsed.room || parsed.location || "",
             };
         } catch (e) {
             console.error("Failed to parse saved user details", e);
@@ -49,13 +50,15 @@ export default function LaundryPage() {
             // Only save if name, phone or location has value to avoid overwriting with empty
             if (formData.name || formData.phone || formData.location) {
                 // Map location back to address for cross-tab sharing with CartDrawer/Grocery
-                const currentSaved = JSON.parse(localStorage.getItem("pumato_user_details") || "{}");
+                const currentSaved = JSON.parse(
+                    localStorage.getItem("pumato_user_details") || "{}"
+                );
                 const toSave = {
                     ...currentSaved,
                     name: formData.name || currentSaved.name,
                     phone: formData.phone || currentSaved.phone,
                     address: formData.location || currentSaved.address,
-                    location: formData.location || currentSaved.location
+                    location: formData.location || currentSaved.location,
                 };
                 localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
             }
@@ -127,7 +130,7 @@ export default function LaundryPage() {
 
             setLoadingSlots(true);
             setAvailableSlots([]);
-            setFormData(prev => ({ ...prev, time: "" })); // Reset time on date change
+            setFormData((prev) => ({ ...prev, time: "" })); // Reset time on date change
 
             try {
                 // 1. Get Day of Week (Safe parsing for YYYY-MM-DD)
@@ -135,7 +138,10 @@ export default function LaundryPage() {
                 // but we want to ensure we get the weekday for that specific date string universally.
                 // Using new Date(dateString) is parsed as UTC for hyphens.
                 const date = new Date(formData.date);
-                const dayName = date.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" });
+                const dayName = date.toLocaleDateString("en-US", {
+                    weekday: "long",
+                    timeZone: "UTC",
+                });
 
                 // 2. Try Specific Day Override
                 const dayRef = doc(db, "laundry_slots", dayName);
@@ -176,22 +182,20 @@ export default function LaundryPage() {
 
     const handleRemoveItem = (id) => {
         if (items.length > 1) {
-            setItems(items.filter(item => item.id !== id));
+            setItems(items.filter((item) => item.id !== id));
         }
     };
 
     const handleItemChange = (id, field, value) => {
-        if (field === 'quantity' && value !== '' && Number(value) < 1) return;
-        const newItems = items.map(item =>
-            item.id === id ? { ...item, [field]: value } : item
-        );
+        if (field === "quantity" && value !== "" && Number(value) < 1) return;
+        const newItems = items.map((item) => (item.id === id ? { ...item, [field]: value } : item));
         setItems(newItems);
     };
 
     const handleChange = (e) => {
         setFormData({
             ...formData,
-            [e.target.name]: e.target.value
+            [e.target.name]: e.target.value,
         });
     };
 
@@ -200,9 +204,16 @@ export default function LaundryPage() {
 
         const trimmedName = formData.name.trim();
         const trimmedLocation = formData.location.trim();
-        const validItems = items.filter(i => i.name.trim().length > 0);
+        const validItems = items.filter((i) => i.name.trim().length > 0);
 
-        if (!trimmedName || !formData.phone || !formData.campus || !trimmedLocation || !formData.date || !formData.time) {
+        if (
+            !trimmedName ||
+            !formData.phone ||
+            !formData.campus ||
+            !trimmedLocation ||
+            !formData.date ||
+            !formData.time
+        ) {
             toast.error("Please fill in all details including Campus, Hostel & Pickup Date/Time.");
             return;
         }
@@ -223,11 +234,11 @@ export default function LaundryPage() {
         message += `Phone: ${formData.phone}\n`;
         message += `Campus: ${formData.campus}\n`;
 
-        const selectedCampus = campusConfig.find(c => c.id === formData.campus);
-        const validLaundryItems = validItems.map(item => ({
+        const selectedCampus = campusConfig.find((c) => c.id === formData.campus);
+        const validLaundryItems = validItems.map((item) => ({
             name: item.name.trim(),
             quantity: Number(item.quantity) || 1,
-            steamIron: !!item.steamIron
+            steamIron: !!item.steamIron,
         }));
 
         if (selectedCampus && selectedCampus.deliveryCharge > 0) {
@@ -247,7 +258,7 @@ export default function LaundryPage() {
         if (validItems.length > 0) {
             message += `*Clothing Items:*\n`;
             validItems.forEach((item, index) => {
-                message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ''} ${item.steamIron ? '(Steam Iron)' : ''}\n`;
+                message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ""} ${item.steamIron ? "(Steam Iron)" : ""}\n`;
             });
         }
 
@@ -255,7 +266,7 @@ export default function LaundryPage() {
         window.open(whatsappUrl, "_blank");
 
         try {
-            addDoc(collection(db, "laundry_orders"), {
+            createLaundryOrder({
                 name: trimmedName,
                 phone: formData.phone,
                 campus: formData.campus,
@@ -267,7 +278,7 @@ export default function LaundryPage() {
                 status: "ReadyForPickup",
                 customerPaidAmount: null,
                 paidToShopAmount: null,
-                createdAt: serverTimestamp()
+                createdAt: serverTimestamp(),
             }).catch((dbError) => {
                 console.error("Failed to record laundry order in Firestore:", dbError);
             });
@@ -282,15 +293,18 @@ export default function LaundryPage() {
 
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+            <div
+                className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                }}
+            ></div>
             <Navbar />
             <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none" />
 
             <div className="max-w-7xl mx-auto px-4 py-12 pt-32 relative z-10">
-
                 <div className="grid md:grid-cols-2 gap-12 items-start">
-
                     {/* Left Column */}
                     <motion.div
                         initial={{ opacity: 0, x: -30 }}

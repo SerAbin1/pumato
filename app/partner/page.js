@@ -6,8 +6,6 @@ import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import {
     doc,
     getDoc,
-    setDoc,
-    updateDoc,
     collection,
     query,
     where,
@@ -17,6 +15,7 @@ import {
     Timestamp,
     serverTimestamp,
 } from "firebase/firestore";
+import { updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import {
     LogOut,
@@ -370,16 +369,12 @@ export default function PartnerDashboard() {
                             }
                             return item;
                         });
-                        await setDoc(
-                            doc(db, "restaurants", user.restaurantId),
-                            { menu: updatedMenu },
-                            { merge: true }
-                        );
+                        await updateRestaurant(user.restaurantId, { menu: updatedMenu });
                     }
                 }
             }
 
-            await updateDoc(doc(db, "orders", order.id), updates);
+            await updateOrder(order.id, updates);
 
             const labels = {
                 viewed: "Marked as Viewed",
@@ -399,7 +394,7 @@ export default function PartnerDashboard() {
         if (!user?.restaurantId) return;
         setIsSaving(true);
         try {
-            await setDoc(doc(db, "restaurants", user.restaurantId), data, { merge: true });
+            await updateRestaurant(user.restaurantId, data);
             setRestaurantData((prev) => ({ ...prev, ...data }));
             toast.success("Saved!");
         } catch {

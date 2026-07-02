@@ -24,7 +24,6 @@ import {
     collection,
     getDocs,
     doc,
-    setDoc,
     getDoc,
     query,
     where,
@@ -32,6 +31,13 @@ import {
     onSnapshot,
     Timestamp,
 } from "firebase/firestore";
+import {
+    saveOrderSettings,
+    savePromoBanners,
+    saveGrocerySettings,
+    saveLaundrySettings,
+    saveLaundrySlots,
+} from "@/lib/repositories";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
 import Link from "next/link";
@@ -369,8 +375,8 @@ export default function AdminPage() {
 
     const saveCampusConfig = async () => {
         try {
-            await setDoc(doc(db, "general_settings", "laundry"), {
-                ...laundrySettings, // Persist manualOverride
+            await saveLaundrySettings({
+                ...laundrySettings,
                 campuses: campusConfig,
                 pricing: laundryPricing,
             });
@@ -384,7 +390,7 @@ export default function AdminPage() {
     const handleSaveBanners = async () => {
         setIsSaving(true);
         try {
-            await setDoc(doc(db, "site_content", "promo_banners"), banners);
+            await savePromoBanners(banners);
             alert("Banners updated successfully!");
         } catch (error) {
             console.error("Error saving banners:", error);
@@ -398,8 +404,8 @@ export default function AdminPage() {
         setIsSaving(true);
         try {
             await Promise.all([
-                setDoc(doc(db, "site_content", "order_settings"), orderSettings),
-                setDoc(doc(db, "site_content", "grocery_settings"), grocerySettings),
+                saveOrderSettings(orderSettings),
+                saveGrocerySettings(grocerySettings),
             ]);
             alert("Settings updated successfully!");
         } catch (error) {
@@ -453,9 +459,7 @@ export default function AdminPage() {
         const targetDoc = selectedDay;
 
         try {
-            await setDoc(doc(db, "laundry_slots", targetDoc), {
-                slots: updatedSlots,
-            });
+            await saveLaundrySlots(targetDoc, { slots: updatedSlots });
         } catch (error) {
             console.error("Error saving slot:", error);
             alert("Failed to save slot");
@@ -467,7 +471,7 @@ export default function AdminPage() {
         setLaundrySlots(updatedSlots);
         const targetDoc = selectedDay;
         try {
-            await setDoc(doc(db, "laundry_slots", targetDoc), { slots: updatedSlots });
+            await saveLaundrySlots(targetDoc, { slots: updatedSlots });
         } catch (error) {
             console.error("Error deleting slot:", error);
         }

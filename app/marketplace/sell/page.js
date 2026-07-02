@@ -5,8 +5,8 @@ import toast from "react-hot-toast";
 import Navbar from "../../components/Navbar";
 import TermsFooter from "../../components/TermsFooter";
 import SellForm from "./components/SellForm";
-import { db } from "@/lib/firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { serverTimestamp } from "firebase/firestore";
+import { createMarketplaceRequest } from "@/lib/repositories";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { LAUNDRY_NUMBER, formatMarketplaceRequestMessage } from "@/lib/whatsapp";
 
@@ -84,7 +84,7 @@ export default function MarketplaceSellPage() {
         window.open(whatsappUrl, "_blank");
 
         try {
-            await addDoc(collection(db, "marketplace_requests"), {
+            await createMarketplaceRequest({
                 ...request,
                 status: "pending",
                 createdAt: serverTimestamp(),

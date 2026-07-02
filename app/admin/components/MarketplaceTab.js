@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, setDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
+import {
+    saveListing,
+    updateListing,
+    deleteListing,
+    updateMarketplaceRequest,
+} from "@/lib/repositories";
 import { Trash, Eye, EyeOff, Plus, MessageCircle, Check, Clock } from "lucide-react";
 import MarketplaceListingForm from "./MarketplaceListingForm";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -69,7 +75,7 @@ export default function MarketplaceTab() {
 
     const handleDismissRequest = async (id) => {
         try {
-            await updateDoc(doc(db, "marketplace_requests", id), { status: "handled" });
+            await updateMarketplaceRequest(id, { status: "handled" });
             await fetchData();
         } catch (error) {
             console.error(error);
@@ -95,11 +101,9 @@ export default function MarketplaceTab() {
         setIsSaving(true);
         const id = editingId || Date.now().toString();
         try {
-            await setDoc(doc(db, "marketplace_listings", id), { ...data, id });
+            await saveListing(id, data);
             if (sourceRequestId) {
-                await updateDoc(doc(db, "marketplace_requests", sourceRequestId), {
-                    status: "handled",
-                });
+                await updateMarketplaceRequest(sourceRequestId, { status: "handled" });
             }
             await fetchData();
             setListingView("list");
@@ -113,9 +117,8 @@ export default function MarketplaceTab() {
 
     const handleToggleVisibility = async (listing) => {
         try {
-            await setDoc(doc(db, "marketplace_listings", listing.id), {
-                ...listing,
-                isVisible: listing.isVisible === false ? true : false,
+            await updateListing(listing.id, {
+                isVisible: listing.isVisible === false,
             });
             await fetchData();
         } catch (error) {
@@ -126,7 +129,7 @@ export default function MarketplaceTab() {
 
     const handleDeleteListing = async (id) => {
         try {
-            await deleteDoc(doc(db, "marketplace_listings", id));
+            await deleteListing(id);
             await fetchData();
         } catch (error) {
             console.error(error);

@@ -39,9 +39,9 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // --- Laundry Orders: public write ---
+    // --- Laundry Orders: authenticated create only ---
     match /laundry_orders/{document} {
-      allow create: if true;
+      allow create: if request.auth != null;
     }
 
     // --- General Settings: public read (campus config etc.) ---
@@ -54,9 +54,12 @@ service cloud.firestore {
     // Admins: full access
     // Partners: read + update orders containing their restaurantId
     // Delivery partners: read ready_for_delivery orders; claim by updating to picked_up
+    // Users: read own orders (by userId)
     // Public: create only
     match /orders/{orderId} {
-      allow create: if true;
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid;
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow read, update, delete: if isAdmin();
       allow read, update: if isAnyPartner()
         && request.auth.token.restaurantId in resource.data.restaurantIds;

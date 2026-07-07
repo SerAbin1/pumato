@@ -14,12 +14,15 @@ import {
     Check,
     Tag,
     Loader2,
+    LogIn,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { useUserAuth } from "../context/UserAuthContext";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useState, useMemo } from "react";
 
 import { serverTimestamp } from "firebase/firestore";
+import { useRouter } from "next/navigation";
 import { createOrder } from "@/lib/repositories";
 import { supabase } from "@/lib/supabase";
 import { getISTTime } from "@/lib/dateUtils";
@@ -63,6 +66,8 @@ export default function CartDrawer() {
         campusConfig,
         hasHeavyItems,
     } = useCart();
+    const { user: authUser } = useUserAuth();
+    const router = useRouter();
 
     const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
 
@@ -106,6 +111,11 @@ export default function CartDrawer() {
     };
 
     const handleCheckout = async () => {
+        if (!authUser) {
+            setIsCartOpen(false);
+            router.push("/login");
+            return;
+        }
         if (cartItems.length === 0) {
             setCheckoutError("Your cart is empty. Please add items before checking out.");
             return;
@@ -248,6 +258,7 @@ export default function CartDrawer() {
             ];
 
             await createOrder({
+                ...(authUser?.uid ? { userId: authUser.uid } : {}),
                 ...userDetails,
                 items: cartItems.map((item) => ({
                     id: item.id,
@@ -847,34 +858,47 @@ export default function CartDrawer() {
                                             ))}
                                         </div>
                                     )}
-                                    <button
-                                        id="checkout-btn"
-                                        onClick={handleCheckout}
-                                        disabled={
-                                            !isFormValid ||
-                                            !isStoreOpen ||
-                                            isCheckingOut ||
-                                            hasMinOrderIssue
-                                        }
-                                        className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-gray-600 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-900/20 active:scale-[0.98] border border-white/5"
-                                    >
-                                        {isCheckingOut ? (
-                                            <>
-                                                <Loader2 size={20} className="animate-spin" />
-                                                <span>Processing...</span>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <span>Place Order via WhatsApp</span>
-                                                <Send
-                                                    size={20}
-                                                    className={
-                                                        isFormValid ? "animate-bounce-x" : ""
-                                                    }
-                                                />
-                                            </>
-                                        )}
-                                    </button>
+                                    {!authUser ? (
+                                        <button
+                                            onClick={() => {
+                                                setIsCartOpen(false);
+                                                router.push("/login");
+                                            }}
+                                            className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-500 hover:to-red-500 text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-900/20 active:scale-[0.98] border border-white/5"
+                                        >
+                                            <LogIn size={20} />
+                                            Login to Place Order
+                                        </button>
+                                    ) : (
+                                        <button
+                                            id="checkout-btn"
+                                            onClick={handleCheckout}
+                                            disabled={
+                                                !isFormValid ||
+                                                !isStoreOpen ||
+                                                isCheckingOut ||
+                                                hasMinOrderIssue
+                                            }
+                                            className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-gray-600 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-900/20 active:scale-[0.98] border border-white/5"
+                                        >
+                                            {isCheckingOut ? (
+                                                <>
+                                                    <Loader2 size={20} className="animate-spin" />
+                                                    <span>Processing...</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <span>Place Order via WhatsApp</span>
+                                                    <Send
+                                                        size={20}
+                                                        className={
+                                                            isFormValid ? "animate-bounce-x" : ""
+                                                        }
+                                                    />
+                                                </>
+                                            )}
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </motion.div>

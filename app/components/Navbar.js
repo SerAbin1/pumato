@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, X } from "lucide-react";
+import { ShoppingBag, X, LogIn, LogOut } from "lucide-react";
 import { useCart } from "../context/CartContext";
+import { useUserAuth } from "../context/UserAuthContext";
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import CartDrawer from "./CartDrawer";
@@ -227,6 +228,81 @@ const CommunityDropdown = ({ groups }) => {
     );
 };
 
+const UserMenu = ({ user, logout }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const menuRef = useRef(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (menuRef.current && !menuRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        if (isOpen) {
+            document.addEventListener("mousedown", handleClickOutside);
+        }
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, [isOpen]);
+
+    const displayName = user?.displayName || user?.email?.split("@")[0] || "User";
+    const initial = displayName.charAt(0).toUpperCase();
+
+    return (
+        <div className="relative" ref={menuRef}>
+            <button
+                onClick={() => setIsOpen(!isOpen)}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+            >
+                {user?.photoURL ? (
+                    <Image
+                        src={user.photoURL}
+                        alt="Profile"
+                        width={24}
+                        height={24}
+                        className="w-6 h-6 rounded-full object-cover"
+                        unoptimized
+                    />
+                ) : (
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center text-white text-xs font-bold">
+                        {initial}
+                    </div>
+                )}
+                <span className="text-xs font-bold text-white hidden md:inline max-w-[100px] truncate">
+                    {displayName}
+                </span>
+            </button>
+
+            <AnimatePresence>
+                {isOpen && (
+                    <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                        className="absolute right-0 top-full mt-3 w-56 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl z-[60]"
+                    >
+                        <div className="px-1 pb-3 mb-3 border-b border-white/10">
+                            <p className="text-sm font-bold text-white truncate">
+                                {user?.displayName || displayName}
+                            </p>
+                            <p className="text-xs text-gray-400 truncate">{user?.email}</p>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setIsOpen(false);
+                                logout();
+                            }}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors text-sm font-medium"
+                        >
+                            <LogOut size={16} />
+                            Sign Out
+                        </button>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+        </div>
+    );
+};
+
 export default function Navbar() {
     const {
         setIsCartOpen,
@@ -240,6 +316,7 @@ export default function Navbar() {
         getCampusSlots,
         isLoaded,
     } = useCart();
+    const { user: authUser, logout: authLogout, loading: authLoading } = useUserAuth();
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
     const { scrollY } = useScroll();
@@ -328,44 +405,62 @@ export default function Navbar() {
                         </div>
                     </div>
 
-                    <div className="flex items-center gap-6 md:gap-8">
-                        <div className="hidden md:flex items-center gap-8 font-medium text-sm text-gray-300">
-                            <Link href="/" className="hover:text-white transition-colors">
-                                Home
-                            </Link>
-                            <Link
-                                href="/delivery"
-                                className={`hover:text-white transition-colors ${pathname === "/delivery" ? "text-white font-bold" : ""}`}
-                            >
-                                Food
-                            </Link>
-                            <Link
-                                href="/laundry"
-                                className={`hover:text-white transition-colors ${pathname === "/laundry" ? "text-white font-bold" : ""}`}
-                            >
-                                Laundry
-                            </Link>
-                            <Link
-                                href="/grocery"
-                                className={`hover:text-white transition-colors ${pathname === "/grocery" ? "text-white font-bold" : ""}`}
-                            >
-                                Grocery
-                            </Link>
-                            <Link
-                                href="/marketplace"
-                                className={`hover:text-white transition-colors ${pathname === "/marketplace" ? "text-white font-bold" : ""}`}
-                            >
-                                Marketplace
-                            </Link>
-                            <CommunityDropdown groups={whatsappGroups} />
-                            {shouldShowLiveIndicator && (
-                                <LiveIndicator
-                                    isLive={isLive}
-                                    settings={currentSettings}
-                                    label={settingsLabel}
-                                />
-                            )}
-                        </div>
+                    {/* Desktop Nav Links */}
+                    <div className="hidden md:flex items-center gap-8 font-medium text-sm text-gray-300">
+                        <Link href="/" className="hover:text-white transition-colors">
+                            Home
+                        </Link>
+                        <Link
+                            href="/delivery"
+                            className={`hover:text-white transition-colors ${pathname === "/delivery" ? "text-white font-bold" : ""}`}
+                        >
+                            Food
+                        </Link>
+                        <Link
+                            href="/laundry"
+                            className={`hover:text-white transition-colors ${pathname === "/laundry" ? "text-white font-bold" : ""}`}
+                        >
+                            Laundry
+                        </Link>
+                        <Link
+                            href="/grocery"
+                            className={`hover:text-white transition-colors ${pathname === "/grocery" ? "text-white font-bold" : ""}`}
+                        >
+                            Grocery
+                        </Link>
+                        <Link
+                            href="/marketplace"
+                            className={`hover:text-white transition-colors ${pathname === "/marketplace" ? "text-white font-bold" : ""}`}
+                        >
+                            Marketplace
+                        </Link>
+                        <CommunityDropdown groups={whatsappGroups} />
+                        {shouldShowLiveIndicator && (
+                            <LiveIndicator
+                                isLive={isLive}
+                                settings={currentSettings}
+                                label={settingsLabel}
+                            />
+                        )}
+                    </div>
+
+                    {/* Right side: User Auth + Cart */}
+                    <div className="flex items-center gap-3 md:gap-4">
+                        {/* User Auth */}
+                        {!authLoading &&
+                            (authUser ? (
+                                <UserMenu user={authUser} logout={authLogout} />
+                            ) : (
+                                <Link
+                                    href="/login"
+                                    className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:bg-white/10 transition-all"
+                                >
+                                    <LogIn size={16} className="text-gray-300" />
+                                    <span className="text-xs font-bold text-gray-300 hidden md:inline">
+                                        Login
+                                    </span>
+                                </Link>
+                            ))}
 
                         <button
                             onClick={() => setIsCartOpen(true)}

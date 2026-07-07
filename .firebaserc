@@ -1,6 +1,7 @@
 {
   "projects": {
-    "prod": "pumato-84497"
+    "prod": "pumato-84497",
+    "dev": "test-pumato"
   },
   "targets": {},
   "etags": {}

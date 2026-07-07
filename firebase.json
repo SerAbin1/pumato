@@ -1,23 +1,22 @@
 {
-    "firestore": {
-        "rules": "firestore.rules"
-    },
-    "storage": {
-        "rules": "storage.rules"
-    },
-    "hosting": {
-        "public": "out",
-        "cleanUrls": true,
-        "trailingSlash": true,
-        "ignore": [
-            "firebase.json",
-            "**/.*",
-            "**/node_modules/**",
-            "**/*.json",
-            "./createAdmin.js",
-            "supabase/**"
-        ],
-        "rewrites": []
-    }
+  "firestore": {
+    "rules": "firestore.rules"
+  },
+  "storage": {
+    "rules": "storage.rules"
+  },
+  "hosting": {
+    "public": "out",
+    "cleanUrls": true,
+    "trailingSlash": true,
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**",
+      "**/*.json",
+      "./createAdmin.js",
+      "supabase/**"
+    ],
+    "rewrites": []
+  }
 }
-

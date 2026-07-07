@@ -10,8 +10,7 @@ import {
     setPersistence,
     browserLocalPersistence,
     GoogleAuthProvider,
-    signInWithRedirect,
-    getRedirectResult,
+    signInWithPopup,
 } from "firebase/auth";
 
 const googleProvider = new GoogleAuthProvider();
@@ -27,20 +26,6 @@ export function UserAuthProvider({ children }) {
             setUser(firebaseUser);
             setLoading(false);
         });
-
-        // Handle Google redirect result on mount
-        getRedirectResult(auth)
-            .then((result) => {
-                if (result) {
-                    const credential = GoogleAuthProvider.credentialFromResult(result);
-                    if (credential) {
-                        // Google access token available if needed: credential.accessToken
-                    }
-                }
-            })
-            .catch((error) => {
-                console.error("Google redirect error:", error.code, error.message);
-            });
 
         return () => unsubscribe();
     }, []);
@@ -92,10 +77,17 @@ export function UserAuthProvider({ children }) {
     const loginWithGoogle = async () => {
         try {
             await setPersistence(auth, browserLocalPersistence);
-            await signInWithRedirect(auth, googleProvider);
+            await signInWithPopup(auth, googleProvider);
+            return { success: true };
         } catch (error) {
+            if (
+                error.code === "auth/popup-closed-by-user" ||
+                error.code === "auth/cancelled-popup-request"
+            ) {
+                return { success: false, error: "" };
+            }
             console.error("Google sign-in error:", error);
-            return { success: false, error: "Google sign-in failed. Please try again." };
+            return { success: false, error: "google-failed" };
         }
     };
 

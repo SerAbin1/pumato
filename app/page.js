@@ -285,7 +285,7 @@ export default function GatewayPage() {
             {/* SECTION 2: 3D SERVICES CARDS */}
             <section className="py-24 px-4 w-full relative z-10" id="services">
                 <div className="max-w-7xl mx-auto">
-                    <div className="grid md:grid-cols-3 gap-8 md:gap-8 perspective-1000">
+                    <div className="grid md:grid-cols-4 gap-8 md:gap-8 perspective-1000">
                         {/* Food Card */}
                         <TiltCard className="relative h-[50vh] md:h-[70vh] w-full rounded-[2.5rem] overflow-hidden group border border-white/10 cursor-pointer">
                             <Link href="/delivery" className="block h-full w-full">
@@ -412,7 +412,7 @@ export default function GatewayPage() {
                                 {/* LIVE BADGE REMOVED */}
 
                                 <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
-                                    <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter">
+                                    <h2 className="text-4xl md:text-[2.50rem] font-black mb-2 tracking-tighter">
                                         Marketplace.
                                     </h2>
                                     <p className="text-gray-300 text-sm md:text-base max-w-sm mb-4 line-clamp-2">

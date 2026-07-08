@@ -15,6 +15,7 @@ import {
     Timestamp,
     serverTimestamp,
 } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import {

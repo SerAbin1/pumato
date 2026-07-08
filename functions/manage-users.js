@@ -1,9 +1,9 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getAuth } from "firebase-admin/auth";
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { getAuth } = require("firebase-admin/auth");
 
 const auth = getAuth();
 
-async function verifyAdmin(token: string): Promise<boolean> {
+async function verifyAdmin(token) {
     try {
         const decoded = await auth.verifyIdToken(token);
         return decoded.admin === true;
@@ -12,8 +12,7 @@ async function verifyAdmin(token: string): Promise<boolean> {
     }
 }
 
-export const manageUsers = onCall(async (request) => {
-    // Verify admin authentication
+exports.manageUsers = onCall(async (request) => {
     const authHeader = request.rawRequest.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
         throw new HttpsError("unauthenticated", "Missing authorization header.");
@@ -32,25 +31,14 @@ export const manageUsers = onCall(async (request) => {
             throw new HttpsError("invalid-argument", "Email and password required.");
         }
 
-        // Try to find existing user by email
         let userRecord;
         try {
             userRecord = await auth.getUserByEmail(email);
         } catch {
-            // User not found, create new
-            userRecord = await auth.createUser({
-                email,
-                password,
-                emailVerified: true,
-            });
+            userRecord = await auth.createUser({ email, password, emailVerified: true });
         }
 
-        // Set custom claims
-        await auth.setCustomUserClaims(userRecord.uid, {
-            partner: true,
-            restaurantId,
-        });
-
+        await auth.setCustomUserClaims(userRecord.uid, { partner: true, restaurantId });
         return { success: true, uid: userRecord.uid };
     }
 
@@ -63,17 +51,10 @@ export const manageUsers = onCall(async (request) => {
         try {
             userRecord = await auth.getUserByEmail(email);
         } catch {
-            userRecord = await auth.createUser({
-                email,
-                password,
-                emailVerified: true,
-            });
+            userRecord = await auth.createUser({ email, password, emailVerified: true });
         }
 
-        await auth.setCustomUserClaims(userRecord.uid, {
-            deliveryPartner: true,
-        });
-
+        await auth.setCustomUserClaims(userRecord.uid, { deliveryPartner: true });
         return { success: true, uid: userRecord.uid };
     }
 
@@ -87,19 +68,8 @@ export const manageUsers = onCall(async (request) => {
 
     if (action === "LIST_USERS") {
         const listResult = await auth.listUsers(1000);
-
-        const partners: Array<{
-            uid: string;
-            email: string | undefined;
-            restaurantId: string | undefined;
-            lastSignInTime: string | undefined;
-        }> = [];
-
-        const deliveryPartners: Array<{
-            uid: string;
-            email: string | undefined;
-            lastSignInTime: string | undefined;
-        }> = [];
+        const partners = [];
+        const deliveryPartners = [];
 
         for (const user of listResult.users) {
             const claims = user.customClaims || {};

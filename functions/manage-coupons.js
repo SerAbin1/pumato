@@ -1,11 +1,11 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { getAuth } = require("firebase-admin/auth");
+const { getFirestore } = require("firebase-admin/firestore");
 
 const db = getFirestore();
 const COLLECTION = "promocodes";
 
-async function verifyAdmin(token: string): Promise<boolean> {
+async function verifyAdmin(token) {
     try {
         const decoded = await getAuth().verifyIdToken(token);
         return decoded.admin === true;
@@ -14,10 +14,9 @@ async function verifyAdmin(token: string): Promise<boolean> {
     }
 }
 
-export const manageCoupons = onCall(async (request) => {
+exports.manageCoupons = onCall(async (request) => {
     const { action, payload } = request.data;
 
-    // Public actions: FETCH_VISIBLE, FETCH_BY_CODE
     if (action === "FETCH_VISIBLE") {
         const snapshot = await db
             .collection(COLLECTION)
@@ -25,8 +24,7 @@ export const manageCoupons = onCall(async (request) => {
             .where("is_active", "==", true)
             .get();
 
-        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-        return data;
+        return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
     }
 
     if (action === "FETCH_BY_CODE") {
@@ -43,7 +41,6 @@ export const manageCoupons = onCall(async (request) => {
         return { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
     }
 
-    // Admin-only actions below
     const authHeader = request.rawRequest.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
         throw new HttpsError("unauthenticated", "Missing authorization header.");

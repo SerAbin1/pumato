@@ -1,10 +1,10 @@
-import { onCall, HttpsError } from "firebase-functions/v2/https";
-import { getFirestore } from "firebase-admin/firestore";
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { getFirestore } = require("firebase-admin/firestore");
 
 const db = getFirestore();
 const COLLECTION = "promocodes";
 
-export const checkoutCoupon = onCall(async (request) => {
+exports.checkoutCoupon = onCall(async (request) => {
     const { couponCode } = request.data;
 
     if (!couponCode) {
@@ -13,7 +13,6 @@ export const checkoutCoupon = onCall(async (request) => {
 
     const code = couponCode.toUpperCase();
 
-    // Find the coupon by code
     const snapshot = await db.collection(COLLECTION).where("code", "==", code).limit(1).get();
 
     if (snapshot.empty) {
@@ -34,10 +33,9 @@ export const checkoutCoupon = onCall(async (request) => {
         throw new HttpsError("resource-exhausted", "Coupon usage limit reached.");
     }
 
-    // Atomic increment using transaction
     await db.runTransaction(async (transaction) => {
         const freshDoc = await transaction.get(doc.ref);
-        const freshData = freshDoc.data()!;
+        const freshData = freshDoc.data();
         const currentUsed = freshData.used_count || 0;
 
         if (currentUsed >= usageLimit) {

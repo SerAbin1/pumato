@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Users, Truck, Store, Plus, Shield, Clock, Trash2 } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { manageUsers } from "@/lib/functions";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
 import { toast } from "react-hot-toast";
@@ -30,11 +30,10 @@ export default function UsersTab({ restaurants, user }) {
         setIsLoading(true);
         try {
             const idToken = await user.getIdToken();
-            const { data, error } = await supabase.functions.invoke("manage-users", {
-                body: { action: "LIST_USERS" },
-                headers: { Authorization: `Bearer ${idToken}` },
-            });
-            if (error) throw error;
+            const { data } = await manageUsers(
+                { action: "LIST_USERS" },
+                { authorization: `Bearer ${idToken}` }
+            );
             setPartners(data.partners || []);
             setDeliveryPartners(data.deliveryPartners || []);
         } catch (error) {
@@ -62,14 +61,10 @@ export default function UsersTab({ restaurants, user }) {
         const loadingToast = toast.loading("Deleting user...");
         try {
             const idToken = await user.getIdToken();
-            const { data, error } = await supabase.functions.invoke("manage-users", {
-                body: { action: "DELETE_USER", uid },
-                headers: { Authorization: `Bearer ${idToken}` },
-            });
-
-            if (error || data?.error) {
-                throw new Error(data?.error || error?.message || "Failed to delete user");
-            }
+            await manageUsers(
+                { action: "DELETE_USER", uid },
+                { authorization: `Bearer ${idToken}` }
+            );
 
             toast.success("User deleted successfully", { id: loadingToast });
             await fetchUsers();
@@ -106,13 +101,10 @@ export default function UsersTab({ restaurants, user }) {
 
         try {
             const idToken = await user.getIdToken();
-            const { error: fnError, data } = await supabase.functions.invoke("manage-users", {
-                body: payload,
-                headers: { Authorization: `Bearer ${idToken}` },
-            });
+            const { data } = await manageUsers(payload, { authorization: `Bearer ${idToken}` });
 
-            if (fnError || data?.error) {
-                throw new Error(data?.error || fnError?.message || "Failed to create user");
+            if (data?.error) {
+                throw new Error(data.error);
             }
 
             toast.success(

@@ -26,7 +26,7 @@ import { useState, useMemo } from "react";
 import { serverTimestamp } from "firebase/firestore";
 import { useRouter } from "next/navigation";
 import { createOrder } from "@/lib/repositories";
-import { supabase } from "@/lib/supabase";
+import { checkoutCoupon } from "@/lib/functions";
 import { getISTTime } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
 import toast from "react-hot-toast";
@@ -194,17 +194,12 @@ export default function CartDrawer() {
         try {
             // If coupon is applied, validate with cloud function first
             if (couponCode) {
-                const { data, error: funcError } = await supabase.functions.invoke(
-                    "checkout-coupon",
-                    {
-                        body: { couponCode },
-                    }
-                );
-
-                if (funcError) throw funcError;
-                if (data?.error) {
-                    const error = new Error(data.message);
-                    error.code = data.error; // e.g. 'resource-exhausted'
+                try {
+                    await checkoutCoupon({ couponCode });
+                } catch (funcError) {
+                    // Cloud Functions throw HttpsError with code and message
+                    const error = new Error(funcError.message || "Coupon validation failed");
+                    error.code = funcError.code || "unknown";
                     throw error;
                 }
             }

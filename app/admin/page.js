@@ -39,7 +39,7 @@ import {
     saveLaundrySlots,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabase";
+import { manageCoupons } from "@/lib/functions";
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
@@ -316,10 +316,10 @@ export default function AdminPage() {
                 getDocs(collection(db, "restaurants")),
                 (async () => {
                     const idToken = await user.getIdToken();
-                    return supabase.functions.invoke("manage-coupons", {
-                        body: { action: "FETCH_ALL" },
-                        headers: { Authorization: `Bearer ${idToken}` },
-                    });
+                    return manageCoupons(
+                        { action: "FETCH_ALL" },
+                        { authorization: `Bearer ${idToken}` }
+                    );
                 })(),
             ]);
 
@@ -334,7 +334,6 @@ export default function AdminPage() {
 
             setRestaurants(updatedRestaurants);
 
-            if (promoRes.error) throw promoRes.error;
             const mappedCoupons = (promoRes.data || []).map((c) => ({
                 id: c.id,
                 code: c.code,

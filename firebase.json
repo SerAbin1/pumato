@@ -14,8 +14,7 @@
       "**/.*",
       "**/node_modules/**",
       "**/*.json",
-      "./createAdmin.js",
-      "supabase/**"
+      "./createAdmin.js"
     ],
     "rewrites": []
   }

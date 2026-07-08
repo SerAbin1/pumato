@@ -14,7 +14,7 @@ import { isServiceLive } from "@/lib/serviceStatus";
 import CampusSelector from "./CampusSelector";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
-import { format12h } from "@/lib/utils";
+import { format12h } from "@/lib/formatters";
 
 const LiveIndicator = ({ isLive, settings, label }) => {
     const [isOpen, setIsOpen] = useState(false);

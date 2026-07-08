@@ -15,7 +15,7 @@ import {
     Timer,
 } from "lucide-react";
 import toast from "react-hot-toast";
-import { supabase } from "@/lib/supabase";
+import { sendFcmNotification } from "@/lib/functions";
 import { formatTime } from "@/lib/dateUtils";
 import ConfirmModal from "@/app/components/ConfirmModal";
 
@@ -96,16 +96,14 @@ function OrderCard({
             if (action === "confirm" && user && order?.restaurantIds?.length > 0) {
                 user.getIdToken()
                     .then((idToken) => {
-                        supabase.functions
-                            .invoke("send-fcm-notification", {
-                                body: {
-                                    role: "partner",
-                                    restaurantIds: order.restaurantIds,
-                                    orderId,
-                                },
-                                headers: { Authorization: `Bearer ${idToken}` },
-                            })
-                            .catch((err) => console.warn("Partner FCM error:", err));
+                        sendFcmNotification(
+                            {
+                                role: "partner",
+                                restaurantIds: order.restaurantIds,
+                                orderId,
+                            },
+                            { authorization: `Bearer ${idToken}` }
+                        ).catch((err) => console.warn("Partner FCM error:", err));
                     })
                     .catch((err) => console.error("Error getting ID token:", err));
             }

@@ -1,6 +1,6 @@
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, onSnapshot } from "firebase/firestore";
-import { supabase } from "@/lib/supabase";
+import { manageCoupons } from "@/lib/functions";
 import { useState, useEffect } from "react";
 
 export function useRestaurants() {
@@ -10,7 +10,7 @@ export function useRestaurants() {
         const fetchRestaurants = async () => {
             try {
                 const querySnapshot = await getDocs(collection(db, "restaurants"));
-                const data = querySnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id }));
+                const data = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
                 setRestaurants(data);
             } catch (err) {
                 console.error("Failed to fetch restaurants", err);
@@ -28,24 +28,21 @@ export function useCoupons() {
     useEffect(() => {
         const fetchCoupons = async () => {
             try {
-                const { data, error } = await supabase.functions.invoke("manage-coupons", {
-                    body: { action: "FETCH_VISIBLE" }
-                });
+                const { data } = await manageCoupons({ action: "FETCH_VISIBLE" });
 
-                if (error) throw error;
                 // Map to camelCase for frontend consistency
-                const mapped = (data || []).map(c => ({
+                const mapped = (data || []).map((c) => ({
                     ...c,
                     minOrder: c.min_order,
                     isVisible: c.is_visible,
                     usageLimit: c.usage_limit,
                     usedCount: c.used_count,
                     restaurantId: c.restaurant_id,
-                    itemId: c.item_id
+                    itemId: c.item_id,
                 }));
                 setAvailableCoupons(mapped);
             } catch (err) {
-                console.error("Failed to fetch coupons from Supabase", err);
+                console.error("Failed to fetch coupons", err);
             }
         };
 
@@ -78,11 +75,14 @@ export function useGrocerySettings() {
     const [grocerySettings, setGrocerySettings] = useState({});
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(doc(db, "site_content", "grocery_settings"), (settingsDoc) => {
-            if (settingsDoc.exists()) {
-                setGrocerySettings(settingsDoc.data());
+        const unsubscribe = onSnapshot(
+            doc(db, "site_content", "grocery_settings"),
+            (settingsDoc) => {
+                if (settingsDoc.exists()) {
+                    setGrocerySettings(settingsDoc.data());
+                }
             }
-        });
+        );
         return () => unsubscribe();
     }, []);
 
@@ -91,7 +91,7 @@ export function useGrocerySettings() {
 
 export function useLaundrySettings() {
     const [laundrySettings, setLaundrySettings] = useState({
-        slots: []
+        slots: [],
     });
 
     useEffect(() => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useReducer, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { manageCoupons } from "@/lib/functions";
 import {
     useRestaurants,
     useCoupons,
@@ -104,11 +104,12 @@ export function CartProvider({ children }) {
     const applyCoupon = async (code) => {
         const uppercaseCode = code.trim().toUpperCase();
         try {
-            const { data: coupon, error } = await supabase.functions.invoke("manage-coupons", {
-                body: { action: "FETCH_BY_CODE", payload: { code: uppercaseCode } },
+            const { data: coupon } = await manageCoupons({
+                action: "FETCH_BY_CODE",
+                payload: { code: uppercaseCode },
             });
 
-            if (error || !coupon) return { success: false, message: "Invalid Coupon Code" };
+            if (!coupon) return { success: false, message: "Invalid Coupon Code" };
 
             const validation = Pricing.validateCoupon(coupon, itemTotal);
 

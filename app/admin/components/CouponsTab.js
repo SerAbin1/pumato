@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Trash, Search, Utensils, Plus, Check, X } from "lucide-react";
-import { supabase } from "@/lib/supabase";
+import { manageCoupons } from "@/lib/functions";
 import Fuse from "fuse.js";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
@@ -12,10 +12,23 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
     const [itemSearchQuery, setItemSearchQuery] = useState("");
     const [couponTargetType, setCouponTargetType] = useState("item"); // "item" or "category"
     const [isSaving, setIsSaving] = useState(false);
-    const [confirmModal, setConfirmModal] = useState({ isOpen: false, couponId: null, couponCode: "" });
+    const [confirmModal, setConfirmModal] = useState({
+        isOpen: false,
+        couponId: null,
+        couponCode: "",
+    });
 
     const [couponForm, setCouponForm] = useState({
-        code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, isActive: true, usageLimit: "", restaurantId: null, itemId: null
+        code: "",
+        type: "FLAT",
+        value: "",
+        minOrder: "0",
+        description: "",
+        isVisible: true,
+        isActive: true,
+        usageLimit: "",
+        restaurantId: null,
+        itemId: null,
     });
 
     // --- HANDLERS ---
@@ -45,16 +58,15 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
             usageLimit: coupon.usageLimit,
             usedCount: coupon.usedCount,
             restaurantId: coupon.restaurantId,
-            itemId: coupon.itemId
+            itemId: coupon.itemId,
         };
 
         try {
             const idToken = await user.getIdToken();
-            const { error } = await supabase.functions.invoke("manage-coupons", {
-                body: { action: "UPDATE", payload },
-                headers: { "Authorization": `Bearer ${idToken}` }
-            });
-            if (error) throw error;
+            await manageCoupons(
+                { action: "UPDATE", payload },
+                { authorization: `Bearer ${idToken}` }
+            );
             await fetchData();
         } catch (error) {
             console.error(error);
@@ -64,7 +76,18 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
 
     const handleAddNewCoupon = () => {
         setEditingId(null);
-        setCouponForm({ code: "", type: "FLAT", value: "", minOrder: "0", description: "", isVisible: true, isActive: true, usageLimit: "", restaurantId: null, itemId: null });
+        setCouponForm({
+            code: "",
+            type: "FLAT",
+            value: "",
+            minOrder: "0",
+            description: "",
+            isVisible: true,
+            isActive: true,
+            usageLimit: "",
+            restaurantId: null,
+            itemId: null,
+        });
         setCouponTargetType("item");
         setItemSearchQuery("");
         setActiveTab("form");
@@ -81,12 +104,22 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
             value: coupon.value || "",
             minOrder: coupon.minOrder || coupon.min_order || "0",
             description: coupon.description || "",
-            isVisible: coupon.isVisible !== undefined ? coupon.isVisible : (coupon.is_visible !== undefined ? coupon.is_visible : true),
-            isActive: coupon.isActive !== undefined ? coupon.isActive : (coupon.is_active !== undefined ? coupon.is_active : true),
+            isVisible:
+                coupon.isVisible !== undefined
+                    ? coupon.isVisible
+                    : coupon.is_visible !== undefined
+                      ? coupon.is_visible
+                      : true,
+            isActive:
+                coupon.isActive !== undefined
+                    ? coupon.isActive
+                    : coupon.is_active !== undefined
+                      ? coupon.is_active
+                      : true,
             usageLimit: coupon.usageLimit || coupon.usage_limit || "",
             usedCount: coupon.usedCount || coupon.used_count || 0,
             restaurantId: coupon.restaurantId || coupon.restaurant_id || null,
-            itemId: targetId || null
+            itemId: targetId || null,
         });
         setActiveTab("form");
     };
@@ -94,16 +127,15 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
     const handleDeleteCoupon = async (id) => {
         try {
             const idToken = await user.getIdToken();
-            const { error } = await supabase.functions.invoke("manage-coupons", {
-                body: { action: "DELETE", payload: { id } },
-                headers: { "Authorization": `Bearer ${idToken}` }
-            });
-            if (error) throw error;
+            await manageCoupons(
+                { action: "DELETE", payload: { id } },
+                { authorization: `Bearer ${idToken}` }
+            );
             await fetchData();
             setConfirmModal({ isOpen: false, couponId: null, couponCode: "" }); // Close modal on success
         } catch (error) {
             console.error(error);
-            alert("Failed to delete from Supabase");
+            alert("Failed to delete coupon");
         }
     };
 
@@ -117,7 +149,10 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
         }
 
         // BOGO & B2G1 Validation
-        if ((couponForm.type === 'BOGO' || couponForm.type === 'B2G1') && (!couponForm.restaurantId || !couponForm.itemId)) {
+        if (
+            (couponForm.type === "BOGO" || couponForm.type === "B2G1") &&
+            (!couponForm.restaurantId || !couponForm.itemId)
+        ) {
             alert("Restaurant and Item are required for Buy X Get Y offers.");
             setIsSaving(false);
             return;
@@ -128,35 +163,36 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
             id,
             code: couponForm.code.toUpperCase(),
             type: couponForm.type,
-            value: (couponForm.type === 'BOGO' || couponForm.type === 'B2G1') ? 0 : (couponForm.value || 0),
+            value:
+                couponForm.type === "BOGO" || couponForm.type === "B2G1"
+                    ? 0
+                    : couponForm.value || 0,
             minOrder: couponForm.minOrder || 0,
             description: couponForm.description,
             isVisible: couponForm.isVisible,
             isActive: couponForm.isActive !== false,
             usageLimit: limit,
-            usedCount: editingId ? (couponForm.usedCount || 0) : 0,
+            usedCount: editingId ? couponForm.usedCount || 0 : 0,
             restaurantId: couponForm.restaurantId || null,
-            itemId: couponForm.itemId || null
+            itemId: couponForm.itemId || null,
         };
 
         try {
             console.log("Submitting coupon payload:", payload);
             const idToken = await user.getIdToken();
-            const { error } = await supabase.functions.invoke("manage-coupons", {
-                body: { action: editingId ? "UPDATE" : "CREATE", payload },
-                headers: { "Authorization": `Bearer ${idToken}` }
-            });
-            if (error) throw error;
+            await manageCoupons(
+                { action: editingId ? "UPDATE" : "CREATE", payload },
+                { authorization: `Bearer ${idToken}` }
+            );
             await fetchData();
             setActiveTab("list");
         } catch (error) {
             console.error(error);
-            alert("Failed to save to Supabase");
+            alert("Failed to save coupon");
         } finally {
             setIsSaving(false);
         }
     };
-
 
     return (
         <div className="animate-in fade-in duration-500">
@@ -173,7 +209,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
 
             {activeTab === "list" ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {coupons.map(c => (
+                    {coupons.map((c) => (
                         <div
                             key={c.id}
                             onClick={() => handleEditCoupon(c)}
@@ -182,15 +218,23 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                 <button
                                     onClick={(e) => handleToggleActive(e, c)}
-                                    className={`p-2 rounded-full transition-colors ${c.isActive !== false ? 'bg-green-500/20 text-green-400 hover:bg-green-500/40' : 'bg-red-500/20 text-red-400 hover:bg-red-500/40'}`}
-                                    title={c.isActive !== false ? "Active (Click to Deactivate)" : "Inactive (Click to Activate)"}
+                                    className={`p-2 rounded-full transition-colors ${c.isActive !== false ? "bg-green-500/20 text-green-400 hover:bg-green-500/40" : "bg-red-500/20 text-red-400 hover:bg-red-500/40"}`}
+                                    title={
+                                        c.isActive !== false
+                                            ? "Active (Click to Deactivate)"
+                                            : "Inactive (Click to Activate)"
+                                    }
                                 >
                                     {c.isActive !== false ? <Check size={16} /> : <X size={16} />}
                                 </button>
                                 <button
                                     onClick={(e) => {
                                         e.stopPropagation(); // Prevent opening edit form
-                                        setConfirmModal({ isOpen: true, couponId: c.id, couponCode: c.code });
+                                        setConfirmModal({
+                                            isOpen: true,
+                                            couponId: c.id,
+                                            couponCode: c.code,
+                                        });
                                     }}
                                     className="p-2 text-gray-500 hover:text-red-500 transition-colors"
                                 >
@@ -199,16 +243,26 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                             </div>
 
                             <div className="flex justify-between items-start mb-6">
-                                <div className="bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border border-orange-500/30">{c.type}</div>
+                                <div className="bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-lg text-xs font-bold uppercase tracking-wider border border-orange-500/30">
+                                    {c.type}
+                                </div>
                             </div>
-                            <h3 className="text-3xl font-black text-white mb-2 tracking-tight">{c.code}</h3>
-                            <p className="text-gray-400 text-sm mb-6 font-medium">{c.description}</p>
+                            <h3 className="text-3xl font-black text-white mb-2 tracking-tight">
+                                {c.code}
+                            </h3>
+                            <p className="text-gray-400 text-sm mb-6 font-medium">
+                                {c.description}
+                            </p>
 
                             <div className="flex items-center justify-between text-sm font-bold text-gray-300 bg-black/30 p-4 rounded-xl border border-white/5">
-                                <span>Value: {c.type === 'FLAT' ? `₹${c.value}` : `${c.value}%`}</span>
+                                <span>
+                                    Value: {c.type === "FLAT" ? `₹${c.value}` : `${c.value}%`}
+                                </span>
                                 <span>Min: ₹{c.minOrder}</span>
                                 {c.usageLimit > 0 && (
-                                    <span className={`${(c.usedCount || 0) >= c.usageLimit ? 'text-red-400' : 'text-cyan-400'}`}>
+                                    <span
+                                        className={`${(c.usedCount || 0) >= c.usageLimit ? "text-red-400" : "text-cyan-400"}`}
+                                    >
                                         Used: {c.usedCount || 0}/{c.usageLimit}
                                     </span>
                                 )}
@@ -218,28 +272,63 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                 </div>
             ) : (
                 <div className="bg-white/5 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 max-w-2xl mx-auto shadow-2xl relative pb-24">
-                    <h2 className="text-3xl font-black mb-10 text-white border-b border-white/10 pb-6">{editingId ? "Edit Promo Code" : "Create New Promo Code"}</h2>
+                    <h2 className="text-3xl font-black mb-10 text-white border-b border-white/10 pb-6">
+                        {editingId ? "Edit Promo Code" : "Create New Promo Code"}
+                    </h2>
 
                     <div className="space-y-8">
-                        <FormInput label="Coupon Code" value={couponForm.code} onChange={(e) => setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })} placeholder="e.g. WELCOME50" />
+                        <FormInput
+                            label="Coupon Code"
+                            value={couponForm.code}
+                            onChange={(e) =>
+                                setCouponForm({ ...couponForm, code: e.target.value.toUpperCase() })
+                            }
+                            placeholder="e.g. WELCOME50"
+                        />
 
                         <div className="grid grid-cols-2 gap-8">
                             <div className="space-y-3">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Discount Type</label>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Discount Type
+                                </label>
                                 <div className="relative">
-                                    <select className="appearance-none p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium" value={couponForm.type} onChange={(e) => setCouponForm({ ...couponForm, type: e.target.value })}>
-                                        <option value="FLAT" className="bg-gray-900">Flat Amount (₹)</option>
-                                        <option value="PERCENTAGE" className="bg-gray-900">Percentage (%)</option>
-                                        <option value="BOGO" className="bg-gray-900">Buy 1 Get 1 (BOGO)</option>
-                                        <option value="B2G1" className="bg-gray-900">Buy 2 Get 1 Free</option>
+                                    <select
+                                        className="appearance-none p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
+                                        value={couponForm.type}
+                                        onChange={(e) =>
+                                            setCouponForm({ ...couponForm, type: e.target.value })
+                                        }
+                                    >
+                                        <option value="FLAT" className="bg-gray-900">
+                                            Flat Amount (₹)
+                                        </option>
+                                        <option value="PERCENTAGE" className="bg-gray-900">
+                                            Percentage (%)
+                                        </option>
+                                        <option value="BOGO" className="bg-gray-900">
+                                            Buy 1 Get 1 (BOGO)
+                                        </option>
+                                        <option value="B2G1" className="bg-gray-900">
+                                            Buy 2 Get 1 Free
+                                        </option>
                                     </select>
                                 </div>
                             </div>
-                            {!['BOGO', 'B2G1'].includes(couponForm.type) ? (
-                                <FormInput label="Discount Value" type="number" value={couponForm.value} onChange={(e) => setCouponForm({ ...couponForm, value: e.target.value })} placeholder="50" />
+                            {!["BOGO", "B2G1"].includes(couponForm.type) ? (
+                                <FormInput
+                                    label="Discount Value"
+                                    type="number"
+                                    value={couponForm.value}
+                                    onChange={(e) =>
+                                        setCouponForm({ ...couponForm, value: e.target.value })
+                                    }
+                                    placeholder="50"
+                                />
                             ) : (
                                 <div className="space-y-3 opacity-50">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Discount Value</label>
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                        Discount Value
+                                    </label>
                                     <div className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white/40 font-medium text-sm italic">
                                         Calculated Automatically
                                     </div>
@@ -253,25 +342,46 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                 <div className="w-10 h-10 rounded-full bg-blue-500/10 flex items-center justify-center text-blue-400 border border-blue-500/20">
                                     <Utensils size={18} />
                                 </div>
-                                <h3 className="text-xl font-bold text-white">Target Item (Optional)</h3>
+                                <h3 className="text-xl font-bold text-white">
+                                    Target Item (Optional)
+                                </h3>
                             </div>
-                            <p className="text-gray-400 text-sm pl-13">Link this coupon to a specific item. {couponForm.type === 'BOGO' ? <span className="text-orange-400 font-bold">REQUIRED for BOGO.</span> : "Leave blank for a global discount."}</p>
+                            <p className="text-gray-400 text-sm pl-13">
+                                Link this coupon to a specific item.{" "}
+                                {couponForm.type === "BOGO" ? (
+                                    <span className="text-orange-400 font-bold">
+                                        REQUIRED for BOGO.
+                                    </span>
+                                ) : (
+                                    "Leave blank for a global discount."
+                                )}
+                            </p>
 
                             <div className="space-y-6 pl-13">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">Step 1: Select Restaurant</label>
+                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                        Step 1: Select Restaurant
+                                    </label>
                                     <select
                                         className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                         value={couponForm.restaurantId || ""}
                                         onChange={(e) => {
-                                            setCouponForm({ ...couponForm, restaurantId: e.target.value, itemId: null });
+                                            setCouponForm({
+                                                ...couponForm,
+                                                restaurantId: e.target.value,
+                                                itemId: null,
+                                            });
                                             setCouponTargetType("item");
                                             setItemSearchQuery("");
                                         }}
                                     >
-                                        <option value="" className="bg-gray-900">All Restaurants (Global Coupon)</option>
-                                        {restaurants.map(r => (
-                                            <option key={r.id} value={r.id} className="bg-gray-900">{r.name}</option>
+                                        <option value="" className="bg-gray-900">
+                                            All Restaurants (Global Coupon)
+                                        </option>
+                                        {restaurants.map((r) => (
+                                            <option key={r.id} value={r.id} className="bg-gray-900">
+                                                {r.name}
+                                            </option>
                                         ))}
                                     </select>
                                 </div>
@@ -280,14 +390,20 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                     <div className="space-y-6 pt-4 border-t border-white/5">
                                         <div className="flex bg-black/20 p-1.5 rounded-2xl border border-white/5 gap-2">
                                             <button
-                                                onClick={() => { setCouponTargetType("item"); setCouponForm({ ...couponForm, itemId: null }); }}
-                                                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${couponTargetType === 'item' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                                                onClick={() => {
+                                                    setCouponTargetType("item");
+                                                    setCouponForm({ ...couponForm, itemId: null });
+                                                }}
+                                                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${couponTargetType === "item" ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"}`}
                                             >
                                                 Specific Item
                                             </button>
                                             <button
-                                                onClick={() => { setCouponTargetType("category"); setCouponForm({ ...couponForm, itemId: null }); }}
-                                                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${couponTargetType === 'category' ? 'bg-white text-black shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                                                onClick={() => {
+                                                    setCouponTargetType("category");
+                                                    setCouponForm({ ...couponForm, itemId: null });
+                                                }}
+                                                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${couponTargetType === "category" ? "bg-white text-black shadow-lg" : "text-gray-500 hover:text-white"}`}
                                             >
                                                 Entire Category
                                             </button>
@@ -296,75 +412,132 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                         {couponTargetType === "item" ? (
                                             <div className="space-y-4">
                                                 <div className="relative group">
-                                                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-500 transition-colors" size={16} />
+                                                    <Search
+                                                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-blue-500 transition-colors"
+                                                        size={16}
+                                                    />
                                                     <input
                                                         type="text"
                                                         placeholder="Search item name..."
                                                         value={itemSearchQuery}
-                                                        onChange={(e) => setItemSearchQuery(e.target.value)}
+                                                        onChange={(e) =>
+                                                            setItemSearchQuery(e.target.value)
+                                                        }
                                                         className="w-full bg-black/20 border border-white/10 pl-11 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                                     />
                                                 </div>
                                                 <div className="grid grid-cols-1 gap-2 max-h-[200px] overflow-y-auto pr-2 custom-scrollbar">
                                                     {(() => {
-                                                        const menu = (restaurants.find(r => r.id === couponForm.restaurantId)?.menu || []);
+                                                        const menu =
+                                                            restaurants.find(
+                                                                (r) =>
+                                                                    r.id === couponForm.restaurantId
+                                                            )?.menu || [];
                                                         if (!itemSearchQuery) return menu;
 
-                                                        const query = itemSearchQuery.toLowerCase().trim();
+                                                        const query = itemSearchQuery
+                                                            .toLowerCase()
+                                                            .trim();
                                                         const fuse = new Fuse(menu, {
-                                                            keys: ['name'],
+                                                            keys: ["name"],
                                                             threshold: 0.3,
-                                                            includeScore: true
+                                                            includeScore: true,
                                                         });
-                                                        const results = fuse.search(itemSearchQuery);
+                                                        const results =
+                                                            fuse.search(itemSearchQuery);
 
                                                         // Boost scores for exact matches
-                                                        const scoredResults = results.map(result => {
-                                                            const itemName = result.item.name.toLowerCase();
-                                                            let adjustedScore = result.score;
-                                                            if (itemName === query) adjustedScore -= 0.5;
-                                                            else if (itemName.startsWith(query)) adjustedScore -= 0.3;
-                                                            else if (itemName.includes(query)) adjustedScore -= 0.2;
-                                                            return { item: result.item, score: adjustedScore };
-                                                        });
+                                                        const scoredResults = results.map(
+                                                            (result) => {
+                                                                const itemName =
+                                                                    result.item.name.toLowerCase();
+                                                                let adjustedScore = result.score;
+                                                                if (itemName === query)
+                                                                    adjustedScore -= 0.5;
+                                                                else if (itemName.startsWith(query))
+                                                                    adjustedScore -= 0.3;
+                                                                else if (itemName.includes(query))
+                                                                    adjustedScore -= 0.2;
+                                                                return {
+                                                                    item: result.item,
+                                                                    score: adjustedScore,
+                                                                };
+                                                            }
+                                                        );
 
                                                         // Include substring matches
-                                                        const substringMatches = menu.filter(item => {
-                                                            const itemName = item.name.toLowerCase();
-                                                            return itemName.includes(query) && !scoredResults.find(r => r.item.id === item.id);
-                                                        });
+                                                        const substringMatches = menu.filter(
+                                                            (item) => {
+                                                                const itemName =
+                                                                    item.name.toLowerCase();
+                                                                return (
+                                                                    itemName.includes(query) &&
+                                                                    !scoredResults.find(
+                                                                        (r) => r.item.id === item.id
+                                                                    )
+                                                                );
+                                                            }
+                                                        );
 
                                                         const allMatches = [
                                                             ...scoredResults,
-                                                            ...substringMatches.map(item => ({ item, score: 0 }))
+                                                            ...substringMatches.map((item) => ({
+                                                                item,
+                                                                score: 0,
+                                                            })),
                                                         ];
 
-                                                        allMatches.sort((a, b) => (a.score || 1) - (b.score || 1));
-                                                        return allMatches.map(m => m.item);
-                                                    })().map(item => (
+                                                        allMatches.sort(
+                                                            (a, b) =>
+                                                                (a.score || 1) - (b.score || 1)
+                                                        );
+                                                        return allMatches.map((m) => m.item);
+                                                    })().map((item) => (
                                                         <button
                                                             key={item.id}
-                                                            onClick={() => setCouponForm({ ...couponForm, itemId: item.id })}
-                                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${couponForm.itemId === item.id ? 'bg-blue-600/20 border-blue-500 text-white' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
+                                                            onClick={() =>
+                                                                setCouponForm({
+                                                                    ...couponForm,
+                                                                    itemId: item.id,
+                                                                })
+                                                            }
+                                                            className={`flex items-center justify-between p-3 rounded-xl border transition-all text-left ${couponForm.itemId === item.id ? "bg-blue-600/20 border-blue-500 text-white" : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10"}`}
                                                         >
-                                                            <span className="font-bold text-sm tracking-tight">{item.name}</span>
-                                                            <span className="text-xs font-medium opacity-60">₹{item.price}</span>
+                                                            <span className="font-bold text-sm tracking-tight">
+                                                                {item.name}
+                                                            </span>
+                                                            <span className="text-xs font-medium opacity-60">
+                                                                ₹{item.price}
+                                                            </span>
                                                         </button>
                                                     ))}
                                                 </div>
                                             </div>
                                         ) : (
                                             <div className="grid grid-cols-2 gap-2">
-                                                {Array.from(new Set(restaurants.find(r => r.id === couponForm.restaurantId)?.menu?.map(i => i.category) || []))
-                                                    .map(cat => (
-                                                        <button
-                                                            key={cat}
-                                                            onClick={() => setCouponForm({ ...couponForm, itemId: `CATEGORY:${cat}` })}
-                                                            className={`p-4 rounded-xl border transition-all text-center font-bold text-xs ${couponForm.itemId === `CATEGORY:${cat}` ? 'bg-orange-600/20 border-orange-500 text-white' : 'bg-white/5 border-white/5 text-gray-400 hover:bg-white/10'}`}
-                                                        >
-                                                            {cat || "General"}
-                                                        </button>
-                                                    ))}
+                                                {Array.from(
+                                                    new Set(
+                                                        restaurants
+                                                            .find(
+                                                                (r) =>
+                                                                    r.id === couponForm.restaurantId
+                                                            )
+                                                            ?.menu?.map((i) => i.category) || []
+                                                    )
+                                                ).map((cat) => (
+                                                    <button
+                                                        key={cat}
+                                                        onClick={() =>
+                                                            setCouponForm({
+                                                                ...couponForm,
+                                                                itemId: `CATEGORY:${cat}`,
+                                                            })
+                                                        }
+                                                        className={`p-4 rounded-xl border transition-all text-center font-bold text-xs ${couponForm.itemId === `CATEGORY:${cat}` ? "bg-orange-600/20 border-orange-500 text-white" : "bg-white/5 border-white/5 text-gray-400 hover:bg-white/10"}`}
+                                                    >
+                                                        {cat || "General"}
+                                                    </button>
+                                                ))}
                                             </div>
                                         )}
                                     </div>
@@ -372,13 +545,38 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                             </div>
                         </div>
 
-                        <FormInput label="Min Order Amount (₹)" type="number" value={couponForm.minOrder} onChange={(e) => setCouponForm({ ...couponForm, minOrder: e.target.value })} placeholder="0" />
+                        <FormInput
+                            label="Min Order Amount (₹)"
+                            type="number"
+                            value={couponForm.minOrder}
+                            onChange={(e) =>
+                                setCouponForm({ ...couponForm, minOrder: e.target.value })
+                            }
+                            placeholder="0"
+                        />
 
-                        <FormInput label="Usage Limit" type="number" value={couponForm.usageLimit} onChange={(e) => setCouponForm({ ...couponForm, usageLimit: e.target.value })} placeholder="e.g. 100" />
+                        <FormInput
+                            label="Usage Limit"
+                            type="number"
+                            value={couponForm.usageLimit}
+                            onChange={(e) =>
+                                setCouponForm({ ...couponForm, usageLimit: e.target.value })
+                            }
+                            placeholder="e.g. 100"
+                        />
 
                         <div className="space-y-3">
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">Description</label>
-                            <textarea placeholder="Brief description of the offer..." className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium h-32 resize-none" value={couponForm.description} onChange={(e) => setCouponForm({ ...couponForm, description: e.target.value })} />
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                Description
+                            </label>
+                            <textarea
+                                placeholder="Brief description of the offer..."
+                                className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium h-32 resize-none"
+                                value={couponForm.description}
+                                onChange={(e) =>
+                                    setCouponForm({ ...couponForm, description: e.target.value })
+                                }
+                            />
                         </div>
 
                         <div className="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5">
@@ -389,12 +587,26 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                     id="toggle"
                                     className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
                                     checked={couponForm.isVisible !== false}
-                                    onChange={(e) => setCouponForm({ ...couponForm, isVisible: e.target.checked })}
-                                    style={{ right: couponForm.isVisible !== false ? '0' : 'auto', left: couponForm.isVisible !== false ? 'auto' : '0' }}
+                                    onChange={(e) =>
+                                        setCouponForm({
+                                            ...couponForm,
+                                            isVisible: e.target.checked,
+                                        })
+                                    }
+                                    style={{
+                                        right: couponForm.isVisible !== false ? "0" : "auto",
+                                        left: couponForm.isVisible !== false ? "auto" : "0",
+                                    }}
                                 />
-                                <label htmlFor="toggle" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${couponForm.isVisible !== false ? 'bg-orange-500' : 'bg-gray-600'}`}></label>
+                                <label
+                                    htmlFor="toggle"
+                                    className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${couponForm.isVisible !== false ? "bg-orange-500" : "bg-gray-600"}`}
+                                ></label>
                             </div>
-                            <label htmlFor="toggle" className="text-sm font-bold text-white cursor-pointer select-none">
+                            <label
+                                htmlFor="toggle"
+                                className="text-sm font-bold text-white cursor-pointer select-none"
+                            >
                                 Show in Cart Quick Apply?
                             </label>
                         </div>
@@ -407,13 +619,27 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                     id="toggle-active"
                                     className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
                                     checked={couponForm.isActive !== false}
-                                    onChange={(e) => setCouponForm({ ...couponForm, isActive: e.target.checked })}
-                                    style={{ right: couponForm.isActive !== false ? '0' : 'auto', left: couponForm.isActive !== false ? 'auto' : '0' }}
+                                    onChange={(e) =>
+                                        setCouponForm({ ...couponForm, isActive: e.target.checked })
+                                    }
+                                    style={{
+                                        right: couponForm.isActive !== false ? "0" : "auto",
+                                        left: couponForm.isActive !== false ? "auto" : "0",
+                                    }}
                                 />
-                                <label htmlFor="toggle-active" className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${couponForm.isActive !== false ? 'bg-green-500' : 'bg-gray-600'}`}></label>
+                                <label
+                                    htmlFor="toggle-active"
+                                    className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${couponForm.isActive !== false ? "bg-green-500" : "bg-gray-600"}`}
+                                ></label>
                             </div>
-                            <label htmlFor="toggle-active" className="text-sm font-bold text-white cursor-pointer select-none">
-                                Coupon Active? <span className="text-gray-500 font-normal">(If off, customers cannot apply)</span>
+                            <label
+                                htmlFor="toggle-active"
+                                className="text-sm font-bold text-white cursor-pointer select-none"
+                            >
+                                Coupon Active?{" "}
+                                <span className="text-gray-500 font-normal">
+                                    (If off, customers cannot apply)
+                                </span>
                             </label>
                         </div>
                     </div>

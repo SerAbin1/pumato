@@ -15,9 +15,11 @@ import {
     Tag,
     Loader2,
     LogIn,
+    Timer,
 } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useUserAuth } from "../context/UserAuthContext";
+import { useRestaurants } from "../hooks/useCartData";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useState, useMemo } from "react";
 
@@ -67,6 +69,7 @@ export default function CartDrawer() {
         hasHeavyItems,
     } = useCart();
     const { user: authUser } = useUserAuth();
+    const { restaurants } = useRestaurants();
     const router = useRouter();
 
     const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
@@ -77,12 +80,14 @@ export default function CartDrawer() {
     const [isApplying, setIsApplying] = useState(false);
     const [checkoutError, setCheckoutError] = useState(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+    const [selectedSlot, setSelectedSlot] = useState("");
 
     const resetCheckoutState = () => {
         setIsCheckingOut(false);
         setCouponMsg(null);
         setInputCode("");
         setCheckoutError(null);
+        setSelectedSlot("");
     };
 
     const isStoreOpen = useMemo(() => {
@@ -97,6 +102,36 @@ export default function CartDrawer() {
             : campusConfig.flatMap((c) => c.slots || []);
         return isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes);
     }, [isCartOpen, orderSettings, userDetails.campus]);
+
+    // Compute available delivery slots from cart restaurants
+    const { availableSlots, requiresSlot } = useMemo(() => {
+        const restaurantIds = [
+            ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
+        ];
+        const slotRestaurants = restaurantIds
+            .map((id) => restaurants.find((r) => r.id === id))
+            .filter((r) => r?.isSlotEnabled && r?.slots?.length > 0);
+
+        if (slotRestaurants.length === 0) return { availableSlots: [], requiresSlot: false };
+
+        // Merge slots from all slot-enabled restaurants (union)
+        const allSlots = [...new Set(slotRestaurants.flatMap((r) => r.slots))];
+        const sorted = allSlots.sort((a, b) => {
+            const getMinutes = (s) => {
+                const parts = s.split(" - ")[0].match(/(\d+):(\d+) (AM|PM)/);
+                if (!parts) return 0;
+                let h = parseInt(parts[1]);
+                const m = parseInt(parts[2]);
+                const amp = parts[3];
+                if (amp === "PM" && h !== 12) h += 12;
+                if (amp === "AM" && h === 12) h = 0;
+                return h * 60 + m;
+            };
+            return getMinutes(a) - getMinutes(b);
+        });
+
+        return { availableSlots: sorted, requiresSlot: true };
+    }, [cartItems, restaurants]);
 
     const handleApplyCoupon = async () => {
         if (!inputCode.trim()) return;
@@ -129,6 +164,11 @@ export default function CartDrawer() {
 
         if (userDetails.phone.length !== 10) {
             setCheckoutError("Please enter a valid 10-digit phone number.");
+            return;
+        }
+
+        if (requiresSlot && !selectedSlot) {
+            setCheckoutError("Please select a delivery time slot.");
             return;
         }
 
@@ -272,6 +312,7 @@ export default function CartDrawer() {
                 restaurantIds: uniqueRestaurantIds,
                 status: "placed",
                 finalTotal: finalTotal,
+                ...(selectedSlot ? { deliverySlot: selectedSlot } : {}),
                 createdAt: serverTimestamp(),
             });
 
@@ -297,9 +338,17 @@ export default function CartDrawer() {
                 couponCode,
                 paymentQR,
                 upiId,
+                deliverySlot: selectedSlot,
             });
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.location.href = whatsappUrl;
+
+            if (selectedSlot) {
+                toast.success(`Order placed! Delivery expected during ${selectedSlot}`, {
+                    duration: 5000,
+                    icon: "🕐",
+                });
+            }
             setIsCartOpen(false);
             resetCheckoutState();
         } catch (error) {
@@ -764,6 +813,43 @@ export default function CartDrawer() {
                                                     </div>
                                                 </div>
 
+                                                {/* Delivery Slot Selection */}
+                                                {requiresSlot && availableSlots.length > 0 && (
+                                                    <div className="space-y-2">
+                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
+                                                            <Timer
+                                                                size={14}
+                                                                className="text-cyan-500"
+                                                            />
+                                                            Delivery Time Slot
+                                                        </label>
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            {availableSlots.map((slot) => (
+                                                                <button
+                                                                    key={slot}
+                                                                    type="button"
+                                                                    onClick={() =>
+                                                                        setSelectedSlot(slot)
+                                                                    }
+                                                                    className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${
+                                                                        selectedSlot === slot
+                                                                            ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400"
+                                                                            : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                                                                    }`}
+                                                                >
+                                                                    {slot}
+                                                                </button>
+                                                            ))}
+                                                        </div>
+                                                        {selectedSlot && (
+                                                            <p className="text-[10px] text-cyan-400/70 font-medium pl-1">
+                                                                Your order will be delivered during{" "}
+                                                                {selectedSlot}
+                                                            </p>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 <div className="relative group">
                                                     <MapPin
                                                         className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-orange-500 transition-colors"
@@ -877,7 +963,8 @@ export default function CartDrawer() {
                                                 !isFormValid ||
                                                 !isStoreOpen ||
                                                 isCheckingOut ||
-                                                hasMinOrderIssue
+                                                hasMinOrderIssue ||
+                                                (requiresSlot && !selectedSlot)
                                             }
                                             className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 disabled:from-zinc-800 disabled:to-zinc-800 disabled:text-gray-600 disabled:cursor-not-allowed text-white py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all shadow-xl shadow-orange-900/20 active:scale-[0.98] border border-white/5"
                                         >

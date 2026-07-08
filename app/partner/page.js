@@ -26,6 +26,7 @@ import {
     Truck,
     Clock,
     UtensilsCrossed,
+    Timer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
@@ -71,11 +72,19 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
         >
             {/* Header bar */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-black/20">
-                <span
-                    className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
-                >
-                    {statusInfo.label}
-                </span>
+                <div className="flex items-center gap-2">
+                    <span
+                        className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
+                    >
+                        {statusInfo.label}
+                    </span>
+                    {order.deliverySlot && (
+                        <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border text-cyan-400 bg-cyan-500/10 border-cyan-500/20 flex items-center gap-1">
+                            <Timer size={10} />
+                            {order.deliverySlot}
+                        </span>
+                    )}
+                </div>
                 <span className="text-xs text-gray-500 flex items-center gap-1">
                     <Clock size={12} />
                     {order.createdAt?.toLocaleTimeString([], {
@@ -542,11 +551,19 @@ export default function PartnerDashboard() {
                                             className="bg-white/3 border border-white/5 rounded-2xl overflow-hidden opacity-70"
                                         >
                                             <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
-                                                <span
-                                                    className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
-                                                >
-                                                    {statusInfo.label}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span
+                                                        className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
+                                                    >
+                                                        {statusInfo.label}
+                                                    </span>
+                                                    {order.deliverySlot && (
+                                                        <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border text-cyan-400 bg-cyan-500/10 border-cyan-500/20 flex items-center gap-1">
+                                                            <Timer size={10} />
+                                                            {order.deliverySlot}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <span className="text-xs text-gray-600">
                                                     {order.createdAt?.toLocaleTimeString([], {
                                                         hour: "2-digit",

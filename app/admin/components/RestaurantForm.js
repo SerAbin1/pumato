@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
-import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock } from "lucide-react";
+import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock, Timer } from "lucide-react";
 import Fuse from "fuse.js";
-import { toTitleCase } from "@/lib/formatters";
+import { toTitleCase, format12h } from "@/lib/formatters";
 import { createFileUploadHandler } from "@/lib/uploadImage";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
@@ -62,6 +62,8 @@ export default function RestaurantForm({
     const [excludedCategories, setExcludedCategories] = useState([]);
     const [excludedItemIds, setExcludedItemIds] = useState([]);
     const [itemSearchQuery, setItemSearchQuery] = useState("");
+    const [slotStart, setSlotStart] = useState("");
+    const [slotEnd, setSlotEnd] = useState("");
     const [priceIncreaseApplied, setPriceIncreaseApplied] = useState(false);
     const [priceIncreaseModal, setPriceIncreaseModal] = useState({
         isOpen: false,
@@ -205,6 +207,41 @@ export default function RestaurantForm({
         setExcludedItemIds((prev) =>
             prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
         );
+    };
+
+    // --- SLOT HANDLERS ---
+    const addSlot = () => {
+        if (!slotStart || !slotEnd) return;
+        const [startH, startM] = slotStart.split(":").map(Number);
+        const [endH, endM] = slotEnd.split(":").map(Number);
+        if (startH * 60 + startM >= endH * 60 + endM) return;
+
+        const formattedSlot = `${format12h(slotStart)} - ${format12h(slotEnd)}`;
+        const currentSlots = formData.slots || [];
+        if (currentSlots.includes(formattedSlot)) return;
+
+        const updatedSlots = [...currentSlots, formattedSlot].sort((a, b) => {
+            const getMinutes = (s) => {
+                const parts = s.split(" - ")[0].match(/(\d+):(\d+) (AM|PM)/);
+                if (!parts) return 0;
+                let h = parseInt(parts[1]);
+                const m = parseInt(parts[2]);
+                const amp = parts[3];
+                if (amp === "PM" && h !== 12) h += 12;
+                if (amp === "AM" && h === 12) h = 0;
+                return h * 60 + m;
+            };
+            return getMinutes(a) - getMinutes(b);
+        });
+
+        setFormData({ ...formData, slots: updatedSlots });
+        setSlotStart("");
+        setSlotEnd("");
+    };
+
+    const removeSlot = (index) => {
+        const updatedSlots = (formData.slots || []).filter((_, i) => i !== index);
+        setFormData({ ...formData, slots: updatedSlots });
     };
 
     const handleSave = () => {
@@ -419,6 +456,117 @@ export default function RestaurantForm({
                     </div>
                 </div>
             </div>
+
+            {/* Delivery Slots Management */}
+            {!isPartnerPage && (
+                <div className="border-t border-white/10 pt-10 mb-10">
+                    <h3 className="font-bold text-2xl text-white mb-6 flex items-center gap-3">
+                        <Timer size={24} className="text-cyan-500" /> Delivery Slots
+                    </h3>
+
+                    <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6">
+                        {/* Toggle */}
+                        <div className="flex items-center gap-4">
+                            <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input
+                                    type="checkbox"
+                                    id="slot-enabled"
+                                    className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
+                                    checked={formData.isSlotEnabled === true}
+                                    onChange={(e) =>
+                                        setFormData({
+                                            ...formData,
+                                            isSlotEnabled: e.target.checked,
+                                            slots: e.target.checked ? formData.slots || [] : [],
+                                        })
+                                    }
+                                    style={{
+                                        right: formData.isSlotEnabled === true ? "0" : "auto",
+                                        left: formData.isSlotEnabled === true ? "auto" : "0",
+                                    }}
+                                />
+                                <label
+                                    htmlFor="slot-enabled"
+                                    className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${formData.isSlotEnabled === true ? "bg-cyan-500" : "bg-gray-600"}`}
+                                ></label>
+                            </div>
+                            <div className="flex-1">
+                                <label
+                                    htmlFor="slot-enabled"
+                                    className="text-sm font-bold text-white cursor-pointer select-none"
+                                >
+                                    Enable Delivery Slots
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    When enabled, customers must choose a delivery time slot at
+                                    checkout
+                                </p>
+                            </div>
+                        </div>
+
+                        {/* Slot Adder */}
+                        {formData.isSlotEnabled === true && (
+                            <div className="space-y-4">
+                                <div className="flex items-end gap-2">
+                                    <div className="grid flex-1 grid-cols-2 gap-2">
+                                        <div className="space-y-1">
+                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                                Start
+                                            </label>
+                                            <input
+                                                type="time"
+                                                value={slotStart}
+                                                onChange={(e) => setSlotStart(e.target.value)}
+                                                className="w-full rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50 [color-scheme:dark]"
+                                            />
+                                        </div>
+                                        <div className="space-y-1">
+                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                                End
+                                            </label>
+                                            <input
+                                                type="time"
+                                                value={slotEnd}
+                                                onChange={(e) => setSlotEnd(e.target.value)}
+                                                className="w-full rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50 [color-scheme:dark]"
+                                            />
+                                        </div>
+                                    </div>
+                                    <button
+                                        onClick={addSlot}
+                                        className="flex h-[50px] w-[50px] items-center justify-center rounded-xl bg-cyan-600 text-white shadow-lg shadow-cyan-900/40 transition-colors hover:bg-cyan-500"
+                                        title="Add Slot"
+                                    >
+                                        <Plus size={24} />
+                                    </button>
+                                </div>
+
+                                <div className="max-h-[300px] space-y-3 overflow-y-auto pr-2 custom-scrollbar">
+                                    {(!formData.slots || formData.slots.length === 0) && (
+                                        <div className="rounded-2xl border border-dashed border-white/10 py-8 text-center text-gray-500 text-sm">
+                                            No slots added yet. Add time slots above.
+                                        </div>
+                                    )}
+                                    {(formData.slots || []).map((slot, idx) => (
+                                        <div
+                                            key={idx}
+                                            className="group flex items-center justify-between rounded-xl border border-white/5 bg-white/5 p-4 transition-colors hover:bg-white/10"
+                                        >
+                                            <span className="font-bold text-gray-200">{slot}</span>
+                                            <button
+                                                onClick={() => removeSlot(idx)}
+                                                className="rounded-lg p-2 text-gray-500 transition-all hover:bg-red-500/10 hover:text-red-500"
+                                            >
+                                                <Trash size={18} />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* Category Management */}
             <div className="border-t border-white/10 pt-10 mb-10">

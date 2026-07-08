@@ -12,6 +12,7 @@ import {
     Loader2,
     AlertTriangle,
     BellOff,
+    Timer,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { supabase } from "@/lib/supabase";
@@ -186,6 +187,12 @@ function OrderCard({
                         >
                             {statusInfo.label}
                         </span>
+                        {order.deliverySlot && (
+                            <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border text-cyan-400 bg-cyan-500/10 border-cyan-500/20 flex items-center gap-1">
+                                <Timer size={10} />
+                                {order.deliverySlot}
+                            </span>
+                        )}
                         <TimeAgo date={order.createdAt} />
                     </div>
 

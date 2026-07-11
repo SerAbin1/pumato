@@ -1,10 +1,21 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
-import { User, Phone, MapPin, Send, Plus, X, ShoppingBasket, Clock, AlertCircle } from "lucide-react";
+import {
+    User,
+    Phone,
+    MapPin,
+    Send,
+    Plus,
+    X,
+    ShoppingBasket,
+    Clock,
+    AlertCircle,
+    Timer,
+} from "lucide-react";
 import TermsFooter from "../components/TermsFooter";
 import toast from "react-hot-toast";
 // Fallback is defined in context
@@ -13,29 +24,42 @@ import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { getISTTime } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
+import { format12h } from "@/lib/formatters";
 
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
     const [isLive, setIsLive] = useState(true);
+    const [selectedSlot, setSelectedSlot] = useState("");
     const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
+
+    const serviceHours = useMemo(() => grocerySettings?.service_hours ?? [], [grocerySettings]);
+    const deliveryHours = useMemo(() => grocerySettings?.delivery_hours ?? [], [grocerySettings]);
+    const preOrderEnabled = !!grocerySettings?.isDeliverySlotEnabled && deliveryHours.length > 0;
+    const preOrderMode = !isLive && preOrderEnabled;
 
     useEffect(() => {
         const checkLiveStatus = () => {
             const { timeInMinutes } = getISTTime();
-            const slots = grocerySettings?.slots || [];
-            setIsLive(isServiceLive(grocerySettings.manualOverride?.status, slots, timeInMinutes));
+            setIsLive(
+                isServiceLive(grocerySettings.manualOverride?.status, serviceHours, timeInMinutes)
+            );
         };
 
         checkLiveStatus();
         const interval = setInterval(checkLiveStatus, 60000); // Check every minute
         return () => clearInterval(interval);
-    }, [grocerySettings]);
+    }, [grocerySettings, serviceHours]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        if (!preOrderMode) setSelectedSlot("");
+    }, [preOrderMode]);
 
     const [formData, setFormData] = useState({
         name: "",
         phone: "",
         campus: "",
-        hostel: ""
+        hostel: "",
     });
 
     // 1. Load from localStorage on mount
@@ -46,11 +70,11 @@ export default function GroceryPage() {
                 try {
                     const parsed = JSON.parse(saved);
                     // eslint-disable-next-line react-hooks/set-state-in-effect
-                    setFormData(prev => ({
+                    setFormData((prev) => ({
                         ...prev,
                         name: parsed.name || prev.name,
                         phone: parsed.phone || prev.phone,
-                        hostel: parsed.address || parsed.room || parsed.hostel || prev.hostel
+                        hostel: parsed.address || parsed.room || parsed.hostel || prev.hostel,
                     }));
                 } catch (e) {
                     console.error("Failed to parse saved user details", e);
@@ -67,15 +91,13 @@ export default function GroceryPage() {
                 name: formData.name,
                 phone: formData.phone,
                 address: formData.hostel,
-                hostel: formData.hostel
+                hostel: formData.hostel,
             };
             localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
         }
     }, [formData]);
 
-    const [items, setItems] = useState([
-        { id: 1, name: "", quantity: "" }
-    ]);
+    const [items, setItems] = useState([{ id: 1, name: "", quantity: "" }]);
 
     const handleAddItem = () => {
         setItems([...items, { id: Date.now(), name: "", quantity: "" }]);
@@ -83,15 +105,13 @@ export default function GroceryPage() {
 
     const handleRemoveItem = (id) => {
         if (items.length > 1) {
-            setItems(items.filter(item => item.id !== id));
+            setItems(items.filter((item) => item.id !== id));
         }
     };
 
     const handleItemChange = (id, field, value) => {
-        if (field === 'quantity' && value !== '' && Number(value) < 1) return;
-        const newItems = items.map(item =>
-            item.id === id ? { ...item, [field]: value } : item
-        );
+        if (field === "quantity" && value !== "" && Number(value) < 1) return;
+        const newItems = items.map((item) => (item.id === id ? { ...item, [field]: value } : item));
         setItems(newItems);
     };
 
@@ -116,9 +136,15 @@ export default function GroceryPage() {
 
         const trimmedName = formData.name.trim();
         const trimmedHostel = formData.hostel.trim();
-        const validItems = items.filter(i => i.name.trim().length > 0);
+        const validItems = items.filter((i) => i.name.trim().length > 0);
 
-        if (!trimmedName || !formData.phone || !formData.campus || !trimmedHostel || validItems.length === 0) {
+        if (
+            !trimmedName ||
+            !formData.phone ||
+            !formData.campus ||
+            !trimmedHostel ||
+            validItems.length === 0
+        ) {
             toast.error("Please fill in all details including Campus and add at least one item.");
             return;
         }
@@ -128,32 +154,53 @@ export default function GroceryPage() {
             return;
         }
 
+        if (preOrderMode && !selectedSlot) {
+            toast.error("Please select a delivery slot for your pre-order.");
+            return;
+        }
+
         let message = `*New Grocery Order* 🛒\n\n`;
         message += `*Customer Details:*\n`;
         message += `Name: ${trimmedName}\n`;
         message += `Phone: ${formData.phone}\n`;
         message += `Campus: ${formData.campus}\n`;
 
-        const selectedCampus = campusConfig.find(c => c.id === formData.campus);
+        const selectedCampus = campusConfig.find((c) => c.id === formData.campus);
         if (selectedCampus && selectedCampus.deliveryCharge > 0) {
             message += `Delivery Charge: ₹${selectedCampus.deliveryCharge}\n`;
         }
 
-        message += `Hostel: ${trimmedHostel}\n\n`;
+        message += `Hostel: ${trimmedHostel}\n`;
 
-        message += `*Grocery List:*\n`;
+        if (preOrderMode && selectedSlot) {
+            message += `\n*Delivery Slot (Pre-order):* ${selectedSlot}\n`;
+        }
+
+        message += `\n*Grocery List:*\n`;
         validItems.forEach((item, index) => {
-            message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ''}\n`;
+            message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ""}\n`;
         });
 
         const whatsappUrl = `https://wa.me/${groceryNumber}?text=${encodeURIComponent(message)}`;
         window.open(whatsappUrl, "_blank");
+
+        if (preOrderMode && selectedSlot) {
+            toast.success(`Pre-order scheduled! Delivery expected during ${selectedSlot}`, {
+                duration: 5000,
+                icon: "🕐",
+            });
+        }
     };
 
     return (
         <main className="min-h-screen bg-black text-white relative selection:bg-green-500 selection:text-white pb-20 overflow-x-hidden">
             {/* Noise Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+            <div
+                className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                }}
+            ></div>
 
             {/* Ambient Glow */}
             <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-green-900/10 rounded-full blur-[120px] pointer-events-none" />
@@ -162,7 +209,6 @@ export default function GroceryPage() {
             <Navbar />
 
             <div className="max-w-3xl mx-auto px-4 pt-32 relative z-10">
-
                 {/* Header */}
                 <div className="text-center mb-12">
                     <motion.div
@@ -185,7 +231,8 @@ export default function GroceryPage() {
                         transition={{ delay: 0.1 }}
                         className="text-gray-400 text-lg max-w-lg mx-auto"
                     >
-                        Need essentials? Add them to your list below and we&apos;ll deliver them to your door.
+                        Need essentials? Add them to your list below and we&apos;ll deliver them to
+                        your door.
                     </motion.p>
                 </div>
 
@@ -199,54 +246,91 @@ export default function GroceryPage() {
                     {/* Glass Shine */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 
-                    {/* Offline Overlay */}
-                    {!isLive && (
+                    {/* Offline Overlay (only when pre-ordering is not available) */}
+                    {!isLive && !preOrderEnabled && (
                         <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8">
                             <div className="bg-red-500/10 p-4 rounded-full border border-red-500/20 mb-4 animate-pulse">
                                 <Clock size={48} className="text-red-500" />
                             </div>
                             <h2 className="text-2xl font-black text-white mb-2">Service Offline</h2>
-                            <p className="text-gray-400 max-w-sm mb-6">Grocery delivery is currently closed. Please check the top navigation bar for operating hours.</p>
+                            <p className="text-gray-400 max-w-sm mb-6">
+                                Grocery delivery is currently closed. Please check the top
+                                navigation bar for operating hours.
+                            </p>
                             <div className="flex gap-2 text-xs font-bold uppercase tracking-widest text-red-500 bg-red-500/5 px-4 py-2 rounded-full border border-red-500/10">
                                 <AlertCircle size={14} /> Currently Closed
                             </div>
                         </div>
                     )}
 
-                    <form onSubmit={handleSubmit} className={`space-y-8 ${!isLive ? 'opacity-20 pointer-events-none' : ''}`}>
+                    {/* Pre-order Notice (service offline but scheduling enabled) */}
+                    {preOrderMode && (
+                        <div className="relative z-10 mb-6 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl p-4 flex items-start gap-3">
+                            <Timer size={20} className="text-cyan-400 flex-shrink-0 mt-0.5" />
+                            <div>
+                                <p className="text-cyan-300 font-bold text-sm">
+                                    Service Offline — Schedule a Pre-order
+                                </p>
+                                <p className="text-gray-400 text-xs mt-1">
+                                    Pick a delivery window below and we&apos;ll deliver your order
+                                    once the slot begins.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
+                    <form
+                        onSubmit={handleSubmit}
+                        className={`space-y-8 ${!isLive && !preOrderEnabled ? "opacity-20 pointer-events-none" : ""}`}
+                    >
                         {/* Personal Details */}
                         <div className="space-y-6">
                             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                <span className="bg-green-500/20 text-green-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-green-500/30">1</span>
+                                <span className="bg-green-500/20 text-green-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-green-500/30">
+                                    1
+                                </span>
                                 Your Details
                             </h3>
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Name</label>
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                        Name
+                                    </label>
                                     <div className="relative group">
-                                        <User className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-green-500 transition-colors" size={20} />
+                                        <User
+                                            className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-green-500 transition-colors"
+                                            size={20}
+                                        />
                                         <input
                                             type="text"
                                             required
                                             value={formData.name}
-                                            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, name: e.target.value })
+                                            }
                                             className="w-full pl-12 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-green-500/50 focus:bg-black/60 transition-all text-white placeholder-gray-600 font-medium"
                                             placeholder="Enter your name"
                                         />
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Phone Number</label>
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                        Phone Number
+                                    </label>
                                     <div className="relative group">
-                                        <Phone className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-green-500 transition-colors" size={20} />
+                                        <Phone
+                                            className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-green-500 transition-colors"
+                                            size={20}
+                                        />
                                         <input
                                             type="tel"
                                             required
                                             maxLength={10}
                                             value={formData.phone}
                                             onChange={(e) => {
-                                                const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                                                const val = e.target.value
+                                                    .replace(/\D/g, "")
+                                                    .slice(0, 10);
                                                 setFormData({ ...formData, phone: val });
                                             }}
                                             className="w-full pl-12 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-green-500/50 focus:bg-black/60 transition-all text-white placeholder-gray-600 font-medium"
@@ -255,18 +339,24 @@ export default function GroceryPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Campus</label>
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                        Campus
+                                    </label>
                                     <div className="grid grid-cols-3 gap-3">
                                         {campusConfig.map((campus) => (
                                             <button
                                                 key={campus.id}
                                                 type="button"
-                                                onClick={() => setFormData({ ...formData, campus: campus.id })}
-                                                className={`py-3 px-2 rounded-xl text-sm font-bold border transition-all flex flex-col items-center justify-center gap-1 ${formData.campus === campus.id ? 'bg-green-600 border-green-500 text-white shadow-lg shadow-green-900/50' : 'bg-black/20 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white'}`}
+                                                onClick={() =>
+                                                    setFormData({ ...formData, campus: campus.id })
+                                                }
+                                                className={`py-3 px-2 rounded-xl text-sm font-bold border transition-all flex flex-col items-center justify-center gap-1 ${formData.campus === campus.id ? "bg-green-600 border-green-500 text-white shadow-lg shadow-green-900/50" : "bg-black/20 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"}`}
                                             >
                                                 <span>{campus.name}</span>
                                                 {campus.deliveryCharge > 0 && (
-                                                    <span className="text-[10px] opacity-70 bg-white/10 px-1.5 rounded-full">+₹{campus.deliveryCharge}</span>
+                                                    <span className="text-[10px] opacity-70 bg-white/10 px-1.5 rounded-full">
+                                                        +₹{campus.deliveryCharge}
+                                                    </span>
                                                 )}
                                             </button>
                                         ))}
@@ -274,14 +364,21 @@ export default function GroceryPage() {
                                 </div>
 
                                 <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">Hostel</label>
+                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                        Hostel
+                                    </label>
                                     <div className="relative group">
-                                        <MapPin className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-green-500 transition-colors" size={20} />
+                                        <MapPin
+                                            className="absolute left-4 top-3.5 text-gray-500 group-focus-within:text-green-500 transition-colors"
+                                            size={20}
+                                        />
                                         <input
                                             type="text"
                                             required
                                             value={formData.hostel}
-                                            onChange={(e) => setFormData({ ...formData, hostel: e.target.value })}
+                                            onChange={(e) =>
+                                                setFormData({ ...formData, hostel: e.target.value })
+                                            }
                                             className="w-full pl-12 pr-4 py-3 bg-black/40 border border-white/10 rounded-xl focus:outline-none focus:border-green-500/50 focus:bg-black/60 transition-all text-white placeholder-gray-600 font-medium"
                                             placeholder="Hostel Name (e.g. SRK)"
                                         />
@@ -295,19 +392,32 @@ export default function GroceryPage() {
                         {/* Grocery List */}
                         <div className="space-y-6">
                             <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                                <span className="bg-green-500/20 text-green-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-green-500/30">2</span>
+                                <span className="bg-green-500/20 text-green-400 w-8 h-8 rounded-lg flex items-center justify-center text-sm border border-green-500/30">
+                                    2
+                                </span>
                                 Grocery List
                             </h3>
 
                             <div className="space-y-3">
                                 {items.map((item, index) => (
-                                    <div key={item.id} className="flex flex-wrap gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors">
+                                    <div
+                                        key={item.id}
+                                        className="flex flex-wrap gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
+                                    >
                                         <div className="bg-black/40 border border-white/10 rounded-lg flex-1 flex items-center px-3 focus-within:border-green-500/50 focus-within:bg-black/60 transition-all">
-                                            <span className="text-gray-500 font-bold mr-2 text-xs">{index + 1}.</span>
+                                            <span className="text-gray-500 font-bold mr-2 text-xs">
+                                                {index + 1}.
+                                            </span>
                                             <input
                                                 type="text"
                                                 value={item.name}
-                                                onChange={(e) => handleItemChange(item.id, 'name', e.target.value)}
+                                                onChange={(e) =>
+                                                    handleItemChange(
+                                                        item.id,
+                                                        "name",
+                                                        e.target.value
+                                                    )
+                                                }
                                                 className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-sm"
                                                 placeholder="Item (e.g. Milk)"
                                             />
@@ -317,7 +427,13 @@ export default function GroceryPage() {
                                                 type="number"
                                                 min="1"
                                                 value={item.quantity}
-                                                onChange={(e) => handleItemChange(item.id, 'quantity', e.target.value)}
+                                                onChange={(e) =>
+                                                    handleItemChange(
+                                                        item.id,
+                                                        "quantity",
+                                                        e.target.value
+                                                    )
+                                                }
                                                 className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-center text-sm"
                                                 placeholder="Qty"
                                             />
@@ -343,6 +459,36 @@ export default function GroceryPage() {
                             </button>
                         </div>
 
+                        {/* Delivery Slot Selection (Pre-order) */}
+                        {preOrderMode && deliveryHours.length > 0 && (
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
+                                    <Timer size={14} className="text-cyan-500" />
+                                    Delivery Time Slot
+                                </label>
+                                <div className="grid grid-cols-2 gap-2">
+                                    {deliveryHours.map((slot, idx) => {
+                                        const label = `${format12h(slot.start)} - ${format12h(slot.end)}`;
+                                        return (
+                                            <button
+                                                key={idx}
+                                                type="button"
+                                                onClick={() => setSelectedSlot(label)}
+                                                className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${selectedSlot === label ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400" : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"}`}
+                                            >
+                                                {label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                {selectedSlot && (
+                                    <p className="text-[10px] text-cyan-400/70 font-medium pl-1">
+                                        Your pre-order will be delivered during {selectedSlot}
+                                    </p>
+                                )}
+                            </div>
+                        )}
+
                         {/* Submit Button */}
                         <motion.button
                             whileHover={{ scale: 1.02 }}
@@ -350,15 +496,18 @@ export default function GroceryPage() {
                             type="submit"
                             className="w-full bg-gradient-to-r from-green-600 to-emerald-600 text-white py-4 rounded-2xl font-bold text-lg shadow-xl shadow-green-900/20 hover:shadow-green-900/40 transition-all flex items-center justify-center gap-3 border border-white/10 mt-6"
                         >
-                            <span>Place Order via WhatsApp</span>
+                            <span>
+                                {preOrderMode
+                                    ? "Schedule Pre-order via WhatsApp"
+                                    : "Place Order via WhatsApp"}
+                            </span>
                             <Send size={20} />
                         </motion.button>
-
                     </form>
                 </motion.div>
             </div>
 
             <TermsFooter type="grocery" />
-        </main >
+        </main>
     );
 }

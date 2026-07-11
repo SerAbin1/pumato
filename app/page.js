@@ -22,8 +22,12 @@ import { isServiceLive } from "@/lib/serviceStatus";
 // --- COMPONENTS ---
 
 // --- HELPER FUNCTION ---
-const checkIsLive = (settings) => {
+const checkIsLive = (settings, isGrocery = false) => {
     const { timeInMinutes } = getISTTime();
+    if (isGrocery) {
+        const slots = settings?.service_hours ?? [];
+        return isServiceLive(settings?.manualOverride?.status, slots, timeInMinutes);
+    }
     const campusConfig = settings?.deliveryCampusConfig || [];
     const allSlots = campusConfig.flatMap((campus) => campus.slots || []);
     return isServiceLive(settings?.manualOverride?.status, allSlots, timeInMinutes);
@@ -176,11 +180,11 @@ export default function GatewayPage() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setIsFoodLive(checkIsLive(orderSettings));
-        setIsGroceryLive(checkIsLive(grocerySettings));
+        setIsGroceryLive(checkIsLive(grocerySettings, true));
 
         const interval = setInterval(() => {
             setIsFoodLive(checkIsLive(orderSettings));
-            setIsGroceryLive(checkIsLive(grocerySettings));
+            setIsGroceryLive(checkIsLive(grocerySettings, true));
         }, 60000);
 
         return () => clearInterval(interval);

@@ -357,7 +357,7 @@ export default function Navbar() {
             const slots =
                 currentSettings === orderSettings
                     ? currentCampusSlots
-                    : currentSettings?.slots || [];
+                    : (currentSettings?.service_hours ?? []);
 
             setIsLive(isServiceLive(currentSettings.manualOverride?.status, slots, timeInMinutes));
         };

@@ -16,6 +16,7 @@ import {
     serverTimestamp,
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { COLLECTIONS } from "@/lib/constants";
 import { updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import {
@@ -279,7 +280,7 @@ export default function PartnerDashboard() {
         todayStart.setHours(0, 0, 0, 0);
 
         const q = query(
-            collection(db, "orders"),
+            collection(db, COLLECTIONS.ORDERS),
             where("restaurantIds", "array-contains", user.restaurantId),
             where("status", "in", ["confirmed", "viewed"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
@@ -311,7 +312,7 @@ export default function PartnerDashboard() {
         todayStart.setHours(0, 0, 0, 0);
 
         const q = query(
-            collection(db, "orders"),
+            collection(db, COLLECTIONS.ORDERS),
             where("restaurantIds", "array-contains", user.restaurantId),
             where("status", "in", ["ready_for_delivery", "out_of_stock", "picked_up", "delivered"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
@@ -338,7 +339,7 @@ export default function PartnerDashboard() {
             return;
         }
         if (user?.restaurantId) {
-            getDoc(doc(db, "restaurants", user.restaurantId))
+            getDoc(doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId))
                 .then((snap) => {
                     if (snap.exists()) setRestaurantData({ id: snap.id, ...snap.data() });
                     else toast.error("Restaurant not found.");
@@ -366,7 +367,9 @@ export default function PartnerDashboard() {
                 updates.outOfStockAt = serverTimestamp();
 
                 if (oosItemIds.length > 0 && user.restaurantId) {
-                    const restSnap = await getDoc(doc(db, "restaurants", user.restaurantId));
+                    const restSnap = await getDoc(
+                        doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId)
+                    );
                     if (restSnap.exists()) {
                         const rData = restSnap.data();
                         const updatedMenu = (rData.menu || []).map((item) => {
@@ -619,12 +622,12 @@ export default function PartnerDashboard() {
                                 initialData={restaurantData}
                                 onSave={handleSave}
                                 onCancel={() => {
-                                    getDoc(doc(db, "restaurants", user.restaurantId)).then(
-                                        (snap) => {
-                                            if (snap.exists())
-                                                setRestaurantData({ id: snap.id, ...snap.data() });
-                                        }
-                                    );
+                                    getDoc(
+                                        doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId)
+                                    ).then((snap) => {
+                                        if (snap.exists())
+                                            setRestaurantData({ id: snap.id, ...snap.data() });
+                                    });
                                     toast("Changes discarded.");
                                 }}
                                 isSaving={isSaving}

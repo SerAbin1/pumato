@@ -11,6 +11,7 @@ import { useState, useEffect } from "react";
 import Image from "next/image";
 
 import useFirestore from "@/app/hooks/useFirestore";
+import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import Fuse from "fuse.js";
 import { where } from "firebase/firestore";
@@ -78,7 +79,10 @@ export default function DeliveryPage() {
     useEffect(() => {
         const fetchBanners = async () => {
             try {
-                const data = await getDocument("site_content", "promo_banners");
+                const data = await getDocument(
+                    COLLECTIONS.SITE_CONTENT,
+                    SITE_CONTENT_DOCS.PROMO_BANNERS
+                );
                 if (data) {
                     setPromoBanners(data);
                 } else {
@@ -105,7 +109,9 @@ export default function DeliveryPage() {
     useEffect(() => {
         const fetchRestaurants = async () => {
             try {
-                const data = await getCollection("restaurants", [where("isAvailable", "==", true)]);
+                const data = await getCollection(COLLECTIONS.RESTAURANTS, [
+                    where("isAvailable", "==", true),
+                ]);
                 const seed = new Date().toDateString(); // Changes daily
                 const shuffledData = seededShuffle(
                     data,

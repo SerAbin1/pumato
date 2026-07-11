@@ -15,7 +15,9 @@ import { useRef, useEffect, useState } from "react";
 import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
+import { db } from "@/lib/firebase";
 import { doc, getDoc } from "firebase/firestore";
+import { COLLECTIONS } from "@/lib/constants";
 import { getISTTime, getISTObject } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
 
@@ -194,11 +196,11 @@ export default function GatewayPage() {
         const checkLaundry = async () => {
             try {
                 const { dayName } = getISTObject();
-                const daySnap = await getDoc(doc(db, "laundry_slots", dayName));
+                const daySnap = await getDoc(doc(db, COLLECTIONS.LAUNDRY_SLOTS, dayName));
                 if (daySnap.exists() && daySnap.data().slots?.length > 0) {
                     setIsLaundryLive(true);
                 } else {
-                    const defaultSnap = await getDoc(doc(db, "laundry_slots", "default"));
+                    const defaultSnap = await getDoc(doc(db, COLLECTIONS.LAUNDRY_SLOTS, "default"));
                     setIsLaundryLive(defaultSnap.exists() && defaultSnap.data().slots?.length > 0);
                 }
             } catch {

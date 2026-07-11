@@ -2,9 +2,18 @@
 
 import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
+import { COLLECTIONS } from "@/lib/constants";
 import {
-    collection, query, where, orderBy, onSnapshot, Timestamp,
-    runTransaction, doc, serverTimestamp, limit
+    collection,
+    query,
+    where,
+    orderBy,
+    onSnapshot,
+    Timestamp,
+    runTransaction,
+    doc,
+    serverTimestamp,
+    limit,
 } from "firebase/firestore";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
@@ -36,15 +45,15 @@ function LoginScreen({ onLogin, loading }) {
                         type="email"
                         placeholder="Email"
                         value={email}
-                        onChange={e => setEmail(e.target.value)}
+                        onChange={(e) => setEmail(e.target.value)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-all"
                     />
                     <input
                         type="password"
                         placeholder="Password"
                         value={password}
-                        onChange={e => setPassword(e.target.value)}
-                        onKeyDown={e => e.key === "Enter" && onLogin(email, password)}
+                        onChange={(e) => setPassword(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && onLogin(email, password)}
                         className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-all"
                     />
                     <button
@@ -52,7 +61,11 @@ function LoginScreen({ onLogin, loading }) {
                         disabled={loading || !email || !password}
                         className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all"
                     >
-                        {loading ? <Loader2 size={20} className="animate-spin" /> : <LogIn size={20} />}
+                        {loading ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                            <LogIn size={20} />
+                        )}
                         Sign In
                     </button>
                 </div>
@@ -73,7 +86,11 @@ export default function DeliveryPartnerPage() {
     // Listen for auth state
     useEffect(() => {
         const unsub = onAuthStateChanged(auth, async (firebaseUser) => {
-            if (!firebaseUser) { setUser(null); setIsDeliveryPartner(false); return; }
+            if (!firebaseUser) {
+                setUser(null);
+                setIsDeliveryPartner(false);
+                return;
+            }
             const result = await firebaseUser.getIdTokenResult();
             if (result.claims.deliveryPartner) {
                 setUser(firebaseUser);
@@ -97,7 +114,11 @@ export default function DeliveryPartnerPage() {
                 toast.error("Access denied. Not a delivery partner account.");
             }
         } catch (err) {
-            toast.error(err.code === "auth/invalid-credential" ? "Invalid email or password" : "Login failed");
+            toast.error(
+                err.code === "auth/invalid-credential"
+                    ? "Invalid email or password"
+                    : "Login failed"
+            );
         } finally {
             setAuthLoading(false);
         }
@@ -112,23 +133,28 @@ export default function DeliveryPartnerPage() {
     // Real-time: ready_for_delivery and picked_up orders
     useEffect(() => {
         if (!user || !isDeliveryPartner) return;
-        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
 
         const q = query(
-            collection(db, "orders"),
+            collection(db, COLLECTIONS.ORDERS),
             where("status", "in", ["ready_for_delivery", "picked_up"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
             orderBy("createdAt", "asc"),
             limit(50)
         );
 
-        const unsub = onSnapshot(q, snap => {
-            setReadyOrders(snap.docs.map(d => ({ 
-                id: d.id, 
-                ...d.data(), 
-                createdAt: d.data().createdAt?.toDate(),
-                readyAt: d.data().readyAt?.toDate ? d.data().readyAt.toDate() : d.data().readyAt
-            })));
+        const unsub = onSnapshot(q, (snap) => {
+            setReadyOrders(
+                snap.docs.map((d) => ({
+                    id: d.id,
+                    ...d.data(),
+                    createdAt: d.data().createdAt?.toDate(),
+                    readyAt: d.data().readyAt?.toDate
+                        ? d.data().readyAt.toDate()
+                        : d.data().readyAt,
+                }))
+            );
         });
         return () => unsub();
     }, [user, isDeliveryPartner]);
@@ -136,10 +162,11 @@ export default function DeliveryPartnerPage() {
     // Real-time: my picked_up orders today
     useEffect(() => {
         if (!user || !isDeliveryPartner) return;
-        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
 
         const q = query(
-            collection(db, "orders"),
+            collection(db, COLLECTIONS.ORDERS),
             where("deliveryPartnerUid", "==", user.uid),
             where("status", "in", ["picked_up", "delivered"]),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
@@ -147,8 +174,14 @@ export default function DeliveryPartnerPage() {
             limit(50)
         );
 
-        const unsub = onSnapshot(q, snap => {
-            setMyOrders(snap.docs.map(d => ({ id: d.id, ...d.data(), createdAt: d.data().createdAt?.toDate() })));
+        const unsub = onSnapshot(q, (snap) => {
+            setMyOrders(
+                snap.docs.map((d) => ({
+                    id: d.id,
+                    ...d.data(),
+                    createdAt: d.data().createdAt?.toDate(),
+                }))
+            );
         });
         return () => unsub();
     }, [user, isDeliveryPartner]);
@@ -157,10 +190,11 @@ export default function DeliveryPartnerPage() {
         setClaiming(order.id);
         try {
             await runTransaction(db, async (tx) => {
-                const ref = doc(db, "orders", order.id);
+                const ref = doc(db, COLLECTIONS.ORDERS, order.id);
                 const snap = await tx.get(ref);
                 if (!snap.exists()) throw new Error("Order not found");
-                if (snap.data().status !== "ready_for_delivery") throw new Error("Order already claimed");
+                if (snap.data().status !== "ready_for_delivery")
+                    throw new Error("Order already claimed");
 
                 tx.update(ref, {
                     status: "picked_up",
@@ -186,10 +220,11 @@ export default function DeliveryPartnerPage() {
         setDelivering(order.id);
         try {
             await runTransaction(db, async (tx) => {
-                const ref = doc(db, "orders", order.id);
+                const ref = doc(db, COLLECTIONS.ORDERS, order.id);
                 const snap = await tx.get(ref);
                 if (!snap.exists()) throw new Error("Order not found");
-                if (snap.data().status !== "picked_up") throw new Error("Order not in picked_up state");
+                if (snap.data().status !== "picked_up")
+                    throw new Error("Order not in picked_up state");
 
                 tx.update(ref, {
                     status: "delivered",
@@ -237,7 +272,10 @@ export default function DeliveryPartnerPage() {
                             <p className="text-[10px] text-gray-500">{user.email}</p>
                         </div>
                     </div>
-                    <button onClick={handleLogout} className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all">
+                    <button
+                        onClick={handleLogout}
+                        className="p-2 text-gray-400 hover:text-white hover:bg-white/10 rounded-xl transition-all"
+                    >
                         <LogOut size={18} />
                     </button>
                 </div>
@@ -250,7 +288,9 @@ export default function DeliveryPartnerPage() {
                         <Package size={20} className="text-purple-400" />
                         Ready for Pickup
                         {readyOrders.length > 0 && (
-                            <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full font-black">{readyOrders.length}</span>
+                            <span className="bg-purple-500 text-white text-xs px-2 py-0.5 rounded-full font-black">
+                                {readyOrders.length}
+                            </span>
                         )}
                     </h2>
 
@@ -266,11 +306,13 @@ export default function DeliveryPartnerPage() {
                     ) : (
                         <div className="space-y-4">
                             <AnimatePresence>
-                                {readyOrders.map(order => {
+                                {readyOrders.map((order) => {
                                     const isPickedUp = order.status === "picked_up";
-                                    const isMyOrder = isPickedUp && order.deliveryPartnerUid === user.uid;
-                                    const isOthersOrder = isPickedUp && order.deliveryPartnerUid !== user.uid;
-                                    
+                                    const isMyOrder =
+                                        isPickedUp && order.deliveryPartnerUid === user.uid;
+                                    const isOthersOrder =
+                                        isPickedUp && order.deliveryPartnerUid !== user.uid;
+
                                     return (
                                         <motion.div
                                             key={order.id}
@@ -279,17 +321,25 @@ export default function DeliveryPartnerPage() {
                                             animate={{ opacity: 1, y: 0 }}
                                             exit={{ opacity: 0, x: -20 }}
                                             className={`rounded-2xl overflow-hidden ${
-                                                isPickedUp 
-                                                    ? "bg-white/3 border border-white/5 opacity-60" 
+                                                isPickedUp
+                                                    ? "bg-white/3 border border-white/5 opacity-60"
                                                     : "bg-white/5 border border-purple-500/20"
                                             }`}
                                         >
-                                            <div className={`flex items-center justify-between px-5 py-3 border-b border-white/5 ${
-                                                isPickedUp ? "bg-orange-500/5" : "bg-purple-500/5"
-                                            }`}>
-                                                <span className={`text-[10px] font-black uppercase tracking-widest ${
-                                                    isPickedUp ? "text-orange-400" : "text-purple-400"
-                                                }`}>
+                                            <div
+                                                className={`flex items-center justify-between px-5 py-3 border-b border-white/5 ${
+                                                    isPickedUp
+                                                        ? "bg-orange-500/5"
+                                                        : "bg-purple-500/5"
+                                                }`}
+                                            >
+                                                <span
+                                                    className={`text-[10px] font-black uppercase tracking-widest ${
+                                                        isPickedUp
+                                                            ? "text-orange-400"
+                                                            : "text-purple-400"
+                                                    }`}
+                                                >
                                                     {isPickedUp ? "Picked Up" : "Ready for Pickup"}
                                                 </span>
                                                 <div className="flex items-center gap-3">
@@ -298,7 +348,10 @@ export default function DeliveryPartnerPage() {
                                                     {/* Order time */}
                                                     <span className="text-xs text-gray-500 flex items-center gap-1">
                                                         <Clock size={11} />
-                                                        {order.createdAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                        {order.createdAt?.toLocaleTimeString([], {
+                                                            hour: "2-digit",
+                                                            minute: "2-digit",
+                                                        })}
                                                     </span>
                                                 </div>
                                             </div>
@@ -307,26 +360,40 @@ export default function DeliveryPartnerPage() {
                                                 {isOthersOrder && (
                                                     <div className="flex items-center gap-2 text-xs bg-orange-500/10 text-orange-300 rounded-xl px-3 py-2">
                                                         <User size={14} />
-                                                        <span>Picked up by {order.deliveryPartnerEmail || "another partner"}</span>
+                                                        <span>
+                                                            Picked up by{" "}
+                                                            {order.deliveryPartnerEmail ||
+                                                                "another partner"}
+                                                        </span>
                                                     </div>
                                                 )}
-                                                
+
                                                 {/* Items grouped by restaurant */}
                                                 <div className="space-y-3">
                                                     {Object.entries(
                                                         (order.items || []).reduce((acc, item) => {
-                                                            const rName = item.restaurantName || "Restaurant";
+                                                            const rName =
+                                                                item.restaurantName || "Restaurant";
                                                             if (!acc[rName]) acc[rName] = [];
                                                             acc[rName].push(item);
                                                             return acc;
                                                         }, {})
                                                     ).map(([rName, items]) => (
                                                         <div key={rName}>
-                                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">{rName}</p>
+                                                            <p className="text-[10px] font-black text-gray-500 uppercase tracking-wider mb-1">
+                                                                {rName}
+                                                            </p>
                                                             {items.map((item, idx) => (
-                                                                <div key={idx} className="flex items-center gap-2 text-sm py-0.5">
-                                                                    <span className="text-orange-400 font-bold">×{item.quantity}</span>
-                                                                    <span className="text-gray-200">{item.name}</span>
+                                                                <div
+                                                                    key={idx}
+                                                                    className="flex items-center gap-2 text-sm py-0.5"
+                                                                >
+                                                                    <span className="text-orange-400 font-bold">
+                                                                        ×{item.quantity}
+                                                                    </span>
+                                                                    <span className="text-gray-200">
+                                                                        {item.name}
+                                                                    </span>
                                                                 </div>
                                                             ))}
                                                         </div>
@@ -335,16 +402,28 @@ export default function DeliveryPartnerPage() {
 
                                                 {/* Delivery address */}
                                                 <div className="flex items-start gap-2 text-sm text-gray-300 bg-white/5 rounded-xl px-3 py-2">
-                                                    <MapPin size={15} className="text-gray-500 mt-0.5 shrink-0" />
+                                                    <MapPin
+                                                        size={15}
+                                                        className="text-gray-500 mt-0.5 shrink-0"
+                                                    />
                                                     <span>
-                                                        <span className="font-bold text-white">{order.campus}</span>
-                                                        {order.address && <span className="text-gray-400"> · {order.address}</span>}
+                                                        <span className="font-bold text-white">
+                                                            {order.campus}
+                                                        </span>
+                                                        {order.address && (
+                                                            <span className="text-gray-400">
+                                                                {" "}
+                                                                · {order.address}
+                                                            </span>
+                                                        )}
                                                     </span>
                                                 </div>
 
                                                 {order.instructions && (
                                                     <div className="bg-yellow-500/10 border border-yellow-500/20 rounded-xl px-3 py-2">
-                                                        <p className="text-xs text-yellow-200">{order.instructions}</p>
+                                                        <p className="text-xs text-yellow-200">
+                                                            {order.instructions}
+                                                        </p>
                                                     </div>
                                                 )}
 
@@ -355,24 +434,32 @@ export default function DeliveryPartnerPage() {
                                                         disabled={claiming === order.id}
                                                         className="w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-orange-900/30"
                                                     >
-                                                        {claiming === order.id
-                                                            ? <Loader2 size={18} className="animate-spin" />
-                                                            : <Truck size={18} />
-                                                        }
+                                                        {claiming === order.id ? (
+                                                            <Loader2
+                                                                size={18}
+                                                                className="animate-spin"
+                                                            />
+                                                        ) : (
+                                                            <Truck size={18} />
+                                                        )}
                                                         Pick Up Order
                                                     </button>
                                                 )}
-                                                
+
                                                 {isMyOrder && (
                                                     <button
                                                         onClick={() => handleDeliver(order)}
                                                         disabled={delivering === order.id}
                                                         className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
                                                     >
-                                                        {delivering === order.id
-                                                            ? <Loader2 size={18} className="animate-spin" />
-                                                            : <Check size={18} />
-                                                        }
+                                                        {delivering === order.id ? (
+                                                            <Loader2
+                                                                size={18}
+                                                                className="animate-spin"
+                                                            />
+                                                        ) : (
+                                                            <Check size={18} />
+                                                        )}
                                                         Mark as Delivered
                                                     </button>
                                                 )}
@@ -391,24 +478,42 @@ export default function DeliveryPartnerPage() {
                         <h2 className="text-lg font-black text-white mb-4 flex items-center gap-2">
                             <Check size={20} className="text-green-400" />
                             My Deliveries Today
-                            <span className="bg-white/10 text-gray-300 text-xs px-2 py-0.5 rounded-full font-black">{myOrders.length}</span>
+                            <span className="bg-white/10 text-gray-300 text-xs px-2 py-0.5 rounded-full font-black">
+                                {myOrders.length}
+                            </span>
                         </h2>
                         <div className="space-y-3">
-                            {myOrders.map(order => (
-                                <div key={order.id} className="bg-white/3 border border-white/5 rounded-2xl p-4 space-y-3">
+                            {myOrders.map((order) => (
+                                <div
+                                    key={order.id}
+                                    className="bg-white/3 border border-white/5 rounded-2xl p-4 space-y-3"
+                                >
                                     <div className="flex items-center gap-4">
-                                        <div className={`w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 shrink-0 ${STATUS_LABELS[order.status]?.color}`}>
-                                            {order.status === "delivered" ? <Check size={16} /> : <Truck size={16} />}
+                                        <div
+                                            className={`w-8 h-8 rounded-xl flex items-center justify-center bg-white/5 shrink-0 ${STATUS_LABELS[order.status]?.color}`}
+                                        >
+                                            {order.status === "delivered" ? (
+                                                <Check size={16} />
+                                            ) : (
+                                                <Truck size={16} />
+                                            )}
                                         </div>
                                         <div className="flex-1 min-w-0">
                                             <p className="text-sm font-bold text-white truncate">
-                                                {order.campus}{order.address ? ` · ${order.address}` : ""}
+                                                {order.campus}
+                                                {order.address ? ` · ${order.address}` : ""}
                                             </p>
                                             <p className="text-xs text-gray-500">
-                                                {order.items?.length} item type(s) · {order.createdAt?.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                                                {order.items?.length} item type(s) ·{" "}
+                                                {order.createdAt?.toLocaleTimeString([], {
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
+                                                })}
                                             </p>
                                         </div>
-                                        <span className={`text-[10px] font-black uppercase shrink-0 ${STATUS_LABELS[order.status]?.color}`}>
+                                        <span
+                                            className={`text-[10px] font-black uppercase shrink-0 ${STATUS_LABELS[order.status]?.color}`}
+                                        >
                                             {STATUS_LABELS[order.status]?.label}
                                         </span>
                                     </div>
@@ -418,10 +523,11 @@ export default function DeliveryPartnerPage() {
                                             disabled={delivering === order.id}
                                             className="w-full bg-green-600 hover:bg-green-500 disabled:opacity-40 text-white font-black py-2.5 rounded-xl flex items-center justify-center gap-2 transition-all active:scale-95"
                                         >
-                                            {delivering === order.id
-                                                ? <Loader2 size={16} className="animate-spin" />
-                                                : <Check size={16} />
-                                            }
+                                            {delivering === order.id ? (
+                                                <Loader2 size={16} className="animate-spin" />
+                                            ) : (
+                                                <Check size={16} />
+                                            )}
                                             Mark as Delivered
                                         </button>
                                     )}

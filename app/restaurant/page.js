@@ -9,6 +9,7 @@ import { ArrowLeft, Search, ShoppingBag, ChevronDown, Utensils, ArrowUpDown } fr
 import Link from "next/link";
 import Image from "next/image";
 import useFirestore from "@/app/hooks/useFirestore";
+import { COLLECTIONS } from "@/lib/constants";
 import Skeleton, { MenuSkeleton } from "../components/Skeleton";
 import CustomSelect from "../components/CustomSelect";
 import Fuse from "fuse.js";
@@ -72,7 +73,7 @@ function RestaurantContent() {
         if (!id) return;
         const fetchRestaurant = async () => {
             try {
-                const data = await getDocument("restaurants", id);
+                const data = await getDocument(COLLECTIONS.RESTAURANTS, id);
                 if (data) {
                     setRestaurant(data);
                 } else {

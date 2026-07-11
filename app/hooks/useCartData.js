@@ -1,6 +1,7 @@
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, onSnapshot } from "firebase/firestore";
 import { manageCoupons } from "@/lib/functions";
+import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { useState, useEffect } from "react";
 
 export function useRestaurants() {
@@ -9,7 +10,7 @@ export function useRestaurants() {
     useEffect(() => {
         const fetchRestaurants = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, "restaurants"));
+                const querySnapshot = await getDocs(collection(db, COLLECTIONS.RESTAURANTS));
                 const data = querySnapshot.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
                 setRestaurants(data);
             } catch (err) {
@@ -56,15 +57,18 @@ export function useOrderSettings() {
     const [orderSettings, setOrderSettings] = useState({});
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(doc(db, "site_content", "order_settings"), (settingsDoc) => {
-            if (settingsDoc.exists()) {
-                const data = settingsDoc.data();
-                setOrderSettings({
-                    ...data,
-                    deliveryCampusConfig: data.deliveryCampusConfig || [],
-                });
+        const unsubscribe = onSnapshot(
+            doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.ORDER_SETTINGS),
+            (settingsDoc) => {
+                if (settingsDoc.exists()) {
+                    const data = settingsDoc.data();
+                    setOrderSettings({
+                        ...data,
+                        deliveryCampusConfig: data.deliveryCampusConfig || [],
+                    });
+                }
             }
-        });
+        );
         return () => unsubscribe();
     }, []);
 
@@ -76,7 +80,7 @@ export function useGrocerySettings() {
 
     useEffect(() => {
         const unsubscribe = onSnapshot(
-            doc(db, "site_content", "grocery_settings"),
+            doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.GROCERY_SETTINGS),
             (settingsDoc) => {
                 if (settingsDoc.exists()) {
                     setGrocerySettings(settingsDoc.data());
@@ -95,11 +99,14 @@ export function useLaundrySettings() {
     });
 
     useEffect(() => {
-        const unsubscribe = onSnapshot(doc(db, "laundry_slots", "default"), (settingsDoc) => {
-            if (settingsDoc.exists()) {
-                setLaundrySettings(settingsDoc.data());
+        const unsubscribe = onSnapshot(
+            doc(db, COLLECTIONS.LAUNDRY_SLOTS, "default"),
+            (settingsDoc) => {
+                if (settingsDoc.exists()) {
+                    setLaundrySettings(settingsDoc.data());
+                }
             }
-        });
+        );
         return () => unsubscribe();
     }, []);
 

@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react";
 import { getToken } from "firebase/messaging";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, getFirebaseMessaging, VAPID_KEY } from "@/lib/firebase";
+import { COLLECTIONS } from "@/lib/constants";
 
 /**
  * Requests notification permission, obtains an FCM token, and persists it to
@@ -45,7 +46,7 @@ export function useFcmToken(user) {
 
         // 4. Only write to Firestore if the token has changed
         try {
-            const tokenRef = doc(db, "fcm_tokens", user.uid);
+            const tokenRef = doc(db, COLLECTIONS.FCM_TOKENS, user.uid);
             const existing = await getDoc(tokenRef);
             const existingData = existing.data();
             const currentRestaurantId = user.restaurantId ?? null;

@@ -43,7 +43,12 @@ import toast from "react-hot-toast";
 import { manageCoupons } from "@/lib/functions";
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
-import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
+import {
+    DEFAULT_CAMPUS_CONFIG,
+    COLLECTIONS,
+    LAUNDRY_SETTINGS_DOCS,
+    SITE_CONTENT_DOCS,
+} from "@/lib/constants";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 
 // Import Extracted Components
@@ -152,7 +157,7 @@ export default function AdminPage() {
 
         // Listen for "placed" orders from today
         const q = query(
-            collection(db, "orders"),
+            collection(db, COLLECTIONS.ORDERS),
             where("status", "==", "placed"),
             where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
             orderBy("createdAt", "asc")
@@ -193,7 +198,7 @@ export default function AdminPage() {
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
         const q = query(
-            collection(db, "orders"),
+            collection(db, COLLECTIONS.ORDERS),
             where("status", "in", ["confirmed", "viewed", "ready_for_delivery", "out_of_stock"]),
             where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
             orderBy("createdAt", "asc")
@@ -214,7 +219,7 @@ export default function AdminPage() {
         if (!user || !isAdmin) return;
 
         const unsub = onSnapshot(
-            collection(db, "laundry_orders"),
+            collection(db, COLLECTIONS.LAUNDRY_ORDERS),
             (snap) => {
                 const ordersData = snap.docs
                     .map((snapshotDoc) => ({
@@ -250,7 +255,7 @@ export default function AdminPage() {
         const startOfToday = new Date();
         startOfToday.setHours(0, 0, 0, 0);
         const q = query(
-            collection(db, "orders"),
+            collection(db, COLLECTIONS.ORDERS),
             where("status", "in", ["picked_up", "delivered"]),
             where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
             orderBy("createdAt", "desc")
@@ -269,7 +274,7 @@ export default function AdminPage() {
 
     const fetchLaundrySlots = async (dateOrType) => {
         try {
-            const docRef = doc(db, "laundry_slots", dateOrType);
+            const docRef = doc(db, COLLECTIONS.LAUNDRY_SLOTS, dateOrType);
             const docSnap = await getDoc(docRef);
             if (docSnap.exists()) {
                 setLaundrySlots(docSnap.data().slots || []);
@@ -318,7 +323,7 @@ export default function AdminPage() {
         setLoading(true);
         try {
             const [resSnap, promoRes] = await Promise.all([
-                getDocs(collection(db, "restaurants")),
+                getDocs(collection(db, COLLECTIONS.RESTAURANTS)),
                 (async () => {
                     const idToken = await user.getIdToken();
                     return manageCoupons(
@@ -330,7 +335,9 @@ export default function AdminPage() {
 
             const restaurantsData = resSnap.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
 
-            const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
+            const settingsDoc = await getDoc(
+                doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.ORDER_SETTINGS)
+            );
             if (settingsDoc.exists()) {
                 setOrderSettings((prev) => ({ ...prev, ...settingsDoc.data() }));
             }
@@ -356,13 +363,17 @@ export default function AdminPage() {
             setCoupons(mappedCoupons);
 
             // Fetch Banners
-            const bannerDoc = await getDoc(doc(db, "site_content", "promo_banners"));
+            const bannerDoc = await getDoc(
+                doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.PROMO_BANNERS)
+            );
             if (bannerDoc.exists()) {
                 setBanners(bannerDoc.data());
             }
 
             // Fetch Grocery Settings
-            const groceryDoc = await getDoc(doc(db, "site_content", "grocery_settings"));
+            const groceryDoc = await getDoc(
+                doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.GROCERY_SETTINGS)
+            );
             if (groceryDoc.exists()) {
                 setGrocerySettings(groceryDoc.data());
             }

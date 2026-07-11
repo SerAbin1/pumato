@@ -9,7 +9,12 @@ import LaundryForm from "./components/LaundryForm";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { createLaundryOrder } from "@/lib/repositories";
-import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
+import {
+    DEFAULT_CAMPUS_CONFIG,
+    COLLECTIONS,
+    LAUNDRY_SETTINGS_DOCS,
+    SITE_CONTENT_DOCS,
+} from "@/lib/constants";
 import TermsFooter from "../components/TermsFooter";
 
 export default function LaundryPage() {
@@ -101,7 +106,9 @@ export default function LaundryPage() {
         const fetchSettings = async () => {
             try {
                 // 1. WhatsApp Number
-                const settingsDoc = await getDoc(doc(db, "site_content", "order_settings"));
+                const settingsDoc = await getDoc(
+                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.ORDER_SETTINGS)
+                );
                 if (settingsDoc.exists()) {
                     const data = settingsDoc.data();
                     if (data.laundryWhatsappNumber) {
@@ -152,7 +159,7 @@ export default function LaundryPage() {
                 });
 
                 // 2. Try Specific Day Override
-                const dayRef = doc(db, "laundry_slots", dayName);
+                const dayRef = doc(db, COLLECTIONS.LAUNDRY_SLOTS, dayName);
                 const daySnap = await getDoc(dayRef);
 
                 if (daySnap.exists() && daySnap.data().slots && daySnap.data().slots.length > 0) {
@@ -164,7 +171,7 @@ export default function LaundryPage() {
                     setAvailableSlots([]);
                 } else {
                     // 3. Fallback to Global Default
-                    const defaultRef = doc(db, "laundry_slots", "default");
+                    const defaultRef = doc(db, COLLECTIONS.LAUNDRY_SLOTS, "default");
                     const defaultSnap = await getDoc(defaultRef);
 
                     if (defaultSnap.exists()) {

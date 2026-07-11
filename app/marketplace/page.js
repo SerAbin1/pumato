@@ -9,7 +9,7 @@ import ListingGrid from "./components/ListingGrid";
 import ListingDetail from "./components/ListingDetail";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import useFirestore from "@/app/hooks/useFirestore";
-import { MARKETPLACE_CATEGORIES } from "@/lib/constants";
+import { MARKETPLACE_CATEGORIES, COLLECTIONS } from "@/lib/constants";
 import { Search, Plus } from "lucide-react";
 import CustomSelect from "../components/CustomSelect";
 
@@ -32,7 +32,7 @@ function MarketplaceContent() {
     useEffect(() => {
         const fetchListings = async () => {
             try {
-                const data = await getCollection("marketplace_listings");
+                const data = await getCollection(COLLECTIONS.MARKETPLACE_LISTINGS);
                 setListings(data.filter(isListingLive));
             } catch (err) {
                 console.error("Error fetching marketplace listings:", err);

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
+import { COLLECTIONS } from "@/lib/constants";
 import { collection, getDocs } from "firebase/firestore";
 import {
     saveListing,
@@ -34,8 +35,8 @@ export default function MarketplaceTab() {
         setLoading(true);
         try {
             const [requestsSnap, listingsSnap] = await Promise.all([
-                getDocs(collection(db, "marketplace_requests")),
-                getDocs(collection(db, "marketplace_listings")),
+                getDocs(collection(db, COLLECTIONS.MARKETPLACE_REQUESTS)),
+                getDocs(collection(db, COLLECTIONS.MARKETPLACE_LISTINGS)),
             ]);
             setRequests(requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
             setListings(listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));

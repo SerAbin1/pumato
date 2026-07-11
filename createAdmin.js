@@ -1,59 +1,68 @@
-const admin = require("firebase-admin");
-const serviceAccount = require("./test-pumato-firebase-adminsdk-fbsvc-c9312153a9.json");
-const readline = require("readline");
+import admin from "firebase-admin";
+import fs from "fs";
+import path from "path";
+import readline from "readline";
 
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+const serviceAccount = JSON.parse(
+    fs.readFileSync(
+        path.resolve(
+            process.cwd(),
+            "../../Downloads/test-pumato-firebase-adminsdk-fbsvc-0921cd2be0.json"
+        ),
+        "utf-8"
+    )
+);
+
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
 const rl = readline.createInterface({
-  input: process.stdin,
-  output: process.stdout
+    input: process.stdin,
+    output: process.stdout,
 });
 
 const askQuestion = (query) => {
-  return new Promise(resolve => rl.question(query, resolve));
+    return new Promise((resolve) => rl.question(query, resolve));
 };
 
 (async () => {
-  try {
-    const email = process.argv[2] || await askQuestion("Enter User Email: ");
-    const password = process.argv[3] || await askQuestion("Enter User Password (min 6 chars): ");
-
-    if (!email || !password || password.length < 6) {
-      console.error("Invalid email or password (must be 6+ chars).");
-      process.exit(1);
-    }
-
-    let user;
     try {
-      user = await admin.auth().getUserByEmail(email);
-      console.log(`\nUser ${email} already exists. Updating claims...`);
-    } catch (error) {
-      if (error.code === 'auth/user-not-found') {
-        console.log(`\nCreating new user ${email}...`);
-        user = await admin.auth().createUser({
-          email,
-          password,
+        const email = process.argv[2] || (await askQuestion("Enter User Email: "));
+        const password =
+            process.argv[3] || (await askQuestion("Enter User Password (min 6 chars): "));
+
+        if (!email || !password || password.length < 6) {
+            console.error("Invalid email or password (must be 6+ chars).");
+            process.exit(1);
+        }
+
+        let user;
+        try {
+            user = await admin.auth().getUserByEmail(email);
+            console.log(`\nUser ${email} already exists. Updating claims...`);
+        } catch (error) {
+            if (error.code === "auth/user-not-found") {
+                console.log(`\nCreating new user ${email}...`);
+                user = await admin.auth().createUser({
+                    email,
+                    password,
+                });
+            } else {
+                throw error;
+            }
+        }
+
+        await admin.auth().setCustomUserClaims(user.uid, {
+            admin: true,
         });
-      } else {
-        throw error;
-      }
+
+        console.log("\n✅ Success! Admin account configured.");
+        console.log(`User: ${email}`);
+        console.log("Custom claims set: { admin: true }");
+        console.log("You can now login at /admin/login");
+    } catch (error) {
+        console.error("Error:", error.message);
+    } finally {
+        rl.close();
+        process.exit(0);
     }
-
-    await admin.auth().setCustomUserClaims(user.uid, {
-      admin: true
-    });
-
-    console.log("\n✅ Success! Admin account configured.");
-    console.log(`User: ${email}`);
-    console.log("Custom claims set: { admin: true }");
-    console.log("You can now login at /admin/login");
-
-  } catch (error) {
-    console.error("Error:", error.message);
-  } finally {
-    rl.close();
-    process.exit(0);
-  }
 })();

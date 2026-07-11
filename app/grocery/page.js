@@ -21,7 +21,7 @@ import toast from "react-hot-toast";
 // Fallback is defined in context
 
 import { doc, getDoc } from "firebase/firestore";
-import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
 import { getISTTime } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
 import { format12h } from "@/lib/formatters";
@@ -119,7 +119,7 @@ export default function GroceryPage() {
     useEffect(() => {
         const fetchSettings = async () => {
             try {
-                const docRef = doc(db, "general_settings", "laundry"); // Reusing laundry settings for campus config
+                const docRef = doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.CAMPUS);
                 const docSnap = await getDoc(docRef);
                 if (docSnap.exists() && docSnap.data().campuses) {
                     setCampusConfig(docSnap.data().campuses);

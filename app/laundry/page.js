@@ -9,7 +9,7 @@ import LaundryForm from "./components/LaundryForm";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { createLaundryOrder } from "@/lib/repositories";
-import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
 import TermsFooter from "../components/TermsFooter";
 
 export default function LaundryPage() {
@@ -109,12 +109,20 @@ export default function LaundryPage() {
                     }
                 }
 
-                // 2. Campus Config & Pricing
-                const laundrySettingsDoc = await getDoc(doc(db, "general_settings", "laundry"));
-                if (laundrySettingsDoc.exists()) {
-                    const data = laundrySettingsDoc.data();
-                    if (data.campuses) setCampusConfig(data.campuses);
-                    if (data.pricing) setPricing(data.pricing);
+                // 2. Campus Config
+                const campusSnap = await getDoc(
+                    doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.CAMPUS)
+                );
+                if (campusSnap.exists() && campusSnap.data().campuses) {
+                    setCampusConfig(campusSnap.data().campuses);
+                }
+
+                // 3. Pricing
+                const pricingSnap = await getDoc(
+                    doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.PRICING)
+                );
+                if (pricingSnap.exists()) {
+                    setPricing(pricingSnap.data());
                 }
             } catch (error) {
                 console.error("Error fetching settings:", error);

@@ -35,14 +35,15 @@ import {
     saveOrderSettings,
     savePromoBanners,
     saveGrocerySettings,
-    saveLaundrySettings,
+    saveLaundryCampus,
+    saveLaundryPricing,
     saveLaundrySlots,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import { manageCoupons } from "@/lib/functions";
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
-import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 
 // Import Extracted Components
@@ -104,7 +105,6 @@ export default function AdminPage() {
         lightItemThreshold: "5",
     });
     const [grocerySettings, setGrocerySettings] = useState({});
-    const [laundrySettings, setLaundrySettings] = useState({ manualOverride: null });
 
     // Redirect to login if not authenticated or not admin
     if (!authLoading && (!user || !isAdmin)) {
@@ -283,17 +283,22 @@ export default function AdminPage() {
 
     const fetchCampusConfig = async () => {
         try {
-            const docRef = doc(db, "general_settings", "laundry");
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                const data = docSnap.data();
-                if (data.campuses) setCampusConfig(data.campuses);
-                setLaundryPricing(data.pricing || { pricePerKg: "79", steamIronPrice: "15" });
-                setLaundrySettings(data);
+            const campusSnap = await getDoc(
+                doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.CAMPUS)
+            );
+            if (campusSnap.exists() && campusSnap.data().campuses) {
+                setCampusConfig(campusSnap.data().campuses);
             } else {
                 setCampusConfig(DEFAULT_CAMPUS_CONFIG);
+            }
+
+            const pricingSnap = await getDoc(
+                doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.PRICING)
+            );
+            if (pricingSnap.exists()) {
+                setLaundryPricing(pricingSnap.data() || { pricePerKg: "79", steamIronPrice: "15" });
+            } else {
                 setLaundryPricing({ pricePerKg: "79", steamIronPrice: "15" });
-                setLaundrySettings({ manualOverride: null });
             }
         } catch (error) {
             console.error("Error fetching campus config:", error);
@@ -379,15 +384,21 @@ export default function AdminPage() {
 
     const saveCampusConfig = async () => {
         try {
-            await saveLaundrySettings({
-                ...laundrySettings,
-                campuses: campusConfig,
-                pricing: laundryPricing,
-            });
-            toast.success("Campus & Pricing settings saved!");
+            await saveLaundryCampus({ campuses: campusConfig });
+            toast.success("Campus settings saved!");
         } catch (error) {
             console.error("Error saving campus config:", error);
             toast.error("Failed to save settings.");
+        }
+    };
+
+    const savePricing = async () => {
+        try {
+            await saveLaundryPricing(laundryPricing);
+            toast.success("Pricing settings saved!");
+        } catch (error) {
+            console.error("Error saving pricing:", error);
+            toast.error("Failed to save pricing.");
         }
     };
 
@@ -673,6 +684,7 @@ export default function AdminPage() {
                             setCampusConfig={setCampusConfig}
                             laundryPricing={laundryPricing}
                             setLaundryPricing={setLaundryPricing}
+                            onSavePricing={savePricing}
                             laundryOrders={laundryOrders}
                             loadingLaundryOrders={loadingLaundryOrders}
                             onSaveSettings={saveCampusConfig}

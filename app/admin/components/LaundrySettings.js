@@ -3,6 +3,7 @@ import {
     ChevronDown,
     Clock,
     CreditCard,
+    IndianRupee,
     Loader2,
     MapPin,
     Package,
@@ -470,6 +471,11 @@ export default function LaundrySettings({
     setSlotEnd,
     handleAddSlot,
     handleDeleteSlot,
+    campusConfig,
+    setCampusConfig,
+    laundryPricing,
+    setLaundryPricing,
+    onSavePricing,
     laundryOrders = [],
     loadingLaundryOrders = false,
 }) {
@@ -735,6 +741,54 @@ export default function LaundrySettings({
                         <h2 className="mb-8 flex items-center gap-3 border-b border-white/10 pb-6 text-3xl font-black text-white">
                             <Clock className="text-cyan-500" /> Laundry Timeslots Management
                         </h2>
+
+                        <div className="mb-8 rounded-2xl border border-white/10 bg-white/5 p-6">
+                            <h3 className="mb-4 flex items-center gap-2 text-xl font-bold text-white">
+                                <IndianRupee size={18} className="text-emerald-400" /> Pricing
+                            </h3>
+                            <div className="grid gap-4 md:grid-cols-2">
+                                <div className="space-y-1">
+                                    <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                        Price Per Kg (₹)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={laundryPricing.pricePerKg}
+                                        onChange={(e) =>
+                                            setLaundryPricing({
+                                                pricePerKg: e.target.value,
+                                                steamIronPrice: laundryPricing.steamIronPrice,
+                                            })
+                                        }
+                                        className="w-full rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                        Steam Iron Price (₹)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        value={laundryPricing.steamIronPrice}
+                                        onChange={(e) =>
+                                            setLaundryPricing({
+                                                pricePerKg: laundryPricing.pricePerKg,
+                                                steamIronPrice: e.target.value,
+                                            })
+                                        }
+                                        className="w-full rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50"
+                                    />
+                                </div>
+                            </div>
+                            <button
+                                onClick={onSavePricing}
+                                className="mt-4 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-900/30 transition-colors hover:bg-emerald-500"
+                            >
+                                Save Pricing
+                            </button>
+                        </div>
 
                         <div className="grid gap-12 md:grid-cols-2">
                             <div className="space-y-6">

@@ -8,6 +8,7 @@ import LaundryHero from "./components/LaundryHero";
 import LaundryForm from "./components/LaundryForm";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { createLaundryOrder } from "@/lib/repositories";
 import {
     DEFAULT_CAMPUS_CONFIG,
@@ -132,7 +133,7 @@ export default function LaundryPage() {
                     setPricing(pricingSnap.data());
                 }
             } catch (error) {
-                console.error("Error fetching settings:", error);
+                console.error("Error fetching settings in laundry page:", error);
             }
         };
         fetchSettings();

@@ -90,9 +90,9 @@ export function CartProvider({ children }) {
 
     const addToCart = (item, quantityDelta = 1) =>
         dispatch({ type: "ADD_ITEM", payload: { item, quantityDelta } });
-    const removeFromCart = (id) => dispatch({ type: "REMOVE_ITEM", payload: id });
-    const updateQuantity = (id, delta) =>
-        dispatch({ type: "UPDATE_QUANTITY", payload: { id, delta } });
+    const removeFromCart = (key) => dispatch({ type: "REMOVE_ITEM", payload: key });
+    const updateQuantity = (key, delta) =>
+        dispatch({ type: "UPDATE_QUANTITY", payload: { id: key, delta } });
     const clearCart = () => dispatch({ type: "CLEAR_CART" });
     const setIsCartOpen = (isOpen) => dispatch({ type: "SET_CART_OPEN", payload: isOpen });
     const setUserDetails = (details) => {

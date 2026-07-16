@@ -299,10 +299,13 @@ export default function CartDrawer() {
                     id: item.id,
                     name: item.name,
                     price: Number(item.price),
+                    unitPrice: Number(item.unitPrice ?? item.price),
                     quantity: item.quantity,
                     restaurantId: item.restaurantId,
                     restaurantName: item.restaurantName,
                     category: item.category,
+                    ...(item.variant ? { variant: item.variant } : {}),
+                    ...(item.addons && item.addons.length > 0 ? { addons: item.addons } : {}),
                 })),
                 restaurantIds: uniqueRestaurantIds,
                 status: "placed",
@@ -450,61 +453,88 @@ export default function CartDrawer() {
                                     <div className="p-6 space-y-8">
                                         {/* Items List */}
                                         <div className="space-y-4">
-                                            {cartItems.map((item) => (
-                                                <motion.div
-                                                    layout
-                                                    key={item.id}
-                                                    className="bg-white/5 p-4 rounded-2xl border border-white/5 shadow-sm flex gap-4 group hover:bg-white/10 transition-colors"
-                                                >
-                                                    <div className="flex-1 flex flex-col justify-between py-0.5">
-                                                        <div>
-                                                            <div className="flex justify-between items-start gap-2">
-                                                                <h4 className="font-bold text-white leading-tight line-clamp-2 text-sm md:text-base">
-                                                                    {item.name}
-                                                                </h4>
-                                                                <p className="font-bold text-white whitespace-nowrap">
-                                                                    ₹{item.price * item.quantity}
+                                            {cartItems.map((item) => {
+                                                const lineKey = item.cartKey || item.id;
+                                                return (
+                                                    <motion.div
+                                                        layout
+                                                        key={lineKey}
+                                                        className="bg-white/5 p-4 rounded-2xl border border-white/5 shadow-sm flex gap-4 group hover:bg-white/10 transition-colors"
+                                                    >
+                                                        <div className="flex-1 flex flex-col justify-between py-0.5">
+                                                            <div>
+                                                                <div className="flex justify-between items-start gap-2">
+                                                                    <h4 className="font-bold text-white leading-tight line-clamp-2 text-sm md:text-base">
+                                                                        {item.name}
+                                                                    </h4>
+                                                                    <p className="font-bold text-white whitespace-nowrap">
+                                                                        ₹
+                                                                        {(item.unitPrice ??
+                                                                            item.price) *
+                                                                            item.quantity}
+                                                                    </p>
+                                                                </div>
+                                                                {item.variant && (
+                                                                    <p className="text-xs text-orange-300/80 mt-1">
+                                                                        {item.variant.name}
+                                                                    </p>
+                                                                )}
+                                                                {item.addons &&
+                                                                    item.addons.length > 0 && (
+                                                                        <p className="text-xs text-gray-400 mt-1">
+                                                                            +{" "}
+                                                                            {item.addons
+                                                                                .map((a) => a.name)
+                                                                                .join(", ")}
+                                                                        </p>
+                                                                    )}
+                                                                <p className="text-xs text-gray-400 mt-1">
+                                                                    ₹{item.unitPrice ?? item.price}{" "}
+                                                                    per item
                                                                 </p>
                                                             </div>
-                                                            <p className="text-xs text-gray-400 mt-1">
-                                                                ₹{item.price} per item
-                                                            </p>
-                                                        </div>
 
-                                                        <div className="flex justify-between items-end mt-2">
-                                                            <div className="flex items-center gap-3 bg-black/30 rounded-lg p-1 border border-white/10">
+                                                            <div className="flex justify-between items-end mt-2">
+                                                                <div className="flex items-center gap-3 bg-black/30 rounded-lg p-1 border border-white/10">
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            updateQuantity(
+                                                                                lineKey,
+                                                                                -1
+                                                                            )
+                                                                        }
+                                                                        className="w-7 h-7 rounded-md bg-white/10 border border-transparent flex items-center justify-center text-white hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                                                                    >
+                                                                        <Minus size={14} />
+                                                                    </button>
+                                                                    <span className="font-bold text-sm w-4 text-center text-white">
+                                                                        {item.quantity}
+                                                                    </span>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            updateQuantity(
+                                                                                lineKey,
+                                                                                1
+                                                                            )
+                                                                        }
+                                                                        className="w-7 h-7 rounded-md bg-white/10 border border-transparent flex items-center justify-center text-white hover:bg-green-500/20 hover:text-green-400 transition-colors"
+                                                                    >
+                                                                        <Plus size={14} />
+                                                                    </button>
+                                                                </div>
                                                                 <button
                                                                     onClick={() =>
-                                                                        updateQuantity(item.id, -1)
+                                                                        removeFromCart(lineKey)
                                                                     }
-                                                                    className="w-7 h-7 rounded-md bg-white/10 border border-transparent flex items-center justify-center text-white hover:bg-red-500/20 hover:text-red-400 transition-colors"
+                                                                    className="text-gray-500 hover:text-red-500 transition-colors p-1"
                                                                 >
-                                                                    <Minus size={14} />
-                                                                </button>
-                                                                <span className="font-bold text-sm w-4 text-center text-white">
-                                                                    {item.quantity}
-                                                                </span>
-                                                                <button
-                                                                    onClick={() =>
-                                                                        updateQuantity(item.id, 1)
-                                                                    }
-                                                                    className="w-7 h-7 rounded-md bg-white/10 border border-transparent flex items-center justify-center text-white hover:bg-green-500/20 hover:text-green-400 transition-colors"
-                                                                >
-                                                                    <Plus size={14} />
+                                                                    <Trash2 size={16} />
                                                                 </button>
                                                             </div>
-                                                            <button
-                                                                onClick={() =>
-                                                                    removeFromCart(item.id)
-                                                                }
-                                                                className="text-gray-500 hover:text-red-500 transition-colors p-1"
-                                                            >
-                                                                <Trash2 size={16} />
-                                                            </button>
                                                         </div>
-                                                    </div>
-                                                </motion.div>
-                                            ))}
+                                                    </motion.div>
+                                                );
+                                            })}
                                         </div>
                                         {/* Coupon Section */}
                                         <div className="space-y-2">

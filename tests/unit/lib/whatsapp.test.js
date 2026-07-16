@@ -2,6 +2,7 @@
 
 import { describe, it, expect } from "vitest";
 import {
+    formatWhatsAppMessage,
     formatMarketplaceRequestMessage,
     formatMarketplaceOfferMessage,
 } from "../../../lib/whatsapp";
@@ -49,5 +50,40 @@ describe("formatMarketplaceOfferMessage", () => {
         const decoded = decodeURIComponent(formatMarketplaceOfferMessage(listing, 1000));
         expect(decoded).toContain("I'd like to offer: ₹1000");
         expect(decoded).not.toContain("I'd like to offer: ₹3000");
+    });
+});
+
+describe("formatWhatsAppMessage with variants and addons", () => {
+    const userDetails = { name: "A", phone: "B", address: "C" };
+    const totals = { itemTotal: 570, deliveryCharge: 30, finalTotal: 600 };
+
+    it("includes variant and addon names in the item line", () => {
+        const cartItems = [
+            {
+                name: "Chicken Biryani",
+                quantity: 2,
+                price: 220,
+                unitPrice: 285,
+                variant: { id: "v1", name: "Full", price: 220 },
+                addons: [{ id: "a1", name: "Raita", price: 65 }],
+                restaurantName: "Spice Hub",
+            },
+        ];
+        const decoded = decodeURIComponent(formatWhatsAppMessage(cartItems, userDetails, totals));
+        expect(decoded).toContain("Chicken Biryani (Full) + Raita");
+        expect(decoded).toContain("x 2 - ₹570");
+    });
+
+    it("falls back to base price when no unitPrice is present", () => {
+        const cartItems = [
+            {
+                name: "Plain Rice",
+                quantity: 1,
+                price: 80,
+                restaurantName: "Spice Hub",
+            },
+        ];
+        const decoded = decodeURIComponent(formatWhatsAppMessage(cartItems, userDetails, totals));
+        expect(decoded).toContain("Plain Rice x 1 - ₹80");
     });
 });

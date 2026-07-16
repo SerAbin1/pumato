@@ -12,6 +12,7 @@ import useFirestore from "@/app/hooks/useFirestore";
 import { COLLECTIONS } from "@/lib/constants";
 import Skeleton, { MenuSkeleton } from "../components/Skeleton";
 import CustomSelect from "../components/CustomSelect";
+import ItemCustomizationModal from "../components/ItemCustomizationModal";
 import Fuse from "fuse.js";
 
 // Simple seeded shuffle to keep order stable for the day
@@ -45,6 +46,7 @@ function RestaurantContent() {
     const [sortOrder, setSortOrder] = useState("default"); // default, asc, desc
     const [searchQuery, setSearchQuery] = useState("");
     const [collapsedSections, setCollapsedSections] = useState({});
+    const [customizingItem, setCustomizingItem] = useState(null);
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
     const { getDocument } = useFirestore();
@@ -517,18 +519,54 @@ function RestaurantContent() {
                                                                         whileTap={{
                                                                             scale: 0.95,
                                                                         }}
-                                                                        onClick={() =>
-                                                                            addToCart({
-                                                                                ...item,
-                                                                                restaurantId:
-                                                                                    restaurant.id,
-                                                                                restaurantName:
-                                                                                    restaurant.name,
-                                                                            })
-                                                                        }
+                                                                        onClick={() => {
+                                                                            const needsChoice =
+                                                                                (Array.isArray(
+                                                                                    item.variants
+                                                                                ) &&
+                                                                                    item.variants
+                                                                                        .length >
+                                                                                        0) ||
+                                                                                (Array.isArray(
+                                                                                    item.addons
+                                                                                ) &&
+                                                                                    item.addons
+                                                                                        .length >
+                                                                                        0);
+                                                                            if (needsChoice) {
+                                                                                setCustomizingItem(
+                                                                                    item
+                                                                                );
+                                                                            } else {
+                                                                                addToCart({
+                                                                                    ...item,
+                                                                                    restaurantId:
+                                                                                        restaurant.id,
+                                                                                    restaurantName:
+                                                                                        restaurant.name,
+                                                                                });
+                                                                            }
+                                                                        }}
                                                                         className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
                                                                     >
-                                                                        ADD
+                                                                        {(() => {
+                                                                            const needsChoice =
+                                                                                (Array.isArray(
+                                                                                    item.variants
+                                                                                ) &&
+                                                                                    item.variants
+                                                                                        .length >
+                                                                                        0) ||
+                                                                                (Array.isArray(
+                                                                                    item.addons
+                                                                                ) &&
+                                                                                    item.addons
+                                                                                        .length >
+                                                                                        0);
+                                                                            return needsChoice
+                                                                                ? "CUSTOMIZE"
+                                                                                : "ADD";
+                                                                        })()}
                                                                     </motion.button>
                                                                 ) : (
                                                                     <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
@@ -631,6 +669,15 @@ function RestaurantContent() {
                     </motion.div>
                 )}
             </AnimatePresence>
+
+            <ItemCustomizationModal
+                item={customizingItem}
+                restaurantId={restaurant?.id}
+                restaurantName={restaurant?.name}
+                open={!!customizingItem}
+                onClose={() => setCustomizingItem(null)}
+                onAdd={(customized, qty) => addToCart(customized, qty)}
+            />
         </main>
     );
 }

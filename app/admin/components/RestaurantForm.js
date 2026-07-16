@@ -86,6 +86,8 @@ export default function RestaurantForm({
                     isVeg: false,
                     isVisible: true,
                     category: "",
+                    variants: [],
+                    addons: [],
                 },
             ],
         });
@@ -104,6 +106,52 @@ export default function RestaurantForm({
 
     const removeMenuItem = (index) => {
         const newMenu = formData.menu.filter((_, i) => i !== index);
+        setFormData({ ...formData, menu: newMenu });
+    };
+
+    const addVariant = (index) => {
+        const newMenu = [...formData.menu];
+        const variants = [...(newMenu[index].variants || [])];
+        variants.push({ id: `${Date.now()}-${variants.length}`, name: "", price: "" });
+        newMenu[index].variants = variants;
+        setFormData({ ...formData, menu: newMenu });
+    };
+
+    const updateVariant = (index, variantIdx, field, value) => {
+        const newMenu = [...formData.menu];
+        const variants = [...(newMenu[index].variants || [])];
+        variants[variantIdx] = { ...variants[variantIdx], [field]: value };
+        newMenu[index].variants = variants;
+        setFormData({ ...formData, menu: newMenu });
+    };
+
+    const removeVariant = (index, variantIdx) => {
+        const newMenu = [...formData.menu];
+        newMenu[index].variants = (newMenu[index].variants || []).filter(
+            (_, i) => i !== variantIdx
+        );
+        setFormData({ ...formData, menu: newMenu });
+    };
+
+    const addAddon = (index) => {
+        const newMenu = [...formData.menu];
+        const addons = [...(newMenu[index].addons || [])];
+        addons.push({ id: `${Date.now()}-${addons.length}`, name: "", price: "" });
+        newMenu[index].addons = addons;
+        setFormData({ ...formData, menu: newMenu });
+    };
+
+    const updateAddon = (index, addonIdx, field, value) => {
+        const newMenu = [...formData.menu];
+        const addons = [...(newMenu[index].addons || [])];
+        addons[addonIdx] = { ...addons[addonIdx], [field]: value };
+        newMenu[index].addons = addons;
+        setFormData({ ...formData, menu: newMenu });
+    };
+
+    const removeAddon = (index, addonIdx) => {
+        const newMenu = [...formData.menu];
+        newMenu[index].addons = (newMenu[index].addons || []).filter((_, i) => i !== addonIdx);
         setFormData({ ...formData, menu: newMenu });
     };
 
@@ -258,6 +306,20 @@ export default function RestaurantForm({
                 description: (item.description || "").trim(),
                 extraInfo: (item.extraInfo || "").trim(),
                 category: (item.category || "").trim().toUpperCase(),
+                variants: (item.variants || [])
+                    .filter((v) => (v.name || "").trim() && (v.price || "").toString().trim())
+                    .map((v) => ({
+                        id: v.id,
+                        name: toTitleCase((v.name || "").trim()),
+                        price: (v.price || "").toString().trim(),
+                    })),
+                addons: (item.addons || [])
+                    .filter((a) => (a.name || "").trim() && (a.price || "").toString().trim())
+                    .map((a) => ({
+                        id: a.id,
+                        name: toTitleCase((a.name || "").trim()),
+                        price: (a.price || "").toString().trim(),
+                    })),
             })),
         };
         onSave(formattedData);
@@ -1171,6 +1233,115 @@ export default function RestaurantForm({
                                                 </div>
                                             </div>
                                         </div>
+                                    </div>
+
+                                    {/* Variants (e.g. Half / Full / Quarter) */}
+                                    <div className="col-span-1 md:col-span-4 mt-2 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                                                Variants (sizes / quantities)
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => addVariant(actualIdx)}
+                                                className="text-xs font-bold text-orange-400 hover:text-white transition-colors"
+                                            >
+                                                + Add Variant
+                                            </button>
+                                        </div>
+                                        {(item.variants || []).map((variant, vIdx) => (
+                                            <div
+                                                key={variant.id}
+                                                className="flex items-center gap-2"
+                                            >
+                                                <input
+                                                    className="flex-1 p-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs"
+                                                    placeholder="Name (e.g. Half)"
+                                                    value={variant.name}
+                                                    onChange={(e) =>
+                                                        updateVariant(
+                                                            actualIdx,
+                                                            vIdx,
+                                                            "name",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                />
+                                                <input
+                                                    className="w-24 p-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs"
+                                                    placeholder="Price"
+                                                    value={variant.price}
+                                                    onChange={(e) =>
+                                                        updateVariant(
+                                                            actualIdx,
+                                                            vIdx,
+                                                            "price",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeVariant(actualIdx, vIdx)}
+                                                    className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                                >
+                                                    <Trash size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    {/* Add-ons */}
+                                    <div className="col-span-1 md:col-span-4 mt-2 space-y-2">
+                                        <div className="flex items-center justify-between">
+                                            <p className="text-xs font-bold uppercase tracking-wider text-gray-400">
+                                                Add-ons (optional extras)
+                                            </p>
+                                            <button
+                                                type="button"
+                                                onClick={() => addAddon(actualIdx)}
+                                                className="text-xs font-bold text-orange-400 hover:text-white transition-colors"
+                                            >
+                                                + Add Add-on
+                                            </button>
+                                        </div>
+                                        {(item.addons || []).map((addon, aIdx) => (
+                                            <div key={addon.id} className="flex items-center gap-2">
+                                                <input
+                                                    className="flex-1 p-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs"
+                                                    placeholder="Name (e.g. Extra Cheese)"
+                                                    value={addon.name}
+                                                    onChange={(e) =>
+                                                        updateAddon(
+                                                            actualIdx,
+                                                            aIdx,
+                                                            "name",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                />
+                                                <input
+                                                    className="w-24 p-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs"
+                                                    placeholder="Price"
+                                                    value={addon.price}
+                                                    onChange={(e) =>
+                                                        updateAddon(
+                                                            actualIdx,
+                                                            aIdx,
+                                                            "price",
+                                                            e.target.value
+                                                        )
+                                                    }
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeAddon(actualIdx, aIdx)}
+                                                    className="text-red-400 hover:text-red-300 transition-colors p-1"
+                                                >
+                                                    <Trash size={14} />
+                                                </button>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             );

@@ -47,7 +47,7 @@ service cloud.firestore {
 
     // Users don't need to read their laundry orders (handled via WhatsApp/delivery flow).
     match /laundry_orders/{document} {
-      allow create: if request.auth != null;
+      allow create: if true;
       allow read, update, delete: if isAdmin();
     }
 

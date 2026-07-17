@@ -445,6 +445,14 @@ function RestaurantContent() {
                                                     const quantity = cartItem
                                                         ? cartItem.quantity
                                                         : 0;
+                                                    const cartKey = cartItem
+                                                        ? cartItem.cartKey
+                                                        : null;
+                                                    const needsChoice =
+                                                        (Array.isArray(item.variants) &&
+                                                            item.variants.length > 0) ||
+                                                        (Array.isArray(item.addons) &&
+                                                            item.addons.length > 0);
                                                     const categoryOutOfStock = (
                                                         restaurant.outOfStockCategories || []
                                                     ).includes(item.category);
@@ -520,19 +528,6 @@ function RestaurantContent() {
                                                                             scale: 0.95,
                                                                         }}
                                                                         onClick={() => {
-                                                                            const needsChoice =
-                                                                                (Array.isArray(
-                                                                                    item.variants
-                                                                                ) &&
-                                                                                    item.variants
-                                                                                        .length >
-                                                                                        0) ||
-                                                                                (Array.isArray(
-                                                                                    item.addons
-                                                                                ) &&
-                                                                                    item.addons
-                                                                                        .length >
-                                                                                        0);
                                                                             if (needsChoice) {
                                                                                 setCustomizingItem(
                                                                                     item
@@ -549,25 +544,72 @@ function RestaurantContent() {
                                                                         }}
                                                                         className="w-full bg-white text-black border border-white py-2 rounded-xl font-black uppercase text-xs hover:bg-gray-200 transition-colors tracking-widest"
                                                                     >
-                                                                        {(() => {
-                                                                            const needsChoice =
-                                                                                (Array.isArray(
-                                                                                    item.variants
-                                                                                ) &&
-                                                                                    item.variants
-                                                                                        .length >
-                                                                                        0) ||
-                                                                                (Array.isArray(
-                                                                                    item.addons
-                                                                                ) &&
-                                                                                    item.addons
-                                                                                        .length >
-                                                                                        0);
-                                                                            return needsChoice
-                                                                                ? "CUSTOMIZE"
-                                                                                : "ADD";
-                                                                        })()}
+                                                                        {needsChoice
+                                                                            ? "CUSTOMIZE"
+                                                                            : "ADD"}
                                                                     </motion.button>
+                                                                ) : needsChoice ? (
+                                                                    <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                addToCart(
+                                                                                    {
+                                                                                        ...item,
+                                                                                        ...(cartKey
+                                                                                            ? {
+                                                                                                  cartKey,
+                                                                                              }
+                                                                                            : {}),
+                                                                                        restaurantId:
+                                                                                            restaurant.id,
+                                                                                        restaurantName:
+                                                                                            restaurant.name,
+                                                                                    },
+                                                                                    -1
+                                                                                )
+                                                                            }
+                                                                            className="hover:text-orange-500 transition-colors w-6"
+                                                                        >
+                                                                            -
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                setCustomizingItem(
+                                                                                    item
+                                                                                )
+                                                                            }
+                                                                            className="flex flex-col items-center leading-tight hover:text-orange-500 transition-colors"
+                                                                        >
+                                                                            <span className="text-[10px] uppercase tracking-wider">
+                                                                                Edit
+                                                                            </span>
+                                                                            <span className="text-sm">
+                                                                                {quantity}
+                                                                            </span>
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() =>
+                                                                                addToCart(
+                                                                                    {
+                                                                                        ...item,
+                                                                                        ...(cartKey
+                                                                                            ? {
+                                                                                                  cartKey,
+                                                                                              }
+                                                                                            : {}),
+                                                                                        restaurantId:
+                                                                                            restaurant.id,
+                                                                                        restaurantName:
+                                                                                            restaurant.name,
+                                                                                    },
+                                                                                    1
+                                                                                )
+                                                                            }
+                                                                            className="hover:text-orange-500 transition-colors w-6"
+                                                                        >
+                                                                            +
+                                                                        </button>
+                                                                    </div>
                                                                 ) : (
                                                                     <div className="w-full bg-black text-white border border-white/20 shadow-lg py-2 rounded-xl font-bold flex items-center justify-between px-3">
                                                                         <button

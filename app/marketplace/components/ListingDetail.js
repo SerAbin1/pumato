@@ -101,6 +101,22 @@ export default function ListingDetail({ listing }) {
                             <MessageCircle size={20} /> Buy on WhatsApp
                         </button>
                     </div>
+
+                    {listing.customLinks?.length > 0 && (
+                        <div className="flex flex-wrap gap-2 pt-2">
+                            {listing.customLinks.map((link, i) => (
+                                <a
+                                    key={i}
+                                    href={link.link}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors border border-white/10"
+                                >
+                                    {link.label}
+                                </a>
+                            ))}
+                        </div>
+                    )}
                 </motion.div>
             </div>
         </div>

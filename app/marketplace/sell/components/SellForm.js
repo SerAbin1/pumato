@@ -1,6 +1,5 @@
-import { User, Phone, Tag, IndianRupee, FileText, Send } from "lucide-react";
+import { User, Phone, Tag, IndianRupee, FileText, Send, Link, Plus, X } from "lucide-react";
 import { motion } from "framer-motion";
-import { MARKETPLACE_CATEGORIES } from "@/lib/constants";
 
 export default function SellForm({
     formData,
@@ -8,12 +7,17 @@ export default function SellForm({
     setFormData,
     campusConfig,
     handleSubmit,
+    formTitle,
+    customLinks = [],
+    onAddLink,
+    onRemoveLink,
+    onLinkChange,
 }) {
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl w-full max-w-full overflow-hidden">
-            <h2 className="text-2xl font-bold mb-2 text-white">List an Item for Sale</h2>
+            <h2 className="text-2xl font-bold mb-2 text-white">{formTitle}</h2>
             <p className="text-sm text-gray-400 mb-8">
-                Submit your item details below. Our admin team will reach out on WhatsApp to confirm
+                Submit your details below. Our admin team will reach out on WhatsApp to confirm
                 photos and publish your listing on the Marketplace.
             </p>
 
@@ -83,24 +87,6 @@ export default function SellForm({
 
                 <div>
                     <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
-                        Category
-                    </label>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                        {MARKETPLACE_CATEGORIES.map((cat) => (
-                            <button
-                                key={cat}
-                                type="button"
-                                onClick={() => setFormData({ ...formData, category: cat })}
-                                className={`py-3 px-2 rounded-xl text-xs font-bold border transition-all ${formData.category === cat ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-black/20 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"}`}
-                            >
-                                {cat}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
                         Campus
                     </label>
                     <div className="grid grid-cols-3 gap-3">
@@ -114,6 +100,61 @@ export default function SellForm({
                                 {campus.name}
                             </button>
                         ))}
+                    </div>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                        Custom Links (optional)
+                    </label>
+                    <p className="text-xs text-gray-500 mb-3 ml-1">
+                        Add links like WhatsApp, Instagram, etc. for buyers to reach you.
+                    </p>
+                    <div className="space-y-3">
+                        {customLinks.map((link, index) => (
+                            <div key={index} className="flex gap-2 items-start">
+                                <div className="flex-1 space-y-2">
+                                    <div className="relative group">
+                                        <Link
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors"
+                                            size={18}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Label (e.g. WhatsApp)"
+                                            className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 transition-all font-medium text-white placeholder-gray-600 text-sm"
+                                            value={link.label}
+                                            onChange={(e) =>
+                                                onLinkChange(index, "label", e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                    <input
+                                        type="url"
+                                        placeholder="Link (e.g. https://wa.me/91XXXXXXXXXX)"
+                                        className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 transition-all font-medium text-white placeholder-gray-600 text-sm"
+                                        value={link.link}
+                                        onChange={(e) =>
+                                            onLinkChange(index, "link", e.target.value)
+                                        }
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => onRemoveLink(index)}
+                                    className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors mt-1"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={onAddLink}
+                            className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 font-bold transition-colors"
+                        >
+                            <Plus size={16} /> Add a Link
+                        </button>
                     </div>
                 </div>
 

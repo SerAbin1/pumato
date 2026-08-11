@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { motion } from "framer-motion";
 import { db } from "@/lib/firebase";
-import { COLLECTIONS } from "@/lib/constants";
-import { collection, getDocs } from "firebase/firestore";
+import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
+import { collection, getDocs, getDoc, doc } from "firebase/firestore";
 import {
     saveListing,
     updateListing,
     deleteListing,
     updateMarketplaceRequest,
+    saveMarketplaceCategories,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import { Trash, Eye, EyeOff, Plus, MessageCircle, Check, Clock } from "lucide-react";
@@ -15,9 +16,10 @@ import MarketplaceListingForm from "./MarketplaceListingForm";
 import ConfirmModal from "../../components/ConfirmModal";
 
 export default function MarketplaceTab() {
-    const [subSection, setSubSection] = useState("requests"); // requests, listings
+    const [subSection, setSubSection] = useState("requests"); // requests, listings, categories
     const [requests, setRequests] = useState([]);
     const [listings, setListings] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [listingView, setListingView] = useState("list"); // list, form
     const [editingId, setEditingId] = useState(null);
@@ -31,15 +33,24 @@ export default function MarketplaceTab() {
         name: "",
     });
 
+    // Category form state
+    const [catLabel, setCatLabel] = useState("");
+    const [catActionLabel, setCatActionLabel] = useState("");
+    const [isSavingCategories, setIsSavingCategories] = useState(false);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [requestsSnap, listingsSnap] = await Promise.all([
+            const [requestsSnap, listingsSnap, categoriesSnap] = await Promise.all([
                 getDocs(collection(db, COLLECTIONS.MARKETPLACE_REQUESTS)),
                 getDocs(collection(db, COLLECTIONS.MARKETPLACE_LISTINGS)),
+                getDoc(doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)),
             ]);
             setRequests(requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
             setListings(listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            if (categoriesSnap.exists()) {
+                setCategories(categoriesSnap.data().categories || []);
+            }
         } catch (error) {
             console.error("Failed to fetch marketplace data", error);
         } finally {
@@ -67,6 +78,7 @@ export default function MarketplaceTab() {
             campus: request.campus,
             sellerName: request.sellerName,
             sellerWhatsApp: request.sellerWhatsApp,
+            customLinks: request.customLinks || [],
             images: [],
             isVisible: true,
             expiryDate: "",
@@ -139,6 +151,44 @@ export default function MarketplaceTab() {
         }
     };
 
+    const handleAddCategory = async () => {
+        const label = catLabel.trim().toUpperCase();
+        const actionLabel = catActionLabel.trim();
+        if (!label || !actionLabel) {
+            toast.error("Please enter both label and action label.");
+            return;
+        }
+        setIsSavingCategories(true);
+        try {
+            const updated = [...categories, { label, actionLabel }];
+            await saveMarketplaceCategories({ categories: updated });
+            setCategories(updated);
+            setCatLabel("");
+            setCatActionLabel("");
+            toast.success("Category added.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to save category.");
+        } finally {
+            setIsSavingCategories(false);
+        }
+    };
+
+    const handleDeleteCategory = async (index) => {
+        setIsSavingCategories(true);
+        try {
+            const updated = categories.filter((_, i) => i !== index);
+            await saveMarketplaceCategories({ categories: updated });
+            setCategories(updated);
+            toast.success("Category deleted.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete category.");
+        } finally {
+            setIsSavingCategories(false);
+        }
+    };
+
     const isExpired = (listing) => {
         if (!listing.expiryDate) return false;
         return listing.expiryDate < new Date().toISOString().slice(0, 10);
@@ -158,6 +208,12 @@ export default function MarketplaceTab() {
                     className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${subSection === "listings" ? "bg-purple-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
                 >
                     Listings
+                </button>
+                <button
+                    onClick={() => setSubSection("categories")}
+                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${subSection === "categories" ? "bg-purple-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+                >
+                    Categories
                 </button>
             </div>
 
@@ -215,6 +271,74 @@ export default function MarketplaceTab() {
                             </div>
                         </motion.div>
                     ))}
+                </div>
+            ) : subSection === "categories" ? (
+                <div className="space-y-8">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">Add Category</h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Label
+                                </label>
+                                <input
+                                    type="text"
+                                    value={catLabel}
+                                    onChange={(e) => setCatLabel(e.target.value)}
+                                    placeholder="e.g. Job"
+                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Action Label
+                                </label>
+                                <input
+                                    type="text"
+                                    value={catActionLabel}
+                                    onChange={(e) => setCatActionLabel(e.target.value)}
+                                    placeholder="e.g. Post a Job"
+                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+                                />
+                            </div>
+                        </div>
+                        <button
+                            onClick={handleAddCategory}
+                            disabled={isSavingCategories}
+                            className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-500 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <Plus size={18} /> Add Category
+                        </button>
+                    </div>
+
+                    {categories.length === 0 ? (
+                        <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 border-dashed">
+                            <p className="text-gray-500">No categories yet. Add one above.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {categories.map((cat, index) => (
+                                <div
+                                    key={`${cat.label}-${index}`}
+                                    className="bg-white/5 border border-white/10 rounded-2xl p-5 flex flex-col justify-between gap-3"
+                                >
+                                    <div>
+                                        <h4 className="font-bold text-white text-lg">
+                                            {cat.label}
+                                        </h4>
+                                        <p className="text-gray-400 text-sm">{cat.actionLabel}</p>
+                                    </div>
+                                    <button
+                                        onClick={() => handleDeleteCategory(index)}
+                                        className="self-start p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors"
+                                        title="Delete category"
+                                    >
+                                        <Trash size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             ) : listingView === "list" ? (
                 <div>

@@ -1,9 +1,11 @@
-import { useState } from "react";
-import { Upload, X, Loader2 } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Upload, X, Loader2, Link, Plus } from "lucide-react";
 import { uploadImage } from "@/lib/uploadImage";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
-import { MARKETPLACE_CATEGORIES, DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 export default function MarketplaceListingForm({
     initialData,
@@ -15,16 +17,34 @@ export default function MarketplaceListingForm({
         itemName: "",
         description: "",
         askingPrice: "",
-        category: MARKETPLACE_CATEGORIES[0],
+        category: "",
         campus: DEFAULT_CAMPUS_CONFIG[0].id,
         sellerName: "",
         sellerWhatsApp: "",
         images: [],
         isVisible: true,
         expiryDate: "",
+        customLinks: [],
         ...initialData,
     });
+    const [categories, setCategories] = useState([]);
     const [uploading, setUploading] = useState(false);
+
+    useEffect(() => {
+        const fetchCategories = async () => {
+            try {
+                const snap = await getDoc(
+                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)
+                );
+                if (snap.exists()) {
+                    setCategories(snap.data().categories || []);
+                }
+            } catch (err) {
+                console.error("Error fetching marketplace categories:", err);
+            }
+        };
+        fetchCategories();
+    }, []);
 
     const handleImageUpload = async (e) => {
         const files = Array.from(e.target.files || []);
@@ -48,7 +68,33 @@ export default function MarketplaceListingForm({
         setFormData((prev) => ({ ...prev, images: prev.images.filter((img) => img !== url) }));
     };
 
+    const handleAddLink = () => {
+        setFormData((prev) => ({
+            ...prev,
+            customLinks: [...(prev.customLinks || []), { label: "", link: "" }],
+        }));
+    };
+
+    const handleRemoveLink = (index) => {
+        setFormData((prev) => ({
+            ...prev,
+            customLinks: prev.customLinks.filter((_, i) => i !== index),
+        }));
+    };
+
+    const handleLinkChange = (index, field, value) => {
+        setFormData((prev) => ({
+            ...prev,
+            customLinks: prev.customLinks.map((link, i) =>
+                i === index ? { ...link, [field]: value } : link
+            ),
+        }));
+    };
+
     const handleSave = () => {
+        const customLinks = (formData.customLinks || []).filter(
+            (l) => l.label.trim() && l.link.trim()
+        );
         const formattedData = {
             ...formData,
             itemName: (formData.itemName || "").trim(),
@@ -56,6 +102,7 @@ export default function MarketplaceListingForm({
             askingPrice: Number(formData.askingPrice) || 0,
             sellerName: (formData.sellerName || "").trim(),
             sellerWhatsApp: (formData.sellerWhatsApp || "").trim(),
+            customLinks,
         };
         onSave(formattedData);
     };
@@ -88,9 +135,12 @@ export default function MarketplaceListingForm({
                         value={formData.category}
                         onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     >
-                        {MARKETPLACE_CATEGORIES.map((cat) => (
-                            <option key={cat} value={cat} className="bg-gray-900">
-                                {cat}
+                        <option value="" className="bg-gray-900">
+                            Select a category
+                        </option>
+                        {categories.map((cat) => (
+                            <option key={cat.label} value={cat.label} className="bg-gray-900">
+                                {cat.label}
                             </option>
                         ))}
                     </select>
@@ -140,6 +190,58 @@ export default function MarketplaceListingForm({
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                     />
+                </div>
+
+                <div className="col-span-full space-y-3">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                        Custom Links
+                    </label>
+                    <div className="space-y-3">
+                        {(formData.customLinks || []).map((link, index) => (
+                            <div key={index} className="flex gap-3 items-start">
+                                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    <div className="relative">
+                                        <Link
+                                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                                            size={18}
+                                        />
+                                        <input
+                                            type="text"
+                                            placeholder="Label (e.g. WhatsApp)"
+                                            className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium text-sm"
+                                            value={link.label}
+                                            onChange={(e) =>
+                                                handleLinkChange(index, "label", e.target.value)
+                                            }
+                                        />
+                                    </div>
+                                    <input
+                                        type="url"
+                                        placeholder="Link URL"
+                                        className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium text-sm"
+                                        value={link.link}
+                                        onChange={(e) =>
+                                            handleLinkChange(index, "link", e.target.value)
+                                        }
+                                    />
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => handleRemoveLink(index)}
+                                    className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors mt-1"
+                                >
+                                    <X size={16} />
+                                </button>
+                            </div>
+                        ))}
+                        <button
+                            type="button"
+                            onClick={handleAddLink}
+                            className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 font-bold transition-colors"
+                        >
+                            <Plus size={16} /> Add a Link
+                        </button>
+                    </div>
                 </div>
 
                 <div className="col-span-full space-y-3">

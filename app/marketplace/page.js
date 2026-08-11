@@ -9,9 +9,11 @@ import ListingGrid from "./components/ListingGrid";
 import ListingDetail from "./components/ListingDetail";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import useFirestore from "@/app/hooks/useFirestore";
-import { MARKETPLACE_CATEGORIES, COLLECTIONS } from "@/lib/constants";
+import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { Search, Plus } from "lucide-react";
 import CustomSelect from "../components/CustomSelect";
+import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 
 function isListingLive(listing) {
     if (listing.isVisible === false) return false;
@@ -26,6 +28,7 @@ function MarketplaceContent() {
 
     const { getCollection, loading } = useFirestore();
     const [listings, setListings] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [category, setCategory] = useState("all");
 
@@ -38,7 +41,20 @@ function MarketplaceContent() {
                 console.error("Error fetching marketplace listings:", err);
             }
         };
+        const fetchCategories = async () => {
+            try {
+                const snap = await getDoc(
+                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)
+                );
+                if (snap.exists()) {
+                    setCategories(snap.data().categories || []);
+                }
+            } catch (err) {
+                console.error("Error fetching marketplace categories:", err);
+            }
+        };
         fetchListings();
+        fetchCategories();
     }, [getCollection]);
 
     const filteredListings = useMemo(() => {
@@ -84,13 +100,15 @@ function MarketplaceContent() {
                     <h1 className="text-4xl md:text-5xl font-black text-white mb-2">
                         Pumato Marketplace
                     </h1>
-                    <p className="text-gray-400">Buy and sell items with fellow students</p>
+                    <p className="text-gray-400">
+                        Where campus commerce, opportunities & community come together
+                    </p>
                 </div>
                 <Link
                     href="/marketplace/sell"
                     className="bg-purple-600 hover:bg-purple-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-lg shadow-purple-900/30 whitespace-nowrap"
                 >
-                    <Plus size={18} /> Sell an Item
+                    <Plus size={18} /> Post on Marketplace
                 </Link>
             </div>
 
@@ -111,7 +129,7 @@ function MarketplaceContent() {
                 <CustomSelect
                     options={[
                         { label: "All Categories", value: "all" },
-                        ...MARKETPLACE_CATEGORIES.map((cat) => ({ label: cat, value: cat })),
+                        ...categories.map((cat) => ({ label: cat.label, value: cat.label })),
                     ]}
                     value={category}
                     onChange={setCategory}

@@ -58,8 +58,7 @@ service cloud.firestore {
     // Users: read own orders (by userId)
     // Public: create only
     match /orders/{orderId} {
-      allow create: if request.auth != null
-        && request.resource.data.userId == request.auth.uid;
+      allow create: if true;
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow read, update, delete: if isAdmin();
       allow read, update: if isAnyPartner()

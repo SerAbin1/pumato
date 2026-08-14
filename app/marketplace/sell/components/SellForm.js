@@ -1,5 +1,9 @@
 import { User, Phone, Tag, IndianRupee, FileText, Send, Link, Plus, X } from "lucide-react";
 import { motion } from "framer-motion";
+import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
+
+const DEFAULT_FIELDS = ["itemName", "description", "askingPrice", "campus"];
+const DEFAULT_OPTIONAL_FIELDS = ["customLinks"];
 
 export default function SellForm({
     formData,
@@ -8,11 +12,18 @@ export default function SellForm({
     campusConfig,
     handleSubmit,
     formTitle,
+    categoryFields = DEFAULT_FIELDS,
+    categoryOptionalFields = DEFAULT_OPTIONAL_FIELDS,
     customLinks = [],
+    redirectLabel,
     onAddLink,
     onRemoveLink,
     onLinkChange,
 }) {
+    const showField = (field) =>
+        categoryFields.includes(field) || categoryOptionalFields.includes(field);
+    const isRequired = (field) => categoryFields.includes(field);
+
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl w-full max-w-full overflow-hidden">
             <h2 className="text-2xl font-bold mb-2 text-white">{formTitle}</h2>
@@ -22,141 +33,177 @@ export default function SellForm({
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-6">
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
-                        Item Name
-                    </label>
-                    <div className="relative group">
-                        <Tag
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors"
-                            size={20}
-                        />
-                        <input
-                            type="text"
-                            name="itemName"
-                            required
-                            placeholder="e.g. Study Table, Bicycle, Textbook"
-                            className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 focus:bg-black/40 focus:ring-1 focus:ring-purple-500/20 transition-all font-medium text-white placeholder-gray-600"
-                            value={formData.itemName}
-                            onChange={handleChange}
-                        />
+                {showField("itemName") && (
+                    <div>
+                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                            Item Name
+                        </label>
+                        <div className="relative group">
+                            <Tag
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors"
+                                size={20}
+                            />
+                            <input
+                                type="text"
+                                name="itemName"
+                                required={isRequired("itemName")}
+                                placeholder="e.g. Study Table, Bicycle, Textbook"
+                                className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 focus:bg-black/40 focus:ring-1 focus:ring-purple-500/20 transition-all font-medium text-white placeholder-gray-600"
+                                value={formData.itemName}
+                                onChange={handleChange}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
-                        Description
-                    </label>
-                    <div className="relative group">
-                        <FileText
-                            className="absolute left-4 top-4 text-gray-500 group-focus-within:text-purple-400 transition-colors"
-                            size={20}
-                        />
-                        <textarea
-                            name="description"
-                            required
-                            placeholder="Condition, age, reason for selling, etc."
-                            className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 focus:bg-black/40 transition-all font-medium text-white placeholder-gray-600 h-28 resize-none"
-                            value={formData.description}
-                            onChange={handleChange}
-                        />
+                {showField("description") && (
+                    <div>
+                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                            Description
+                        </label>
+                        <div className="relative group">
+                            <FileText
+                                className="absolute left-4 top-4 text-gray-500 group-focus-within:text-purple-400 transition-colors"
+                                size={20}
+                            />
+                            <textarea
+                                name="description"
+                                required={isRequired("description")}
+                                placeholder="Condition, age, reason for selling, etc."
+                                className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 focus:bg-black/40 transition-all font-medium text-white placeholder-gray-600 h-28 resize-none"
+                                value={formData.description}
+                                onChange={handleChange}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
-                        Asking Price (₹)
-                    </label>
-                    <div className="relative group">
-                        <IndianRupee
-                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors"
-                            size={20}
-                        />
-                        <input
-                            type="number"
-                            name="askingPrice"
-                            min="0"
-                            required
-                            placeholder="e.g. 1500"
-                            className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 focus:bg-black/40 focus:ring-1 focus:ring-purple-500/20 transition-all font-medium text-white placeholder-gray-600"
-                            value={formData.askingPrice}
-                            onChange={handleChange}
-                        />
+                {showField("askingPrice") && (
+                    <div>
+                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                            Asking Price (₹)
+                        </label>
+                        <div className="relative group">
+                            <IndianRupee
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors"
+                                size={20}
+                            />
+                            <input
+                                type="number"
+                                name="askingPrice"
+                                min="0"
+                                required={isRequired("askingPrice")}
+                                placeholder="e.g. 1500"
+                                className="w-full pl-12 pr-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 focus:bg-black/40 focus:ring-1 focus:ring-purple-500/20 transition-all font-medium text-white placeholder-gray-600"
+                                value={formData.askingPrice}
+                                onChange={handleChange}
+                            />
+                        </div>
                     </div>
-                </div>
+                )}
 
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
-                        Campus
-                    </label>
-                    <div className="grid grid-cols-3 gap-3">
-                        {campusConfig.map((campus) => (
-                            <button
-                                key={campus.id}
-                                type="button"
-                                onClick={() => setFormData({ ...formData, campus: campus.id })}
-                                className={`py-3 px-2 rounded-xl text-sm font-bold border transition-all ${formData.campus === campus.id ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-black/20 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"}`}
-                            >
-                                {campus.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
-                        Custom Links (optional)
-                    </label>
-                    <p className="text-xs text-gray-500 mb-3 ml-1">
-                        Add links like WhatsApp, Instagram, etc. for buyers to reach you.
-                    </p>
-                    <div className="space-y-3">
-                        {customLinks.map((link, index) => (
-                            <div key={index} className="flex gap-2 items-start">
-                                <div className="flex-1 space-y-2">
-                                    <div className="relative group">
-                                        <Link
-                                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors"
-                                            size={18}
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Label (e.g. WhatsApp)"
-                                            className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 transition-all font-medium text-white placeholder-gray-600 text-sm"
-                                            value={link.label}
-                                            onChange={(e) =>
-                                                onLinkChange(index, "label", e.target.value)
-                                            }
-                                        />
-                                    </div>
-                                    <input
-                                        type="url"
-                                        placeholder="Link (e.g. https://wa.me/91XXXXXXXXXX)"
-                                        className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 transition-all font-medium text-white placeholder-gray-600 text-sm"
-                                        value={link.link}
-                                        onChange={(e) =>
-                                            onLinkChange(index, "link", e.target.value)
-                                        }
-                                    />
-                                </div>
+                {showField("campus") && (
+                    <div>
+                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                            Campus
+                        </label>
+                        <div className="grid grid-cols-3 gap-3">
+                            {campusConfig.map((campus) => (
                                 <button
+                                    key={campus.id}
                                     type="button"
-                                    onClick={() => onRemoveLink(index)}
-                                    className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors mt-1"
+                                    onClick={() => setFormData({ ...formData, campus: campus.id })}
+                                    className={`py-3 px-2 rounded-xl text-sm font-bold border transition-all ${formData.campus === campus.id ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-900/50" : "bg-black/20 border-white/10 text-gray-400 hover:bg-white/10 hover:text-white"}`}
                                 >
-                                    <X size={16} />
+                                    {campus.name}
                                 </button>
-                            </div>
-                        ))}
-                        <button
-                            type="button"
-                            onClick={onAddLink}
-                            className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 font-bold transition-colors"
-                        >
-                            <Plus size={16} /> Add a Link
-                        </button>
+                            ))}
+                        </div>
                     </div>
-                </div>
+                )}
+
+                {showField("customLinks") && (
+                    <div>
+                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                            Custom Links {isRequired("customLinks") ? "" : "(optional)"}
+                        </label>
+                        <p className="text-xs text-gray-500 mb-3 ml-1">
+                            Add links like WhatsApp, Instagram, etc. for buyers to reach you.
+                        </p>
+                        <div className="space-y-3">
+                            {customLinks.map((link, index) => {
+                                const typeDef = CUSTOM_LINK_TYPES.find((t) => t.id === link.type);
+                                const Icon = typeDef?.icon || Link;
+                                return (
+                                    <div
+                                        key={index}
+                                        className="flex gap-3 items-start bg-white/5 rounded-xl p-3 border border-white/10"
+                                    >
+                                        <div className="flex-1 space-y-2">
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                                <div className="relative group">
+                                                    <Icon
+                                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 group-focus-within:text-purple-400 transition-colors"
+                                                        size={18}
+                                                    />
+                                                    <select
+                                                        value={link.type}
+                                                        onChange={(e) =>
+                                                            onLinkChange(
+                                                                index,
+                                                                "type",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                        className="w-full pl-10 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 transition-all font-medium text-white text-sm appearance-none"
+                                                    >
+                                                        <option value="" className="bg-gray-900">
+                                                            Select type...
+                                                        </option>
+                                                        {CUSTOM_LINK_TYPES.map((t) => (
+                                                            <option
+                                                                key={t.id}
+                                                                value={t.id}
+                                                                className="bg-gray-900"
+                                                            >
+                                                                {t.label}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                                <input
+                                                    type="url"
+                                                    placeholder={
+                                                        typeDef?.placeholder || "https://..."
+                                                    }
+                                                    className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-purple-500/50 transition-all font-medium text-white placeholder-gray-600 text-sm"
+                                                    value={link.link}
+                                                    onChange={(e) =>
+                                                        onLinkChange(index, "link", e.target.value)
+                                                    }
+                                                />
+                                            </div>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => onRemoveLink(index)}
+                                            className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors mt-1"
+                                        >
+                                            <X size={16} />
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                            <button
+                                type="button"
+                                onClick={onAddLink}
+                                className="flex items-center gap-2 text-sm text-purple-400 hover:text-purple-300 font-bold transition-colors"
+                            >
+                                <Plus size={16} /> Add a Link
+                            </button>
+                        </div>
+                    </div>
+                )}
 
                 <hr className="border-white/5 border-dashed my-6" />
 
@@ -212,12 +259,12 @@ export default function SellForm({
                     className="w-full bg-gradient-to-r from-purple-600 to-fuchsia-600 text-white font-bold py-4 rounded-xl shadow-lg hover:shadow-purple-500/20 hover:scale-[1.02] transition-all flex items-center justify-center gap-2 group mt-2"
                 >
                     <Send size={20} className="group-hover:translate-x-1 transition-transform" />
-                    <span>Submit Request via WhatsApp</span>
+                    <span>{redirectLabel ? `Submit via ${redirectLabel}` : "Submit Request"}</span>
                 </motion.button>
 
                 <p className="text-xs text-center text-gray-500 mt-4">
-                    You will be redirected to WhatsApp to complete your submission. Our team will
-                    follow up to confirm photos before publishing.
+                    You will be redirected to complete your submission. Our team will follow up to
+                    confirm photos before publishing.
                 </p>
             </form>
         </div>

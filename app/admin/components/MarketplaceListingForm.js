@@ -6,6 +6,7 @@ import StickyActionBar from "./StickyActionBar";
 import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
 
 export default function MarketplaceListingForm({
     initialData,
@@ -71,7 +72,7 @@ export default function MarketplaceListingForm({
     const handleAddLink = () => {
         setFormData((prev) => ({
             ...prev,
-            customLinks: [...(prev.customLinks || []), { label: "", link: "" }],
+            customLinks: [...(prev.customLinks || []), { type: "", link: "" }],
         }));
     };
 
@@ -92,9 +93,7 @@ export default function MarketplaceListingForm({
     };
 
     const handleSave = () => {
-        const customLinks = (formData.customLinks || []).filter(
-            (l) => l.label.trim() && l.link.trim()
-        );
+        const customLinks = (formData.customLinks || []).filter((l) => l.type && l.link.trim());
         const formattedData = {
             ...formData,
             itemName: (formData.itemName || "").trim(),
@@ -197,43 +196,61 @@ export default function MarketplaceListingForm({
                         Custom Links
                     </label>
                     <div className="space-y-3">
-                        {(formData.customLinks || []).map((link, index) => (
-                            <div key={index} className="flex gap-3 items-start">
-                                <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    <div className="relative">
-                                        <Link
-                                            className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
-                                            size={18}
-                                        />
+                        {(formData.customLinks || []).map((link, index) => {
+                            const typeDef = CUSTOM_LINK_TYPES.find((t) => t.id === link.type);
+                            const Icon = typeDef?.icon || Link;
+                            return (
+                                <div
+                                    key={index}
+                                    className="flex gap-3 items-start bg-white/5 rounded-xl p-3 border border-white/10"
+                                >
+                                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <div className="relative">
+                                            <Icon
+                                                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                                                size={18}
+                                            />
+                                            <select
+                                                value={link.type}
+                                                onChange={(e) =>
+                                                    handleLinkChange(index, "type", e.target.value)
+                                                }
+                                                className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium text-sm appearance-none"
+                                            >
+                                                <option value="" className="bg-gray-900">
+                                                    Select type...
+                                                </option>
+                                                {CUSTOM_LINK_TYPES.map((t) => (
+                                                    <option
+                                                        key={t.id}
+                                                        value={t.id}
+                                                        className="bg-gray-900"
+                                                    >
+                                                        {t.label}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
                                         <input
-                                            type="text"
-                                            placeholder="Label (e.g. WhatsApp)"
-                                            className="w-full pl-11 pr-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium text-sm"
-                                            value={link.label}
+                                            type="url"
+                                            placeholder={typeDef?.placeholder || "https://..."}
+                                            className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium text-sm"
+                                            value={link.link}
                                             onChange={(e) =>
-                                                handleLinkChange(index, "label", e.target.value)
+                                                handleLinkChange(index, "link", e.target.value)
                                             }
                                         />
                                     </div>
-                                    <input
-                                        type="url"
-                                        placeholder="Link URL"
-                                        className="w-full px-4 py-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium text-sm"
-                                        value={link.link}
-                                        onChange={(e) =>
-                                            handleLinkChange(index, "link", e.target.value)
-                                        }
-                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => handleRemoveLink(index)}
+                                        className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors mt-1"
+                                    >
+                                        <X size={16} />
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    onClick={() => handleRemoveLink(index)}
-                                    className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors mt-1"
-                                >
-                                    <X size={16} />
-                                </button>
-                            </div>
-                        ))}
+                            );
+                        })}
                         <button
                             type="button"
                             onClick={handleAddLink}

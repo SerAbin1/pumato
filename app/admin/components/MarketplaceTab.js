@@ -9,17 +9,19 @@ import {
     deleteListing,
     updateMarketplaceRequest,
     saveMarketplaceCategories,
+    saveMarketplaceRedirectLinks,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
-import { Trash, Eye, EyeOff, Plus, MessageCircle, Check, Clock } from "lucide-react";
+import { Trash, Eye, EyeOff, Plus, MessageCircle, Check, Clock, Radio } from "lucide-react";
 import MarketplaceListingForm from "./MarketplaceListingForm";
 import ConfirmModal from "../../components/ConfirmModal";
 
 export default function MarketplaceTab() {
-    const [subSection, setSubSection] = useState("requests"); // requests, listings, categories
+    const [subSection, setSubSection] = useState("requests"); // requests, listings, categories, settings
     const [requests, setRequests] = useState([]);
     const [listings, setListings] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [redirectLinks, setRedirectLinks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [listingView, setListingView] = useState("list"); // list, form
     const [editingId, setEditingId] = useState(null);
@@ -33,23 +35,48 @@ export default function MarketplaceTab() {
         name: "",
     });
 
+    // Redirect link form state
+    const [linkLabel, setLinkLabel] = useState("");
+    const [linkUrl, setLinkUrl] = useState("");
+    const [isSavingLinks, setIsSavingLinks] = useState(false);
+
     // Category form state
     const [catLabel, setCatLabel] = useState("");
     const [catActionLabel, setCatActionLabel] = useState("");
+    const [catFields, setCatFields] = useState([
+        "itemName",
+        "description",
+        "askingPrice",
+        "campus",
+    ]);
+    const [catOptionalFields, setCatOptionalFields] = useState(["description", "customLinks"]);
     const [isSavingCategories, setIsSavingCategories] = useState(false);
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [requestsSnap, listingsSnap, categoriesSnap] = await Promise.all([
-                getDocs(collection(db, COLLECTIONS.MARKETPLACE_REQUESTS)),
-                getDocs(collection(db, COLLECTIONS.MARKETPLACE_LISTINGS)),
-                getDoc(doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)),
-            ]);
+            const [requestsSnap, listingsSnap, categoriesSnap, redirectLinksSnap] =
+                await Promise.all([
+                    getDocs(collection(db, COLLECTIONS.MARKETPLACE_REQUESTS)),
+                    getDocs(collection(db, COLLECTIONS.MARKETPLACE_LISTINGS)),
+                    getDoc(
+                        doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)
+                    ),
+                    getDoc(
+                        doc(
+                            db,
+                            COLLECTIONS.SITE_CONTENT,
+                            SITE_CONTENT_DOCS.MARKETPLACE_REDIRECT_LINKS
+                        )
+                    ),
+                ]);
             setRequests(requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
             setListings(listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
             if (categoriesSnap.exists()) {
                 setCategories(categoriesSnap.data().categories || []);
+            }
+            if (redirectLinksSnap.exists()) {
+                setRedirectLinks(redirectLinksSnap.data().redirectLinks || []);
             }
         } catch (error) {
             console.error("Failed to fetch marketplace data", error);
@@ -154,17 +181,21 @@ export default function MarketplaceTab() {
     const handleAddCategory = async () => {
         const label = catLabel.trim().toUpperCase();
         const actionLabel = catActionLabel.trim();
+        const fields = catFields;
+        const optionalFields = catOptionalFields;
         if (!label || !actionLabel) {
             toast.error("Please enter both label and action label.");
             return;
         }
         setIsSavingCategories(true);
         try {
-            const updated = [...categories, { label, actionLabel }];
+            const updated = [...categories, { label, actionLabel, fields, optionalFields }];
             await saveMarketplaceCategories({ categories: updated });
             setCategories(updated);
             setCatLabel("");
             setCatActionLabel("");
+            setCatFields(["itemName", "description", "askingPrice", "campus"]);
+            setCatOptionalFields([]);
             toast.success("Category added.");
         } catch (error) {
             console.error(error);
@@ -186,6 +217,45 @@ export default function MarketplaceTab() {
             toast.error("Failed to delete category.");
         } finally {
             setIsSavingCategories(false);
+        }
+    };
+
+    const handleAddRedirectLink = () => {
+        const label = linkLabel.trim();
+        const url = linkUrl.trim();
+        if (!label || !url) {
+            toast.error("Please enter both label and URL.");
+            return;
+        }
+        if (!/^https?:\/\//i.test(url)) {
+            toast.error("URL must start with http:// or https://");
+            return;
+        }
+        setRedirectLinks((prev) => [...prev, { label, url, active: prev.length === 0 }]);
+        setLinkLabel("");
+        setLinkUrl("");
+        toast.success("Link added. Save to apply changes.");
+    };
+
+    const handleDeleteRedirectLink = (index) => {
+        setRedirectLinks((prev) => prev.filter((_, i) => i !== index));
+        toast.success("Link removed. Save to apply changes.");
+    };
+
+    const handleSetActiveLink = (index) => {
+        setRedirectLinks((prev) => prev.map((link, i) => ({ ...link, active: i === index })));
+    };
+
+    const handleSaveRedirectLinks = async () => {
+        setIsSavingLinks(true);
+        try {
+            await saveMarketplaceRedirectLinks({ redirectLinks });
+            toast.success("Redirect links saved.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to save redirect links.");
+        } finally {
+            setIsSavingLinks(false);
         }
     };
 
@@ -214,6 +284,12 @@ export default function MarketplaceTab() {
                     className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${subSection === "categories" ? "bg-purple-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
                 >
                     Categories
+                </button>
+                <button
+                    onClick={() => setSubSection("settings")}
+                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${subSection === "settings" ? "bg-purple-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+                >
+                    Settings
                 </button>
             </div>
 
@@ -301,6 +377,130 @@ export default function MarketplaceTab() {
                                     className="w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
                                 />
                             </div>
+
+                            <div className="space-y-3 mb-4">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-white mb-2">
+                                    Required Fields
+                                </label>
+                                <div className="grid grid-cols-2 gap-1">
+                                    <label
+                                        key="itemName"
+                                        className="flex items-center gap-2 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={catFields.includes("itemName")}
+                                            onChange={(e) =>
+                                                setCatFields((prev) =>
+                                                    e.target.checked
+                                                        ? [...prev, "itemName"]
+                                                        : prev.filter((f) => f !== "itemName")
+                                                )
+                                            }
+                                            className="w-4 h-5 accent-purple-500 rounded"
+                                        />
+                                        <span className="text-sm text-white">Item Name</span>
+                                    </label>
+                                    <label
+                                        key="askingPrice"
+                                        className="flex items-center gap-2 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={catFields.includes("askingPrice")}
+                                            onChange={(e) =>
+                                                setCatFields((prev) =>
+                                                    e.target.checked
+                                                        ? [...prev, "askingPrice"]
+                                                        : prev.filter((f) => f !== "askingPrice")
+                                                )
+                                            }
+                                            className="w-4 h-5 accent-purple-500 rounded"
+                                        />
+                                        <span className="text-sm text-white">Asking Price</span>
+                                    </label>
+                                    <label
+                                        key="campus"
+                                        className="flex items-center gap-2 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={catFields.includes("campus")}
+                                            onChange={(e) =>
+                                                setCatFields((prev) =>
+                                                    e.target.checked
+                                                        ? [...prev, "campus"]
+                                                        : prev.filter((f) => f !== "campus")
+                                                )
+                                            }
+                                            className="w-4 h-5 accent-purple-500 rounded"
+                                        />
+                                        <span className="text-sm text-white">Campus</span>
+                                    </label>
+                                    <label
+                                        key="customLinks"
+                                        className="flex items-center gap-2 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={catFields.includes("customLinks")}
+                                            onChange={(e) =>
+                                                setCatFields((prev) =>
+                                                    e.target.checked
+                                                        ? [...prev, "customLinks"]
+                                                        : prev.filter((f) => f !== "customLinks")
+                                                )
+                                            }
+                                            className="w-4 h-5 accent-purple-500 rounded"
+                                        />
+                                        <span className="text-sm text-white">Custom Links</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="space-y-3">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-white mb-2">
+                                    Optional Fields
+                                </label>
+                                <div className="grid grid-cols-2 gap-1">
+                                    <label
+                                        key="description"
+                                        className="flex items-center gap-2 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={catOptionalFields.includes("description")}
+                                            onChange={(e) =>
+                                                setCatOptionalFields((prev) =>
+                                                    e.target.checked
+                                                        ? [...prev, "description"]
+                                                        : prev.filter((f) => f !== "description")
+                                                )
+                                            }
+                                            className="w-4 h-5 accent-purple-500 rounded"
+                                        />
+                                        <span className="text-sm text-white">Description</span>
+                                    </label>
+                                    <label
+                                        key="customLinks"
+                                        className="flex items-center gap-2 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            checked={catOptionalFields.includes("customLinks")}
+                                            onChange={(e) =>
+                                                setCatOptionalFields((prev) =>
+                                                    e.target.checked
+                                                        ? [...prev, "customLinks"]
+                                                        : prev.filter((f) => f !== "customLinks")
+                                                )
+                                            }
+                                            className="w-4 h-5 accent-purple-500 rounded"
+                                        />
+                                        <span className="text-sm text-white">Custom Links</span>
+                                    </label>
+                                </div>
+                            </div>
                         </div>
                         <button
                             onClick={handleAddCategory}
@@ -339,6 +539,104 @@ export default function MarketplaceTab() {
                             ))}
                         </div>
                     )}
+                </div>
+            ) : subSection === "settings" ? (
+                <div className="space-y-8">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <div className="flex items-center gap-3 mb-1">
+                            <Radio size={20} className="text-purple-400" />
+                            <h3 className="text-lg font-bold text-white">Redirect Links</h3>
+                        </div>
+                        <p className="text-sm text-gray-400 mb-6">
+                            Where users are sent after submitting a Marketplace form. Only one link
+                            can be active at a time.
+                        </p>
+
+                        {redirectLinks.length === 0 ? (
+                            <div className="text-center py-10 bg-white/5 rounded-2xl border border-white/10 border-dashed mb-6">
+                                <p className="text-gray-500">
+                                    No redirect links yet. Add one below.
+                                </p>
+                            </div>
+                        ) : (
+                            <div className="space-y-3 mb-6">
+                                {redirectLinks.map((link, index) => (
+                                    <div
+                                        key={index}
+                                        className="bg-black/20 border border-white/10 rounded-xl p-4 flex flex-col md:flex-row md:items-center gap-3"
+                                    >
+                                        <div className="flex-1 min-w-0">
+                                            <p className="font-bold text-white text-sm">
+                                                {link.label}
+                                            </p>
+                                            <p className="text-gray-500 text-xs truncate">
+                                                {link.url}
+                                            </p>
+                                        </div>
+                                        <div className="flex items-center gap-2">
+                                            <button
+                                                onClick={() => handleSetActiveLink(index)}
+                                                className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${link.active ? "bg-purple-600 text-white shadow-lg" : "bg-white/5 text-gray-400 hover:bg-white/10 hover:text-white"}`}
+                                            >
+                                                <Check size={14} />
+                                                {link.active ? "Active" : "Set Active"}
+                                            </button>
+                                            <button
+                                                onClick={() => handleDeleteRedirectLink(index)}
+                                                className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors"
+                                                title="Delete link"
+                                            >
+                                                <Trash size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Label
+                                </label>
+                                <input
+                                    type="text"
+                                    value={linkLabel}
+                                    onChange={(e) => setLinkLabel(e.target.value)}
+                                    placeholder="e.g. WhatsApp"
+                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    URL
+                                </label>
+                                <input
+                                    type="text"
+                                    value={linkUrl}
+                                    onChange={(e) => setLinkUrl(e.target.value)}
+                                    placeholder="https://..."
+                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex gap-3 flex-wrap">
+                            <button
+                                onClick={handleAddRedirectLink}
+                                className="bg-white/10 text-white px-6 py-3 rounded-xl font-bold hover:bg-white/20 transition-colors flex items-center gap-2"
+                            >
+                                <Plus size={18} /> Add Link
+                            </button>
+                            <button
+                                onClick={handleSaveRedirectLinks}
+                                disabled={isSavingLinks}
+                                className="bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-500 transition-colors flex items-center gap-2 disabled:opacity-50"
+                            >
+                                <Check size={18} /> Save
+                            </button>
+                        </div>
+                    </div>
                 </div>
             ) : listingView === "list" ? (
                 <div>

@@ -48,24 +48,32 @@ export default function ListingCard({ listing, index = 0 }) {
                             {listing.category}
                         </div>
                         <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
-                            <div className="bg-white text-black px-2 py-0.5 rounded-md text-xs font-bold shadow-lg">
-                                {listing.campus}
-                            </div>
+                            {listing.campus && (
+                                <div className="bg-white text-black px-2 py-0.5 rounded-md text-xs font-bold shadow-lg">
+                                    {listing.campus}
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div className="p-6 pb-4">
                         <h3 className="text-xl font-bold text-white group-hover:text-purple-400 transition-colors line-clamp-1 mb-2">
-                            {listing.itemName}
+                            {listing.itemName || "Untitled"}
                         </h3>
-                        <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                            {listing.description}
-                        </p>
-                        <p className="text-2xl font-black text-white">
-                            ₹{listing.askingPrice}
-                            <span className="text-xs font-medium text-gray-500 ml-2 uppercase tracking-wider">
-                                Asking Price
-                            </span>
-                        </p>
+                        {listing.description && (
+                            <p className="text-gray-400 text-sm mb-4 line-clamp-2">
+                                {listing.description}
+                            </p>
+                        )}
+                        {listing.askingPrice ? (
+                            <p className="text-2xl font-black text-white">
+                                ₹{listing.askingPrice}
+                                <span className="text-xs font-medium text-gray-500 ml-2 uppercase tracking-wider">
+                                    Asking Price
+                                </span>
+                            </p>
+                        ) : (
+                            <div className="h-8" />
+                        )}
                     </div>
                 </Link>
 

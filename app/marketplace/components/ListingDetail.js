@@ -4,8 +4,9 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowLeft, Package, MessageCircle } from "lucide-react";
+import { ArrowLeft, Package, MessageCircle, Link as LinkIcon } from "lucide-react";
 import { formatMarketplaceOfferMessage } from "@/lib/whatsapp";
+import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
 
 export default function ListingDetail({ listing }) {
     const [willingPrice, setWillingPrice] = useState(listing.askingPrice);
@@ -69,17 +70,25 @@ export default function ListingDetail({ listing }) {
                         <span className="bg-purple-600/90 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg">
                             {listing.category}
                         </span>
-                        <span className="bg-white/10 text-gray-300 px-3 py-1 text-xs font-bold rounded-lg">
-                            {listing.campus}
-                        </span>
+                        {listing.campus && (
+                            <span className="bg-white/10 text-gray-300 px-3 py-1 text-xs font-bold rounded-lg">
+                                {listing.campus}
+                            </span>
+                        )}
                     </div>
                     <h1 className="text-3xl md:text-4xl font-black text-white mb-4">
-                        {listing.itemName}
+                        {listing.itemName || "Untitled"}
                     </h1>
-                    <p className="text-3xl font-black text-white mb-6">₹{listing.askingPrice}</p>
-                    <p className="text-gray-400 leading-relaxed whitespace-pre-line mb-8">
-                        {listing.description}
-                    </p>
+                    {listing.askingPrice ? (
+                        <p className="text-3xl font-black text-white mb-6">
+                            ₹{listing.askingPrice}
+                        </p>
+                    ) : null}
+                    {listing.description && (
+                        <p className="text-gray-400 leading-relaxed whitespace-pre-line mb-8">
+                            {listing.description}
+                        </p>
+                    )}
 
                     <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
                         <div>
@@ -103,18 +112,26 @@ export default function ListingDetail({ listing }) {
                     </div>
 
                     {listing.customLinks?.length > 0 && (
-                        <div className="flex flex-wrap gap-2 pt-2">
-                            {listing.customLinks.map((link, i) => (
-                                <a
-                                    key={i}
-                                    href={link.link}
-                                    target="_blank"
-                                    rel="noreferrer"
-                                    className="bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl text-sm font-bold transition-colors border border-white/10"
-                                >
-                                    {link.label}
-                                </a>
-                            ))}
+                        <div className="flex flex-wrap gap-3 pt-2">
+                            {listing.customLinks.map((link, i) => {
+                                const typeDef = CUSTOM_LINK_TYPES.find((t) => t.id === link.type);
+                                const Icon = typeDef?.icon || LinkIcon;
+                                return (
+                                    <a
+                                        key={i}
+                                        href={link.link}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        title={typeDef?.label || link.label || link.link}
+                                        className="bg-white/10 hover:bg-white/20 text-white p-3 rounded-2xl transition-colors border border-white/10 hover:border-purple-500/50 flex flex-col items-center gap-1 min-w-16"
+                                    >
+                                        <Icon size={20} />
+                                        <span className="text-[10px] font-bold">
+                                            {typeDef?.label || link.label || "Link"}
+                                        </span>
+                                    </a>
+                                );
+                            })}
                         </div>
                     )}
                 </motion.div>

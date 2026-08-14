@@ -16,6 +16,7 @@ export default function MarketplaceSellPage() {
     const [categories, setCategories] = useState([]);
     const [categoriesLoading, setCategoriesLoading] = useState(true);
     const [selectedCategory, setSelectedCategory] = useState(null);
+    const [redirectLinks, setRedirectLinks] = useState([]);
 
     const [formData, setFormData] = useState(() => {
         const defaultState = {
@@ -62,7 +63,21 @@ export default function MarketplaceSellPage() {
                 setCategoriesLoading(false);
             }
         };
+        const fetchRedirectLinks = async () => {
+            try {
+                const snap = await getDoc(
+                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_REDIRECT_LINKS)
+                );
+                if (snap.exists()) {
+                    setRedirectLinks(snap.data().redirectLinks || []);
+                }
+            } catch (err) {
+                console.error("Error fetching marketplace redirect links:", err);
+            } finally {
+            }
+        };
         fetchCategories();
+        fetchRedirectLinks();
     }, []);
 
     const handleSelectCategory = (category) => {
@@ -75,6 +90,8 @@ export default function MarketplaceSellPage() {
         setFormData((prev) => ({ ...prev, category: "" }));
     };
 
+    const activeLink = redirectLinks.find((l) => l.active);
+
     const handleChange = (e) => {
         setFormData({
             ...formData,
@@ -85,7 +102,7 @@ export default function MarketplaceSellPage() {
     const handleAddLink = () => {
         setFormData((prev) => ({
             ...prev,
-            customLinks: [...(prev.customLinks || []), { label: "", link: "" }],
+            customLinks: [...(prev.customLinks || []), { type: "", link: "" }],
         }));
     };
 
@@ -112,14 +129,27 @@ export default function MarketplaceSellPage() {
         const trimmedDescription = formData.description.trim();
         const trimmedSellerName = formData.sellerName.trim();
 
-        if (
-            !trimmedItemName ||
-            !trimmedDescription ||
-            !formData.askingPrice ||
-            !formData.category ||
-            !formData.campus
-        ) {
-            toast.error("Please fill in all item details including category & campus.");
+        const requiredFields = selectedCategory?.fields || [
+            "itemName",
+            "description",
+            "askingPrice",
+            "campus",
+        ];
+        const missingFields = [];
+        if (requiredFields.includes("itemName") && !trimmedItemName) {
+            missingFields.push("Item Name");
+        }
+        if (requiredFields.includes("description") && !trimmedDescription) {
+            missingFields.push("Description");
+        }
+        if (requiredFields.includes("askingPrice") && !formData.askingPrice) {
+            missingFields.push("Asking Price");
+        }
+        if (requiredFields.includes("campus") && !formData.campus) {
+            missingFields.push("Campus");
+        }
+        if (missingFields.length > 0) {
+            toast.error(`Please fill in: ${missingFields.join(", ")}`);
             return;
         }
 
@@ -128,9 +158,7 @@ export default function MarketplaceSellPage() {
             return;
         }
 
-        const customLinks = (formData.customLinks || []).filter(
-            (l) => l.label.trim() && l.link.trim()
-        );
+        const customLinks = (formData.customLinks || []).filter((l) => l.type && l.link.trim());
 
         const request = {
             itemName: trimmedItemName,
@@ -155,9 +183,15 @@ export default function MarketplaceSellPage() {
             return;
         }
 
-        const whatsappUrl = `https://wa.me/${LAUNDRY_NUMBER}?text=${formatMarketplaceRequestMessage(request)}`;
-        window.location.href = whatsappUrl;
-        toast.success("Request submitted! Complete the details on WhatsApp.");
+        // Use admin-configured redirect link, fallback to LAUNDRY_NUMBER
+        const activeLink = redirectLinks.find((l) => l.active);
+        if (activeLink && activeLink.url) {
+            window.location.href = `${activeLink.url}?request_id=${Date.now()}`;
+        } else {
+            const whatsappUrl = `https://wa.me/${LAUNDRY_NUMBER}?text=${formatMarketplaceRequestMessage(request)}`;
+            window.location.href = whatsappUrl;
+        }
+        toast.success("Request submitted! Redirecting...");
     };
 
     return (
@@ -180,7 +214,10 @@ export default function MarketplaceSellPage() {
                             campusConfig={DEFAULT_CAMPUS_CONFIG}
                             handleSubmit={handleSubmit}
                             formTitle={selectedCategory.actionLabel}
+                            categoryFields={selectedCategory.fields || []}
+                            categoryOptionalFields={selectedCategory.optionalFields || []}
                             customLinks={formData.customLinks || []}
+                            redirectLabel={activeLink?.label}
                             onAddLink={handleAddLink}
                             onRemoveLink={handleRemoveLink}
                             onLinkChange={handleLinkChange}

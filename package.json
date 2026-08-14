@@ -13,11 +13,11 @@
         "prepare": "husky",
         "deploy": "dotenv -e .env.production pnpm run build && firebase deploy",
         "deploy:rules": "firebase deploy --only firestore:rules,storage",
-        "test": "dotenv -e .env.test -- playwright test",
+        "test:e2e": "dotenv -e .env.test -- playwright test",
         "test:ui": "dotenv -e .env.test -- playwright test --ui",
         "test:debug": "dotenv -e .env.test -- playwright test --debug",
         "test:create": "dotenv -e .env.test -- playwright codegen http://localhost:3000",
-        "test:unit": "vitest run"
+        "test": "vitest run"
     },
     "dependencies": {
         "@opentelemetry/api": "^1.9.0",

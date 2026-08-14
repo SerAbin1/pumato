@@ -3,6 +3,13 @@ import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock, Timer } from "lucid
 import Fuse from "fuse.js";
 import { toTitleCase, format12h } from "@/lib/formatters";
 import { createFileUploadHandler } from "@/lib/uploadImage";
+import {
+    PRICE_CHANGE_FIXED,
+    PRICE_CHANGE_PERCENT,
+    applyPriceChange,
+    reversePriceChange,
+    getAffectedItemsCount as countAffectedItems,
+} from "@/lib/restaurants/priceAdjustments";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
 import CustomSelect from "../../components/CustomSelect";
@@ -59,6 +66,7 @@ export default function RestaurantForm({
         targetName: "",
     });
     const [priceIncreaseAmount, setPriceIncreaseAmount] = useState("");
+    const [priceChangeMode, setPriceChangeMode] = useState(PRICE_CHANGE_FIXED);
     const [excludedCategories, setExcludedCategories] = useState([]);
     const [excludedItemIds, setExcludedItemIds] = useState([]);
     const [itemSearchQuery, setItemSearchQuery] = useState("");
@@ -158,20 +166,22 @@ export default function RestaurantForm({
     const getLightItemIds = () => orderSettings?.lightItems || [];
     const getHeavyItemIds = () => orderSettings?.heavyItems || [];
 
+    const getPriceChangeOptions = () => {
+        const excludeLight = excludedItemIds.includes("__light_items__");
+        const excludeHeavy = excludedItemIds.includes("__heavy_items__");
+        return {
+            excludedItemIds,
+            excludedCategories,
+            excludedLightItemIds: excludeLight ? getLightItemIds() : [],
+            excludedHeavyItemIds: excludeHeavy ? getHeavyItemIds() : [],
+        };
+    };
+
     const getAffectedItemsCount = () => {
         const amount = parseFloat(priceIncreaseAmount) || 0;
         if (amount === 0) return 0;
 
-        const excludeLight = excludedItemIds.includes("__light_items__");
-        const excludeHeavy = excludedItemIds.includes("__heavy_items__");
-
-        return (formData.menu || []).filter((item) => {
-            if (excludedItemIds.includes(item.id)) return false;
-            if (excludedCategories.includes(item.category)) return false;
-            if (excludeLight && getLightItemIds().includes(item.id)) return false;
-            if (excludeHeavy && getHeavyItemIds().includes(item.id)) return false;
-            return true;
-        }).length;
+        return countAffectedItems(formData.menu || [], getPriceChangeOptions());
     };
 
     const applyPriceIncrease = () => {
@@ -181,41 +191,25 @@ export default function RestaurantForm({
             return;
         }
 
-        const excludeLight = excludedItemIds.includes("__light_items__");
-        const excludeHeavy = excludedItemIds.includes("__heavy_items__");
-
-        const affectedCount = (formData.menu || []).filter((item) => {
-            const isExcluded =
-                excludedItemIds.includes(item.id) ||
-                excludedCategories.includes(item.category) ||
-                (excludeLight && getLightItemIds().includes(item.id)) ||
-                (excludeHeavy && getHeavyItemIds().includes(item.id));
-            return !isExcluded;
-        }).length;
+        const options = getPriceChangeOptions();
+        const affectedCount = countAffectedItems(formData.menu || [], options);
 
         const action = amount > 0 ? "increase" : "decrease";
         const absAmount = Math.abs(amount);
+        const unit = priceChangeMode === PRICE_CHANGE_PERCENT ? "%" : "₹";
 
         setPriceIncreaseModal({
             isOpen: true,
-            message: `Applying price ${action} of ₹${absAmount}...`,
+            message: `Applying price ${action} of ${unit}${absAmount}...`,
             isApplying: true,
             affectedCount,
         });
 
         setTimeout(() => {
-            const updatedMenu = (formData.menu || []).map((item) => {
-                const isExcluded =
-                    excludedItemIds.includes(item.id) ||
-                    excludedCategories.includes(item.category) ||
-                    (excludeLight && getLightItemIds().includes(item.id)) ||
-                    (excludeHeavy && getHeavyItemIds().includes(item.id));
-
-                if (!isExcluded) {
-                    const currentPrice = parseFloat(item.price) || 0;
-                    return { ...item, price: (currentPrice + amount).toString() };
-                }
-                return item;
+            const updatedMenu = applyPriceChange(formData.menu || [], {
+                mode: priceChangeMode,
+                value: amount,
+                ...options,
             });
 
             setFormData({ ...formData, menu: updatedMenu });
@@ -224,7 +218,7 @@ export default function RestaurantForm({
             setPriceIncreaseModal((prev) => ({
                 ...prev,
                 isApplying: false,
-                message: `Price ${action} of ₹${absAmount} applied to ${affectedCount} items.\n\nNote: The price change will only be saved to the database when you click "Update Restaurant".`,
+                message: `Price ${action} of ${unit}${absAmount} applied to ${affectedCount} items.\n\nNote: The price change will only be saved to the database when you click "Update Restaurant".`,
             }));
         }, 500);
     };
@@ -233,9 +227,9 @@ export default function RestaurantForm({
         const amount = parseFloat(priceIncreaseAmount) || 0;
         if (amount === 0) return;
 
-        const updatedMenu = (formData.menu || []).map((item) => {
-            const currentPrice = parseFloat(item.price) || 0;
-            return { ...item, price: Math.max(0, currentPrice - amount).toString() };
+        const updatedMenu = reversePriceChange(formData.menu || [], {
+            mode: priceChangeMode,
+            value: amount,
         });
 
         setFormData({ ...formData, menu: updatedMenu });
@@ -719,17 +713,48 @@ export default function RestaurantForm({
                     <h3 className="font-bold text-2xl text-white mb-6">Price Increase/Decrease</h3>
 
                     <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-6">
+                        <div className="flex gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setPriceChangeMode(PRICE_CHANGE_FIXED)}
+                                className={`px-5 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                                    priceChangeMode === PRICE_CHANGE_FIXED
+                                        ? "bg-orange-500/20 border-orange-500 text-orange-400"
+                                        : "bg-white/10 border-white/10 text-gray-400 hover:border-white/30"
+                                }`}
+                            >
+                                Fixed (₹)
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setPriceChangeMode(PRICE_CHANGE_PERCENT)}
+                                className={`px-5 py-2.5 rounded-xl text-sm font-bold border transition-all ${
+                                    priceChangeMode === PRICE_CHANGE_PERCENT
+                                        ? "bg-orange-500/20 border-orange-500 text-orange-400"
+                                        : "bg-white/10 border-white/10 text-gray-400 hover:border-white/30"
+                                }`}
+                            >
+                                Percentage (%)
+                            </button>
+                        </div>
+
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                             <div>
                                 <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-2 block">
-                                    Price Change Amount (₹)
+                                    {priceChangeMode === PRICE_CHANGE_PERCENT
+                                        ? "Price Change Percentage (%)"
+                                        : "Price Change Amount (₹)"}
                                 </label>
                                 <input
                                     type="text"
                                     value={priceIncreaseAmount}
                                     onChange={(e) => setPriceIncreaseAmount(e.target.value)}
                                     className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
-                                    placeholder="e.g. 15 or -15"
+                                    placeholder={
+                                        priceChangeMode === PRICE_CHANGE_PERCENT
+                                            ? "e.g. 10 or -5"
+                                            : "e.g. 15 or -15"
+                                    }
                                 />
                             </div>
                             <div className="flex items-end">

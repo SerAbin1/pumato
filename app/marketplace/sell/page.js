@@ -198,7 +198,7 @@ export default function MarketplaceSellPage() {
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
             <div className="fixed top-20 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-purple-600/10 rounded-full blur-[100px] pointer-events-none" />
             <Navbar />
-            <div className="max-w-2xl mx-auto px-4 py-12">
+            <div className="max-w-2xl mx-auto px-4 py-12 pt-24">
                 {selectedCategory ? (
                     <>
                         <button

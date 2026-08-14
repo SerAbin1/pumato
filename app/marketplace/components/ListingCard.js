@@ -4,17 +4,27 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Package, MessageCircle } from "lucide-react";
+import { Package, MessageCircle, Link as LinkIcon } from "lucide-react";
 import { formatMarketplaceOfferMessage } from "@/lib/whatsapp";
+import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
 
 export default function ListingCard({ listing, index = 0 }) {
     const [willingPrice, setWillingPrice] = useState(listing.askingPrice);
+
+    const whatsappLink = (listing.customLinks || []).find((l) => l.type === "whatsapp")?.link;
+    const hasWhatsApp = Boolean(listing.sellerWhatsApp || whatsappLink);
+    const isBuyable = Boolean(listing.askingPrice && hasWhatsApp);
 
     const handleBuy = (e) => {
         e.preventDefault();
         e.stopPropagation();
         const message = formatMarketplaceOfferMessage(listing, willingPrice);
-        window.open(`https://wa.me/${listing.sellerWhatsApp}?text=${message}`, "_blank");
+        if (listing.sellerWhatsApp) {
+            window.open(`https://wa.me/${listing.sellerWhatsApp}?text=${message}`, "_blank");
+        } else if (whatsappLink) {
+            const separator = whatsappLink.includes("?") ? "&" : "?";
+            window.open(`${whatsappLink}${separator}text=${message}`, "_blank");
+        }
     };
 
     return (
@@ -78,25 +88,57 @@ export default function ListingCard({ listing, index = 0 }) {
                 </Link>
 
                 <div className="px-6 pb-6 border-t border-white/10 pt-4 space-y-3">
-                    <div>
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-                            Your Offer (₹)
-                        </label>
-                        <input
-                            type="number"
-                            min="0"
-                            value={willingPrice}
-                            onChange={(e) => setWillingPrice(e.target.value)}
-                            onClick={(e) => e.stopPropagation()}
-                            className="mt-1 w-full p-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-bold"
-                        />
-                    </div>
-                    <button
-                        onClick={handleBuy}
-                        className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-900/30"
-                    >
-                        <MessageCircle size={18} /> Buy on WhatsApp
-                    </button>
+                    {isBuyable && (
+                        <>
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Your Offer (₹)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={willingPrice}
+                                    onChange={(e) => setWillingPrice(e.target.value)}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="mt-1 w-full p-3 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-bold"
+                                />
+                            </div>
+                            <button
+                                onClick={handleBuy}
+                                className="w-full bg-green-600 hover:bg-green-500 text-white py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-900/30"
+                            >
+                                <MessageCircle size={18} /> Buy on WhatsApp
+                            </button>
+                        </>
+                    )}
+                    {listing.customLinks?.length > 0 && (
+                        <div className="flex items-center gap-3 pt-1">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                For more info
+                            </span>
+                            <div className="flex flex-wrap gap-2">
+                                {listing.customLinks.map((link, i) => {
+                                    const typeDef = CUSTOM_LINK_TYPES.find(
+                                        (t) => t.id === link.type
+                                    );
+                                    const Icon = typeDef?.icon || LinkIcon;
+                                    return (
+                                        <a
+                                            key={i}
+                                            href={link.link}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                            title={typeDef?.label || link.label || link.link}
+                                            onClick={(e) => e.stopPropagation()}
+                                            className="bg-white/10 hover:bg-white/20 text-white p-2 rounded-xl transition-colors border border-white/10 hover:border-purple-500/50 flex items-center justify-center"
+                                        >
+                                            <Icon size={16} />
+                                        </a>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
         </motion.div>

@@ -12,9 +12,18 @@ export default function ListingDetail({ listing }) {
     const [willingPrice, setWillingPrice] = useState(listing.askingPrice);
     const [activeImage, setActiveImage] = useState(0);
 
+    const whatsappLink = (listing.customLinks || []).find((l) => l.type === "whatsapp")?.link;
+    const hasWhatsApp = Boolean(listing.sellerWhatsApp || whatsappLink);
+    const isBuyable = Boolean(listing.askingPrice && hasWhatsApp);
+
     const handleBuy = () => {
         const message = formatMarketplaceOfferMessage(listing, willingPrice);
-        window.open(`https://wa.me/${listing.sellerWhatsApp}?text=${message}`, "_blank");
+        if (listing.sellerWhatsApp) {
+            window.open(`https://wa.me/${listing.sellerWhatsApp}?text=${message}`, "_blank");
+        } else if (whatsappLink) {
+            const separator = whatsappLink.includes("?") ? "&" : "?";
+            window.open(`${whatsappLink}${separator}text=${message}`, "_blank");
+        }
     };
 
     return (
@@ -90,29 +99,34 @@ export default function ListingDetail({ listing }) {
                         </p>
                     )}
 
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
-                        <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-                                Your Offer (₹)
-                            </label>
-                            <input
-                                type="number"
-                                min="0"
-                                value={willingPrice}
-                                onChange={(e) => setWillingPrice(e.target.value)}
-                                className="mt-1 w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-bold text-lg"
-                            />
+                    {isBuyable && (
+                        <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
+                            <div>
+                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Your Offer (₹)
+                                </label>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    value={willingPrice}
+                                    onChange={(e) => setWillingPrice(e.target.value)}
+                                    className="mt-1 w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-bold text-lg"
+                                />
+                            </div>
+                            <button
+                                onClick={handleBuy}
+                                className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-900/30 text-lg"
+                            >
+                                <MessageCircle size={20} /> Buy on WhatsApp
+                            </button>
                         </div>
-                        <button
-                            onClick={handleBuy}
-                            className="w-full bg-green-600 hover:bg-green-500 text-white py-4 rounded-xl font-bold flex items-center justify-center gap-2 transition-colors shadow-lg shadow-green-900/30 text-lg"
-                        >
-                            <MessageCircle size={20} /> Buy on WhatsApp
-                        </button>
-                    </div>
+                    )}
 
                     {listing.customLinks?.length > 0 && (
-                        <div className="flex flex-wrap gap-3 pt-2">
+                        <div className="flex flex-wrap items-center gap-3 pt-2">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                For more info
+                            </span>
                             {listing.customLinks.map((link, i) => {
                                 const typeDef = CUSTOM_LINK_TYPES.find((t) => t.id === link.type);
                                 const Icon = typeDef?.icon || LinkIcon;

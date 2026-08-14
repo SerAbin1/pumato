@@ -77,7 +77,7 @@ export default function ListingDetail({ listing }) {
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
                     <div className="flex items-center gap-3 mb-3">
                         <span className="bg-purple-600/90 text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg">
-                            {listing.category}
+                            {listing.filter}
                         </span>
                         {listing.campus && (
                             <span className="bg-white/10 text-gray-300 px-3 py-1 text-xs font-bold rounded-lg">

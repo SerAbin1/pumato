@@ -55,7 +55,7 @@ export default function ListingCard({ listing, index = 0 }) {
                             </div>
                         )}
                         <div className="absolute top-4 left-4 z-20 bg-purple-600/90 backdrop-blur-md text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg">
-                            {listing.category}
+                            {listing.filter}
                         </div>
                         <div className="absolute bottom-4 left-4 right-4 z-20 flex justify-between items-end">
                             {listing.campus && (

@@ -23,7 +23,6 @@ export default function MarketplaceSellPage() {
             itemName: "",
             description: "",
             askingPrice: "",
-            category: "",
             campus: "",
             sellerName: "",
             sellerWhatsApp: "",
@@ -82,12 +81,10 @@ export default function MarketplaceSellPage() {
 
     const handleSelectCategory = (category) => {
         setSelectedCategory(category);
-        setFormData((prev) => ({ ...prev, category: category.label }));
     };
 
     const handleBack = () => {
         setSelectedCategory(null);
-        setFormData((prev) => ({ ...prev, category: "" }));
     };
 
     const activeLink = redirectLinks.find((l) => l.active);
@@ -164,7 +161,6 @@ export default function MarketplaceSellPage() {
             itemName: trimmedItemName,
             description: trimmedDescription,
             askingPrice: Number(formData.askingPrice),
-            category: formData.category,
             campus: formData.campus,
             sellerName: trimmedSellerName,
             sellerWhatsApp: formData.sellerWhatsApp,

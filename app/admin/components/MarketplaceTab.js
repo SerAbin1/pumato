@@ -9,6 +9,7 @@ import {
     deleteListing,
     updateMarketplaceRequest,
     saveMarketplaceCategories,
+    saveMarketplaceFilters,
     saveMarketplaceRedirectLinks,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
@@ -17,10 +18,11 @@ import MarketplaceListingForm from "./MarketplaceListingForm";
 import ConfirmModal from "../../components/ConfirmModal";
 
 export default function MarketplaceTab() {
-    const [subSection, setSubSection] = useState("requests"); // requests, listings, categories, settings
+    const [subSection, setSubSection] = useState("requests"); // requests, listings, filters, categories, settings
     const [requests, setRequests] = useState([]);
     const [listings, setListings] = useState([]);
     const [categories, setCategories] = useState([]);
+    const [filters, setFilters] = useState([]);
     const [redirectLinks, setRedirectLinks] = useState([]);
     const [loading, setLoading] = useState(true);
     const [listingView, setListingView] = useState("list"); // list, form
@@ -52,15 +54,22 @@ export default function MarketplaceTab() {
     const [catOptionalFields, setCatOptionalFields] = useState(["description", "customLinks"]);
     const [isSavingCategories, setIsSavingCategories] = useState(false);
 
+    // Filter form state
+    const [filterLabel, setFilterLabel] = useState("");
+    const [isSavingFilters, setIsSavingFilters] = useState(false);
+
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [requestsSnap, listingsSnap, categoriesSnap, redirectLinksSnap] =
+            const [requestsSnap, listingsSnap, categoriesSnap, filtersSnap, redirectLinksSnap] =
                 await Promise.all([
                     getDocs(collection(db, COLLECTIONS.MARKETPLACE_REQUESTS)),
                     getDocs(collection(db, COLLECTIONS.MARKETPLACE_LISTINGS)),
                     getDoc(
                         doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)
+                    ),
+                    getDoc(
+                        doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_FILTERS)
                     ),
                     getDoc(
                         doc(
@@ -74,6 +83,9 @@ export default function MarketplaceTab() {
             setListings(listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
             if (categoriesSnap.exists()) {
                 setCategories(categoriesSnap.data().categories || []);
+            }
+            if (filtersSnap.exists()) {
+                setFilters(filtersSnap.data().filters || []);
             }
             if (redirectLinksSnap.exists()) {
                 setRedirectLinks(redirectLinksSnap.data().redirectLinks || []);
@@ -101,7 +113,7 @@ export default function MarketplaceTab() {
             itemName: request.itemName,
             description: request.description,
             askingPrice: request.askingPrice,
-            category: request.category,
+            filter: "",
             campus: request.campus,
             sellerName: request.sellerName,
             sellerWhatsApp: request.sellerWhatsApp,
@@ -220,6 +232,46 @@ export default function MarketplaceTab() {
         }
     };
 
+    const handleAddFilter = async () => {
+        const label = filterLabel.trim();
+        if (!label) {
+            toast.error("Please enter a filter label.");
+            return;
+        }
+        if (filters.some((f) => f.label === label)) {
+            toast.error("Filter already exists.");
+            return;
+        }
+        setIsSavingFilters(true);
+        try {
+            const updated = [...filters, { label }];
+            await saveMarketplaceFilters({ filters: updated });
+            setFilters(updated);
+            setFilterLabel("");
+            toast.success("Filter added.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to save filter.");
+        } finally {
+            setIsSavingFilters(false);
+        }
+    };
+
+    const handleDeleteFilter = async (index) => {
+        setIsSavingFilters(true);
+        try {
+            const updated = filters.filter((_, i) => i !== index);
+            await saveMarketplaceFilters({ filters: updated });
+            setFilters(updated);
+            toast.success("Filter deleted.");
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to delete filter.");
+        } finally {
+            setIsSavingFilters(false);
+        }
+    };
+
     const handleAddRedirectLink = () => {
         const label = linkLabel.trim();
         const url = linkUrl.trim();
@@ -280,6 +332,12 @@ export default function MarketplaceTab() {
                     Listings
                 </button>
                 <button
+                    onClick={() => setSubSection("filters")}
+                    className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${subSection === "filters" ? "bg-purple-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
+                >
+                    Filters
+                </button>
+                <button
                     onClick={() => setSubSection("categories")}
                     className={`px-6 py-2.5 rounded-xl text-sm font-bold transition-all ${subSection === "categories" ? "bg-purple-600 text-white shadow-lg" : "text-gray-400 hover:text-white"}`}
                 >
@@ -314,7 +372,6 @@ export default function MarketplaceTab() {
                                 <p className="text-gray-400 text-sm mb-2">{request.description}</p>
                                 <div className="flex flex-wrap gap-3 text-xs text-gray-500">
                                     <span>₹{request.askingPrice}</span>
-                                    <span>{request.category}</span>
                                     <span>{request.campus}</span>
                                     <span>
                                         {request.sellerName} · {request.sellerWhatsApp}
@@ -347,6 +404,58 @@ export default function MarketplaceTab() {
                             </div>
                         </motion.div>
                     ))}
+                </div>
+            ) : subSection === "filters" ? (
+                <div className="space-y-8">
+                    <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+                        <h3 className="text-lg font-bold text-white mb-4">Add Filter</h3>
+                        <p className="text-sm text-gray-400 mb-4">
+                            Filters are used to sort listings on the Marketplace page.
+                        </p>
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                Label
+                            </label>
+                            <input
+                                type="text"
+                                value={filterLabel}
+                                onChange={(e) => setFilterLabel(e.target.value)}
+                                placeholder="e.g. Second-hand"
+                                className="w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+                            />
+                        </div>
+                        <button
+                            onClick={handleAddFilter}
+                            disabled={isSavingFilters}
+                            className="mt-4 bg-purple-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-purple-500 transition-colors flex items-center gap-2 disabled:opacity-50"
+                        >
+                            <Plus size={18} /> Add Filter
+                        </button>
+                    </div>
+
+                    {filters.length === 0 ? (
+                        <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 border-dashed">
+                            <p className="text-gray-500">No filters yet. Add one above.</p>
+                        </div>
+                    ) : (
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {filters.map((filter, index) => (
+                                <div
+                                    key={`${filter.label}-${index}`}
+                                    className="bg-white/5 border border-white/10 rounded-2xl p-5 flex items-center justify-between gap-3"
+                                >
+                                    <h4 className="font-bold text-white text-lg">{filter.label}</h4>
+                                    <button
+                                        onClick={() => handleDeleteFilter(index)}
+                                        className="p-2 rounded-lg bg-white/5 text-gray-400 hover:bg-red-600 hover:text-white transition-colors"
+                                        title="Delete filter"
+                                    >
+                                        <Trash size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    )}
                 </div>
             ) : subSection === "categories" ? (
                 <div className="space-y-8">
@@ -670,7 +779,7 @@ export default function MarketplaceTab() {
                                     {listing.itemName}
                                 </h3>
                                 <p className="text-gray-400 text-sm mb-1">
-                                    ₹{listing.askingPrice} · {listing.category}
+                                    ₹{listing.askingPrice} · {listing.filter}
                                 </p>
                                 <p className="text-gray-500 text-xs mb-6">
                                     Expires: {listing.expiryDate || "No expiry"}

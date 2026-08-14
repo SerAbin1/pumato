@@ -28,9 +28,9 @@ function MarketplaceContent() {
 
     const { getCollection, loading } = useFirestore();
     const [listings, setListings] = useState([]);
-    const [categories, setCategories] = useState([]);
+    const [filters, setFilters] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
-    const [category, setCategory] = useState("all");
+    const [filter, setFilter] = useState("all");
 
     useEffect(() => {
         const fetchListings = async () => {
@@ -41,33 +41,33 @@ function MarketplaceContent() {
                 console.error("Error fetching marketplace listings:", err);
             }
         };
-        const fetchCategories = async () => {
+        const fetchFilters = async () => {
             try {
                 const snap = await getDoc(
-                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)
+                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_FILTERS)
                 );
                 if (snap.exists()) {
-                    setCategories(snap.data().categories || []);
+                    setFilters(snap.data().filters || []);
                 }
             } catch (err) {
-                console.error("Error fetching marketplace categories:", err);
+                console.error("Error fetching marketplace filters:", err);
             }
         };
         fetchListings();
-        fetchCategories();
+        fetchFilters();
     }, [getCollection]);
 
     const filteredListings = useMemo(() => {
         let items = listings;
-        if (category !== "all") {
-            items = items.filter((l) => l.category === category);
+        if (filter !== "all") {
+            items = items.filter((l) => l.filter === filter);
         }
         if (searchQuery.trim()) {
             const query = searchQuery.toLowerCase().trim();
             items = items.filter((l) => l.itemName?.toLowerCase().includes(query));
         }
         return [...items].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-    }, [listings, category, searchQuery]);
+    }, [listings, filter, searchQuery]);
 
     if (id) {
         const listing = listings.find((l) => l.id === id);
@@ -128,12 +128,12 @@ function MarketplaceContent() {
                 </div>
                 <CustomSelect
                     options={[
-                        { label: "All Categories", value: "all" },
-                        ...categories.map((cat) => ({ label: cat.label, value: cat.label })),
+                        { label: "All Filters", value: "all" },
+                        ...filters.map((f) => ({ label: f.label, value: f.label })),
                     ]}
-                    value={category}
-                    onChange={setCategory}
-                    placeholder="Category"
+                    value={filter}
+                    onChange={setFilter}
+                    placeholder="Filter"
                     className="min-w-[180px]"
                 />
             </div>

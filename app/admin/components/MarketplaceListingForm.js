@@ -7,6 +7,8 @@ import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/con
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
+import { saveMarketplaceFilters } from "@/lib/repositories";
+import toast from "react-hot-toast";
 
 export default function MarketplaceListingForm({
     initialData,
@@ -18,7 +20,7 @@ export default function MarketplaceListingForm({
         itemName: "",
         description: "",
         askingPrice: "",
-        category: "",
+        filter: "",
         campus: DEFAULT_CAMPUS_CONFIG[0].id,
         sellerName: "",
         sellerWhatsApp: "",
@@ -28,23 +30,25 @@ export default function MarketplaceListingForm({
         customLinks: [],
         ...initialData,
     });
-    const [categories, setCategories] = useState([]);
+    const [filters, setFilters] = useState([]);
+    const [creatingFilter, setCreatingFilter] = useState(false);
+    const [newFilterName, setNewFilterName] = useState("");
     const [uploading, setUploading] = useState(false);
 
     useEffect(() => {
-        const fetchCategories = async () => {
+        const fetchFilters = async () => {
             try {
                 const snap = await getDoc(
-                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_CATEGORIES)
+                    doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.MARKETPLACE_FILTERS)
                 );
                 if (snap.exists()) {
-                    setCategories(snap.data().categories || []);
+                    setFilters(snap.data().filters || []);
                 }
             } catch (err) {
-                console.error("Error fetching marketplace categories:", err);
+                console.error("Error fetching marketplace filters:", err);
             }
         };
-        fetchCategories();
+        fetchFilters();
     }, []);
 
     const handleImageUpload = async (e) => {
@@ -92,10 +96,26 @@ export default function MarketplaceListingForm({
         }));
     };
 
-    const handleSave = () => {
+    const handleSave = async () => {
+        let filter = formData.filter;
+        if (newFilterName.trim()) {
+            filter = newFilterName.trim();
+            if (!filters.some((f) => f.label === filter)) {
+                const updated = [...filters, { label: filter }];
+                setFilters(updated);
+                try {
+                    await saveMarketplaceFilters({ filters: updated });
+                } catch (err) {
+                    console.error("Failed to save new filter", err);
+                    toast.error("Failed to save new filter");
+                    return;
+                }
+            }
+        }
         const customLinks = (formData.customLinks || []).filter((l) => l.type && l.link.trim());
         const formattedData = {
             ...formData,
+            filter,
             itemName: (formData.itemName || "").trim(),
             description: (formData.description || "").trim(),
             askingPrice: Number(formData.askingPrice) || 0,
@@ -127,22 +147,48 @@ export default function MarketplaceListingForm({
 
                 <div className="space-y-3">
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-                        Category
+                        Filter
                     </label>
                     <select
                         className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
-                        value={formData.category}
-                        onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                        value={creatingFilter ? "__new__" : formData.filter}
+                        onChange={(e) => {
+                            if (e.target.value === "__new__") {
+                                setCreatingFilter(true);
+                                setNewFilterName("");
+                            } else {
+                                setCreatingFilter(false);
+                                setNewFilterName("");
+                                setFormData({ ...formData, filter: e.target.value });
+                            }
+                        }}
                     >
                         <option value="" className="bg-gray-900">
-                            Select a category
+                            Select a filter
                         </option>
-                        {categories.map((cat) => (
-                            <option key={cat.label} value={cat.label} className="bg-gray-900">
-                                {cat.label}
+                        {formData.filter && !filters.some((f) => f.label === formData.filter) && (
+                            <option value={formData.filter} className="bg-gray-900">
+                                {formData.filter}
+                            </option>
+                        )}
+                        {filters.map((f) => (
+                            <option key={f.label} value={f.label} className="bg-gray-900">
+                                {f.label}
                             </option>
                         ))}
+                        <option value="__new__" className="bg-gray-900">
+                            + Create new filter...
+                        </option>
                     </select>
+                    {creatingFilter && (
+                        <input
+                            type="text"
+                            value={newFilterName}
+                            onChange={(e) => setNewFilterName(e.target.value)}
+                            placeholder="New filter name e.g. Second-hand"
+                            className="w-full p-4 bg-black/20 border border-white/10 rounded-xl text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
+                        />
+                    )}
                 </div>
 
                 <div className="space-y-3">

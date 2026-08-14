@@ -11,7 +11,6 @@ describe("formatMarketplaceRequestMessage", () => {
     const request = {
         itemName: "Study Table",
         askingPrice: 1500,
-        category: "Furniture",
         campus: "PU",
         description: "Barely used, no scratches",
         sellerName: "Ravi Kumar",
@@ -22,7 +21,6 @@ describe("formatMarketplaceRequestMessage", () => {
         const decoded = decodeURIComponent(formatMarketplaceRequestMessage(request));
         expect(decoded).toContain("Study Table");
         expect(decoded).toContain("₹1500");
-        expect(decoded).toContain("Furniture");
         expect(decoded).toContain("PU");
         expect(decoded).toContain("Barely used, no scratches");
         expect(decoded).toContain("Ravi Kumar");

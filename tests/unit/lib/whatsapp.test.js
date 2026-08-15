@@ -27,6 +27,20 @@ describe("formatMarketplaceRequestMessage", () => {
         expect(decoded).toContain("9198765432");
     });
 
+    it("includes the user's custom links when present", () => {
+        const withLinks = {
+            ...request,
+            customLinks: [
+                { type: "WhatsApp", link: "https://wa.me/9112345" },
+                { type: "Instagram", link: "https://instagram.com/seller" },
+            ],
+        };
+        const decoded = decodeURIComponent(formatMarketplaceRequestMessage(withLinks));
+        expect(decoded).toContain("Links:");
+        expect(decoded).toContain("1. WhatsApp: https://wa.me/9112345");
+        expect(decoded).toContain("2. Instagram: https://instagram.com/seller");
+    });
+
     it("returns a URL-encoded string", () => {
         const message = formatMarketplaceRequestMessage(request);
         expect(message).not.toContain("\n");

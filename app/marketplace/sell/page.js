@@ -9,7 +9,7 @@ import { serverTimestamp, doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS, SITE_CONTENT_DOCS, DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { createMarketplaceRequest } from "@/lib/repositories";
-import { LAUNDRY_NUMBER, formatMarketplaceRequestMessage } from "@/lib/whatsapp";
+import { formatMarketplaceRequestMessage } from "@/lib/whatsapp";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
 export default function MarketplaceSellPage() {
@@ -179,13 +179,17 @@ export default function MarketplaceSellPage() {
             return;
         }
 
-        // Use admin-configured redirect link, fallback to LAUNDRY_NUMBER
         const activeLink = redirectLinks.find((l) => l.active);
         if (activeLink && activeLink.url) {
-            window.location.href = `${activeLink.url}?request_id=${Date.now()}`;
+            const url = new URL(activeLink.url);
+            url.searchParams.set(
+                "text",
+                decodeURIComponent(formatMarketplaceRequestMessage(request))
+            );
+            window.location.href = url.toString();
         } else {
-            const whatsappUrl = `https://wa.me/${LAUNDRY_NUMBER}?text=${formatMarketplaceRequestMessage(request)}`;
-            window.location.href = whatsappUrl;
+            toast.error("No redirect link configured. Please contact support.");
+            return;
         }
         toast.success("Request submitted! Redirecting...");
     };

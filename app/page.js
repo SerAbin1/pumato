@@ -422,7 +422,7 @@ export default function GatewayPage() {
                                         Marketplace.
                                     </h2>
                                     <p className="text-gray-300 text-sm md:text-base max-w-sm mb-4 line-clamp-2">
-                                        Buy, sell, and trade. Your campus bazaar, always open.
+                                        Your campus bazaar, always open.
                                     </p>
                                     <span className="inline-flex items-center gap-2 text-white font-bold border-b border-white/30 pb-1 group-hover:border-purple-500 group-hover:text-purple-500 transition-colors text-sm">
                                         Explore <ArrowRight size={16} />

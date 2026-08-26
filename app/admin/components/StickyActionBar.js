@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { createPortal } from 'react-dom';
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Save, Loader2, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
 
@@ -7,10 +7,11 @@ export default function StickyActionBar({
     onSave,
     onCancel,
     isSaving,
+    disabled,
     saveLabel = "Save Changes",
     cancelLabel = "Cancel",
     title,
-    children
+    children,
 }) {
     const [mounted, setMounted] = useState(false);
 
@@ -57,7 +58,7 @@ export default function StickyActionBar({
                         {/* Scroll Controls */}
                         <div className="flex bg-white/5 border border-white/10 p-1 rounded-xl items-center hidden md:flex">
                             <button
-                                onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                                onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                                 className="p-2.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
                                 title="Scroll to Top"
                             >
@@ -65,7 +66,12 @@ export default function StickyActionBar({
                             </button>
                             <div className="w-px h-4 bg-white/10 mx-1"></div>
                             <button
-                                onClick={() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' })}
+                                onClick={() =>
+                                    window.scrollTo({
+                                        top: document.body.scrollHeight,
+                                        behavior: "smooth",
+                                    })
+                                }
                                 className="p-2.5 hover:bg-white/10 rounded-lg text-gray-400 hover:text-white transition-all"
                                 title="Scroll to Bottom"
                             >
@@ -75,12 +81,20 @@ export default function StickyActionBar({
 
                         <button
                             onClick={onSave}
-                            disabled={isSaving}
+                            disabled={isSaving || disabled}
                             className="flex-1 md:flex-none bg-orange-600 text-white px-4 md:px-8 py-3 rounded-xl font-bold hover:bg-orange-500 transition-all shadow-xl shadow-orange-900/40 flex items-center justify-center gap-2 group text-xs md:text-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            {isSaving ? <Loader2 className="animate-spin" size={18} /> :
-                                <Save size={18} className="group-hover:scale-110 transition-transform" />}
-                            <span>{isSaving ? "Saving..." : saveLabel}</span>
+                            {isSaving ? (
+                                <Loader2 className="animate-spin" size={18} />
+                            ) : (
+                                <Save
+                                    size={18}
+                                    className="group-hover:scale-110 transition-transform"
+                                />
+                            )}
+                            <span>
+                                {isSaving ? "Saving..." : disabled ? "Loading..." : saveLabel}
+                            </span>
                         </button>
                     </div>
                 </div>

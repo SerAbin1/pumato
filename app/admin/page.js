@@ -63,6 +63,7 @@ import GrocerySettings from "./components/GrocerySettings";
 import GlobalSettings from "./components/GlobalSettings";
 import StickyActionBar from "./components/StickyActionBar";
 import MarketplaceTab from "./components/MarketplaceTab";
+import SaveConfirmationModal from "./components/SaveConfirmationModal";
 
 import { format12h } from "@/lib/formatters";
 import { createFileUploadHandler } from "@/lib/uploadImage";
@@ -100,16 +101,23 @@ export default function AdminPage() {
     const [laundryOrders, setLaundryOrders] = useState([]);
     const [loadingLaundryOrders, setLoadingLaundryOrders] = useState(true);
 
-    // Site Settings
-    const [orderSettings, setOrderSettings] = useState({
-        baseDeliveryCharge: "30",
-        extraItemThreshold: "3",
-        extraItemCharge: "10",
-        minOrderAmount: "0",
-        lightItems: [],
-        lightItemThreshold: "5",
-    });
+    // Delivery Settings (delivery charges, slots, light/heavy items, override)
+    const [deliverySettings, setDeliverySettings] = useState({});
+    // Global Settings (whatsapp numbers, payment, UPI, google sheet, community groups)
+    const [globalSettings, setGlobalSettings] = useState({});
+    const [settingsLoaded, setSettingsLoaded] = useState(false);
     const [grocerySettings, setGrocerySettings] = useState({});
+
+    // Save confirmation modal state
+    const [saveConfirm, setSaveConfirm] = useState({
+        isOpen: false,
+        title: "",
+        data: {},
+        onSave: null,
+    });
+
+    const stripUndefined = (obj) =>
+        Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
 
     // Redirect to login if not authenticated or not admin
     if (!authLoading && (!user || !isAdmin)) {
@@ -339,8 +347,29 @@ export default function AdminPage() {
                 doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.ORDER_SETTINGS)
             );
             if (settingsDoc.exists()) {
-                setOrderSettings((prev) => ({ ...prev, ...settingsDoc.data() }));
+                const data = settingsDoc.data();
+                setDeliverySettings({
+                    baseDeliveryCharge: data.baseDeliveryCharge,
+                    extraItemThreshold: data.extraItemThreshold,
+                    extraItemCharge: data.extraItemCharge,
+                    minOrderAmount: data.minOrderAmount,
+                    lightItems: data.lightItems || [],
+                    lightItemThreshold: data.lightItemThreshold,
+                    heavyItems: data.heavyItems || [],
+                    heavyItemCharge: data.heavyItemCharge,
+                    deliveryCampusConfig: data.deliveryCampusConfig,
+                    manualOverride: data.manualOverride,
+                });
+                setGlobalSettings({
+                    whatsappNumber: data.whatsappNumber,
+                    laundryWhatsappNumber: data.laundryWhatsappNumber,
+                    paymentQR: data.paymentQR,
+                    upiId: data.upiId,
+                    googleSheetUrl: data.googleSheetUrl,
+                    whatsappGroups: data.whatsappGroups || [],
+                });
             }
+            setSettingsLoaded(true);
 
             const updatedRestaurants = restaurantsData;
 
@@ -426,20 +455,49 @@ export default function AdminPage() {
         }
     };
 
-    const handleSaveSettings = async () => {
-        setIsSaving(true);
-        try {
-            await Promise.all([
-                saveOrderSettings(orderSettings),
-                saveGrocerySettings(grocerySettings),
-            ]);
-            toast.success("Settings updated successfully!");
-        } catch (error) {
-            console.error("Error saving settings:", error);
-            toast.error("Failed to update settings");
-        } finally {
-            setIsSaving(false);
-        }
+    const handleSaveDeliverySettings = async () => {
+        const clean = stripUndefined(deliverySettings);
+        setSaveConfirm({
+            isOpen: true,
+            title: "Delivery Settings",
+            data: clean,
+            onSave: async () => {
+                setIsSaving(true);
+                try {
+                    await saveOrderSettings(clean);
+                    toast.success("Delivery settings saved!");
+                } catch (error) {
+                    console.error("Error saving delivery settings:", error);
+                    toast.error("Failed to save delivery settings");
+                } finally {
+                    setIsSaving(false);
+                }
+            },
+        });
+    };
+
+    const handleSaveGlobalSettings = async () => {
+        const clean = stripUndefined(globalSettings);
+        setSaveConfirm({
+            isOpen: true,
+            title: "Global Settings",
+            data: clean,
+            onSave: async () => {
+                setIsSaving(true);
+                try {
+                    await Promise.all([
+                        saveOrderSettings(clean),
+                        saveGrocerySettings(grocerySettings),
+                    ]);
+                    toast.success("Settings saved!");
+                } catch (error) {
+                    console.error("Error saving settings:", error);
+                    toast.error("Failed to update settings");
+                } finally {
+                    setIsSaving(false);
+                }
+            },
+        });
     };
 
     // --- LAUNDRY SLOT HANDLERS ---
@@ -651,7 +709,7 @@ export default function AdminPage() {
                         <RestaurantsTab
                             restaurants={restaurants}
                             fetchData={fetchData}
-                            orderSettings={orderSettings}
+                            orderSettings={deliverySettings}
                         />
                     )}
 
@@ -666,8 +724,8 @@ export default function AdminPage() {
 
                     {activeSection === "delivery" && (
                         <DeliverySettings
-                            orderSettings={orderSettings}
-                            setOrderSettings={setOrderSettings}
+                            orderSettings={deliverySettings}
+                            setOrderSettings={setDeliverySettings}
                             restaurants={restaurants}
                         />
                     )}
@@ -704,8 +762,8 @@ export default function AdminPage() {
 
                     {activeSection === "settings" && (
                         <GlobalSettings
-                            orderSettings={orderSettings}
-                            setOrderSettings={setOrderSettings}
+                            orderSettings={globalSettings}
+                            setOrderSettings={setGlobalSettings}
                             grocerySettings={grocerySettings}
                             setGrocerySettings={setGrocerySettings}
                             handleFileUpload={handleFileUpload}
@@ -736,14 +794,17 @@ export default function AdminPage() {
                 activeSection === "laundry") && (
                 <StickyActionBar
                     onSave={
-                        activeSection === "banners"
-                            ? handleSaveBanners
-                            : activeSection === "laundry"
-                              ? saveCampusConfig
-                              : handleSaveSettings
+                        activeSection === "delivery"
+                            ? handleSaveDeliverySettings
+                            : activeSection === "banners"
+                              ? handleSaveBanners
+                              : activeSection === "laundry"
+                                ? saveCampusConfig
+                                : handleSaveGlobalSettings
                     }
                     onCancel={() => fetchData()}
                     isSaving={isSaving}
+                    disabled={!settingsLoaded}
                     title={
                         activeSection === "delivery"
                             ? "Delivery Settings"
@@ -758,6 +819,14 @@ export default function AdminPage() {
                     saveLabel={activeSection === "laundry" ? "Save Config" : "Save Settings"}
                 />
             )}
+
+            <SaveConfirmationModal
+                isOpen={saveConfirm.isOpen}
+                onClose={() => setSaveConfirm((s) => ({ ...s, isOpen: false }))}
+                onConfirm={saveConfirm.onSave}
+                title={saveConfirm.title}
+                data={saveConfirm.data}
+            />
         </div>
     );
 }

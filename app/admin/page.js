@@ -78,7 +78,6 @@ export default function AdminPage() {
     const [orders, setOrders] = useState([]); // placed (pending admin action)
     const [inProgressOrders, setInProgressOrders] = useState([]); // confirmed → ready_for_delivery + out_of_stock
     const [pastOrders, setPastOrders] = useState([]); // picked_up / delivered
-    const [loading, setLoading] = useState(false);
     const [loadingOrders, setLoadingOrders] = useState(true);
     const isInitialLoad = useRef(true);
     const audioRef = useRef(null);
@@ -108,6 +107,10 @@ export default function AdminPage() {
     const [settingsLoaded, setSettingsLoaded] = useState(false);
     const [grocerySettings, setGrocerySettings] = useState({});
 
+    // Baseline snapshots from Firestore — used to compute diff on save
+    const [baselineDelivery, setBaselineDelivery] = useState(null);
+    const [baselineGlobal, setBaselineGlobal] = useState(null);
+
     // Save confirmation modal state
     const [saveConfirm, setSaveConfirm] = useState({
         isOpen: false,
@@ -116,8 +119,16 @@ export default function AdminPage() {
         onSave: null,
     });
 
-    const stripUndefined = (obj) =>
-        Object.fromEntries(Object.entries(obj).filter(([, v]) => v !== undefined));
+    const computeDiff = (baseline, current) => {
+        if (!baseline) return current;
+        const diff = {};
+        for (const [key, value] of Object.entries(current)) {
+            if (JSON.stringify(value) !== JSON.stringify(baseline[key])) {
+                diff[key] = value;
+            }
+        }
+        return diff;
+    };
 
     // Redirect to login if not authenticated or not admin
     if (!authLoading && (!user || !isAdmin)) {
@@ -328,7 +339,6 @@ export default function AdminPage() {
     }, [activeSection, selectedDay]);
 
     const fetchData = useCallback(async () => {
-        setLoading(true);
         try {
             const [resSnap, promoRes] = await Promise.all([
                 getDocs(collection(db, COLLECTIONS.RESTAURANTS)),
@@ -348,7 +358,7 @@ export default function AdminPage() {
             );
             if (settingsDoc.exists()) {
                 const data = settingsDoc.data();
-                setDeliverySettings({
+                const deliveryObj = {
                     baseDeliveryCharge: data.baseDeliveryCharge,
                     extraItemThreshold: data.extraItemThreshold,
                     extraItemCharge: data.extraItemCharge,
@@ -359,15 +369,19 @@ export default function AdminPage() {
                     heavyItemCharge: data.heavyItemCharge,
                     deliveryCampusConfig: data.deliveryCampusConfig,
                     manualOverride: data.manualOverride,
-                });
-                setGlobalSettings({
+                };
+                const globalObj = {
                     whatsappNumber: data.whatsappNumber,
                     laundryWhatsappNumber: data.laundryWhatsappNumber,
                     paymentQR: data.paymentQR,
                     upiId: data.upiId,
                     googleSheetUrl: data.googleSheetUrl,
                     whatsappGroups: data.whatsappGroups || [],
-                });
+                };
+                setDeliverySettings(deliveryObj);
+                setGlobalSettings(globalObj);
+                setBaselineDelivery(deliveryObj);
+                setBaselineGlobal(globalObj);
             }
             setSettingsLoaded(true);
 
@@ -410,7 +424,6 @@ export default function AdminPage() {
             console.error("Error fetching data:", error);
             alert("Failed to load data");
         }
-        setLoading(false);
     }, [user]);
 
     useEffect(() => {
@@ -456,15 +469,17 @@ export default function AdminPage() {
     };
 
     const handleSaveDeliverySettings = async () => {
-        const clean = stripUndefined(deliverySettings);
+        const diff = computeDiff(baselineDelivery, deliverySettings);
+        if (Object.keys(diff).length === 0) return;
         setSaveConfirm({
             isOpen: true,
             title: "Delivery Settings",
-            data: clean,
+            data: diff,
             onSave: async () => {
                 setIsSaving(true);
                 try {
-                    await saveOrderSettings(clean);
+                    await saveOrderSettings(diff);
+                    setBaselineDelivery({ ...deliverySettings });
                     toast.success("Delivery settings saved!");
                 } catch (error) {
                     console.error("Error saving delivery settings:", error);
@@ -477,18 +492,20 @@ export default function AdminPage() {
     };
 
     const handleSaveGlobalSettings = async () => {
-        const clean = stripUndefined(globalSettings);
+        const diff = computeDiff(baselineGlobal, globalSettings);
+        if (Object.keys(diff).length === 0) return;
         setSaveConfirm({
             isOpen: true,
             title: "Global Settings",
-            data: clean,
+            data: diff,
             onSave: async () => {
                 setIsSaving(true);
                 try {
                     await Promise.all([
-                        saveOrderSettings(clean),
+                        saveOrderSettings(diff),
                         saveGrocerySettings(grocerySettings),
                     ]);
+                    setBaselineGlobal({ ...globalSettings });
                     toast.success("Settings saved!");
                 } catch (error) {
                     console.error("Error saving settings:", error);
@@ -727,6 +744,7 @@ export default function AdminPage() {
                             orderSettings={deliverySettings}
                             setOrderSettings={setDeliverySettings}
                             restaurants={restaurants}
+                            settingsLoaded={settingsLoaded}
                         />
                     )}
 
@@ -767,6 +785,7 @@ export default function AdminPage() {
                             grocerySettings={grocerySettings}
                             setGrocerySettings={setGrocerySettings}
                             handleFileUpload={handleFileUpload}
+                            settingsLoaded={settingsLoaded}
                         />
                     )}
 

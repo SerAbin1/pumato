@@ -6,7 +6,12 @@ import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { format12h } from "@/lib/formatters";
 import ConfirmModal from "../../components/ConfirmModal";
 
-export default function DeliverySettings({ orderSettings, setOrderSettings, restaurants }) {
+export default function DeliverySettings({
+    orderSettings,
+    setOrderSettings,
+    restaurants,
+    settingsLoaded,
+}) {
     const [lightItemSearchQuery, setLightItemSearchQuery] = useState("");
     const [heavyItemSearchQuery, setHeavyItemSearchQuery] = useState("");
     const [confirmModal, setConfirmModal] = useState({
@@ -18,7 +23,7 @@ export default function DeliverySettings({ orderSettings, setOrderSettings, rest
     });
 
     return (
-        <div className="space-y-8">
+        <div className={`space-y-8 ${!settingsLoaded ? "opacity-50 pointer-events-none" : ""}`}>
             <ServiceOverrideControl
                 serviceName="Food Delivery"
                 settings={orderSettings}

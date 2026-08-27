@@ -11,6 +11,7 @@ export default function GlobalSettings({
     grocerySettings,
     setGrocerySettings,
     handleFileUpload,
+    settingsLoaded,
 }) {
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
@@ -22,7 +23,7 @@ export default function GlobalSettings({
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="space-y-8"
+            className={`space-y-8 ${!settingsLoaded ? "opacity-50 pointer-events-none" : ""}`}
         >
             <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-[2.5rem] p-8 md:p-12 shadow-2xl relative overflow-hidden">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-blue-500"></div>

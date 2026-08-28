@@ -33,7 +33,9 @@ import {
     isPreOrderSlotSelectionValid,
     buildDeliverySlotFromOccurrence,
     formatDeliverySlot,
+    formatProcessingWindow,
 } from "@/lib/preOrderSlots";
+import ConfirmModal from "./ConfirmModal";
 import toast from "react-hot-toast";
 
 const format12h = (time24) => {
@@ -86,6 +88,7 @@ export default function CartDrawer() {
     const [checkoutError, setCheckoutError] = useState(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
     const [selectedSlot, setSelectedSlot] = useState(null);
+    const [pendingSlot, setPendingSlot] = useState(null);
 
     const resetCheckoutState = () => {
         setIsCheckingOut(false);
@@ -93,6 +96,7 @@ export default function CartDrawer() {
         setInputCode("");
         setCheckoutError(null);
         setSelectedSlot(null);
+        setPendingSlot(null);
     };
 
     // Re-render periodically so pre-order slot occurrences roll over while the drawer stays open.
@@ -170,6 +174,7 @@ export default function CartDrawer() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedSlot(null);
+        setPendingSlot(null);
     }, [userDetails.campus, isCampusPreOrderMode]);
 
     const handleApplyCoupon = async () => {
@@ -957,9 +962,13 @@ export default function CartDrawer() {
                                                                                 key={key}
                                                                                 type="button"
                                                                                 onClick={() =>
-                                                                                    setSelectedSlot(
-                                                                                        entry
-                                                                                    )
+                                                                                    isCampusPreOrderMode
+                                                                                        ? setPendingSlot(
+                                                                                              entry
+                                                                                          )
+                                                                                        : setSelectedSlot(
+                                                                                              entry
+                                                                                          )
                                                                                 }
                                                                                 className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${
                                                                                     isSelected
@@ -1118,6 +1127,27 @@ export default function CartDrawer() {
                     </>
                 )}
             </AnimatePresence>
+
+            {/* Pre-order Processing Window Acknowledgement */}
+            <ConfirmModal
+                isOpen={!!pendingSlot}
+                onClose={() => setPendingSlot(null)}
+                onConfirm={() => {
+                    setSelectedSlot(pendingSlot);
+                    setPendingSlot(null);
+                }}
+                title="Before You Confirm"
+                message={
+                    pendingSlot
+                        ? `We'll review and confirm this order between ${formatProcessingWindow(
+                              pendingSlot
+                          )}. If it can't be fulfilled (for example a payment issue or an item being unavailable), we'll let you know during that window, and it may be rejected. You'll be refunded fully in case of rejection.`
+                        : ""
+                }
+                confirmLabel="OK, Confirm Slot"
+                cancelLabel="Cancel"
+                isDanger={false}
+            />
 
             {/* Duplicate Order Guard Modal */}
             <AnimatePresence>

@@ -21,7 +21,10 @@ const formatValue = (key, value) => {
                     ? ` | Pre-order ON [${
                           (c.preOrderSlots || [])
                               .filter((s) => s.start && s.end)
-                              .map((s) => `${s.start}–${s.end} (cutoff ${s.cutoffMinutes}m)`)
+                              .map(
+                                  (s) =>
+                                      `${s.start}–${s.end} (cutoff ${s.cutoffMinutes || "none"}${s.cutoffMinutes ? "m" : ""})`
+                              )
                               .join(", ") || "no slots"
                       }]`
                     : "";
@@ -36,7 +39,10 @@ const formatValue = (key, value) => {
                 if (!c.isPreOrderEnabled) return `${c.id}: OFF`;
                 const slots = (c.preOrderSlots || [])
                     .filter((s) => s.start && s.end)
-                    .map((s) => `${s.start}–${s.end} (cutoff ${s.cutoffMinutes}m)`)
+                    .map(
+                        (s) =>
+                            `${s.start}–${s.end} (cutoff ${s.cutoffMinutes || "none"}${s.cutoffMinutes ? "m" : ""})`
+                    )
                     .join(", ");
                 return `${c.id}: ON [${slots || "no slots"}]`;
             })

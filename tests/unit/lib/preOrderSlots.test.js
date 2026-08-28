@@ -7,6 +7,7 @@ import {
     isPreOrderSlotSelectionValid,
     buildDeliverySlotFromOccurrence,
     formatDeliverySlot,
+    formatProcessingWindow,
 } from "../../../lib/preOrderSlots";
 
 describe("resolvePreOrderSlotOccurrence", () => {
@@ -161,6 +162,8 @@ describe("buildDeliverySlotFromOccurrence", () => {
             start: "08:00",
             end: "09:00",
             cutoffMinutes: 30,
+            processingStart: "07:00",
+            processingEnd: "07:30",
             minutesUntilStart: 600,
             isBookable: true,
         };
@@ -170,6 +173,29 @@ describe("buildDeliverySlotFromOccurrence", () => {
             start: "08:00",
             end: "09:00",
             cutoffMinutes: 30,
+            processingStart: "07:00",
+            processingEnd: "07:30",
+            campusId: "PU",
+        });
+    });
+
+    it("defaults processingStart/processingEnd to '' when the occurrence has none", () => {
+        const occurrence = {
+            date: "2026-08-29",
+            start: "08:00",
+            end: "09:00",
+            cutoffMinutes: 30,
+            minutesUntilStart: 600,
+            isBookable: true,
+        };
+        expect(buildDeliverySlotFromOccurrence(occurrence, "PU")).toEqual({
+            source: "campus",
+            date: "2026-08-29",
+            start: "08:00",
+            end: "09:00",
+            cutoffMinutes: 30,
+            processingStart: "",
+            processingEnd: "",
             campusId: "PU",
         });
     });
@@ -193,5 +219,45 @@ describe("formatDeliverySlot", () => {
     it("returns '' for null/undefined", () => {
         expect(formatDeliverySlot(null)).toBe("");
         expect(formatDeliverySlot(undefined)).toBe("");
+    });
+});
+
+describe("formatProcessingWindow", () => {
+    it("formats a resolved occurrence's processing window into a dated display string", () => {
+        const occurrence = {
+            date: "2026-08-29",
+            processingStart: "18:30",
+            processingEnd: "19:00",
+        };
+        expect(formatProcessingWindow(occurrence)).toBe("Aug 29, 6:30 PM - 7:00 PM");
+    });
+
+    it("formats a built campus delivery-slot record the same way", () => {
+        const slot = {
+            source: "campus",
+            date: "2026-08-29",
+            start: "20:00",
+            end: "21:00",
+            cutoffMinutes: 30,
+            processingStart: "18:30",
+            processingEnd: "19:00",
+            campusId: "PU",
+        };
+        expect(formatProcessingWindow(slot)).toBe("Aug 29, 6:30 PM - 7:00 PM");
+    });
+
+    it("returns '' when processingStart/processingEnd are missing", () => {
+        expect(formatProcessingWindow({ date: "2026-08-29" })).toBe("");
+    });
+
+    it("returns '' when date is missing", () => {
+        expect(formatProcessingWindow({ processingStart: "18:30", processingEnd: "19:00" })).toBe(
+            ""
+        );
+    });
+
+    it("returns '' for null/undefined", () => {
+        expect(formatProcessingWindow(null)).toBe("");
+        expect(formatProcessingWindow(undefined)).toBe("");
     });
 });

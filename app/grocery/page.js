@@ -24,12 +24,18 @@ import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
 import { getISTTime, getISTObject } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
-import { getAvailablePreOrderSlots, formatDeliverySlot } from "@/lib/preOrderSlots";
+import {
+    getAvailablePreOrderSlots,
+    formatDeliverySlot,
+    formatProcessingWindow,
+} from "@/lib/preOrderSlots";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
     const [isLive, setIsLive] = useState(true);
     const [selectedSlot, setSelectedSlot] = useState(null);
+    const [pendingSlot, setPendingSlot] = useState(null);
     const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
 
     const serviceHours = useMemo(() => grocerySettings?.service_hours ?? [], [grocerySettings]);
@@ -93,6 +99,7 @@ export default function GroceryPage() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setSelectedSlot(null);
+        setPendingSlot(null);
     }, [preOrderMode, formData.campus]);
 
     // 1. Load from localStorage on mount
@@ -539,7 +546,7 @@ export default function GroceryPage() {
                                                     <button
                                                         key={`${entry.date}_${entry.start}`}
                                                         type="button"
-                                                        onClick={() => setSelectedSlot(entry)}
+                                                        onClick={() => setPendingSlot(entry)}
                                                         className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${isSelected ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400" : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"}`}
                                                     >
                                                         {label}
@@ -580,6 +587,27 @@ export default function GroceryPage() {
             </div>
 
             <TermsFooter type="grocery" />
+
+            {/* Pre-order Processing Window Acknowledgement */}
+            <ConfirmModal
+                isOpen={!!pendingSlot}
+                onClose={() => setPendingSlot(null)}
+                onConfirm={() => {
+                    setSelectedSlot(pendingSlot);
+                    setPendingSlot(null);
+                }}
+                title="Before You Confirm"
+                message={
+                    pendingSlot
+                        ? `We'll review and confirm this order between ${formatProcessingWindow(
+                              pendingSlot
+                          )}. If it can't be fulfilled (for example a payment issue or an item being unavailable), we'll let you know during that window, and it may be rejected. You'll be refunded fully in case of rejection.`
+                        : ""
+                }
+                confirmLabel="OK, Confirm Slot"
+                cancelLabel="Cancel"
+                isDanger={false}
+            />
         </main>
     );
 }

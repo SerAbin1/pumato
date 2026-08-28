@@ -19,7 +19,10 @@ export default function PreOrderSlotEditor({
     });
 
     const addSlot = () =>
-        onSlotsChange([...(slots || []), { start: "", end: "", cutoffMinutes: 30 }]);
+        onSlotsChange([
+            ...(slots || []),
+            { start: "", end: "", cutoffMinutes: "", processingStart: "", processingEnd: "" },
+        ]);
     const updateSlot = (index, field, value) => {
         const newSlots = [...(slots || [])];
         newSlots[index] = { ...newSlots[index], [field]: value };
@@ -69,71 +72,123 @@ export default function PreOrderSlotEditor({
                     {(slots || []).map((slot, index) => (
                         <div
                             key={index}
-                            className="flex flex-col md:flex-row gap-4 items-start md:items-end"
+                            className="p-4 bg-black/10 border border-white/5 rounded-2xl space-y-4"
                         >
-                            <div className="flex-1 space-y-2">
-                                <div className="flex justify-between items-center px-1">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                                        Start Time
-                                    </label>
-                                    <span
-                                        className={`text-[10px] font-bold text-${accent}-400 bg-${accent}-500/10 px-2 py-0.5 rounded-full border border-${accent}-500/20`}
-                                    >
-                                        {format12h(slot.start)}
-                                    </span>
+                            <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
+                                <div className="flex-1 space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                            Start Time
+                                        </label>
+                                        <span
+                                            className={`text-[10px] font-bold text-${accent}-400 bg-${accent}-500/10 px-2 py-0.5 rounded-full border border-${accent}-500/20`}
+                                        >
+                                            {format12h(slot.start)}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="time"
+                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
+                                        value={slot.start}
+                                        onChange={(e) => updateSlot(index, "start", e.target.value)}
+                                    />
                                 </div>
-                                <input
-                                    type="time"
-                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
-                                    value={slot.start}
-                                    onChange={(e) => updateSlot(index, "start", e.target.value)}
-                                />
-                            </div>
-                            <div className="flex-1 space-y-2">
-                                <div className="flex justify-between items-center px-1">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                                        End Time
-                                    </label>
-                                    <span
-                                        className={`text-[10px] font-bold text-${accent}-400 bg-${accent}-500/10 px-2 py-0.5 rounded-full border border-${accent}-500/20`}
-                                    >
-                                        {format12h(slot.end)}
-                                    </span>
+                                <div className="flex-1 space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                            End Time
+                                        </label>
+                                        <span
+                                            className={`text-[10px] font-bold text-${accent}-400 bg-${accent}-500/10 px-2 py-0.5 rounded-full border border-${accent}-500/20`}
+                                        >
+                                            {format12h(slot.end)}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="time"
+                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
+                                        value={slot.end}
+                                        onChange={(e) => updateSlot(index, "end", e.target.value)}
+                                    />
                                 </div>
-                                <input
-                                    type="time"
-                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
-                                    value={slot.end}
-                                    onChange={(e) => updateSlot(index, "end", e.target.value)}
-                                />
+                                <div className="w-full md:w-36 space-y-2">
+                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1 block">
+                                        Cutoff (mins)
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        placeholder="None"
+                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold placeholder:text-gray-600 placeholder:font-normal"
+                                        value={slot.cutoffMinutes ?? ""}
+                                        onChange={(e) =>
+                                            updateSlot(
+                                                index,
+                                                "cutoffMinutes",
+                                                e.target.value === ""
+                                                    ? ""
+                                                    : Math.max(0, Number(e.target.value) || 0)
+                                            )
+                                        }
+                                    />
+                                </div>
+                                <button
+                                    onClick={() => {
+                                        const slotName = `${format12h(slot.start)} - ${format12h(slot.end)}`;
+                                        setConfirmModal({ isOpen: true, slotIdx: index, slotName });
+                                    }}
+                                    className="p-4 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-2xl border border-red-500/20 transition-all flex-shrink-0"
+                                >
+                                    <Trash size={18} />
+                                </button>
                             </div>
-                            <div className="w-full md:w-36 space-y-2">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1 block">
-                                    Cutoff (mins)
-                                </label>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold"
-                                    value={slot.cutoffMinutes ?? 30}
-                                    onChange={(e) =>
-                                        updateSlot(
-                                            index,
-                                            "cutoffMinutes",
-                                            Math.max(0, Number(e.target.value) || 0)
-                                        )
-                                    }
-                                />
+
+                            <div className="flex flex-col md:flex-row gap-4 items-start md:items-end pl-1">
+                                <div className="flex-1 space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                            Processing Window Start
+                                        </label>
+                                        <span
+                                            className={`text-[10px] font-bold text-${accent}-400 bg-${accent}-500/10 px-2 py-0.5 rounded-full border border-${accent}-500/20`}
+                                        >
+                                            {format12h(slot.processingStart)}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="time"
+                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
+                                        value={slot.processingStart || ""}
+                                        onChange={(e) =>
+                                            updateSlot(index, "processingStart", e.target.value)
+                                        }
+                                    />
+                                </div>
+                                <div className="flex-1 space-y-2">
+                                    <div className="flex justify-between items-center px-1">
+                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                            Processing Window End
+                                        </label>
+                                        <span
+                                            className={`text-[10px] font-bold text-${accent}-400 bg-${accent}-500/10 px-2 py-0.5 rounded-full border border-${accent}-500/20`}
+                                        >
+                                            {format12h(slot.processingEnd)}
+                                        </span>
+                                    </div>
+                                    <input
+                                        type="time"
+                                        className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
+                                        value={slot.processingEnd || ""}
+                                        onChange={(e) =>
+                                            updateSlot(index, "processingEnd", e.target.value)
+                                        }
+                                    />
+                                </div>
                             </div>
-                            <button
-                                onClick={() => {
-                                    const slotName = `${format12h(slot.start)} - ${format12h(slot.end)}`;
-                                    setConfirmModal({ isOpen: true, slotIdx: index, slotName });
-                                }}
-                                className="p-4 bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white rounded-2xl border border-red-500/20 transition-all flex-shrink-0"
-                            >
-                                <Trash size={18} />
-                            </button>
+                            <p className="text-[10px] text-gray-500 pl-1">
+                                Shown to customers when they pick this slot: &quot;your order will
+                                be processed between these times&quot;.
+                            </p>
                         </div>
                     ))}
                     {(slots || []).length === 0 && (

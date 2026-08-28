@@ -7,6 +7,7 @@ import { useUserAuth } from "../context/UserAuthContext";
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import CartDrawer from "./CartDrawer";
+import WhatsNewBell from "./WhatsNewBell";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { getISTTime } from "@/lib/dateUtils";
@@ -461,6 +462,8 @@ export default function Navbar() {
                                     </span>
                                 </Link>
                             ))}
+
+                        <WhatsNewBell />
 
                         <button
                             onClick={() => setIsCartOpen(true)}

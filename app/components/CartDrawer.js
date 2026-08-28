@@ -24,6 +24,7 @@ import { useState, useMemo, useEffect } from "react";
 
 import { serverTimestamp } from "firebase/firestore";
 import { createOrder } from "@/lib/repositories";
+import { trackPurchase } from "@/lib/analytics";
 import { checkoutCoupon } from "@/lib/functions";
 import { getISTTime, getISTObject } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
@@ -351,7 +352,7 @@ export default function CartDrawer() {
                 ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
             ];
 
-            await createOrder({
+            const orderId = await createOrder({
                 ...(authUser?.uid ? { userId: authUser.uid } : {}),
                 ...userDetails,
                 items: cartItems.map((item) => ({
@@ -374,6 +375,12 @@ export default function CartDrawer() {
                 finalTotal: finalTotal,
                 ...(deliverySlotRecord ? { deliverySlot: deliverySlotRecord } : {}),
                 createdAt: serverTimestamp(),
+            });
+
+            trackPurchase(orderId, {
+                items: cartItems,
+                value: finalTotal,
+                restaurantIds: uniqueRestaurantIds,
             });
 
             // Persist last order for duplicate guard

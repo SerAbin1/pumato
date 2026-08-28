@@ -14,6 +14,7 @@ import Skeleton, { MenuSkeleton } from "../components/Skeleton";
 import CustomSelect from "../components/CustomSelect";
 import ItemCustomizationModal from "../components/ItemCustomizationModal";
 import Fuse from "fuse.js";
+import { useTrackSearch } from "../hooks/useTrackSearch";
 
 // Simple seeded shuffle to keep order stable for the day
 const seededShuffle = (array, seed) => {
@@ -173,6 +174,12 @@ function RestaurantContent() {
 
         return finalMenu;
     }, [restaurant, searchQuery, filter, sortOrder]);
+
+    useTrackSearch(
+        searchQuery,
+        Object.values(processedMenu).reduce((n, items) => n + items.length, 0),
+        "restaurant"
+    );
 
     const toggleSection = (category) => {
         setCollapsedSections((prev) => ({

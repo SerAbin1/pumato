@@ -15,6 +15,7 @@ import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import Fuse from "fuse.js";
 import { where } from "firebase/firestore";
+import { useTrackSearch } from "../hooks/useTrackSearch";
 
 // Simple seeded shuffle to keep order stable for the day
 const seededShuffle = (array, seed) => {
@@ -210,6 +211,8 @@ export default function DeliveryPage() {
         setFilteredRestaurants(allMatchedRestaurants);
         setFilteredFoods(matchedFoods);
     }, [restaurants, searchQuery]);
+
+    useTrackSearch(searchQuery, filteredRestaurants.length + filteredFoods.length, "delivery");
 
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden">

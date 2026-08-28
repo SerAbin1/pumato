@@ -14,6 +14,7 @@ import { Search, Plus } from "lucide-react";
 import CustomSelect from "../components/CustomSelect";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { useTrackSearch } from "../hooks/useTrackSearch";
 
 function isListingLive(listing) {
     if (listing.isVisible === false) return false;
@@ -68,6 +69,8 @@ function MarketplaceContent() {
         }
         return [...items].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
     }, [listings, filter, searchQuery]);
+
+    useTrackSearch(searchQuery, filteredListings.length, "marketplace");
 
     if (id) {
         const listing = listings.find((l) => l.id === id);

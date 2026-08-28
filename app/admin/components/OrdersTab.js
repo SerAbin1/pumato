@@ -24,7 +24,32 @@ const SUB_TABS = [
     { id: "pending", label: "Pending" },
     { id: "inprogress", label: "In Progress" },
     { id: "past", label: "Picked Up / Done" },
+    { id: "preorders", label: "Pre-orders" },
 ];
+
+const isPreOrder = (order) => !!order.deliverySlot;
+
+// Sorts by actual delivery time where we have one (campus-level slots carry a real
+// date+start); legacy restaurant-level slots only carry a time-of-day label with no
+// date, so they sort by that time-of-day, after every dated campus slot.
+const preOrderSortKey = (order) => {
+    const slot = order.deliverySlot;
+    if (slot?.source === "campus" && slot.date && slot.start) {
+        return `0_${slot.date}T${slot.start}`;
+    }
+    if (slot?.source === "restaurant" && slot.label) {
+        const match = slot.label.match(/(\d+):(\d+)\s*(AM|PM)/i);
+        if (match) {
+            let h = parseInt(match[1], 10);
+            const m = parseInt(match[2], 10);
+            const ampm = match[3].toUpperCase();
+            if (ampm === "PM" && h !== 12) h += 12;
+            if (ampm === "AM" && h === 12) h = 0;
+            return `1_${String(h * 60 + m).padStart(4, "0")}`;
+        }
+    }
+    return "2_unknown";
+};
 
 const STATUS_INFO = {
     confirmed: { label: "Confirmed", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
@@ -376,18 +401,33 @@ export default function OrdersTab({
 }) {
     const [subTab, setSubTab] = useState("pending");
 
+    // Pre-orders (any order carrying a deliverySlot, campus- or restaurant-level) live
+    // only in their own tab — pulled out of Pending/In Progress/Past entirely so those
+    // queues only ever show orders that need attention right now.
+    const liveOrders = useMemo(() => orders.filter((o) => !isPreOrder(o)), [orders]);
+    const liveInProgressOrders = useMemo(
+        () => inProgressOrders.filter((o) => !isPreOrder(o)),
+        [inProgressOrders]
+    );
+    const livePastOrders = useMemo(() => pastOrders.filter((o) => !isPreOrder(o)), [pastOrders]);
+
+    const preOrders = useMemo(() => {
+        const all = [...orders, ...inProgressOrders, ...pastOrders].filter(isPreOrder);
+        return all.sort((a, b) => preOrderSortKey(a).localeCompare(preOrderSortKey(b)));
+    }, [orders, inProgressOrders, pastOrders]);
+
     // OOS orders float to top within the in-progress list
-    const sortedInProgress = [...inProgressOrders].sort((a, b) => {
+    const sortedInProgress = [...liveInProgressOrders].sort((a, b) => {
         if (a.status === "out_of_stock" && b.status !== "out_of_stock") return -1;
         if (b.status === "out_of_stock" && a.status !== "out_of_stock") return 1;
         return 0;
     });
 
-    // Calculate duplicate phones across ALL active orders (pending + in progress)
+    // Calculate duplicate phones across ALL active (non-pre-order) orders
     const duplicatePhones = useMemo(() => {
         const phoneCounts = {};
         const duplicated = new Set();
-        const activeOrders = [...orders, ...inProgressOrders];
+        const activeOrders = [...liveOrders, ...liveInProgressOrders];
 
         activeOrders.forEach((o) => {
             if (!o.phone) return;
@@ -398,7 +438,7 @@ export default function OrdersTab({
             }
         });
         return duplicated;
-    }, [orders, inProgressOrders]);
+    }, [liveOrders, liveInProgressOrders]);
 
     // Group duplicate pending orders side-by-side while preserving original time order
     // Passes through Firestore's createdAt order, but reorders duplicates to sit directly below their first occurrence
@@ -406,7 +446,7 @@ export default function OrdersTab({
         const result = [];
         const seen = new Set();
 
-        orders.forEach((order) => {
+        liveOrders.forEach((order) => {
             if (seen.has(order.phone)) {
                 const firstIdx = result.findIndex((o) => o.phone === order.phone);
                 result.splice(firstIdx + 1, 0, order);
@@ -417,14 +457,14 @@ export default function OrdersTab({
         });
 
         return result;
-    }, [orders]);
+    }, [liveOrders]);
 
     // Calculate duplicate location for each order: "same" = duplicate in pending (both in pending), "in_progress" = duplicate in in-progress tab
     const duplicateLocationMap = useMemo(() => {
         const map = {};
-        const inProgressPhones = new Set(inProgressOrders.map((o) => o.phone).filter(Boolean));
+        const inProgressPhones = new Set(liveInProgressOrders.map((o) => o.phone).filter(Boolean));
 
-        orders.forEach((order) => {
+        liveOrders.forEach((order) => {
             const phone = order.phone;
             if (!phone) return;
             if (duplicatePhones.has(phone)) {
@@ -434,12 +474,13 @@ export default function OrdersTab({
         });
 
         return map;
-    }, [orders, inProgressOrders, duplicatePhones]);
+    }, [liveOrders, liveInProgressOrders, duplicatePhones]);
 
     const tabCounts = {
-        pending: orders.length,
-        inprogress: inProgressOrders.length,
-        past: pastOrders.length,
+        pending: liveOrders.length,
+        inprogress: liveInProgressOrders.length,
+        past: livePastOrders.length,
+        preorders: preOrders.length,
     };
 
     if (loading) {
@@ -477,7 +518,9 @@ export default function OrdersTab({
                                         ? "bg-orange-500 text-white"
                                         : tab.id === "inprogress"
                                           ? "bg-blue-500/20 text-blue-400"
-                                          : "bg-gray-500/20 text-gray-400"
+                                          : tab.id === "preorders"
+                                            ? "bg-cyan-500/20 text-cyan-400"
+                                            : "bg-gray-500/20 text-gray-400"
                                 }`}
                             >
                                 {tabCounts[tab.id]}
@@ -533,11 +576,31 @@ export default function OrdersTab({
             {subTab === "past" && (
                 <div className="grid gap-6">
                     <AnimatePresence>
-                        {pastOrders.length === 0 ? (
+                        {livePastOrders.length === 0 ? (
                             <EmptyState message="No completed orders today yet." />
                         ) : (
-                            pastOrders.map((order) => (
+                            livePastOrders.map((order) => (
                                 <OrderCard key={order.id} order={order} user={user} />
+                            ))
+                        )}
+                    </AnimatePresence>
+                </div>
+            )}
+
+            {/* Pre-orders sub-tab — flat list across all statuses, soonest slot first */}
+            {subTab === "preorders" && (
+                <div className="grid gap-6">
+                    <AnimatePresence>
+                        {preOrders.length === 0 ? (
+                            <EmptyState message="No pre-orders scheduled right now." />
+                        ) : (
+                            preOrders.map((order) => (
+                                <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    showActions={order.status === "placed"}
+                                    user={user}
+                                />
                             ))
                         )}
                     </AnimatePresence>

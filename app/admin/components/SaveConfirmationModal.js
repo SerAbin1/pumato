@@ -17,7 +17,28 @@ const formatValue = (key, value) => {
                     .filter((s) => s.start && s.end)
                     .map((s) => `${s.start}–${s.end}`)
                     .join(", ");
-                return `${c.name}: ₹${c.deliveryCharge}${slots ? ` [${slots}]` : ""}`;
+                const preOrder = c.isPreOrderEnabled
+                    ? ` | Pre-order ON [${
+                          (c.preOrderSlots || [])
+                              .filter((s) => s.start && s.end)
+                              .map((s) => `${s.start}–${s.end} (cutoff ${s.cutoffMinutes}m)`)
+                              .join(", ") || "no slots"
+                      }]`
+                    : "";
+                return `${c.name}: ₹${c.deliveryCharge}${slots ? ` [${slots}]` : ""}${preOrder}`;
+            })
+            .join("\n");
+    }
+    if (key === "campusPreOrder" && Array.isArray(value)) {
+        if (value.length === 0) return "(empty)";
+        return value
+            .map((c) => {
+                if (!c.isPreOrderEnabled) return `${c.id}: OFF`;
+                const slots = (c.preOrderSlots || [])
+                    .filter((s) => s.start && s.end)
+                    .map((s) => `${s.start}–${s.end} (cutoff ${s.cutoffMinutes}m)`)
+                    .join(", ");
+                return `${c.id}: ON [${slots || "no slots"}]`;
             })
             .join("\n");
     }
@@ -46,6 +67,7 @@ const FIELD_LABELS = {
     heavyItems: "Heavy Items",
     heavyItemCharge: "Heavy Item Charge",
     deliveryCampusConfig: "Campus Delivery Config",
+    campusPreOrder: "Grocery Pre-order Config",
     manualOverride: "Service Override",
     whatsappNumber: "Food Delivery Number",
     laundryWhatsappNumber: "Laundry Number",

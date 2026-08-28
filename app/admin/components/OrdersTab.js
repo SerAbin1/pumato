@@ -17,6 +17,7 @@ import {
 import toast from "react-hot-toast";
 import { sendFcmNotification } from "@/lib/functions";
 import { formatTime } from "@/lib/dateUtils";
+import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import ConfirmModal from "@/app/components/ConfirmModal";
 
 const SUB_TABS = [
@@ -188,7 +189,7 @@ function OrderCard({
                         {order.deliverySlot && (
                             <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border text-cyan-400 bg-cyan-500/10 border-cyan-500/20 flex items-center gap-1">
                                 <Timer size={10} />
-                                {order.deliverySlot}
+                                {formatDeliverySlot(order.deliverySlot)}
                             </span>
                         )}
                         <TimeAgo date={order.createdAt} />

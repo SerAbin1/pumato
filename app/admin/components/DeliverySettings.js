@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Clock, Plus, Trash, Search, X } from "lucide-react";
 import FormInput from "./FormInput";
 import ServiceOverrideControl from "./ServiceOverrideControl";
+import PreOrderSlotEditor from "./PreOrderSlotEditor";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { format12h } from "@/lib/formatters";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -237,6 +238,41 @@ export default function DeliverySettings({
                                                         </div>
                                                     )}
                                                 </div>
+
+                                                <PreOrderSlotEditor
+                                                    isEnabled={!!campus.isPreOrderEnabled}
+                                                    onToggleEnabled={(next) => {
+                                                        const config = [
+                                                            ...(orderSettings.deliveryCampusConfig ||
+                                                                DEFAULT_CAMPUS_CONFIG),
+                                                        ];
+                                                        config[idx] = {
+                                                            ...config[idx],
+                                                            isPreOrderEnabled: next,
+                                                        };
+                                                        setOrderSettings({
+                                                            ...orderSettings,
+                                                            deliveryCampusConfig: config,
+                                                        });
+                                                    }}
+                                                    slots={campus.preOrderSlots || []}
+                                                    onSlotsChange={(preOrderSlots) => {
+                                                        const config = [
+                                                            ...(orderSettings.deliveryCampusConfig ||
+                                                                DEFAULT_CAMPUS_CONFIG),
+                                                        ];
+                                                        config[idx] = {
+                                                            ...config[idx],
+                                                            preOrderSlots,
+                                                        };
+                                                        setOrderSettings({
+                                                            ...orderSettings,
+                                                            deliveryCampusConfig: config,
+                                                        });
+                                                    }}
+                                                    label={`Pre-order Slots — ${campus.name}`}
+                                                    emptyText="No pre-order slots defined for this campus."
+                                                />
                                             </div>
                                         );
                                     }

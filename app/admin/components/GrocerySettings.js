@@ -1,9 +1,11 @@
-import { Tag, Clock, Plus, Trash, Timer } from "lucide-react";
+import { Tag, Clock, Plus, Trash } from "lucide-react";
 import { format12h } from "@/lib/formatters";
 
 import ServiceOverrideControl from "./ServiceOverrideControl";
+import PreOrderSlotEditor from "./PreOrderSlotEditor";
 import { useState } from "react";
 import ConfirmModal from "../../components/ConfirmModal";
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
 function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }) {
     const [confirmModal, setConfirmModal] = useState({
@@ -140,51 +142,54 @@ export default function GrocerySettings({ grocerySettings, setGrocerySettings })
                         emptyText="No service hours defined. Service will remain offline."
                     />
 
-                    <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-4">
-                        <div className="flex items-center justify-between gap-3">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full bg-cyan-500/10 flex items-center justify-center text-cyan-400 border border-cyan-500/20">
-                                    <Timer size={18} />
-                                </div>
-                                <div>
-                                    <h3 className="text-xl font-bold text-white">
-                                        Scheduled Pre-orders (when Offline)
-                                    </h3>
-                                    <p className="text-gray-400 text-sm">
-                                        Allow customers to schedule a delivery slot while the
-                                        service is offline.
-                                    </p>
-                                </div>
-                            </div>
-                            <button
-                                type="button"
-                                onClick={() =>
-                                    setGrocerySettings({
-                                        ...grocerySettings,
-                                        isDeliverySlotEnabled:
-                                            !grocerySettings.isDeliverySlotEnabled,
-                                    })
-                                }
-                                className={`relative w-14 h-8 rounded-full transition-all border flex-shrink-0 ${grocerySettings.isDeliverySlotEnabled ? "bg-cyan-500/80 border-cyan-400" : "bg-white/10 border-white/20"}`}
-                            >
-                                <span
-                                    className={`absolute top-1 w-6 h-6 rounded-full bg-white transition-all ${grocerySettings.isDeliverySlotEnabled ? "left-7" : "left-1"}`}
-                                />
-                            </button>
+                    <div className="space-y-6">
+                        <div>
+                            <h3 className="text-xl font-bold text-white">
+                                Pre-order Delivery Slots
+                            </h3>
+                            <p className="text-gray-400 text-sm mt-1">
+                                Configure per campus. When enabled for a campus, checkout there
+                                requires picking a slot — live/instant ordering is bypassed for that
+                                campus, same as it works for food.
+                            </p>
                         </div>
+                        {DEFAULT_CAMPUS_CONFIG.map((campusMeta) => {
+                            const campusPreOrder = grocerySettings.campusPreOrder || [];
+                            const idx = campusPreOrder.findIndex((c) => c.id === campusMeta.id);
+                            const cfg =
+                                idx >= 0
+                                    ? campusPreOrder[idx]
+                                    : {
+                                          id: campusMeta.id,
+                                          isPreOrderEnabled: false,
+                                          preOrderSlots: [],
+                                      };
+                            const updateCampus = (patch) => {
+                                const next = [...campusPreOrder];
+                                if (idx >= 0) {
+                                    next[idx] = { ...next[idx], ...patch };
+                                } else {
+                                    next.push({ ...cfg, ...patch });
+                                }
+                                setGrocerySettings({ ...grocerySettings, campusPreOrder: next });
+                            };
+                            return (
+                                <PreOrderSlotEditor
+                                    key={campusMeta.id}
+                                    isEnabled={!!cfg.isPreOrderEnabled}
+                                    onToggleEnabled={(next) =>
+                                        updateCampus({ isPreOrderEnabled: next })
+                                    }
+                                    slots={cfg.preOrderSlots || []}
+                                    onSlotsChange={(preOrderSlots) =>
+                                        updateCampus({ preOrderSlots })
+                                    }
+                                    label={`Pre-order Slots — ${campusMeta.name}`}
+                                    emptyText="No pre-order slots defined for this campus."
+                                />
+                            );
+                        })}
                     </div>
-
-                    {grocerySettings.isDeliverySlotEnabled && (
-                        <SlotEditor
-                            slots={grocerySettings.delivery_hours}
-                            onSlotsChange={(delivery_hours) =>
-                                setGrocerySettings({ ...grocerySettings, delivery_hours })
-                            }
-                            label="Delivery Hours (Pre-order Slots)"
-                            emptyText="No delivery hours defined. Add windows customers can schedule into."
-                            accent="cyan"
-                        />
-                    )}
                 </div>
             </div>
         </div>

@@ -22,20 +22,60 @@ import toast from "react-hot-toast";
 
 import { doc, getDoc } from "firebase/firestore";
 import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
-import { getISTTime } from "@/lib/dateUtils";
+import { getISTTime, getISTObject } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
-import { format12h } from "@/lib/formatters";
+import { getAvailablePreOrderSlots, formatDeliverySlot } from "@/lib/preOrderSlots";
 
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
     const [isLive, setIsLive] = useState(true);
-    const [selectedSlot, setSelectedSlot] = useState("");
+    const [selectedSlot, setSelectedSlot] = useState(null);
     const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
 
     const serviceHours = useMemo(() => grocerySettings?.service_hours ?? [], [grocerySettings]);
-    const deliveryHours = useMemo(() => grocerySettings?.delivery_hours ?? [], [grocerySettings]);
-    const preOrderEnabled = !!grocerySettings?.isDeliverySlotEnabled && deliveryHours.length > 0;
-    const preOrderMode = !isLive && preOrderEnabled;
+
+    const [formData, setFormData] = useState({
+        name: "",
+        phone: "",
+        campus: "",
+        hostel: "",
+    });
+
+    const campusPreOrderCfg = useMemo(() => {
+        const list = grocerySettings?.campusPreOrder || [];
+        return (
+            list.find((c) => c.id === formData.campus) || {
+                isPreOrderEnabled: false,
+                preOrderSlots: [],
+            }
+        );
+    }, [grocerySettings, formData.campus]);
+
+    // Re-render periodically so pre-order slot occurrences roll over while the form stays open.
+    const [nowTick, setNowTick] = useState(0);
+    useEffect(() => {
+        const id = setInterval(() => setNowTick((t) => t + 1), 60000);
+        return () => clearInterval(id);
+    }, []);
+
+    const availablePreOrderSlots = useMemo(
+        () =>
+            campusPreOrderCfg.isPreOrderEnabled
+                ? getAvailablePreOrderSlots(campusPreOrderCfg.preOrderSlots, getISTObject())
+                : [],
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [campusPreOrderCfg, nowTick]
+    );
+
+    // Enabling pre-order for a campus makes slot-picking the only checkout path there —
+    // same bypass-of-"is the store live" behavior as food (see app/components/CartDrawer.js).
+    const preOrderMode = !!campusPreOrderCfg.isPreOrderEnabled;
+
+    // Whether ANY campus offers pre-order — used to decide whether the whole form (including
+    // the campus picker) should stay reachable while offline, before a campus is even chosen.
+    const anyCampusPreOrderAvailable = (grocerySettings?.campusPreOrder || []).some(
+        (c) => c.isPreOrderEnabled
+    );
 
     useEffect(() => {
         const checkLiveStatus = () => {
@@ -52,15 +92,8 @@ export default function GroceryPage() {
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        if (!preOrderMode) setSelectedSlot("");
-    }, [preOrderMode]);
-
-    const [formData, setFormData] = useState({
-        name: "",
-        phone: "",
-        campus: "",
-        hostel: "",
-    });
+        setSelectedSlot(null);
+    }, [preOrderMode, formData.campus]);
 
     // 1. Load from localStorage on mount
     useEffect(() => {
@@ -154,6 +187,11 @@ export default function GroceryPage() {
             return;
         }
 
+        if (!isLive && !preOrderMode) {
+            toast.error("Grocery delivery isn't available for this campus right now.");
+            return;
+        }
+
         if (preOrderMode && !selectedSlot) {
             toast.error("Please select a delivery slot for your pre-order.");
             return;
@@ -173,7 +211,7 @@ export default function GroceryPage() {
         message += `Hostel: ${trimmedHostel}\n`;
 
         if (preOrderMode && selectedSlot) {
-            message += `\n*Delivery Slot (Pre-order):* ${selectedSlot}\n`;
+            message += `\n*Delivery Slot (Pre-order):* ${formatDeliverySlot({ source: "campus", ...selectedSlot })}\n`;
         }
 
         message += `\n*Grocery List:*\n`;
@@ -185,10 +223,13 @@ export default function GroceryPage() {
         window.open(whatsappUrl, "_blank");
 
         if (preOrderMode && selectedSlot) {
-            toast.success(`Pre-order scheduled! Delivery expected during ${selectedSlot}`, {
-                duration: 5000,
-                icon: "🕐",
-            });
+            toast.success(
+                `Pre-order scheduled! Delivery expected during ${formatDeliverySlot({ source: "campus", ...selectedSlot })}`,
+                {
+                    duration: 5000,
+                    icon: "🕐",
+                }
+            );
         }
     };
 
@@ -246,8 +287,9 @@ export default function GroceryPage() {
                     {/* Glass Shine */}
                     <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
 
-                    {/* Offline Overlay (only when pre-ordering is not available) */}
-                    {!isLive && !preOrderEnabled && (
+                    {/* Offline Overlay — only when NO campus offers pre-order, so the campus
+                        picker below stays reachable whenever at least one campus might unlock it */}
+                    {!isLive && !anyCampusPreOrderAvailable && (
                         <div className="absolute inset-0 z-50 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center text-center p-8">
                             <div className="bg-red-500/10 p-4 rounded-full border border-red-500/20 mb-4 animate-pulse">
                                 <Clock size={48} className="text-red-500" />
@@ -263,13 +305,13 @@ export default function GroceryPage() {
                         </div>
                     )}
 
-                    {/* Pre-order Notice (service offline but scheduling enabled) */}
+                    {/* Pre-order Notice (this campus requires scheduling, live or not) */}
                     {preOrderMode && (
                         <div className="relative z-10 mb-6 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl p-4 flex items-start gap-3">
                             <Timer size={20} className="text-cyan-400 flex-shrink-0 mt-0.5" />
                             <div>
                                 <p className="text-cyan-300 font-bold text-sm">
-                                    Service Offline — Schedule a Pre-order
+                                    Pre-order now, delivered at your chosen time
                                 </p>
                                 <p className="text-gray-400 text-xs mt-1">
                                     Pick a delivery window below and we&apos;ll deliver your order
@@ -279,9 +321,19 @@ export default function GroceryPage() {
                         </div>
                     )}
 
+                    {/* Chosen campus has no pre-order and the store isn't live right now */}
+                    {!isLive && !preOrderMode && formData.campus && (
+                        <div className="relative z-10 mb-6 bg-red-500/10 border border-red-500/20 rounded-2xl p-4 flex items-start gap-3">
+                            <AlertCircle size={20} className="text-red-400 flex-shrink-0 mt-0.5" />
+                            <p className="text-red-300 text-sm font-medium">
+                                Grocery delivery isn&apos;t available for this campus right now.
+                            </p>
+                        </div>
+                    )}
+
                     <form
                         onSubmit={handleSubmit}
-                        className={`space-y-8 ${!isLive && !preOrderEnabled ? "opacity-20 pointer-events-none" : ""}`}
+                        className={`space-y-8 ${!isLive && !anyCampusPreOrderAvailable ? "opacity-20 pointer-events-none" : ""}`}
                     >
                         {/* Personal Details */}
                         <div className="space-y-6">
@@ -460,31 +512,51 @@ export default function GroceryPage() {
                         </div>
 
                         {/* Delivery Slot Selection (Pre-order) */}
-                        {preOrderMode && deliveryHours.length > 0 && (
+                        {preOrderMode && (
                             <div className="space-y-2">
                                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
                                     <Timer size={14} className="text-cyan-500" />
                                     Delivery Time Slot
                                 </label>
-                                <div className="grid grid-cols-2 gap-2">
-                                    {deliveryHours.map((slot, idx) => {
-                                        const label = `${format12h(slot.start)} - ${format12h(slot.end)}`;
-                                        return (
-                                            <button
-                                                key={idx}
-                                                type="button"
-                                                onClick={() => setSelectedSlot(label)}
-                                                className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${selectedSlot === label ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400" : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"}`}
-                                            >
-                                                {label}
-                                            </button>
-                                        );
-                                    })}
-                                </div>
-                                {selectedSlot && (
-                                    <p className="text-[10px] text-cyan-400/70 font-medium pl-1">
-                                        Your pre-order will be delivered during {selectedSlot}
+                                {availablePreOrderSlots.length === 0 ? (
+                                    <p className="text-xs text-orange-400 bg-orange-500/10 px-3 py-2 rounded-xl border border-orange-500/20">
+                                        No pre-order delivery slots available right now. Please
+                                        check back later.
                                     </p>
+                                ) : (
+                                    <>
+                                        <div className="grid grid-cols-2 gap-2">
+                                            {availablePreOrderSlots.map((entry) => {
+                                                const isSelected =
+                                                    selectedSlot &&
+                                                    selectedSlot.date === entry.date &&
+                                                    selectedSlot.start === entry.start;
+                                                const label = formatDeliverySlot({
+                                                    source: "campus",
+                                                    ...entry,
+                                                });
+                                                return (
+                                                    <button
+                                                        key={`${entry.date}_${entry.start}`}
+                                                        type="button"
+                                                        onClick={() => setSelectedSlot(entry)}
+                                                        className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${isSelected ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400" : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"}`}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                        {selectedSlot && (
+                                            <p className="text-[10px] text-cyan-400/70 font-medium pl-1">
+                                                Your pre-order will be delivered during{" "}
+                                                {formatDeliverySlot({
+                                                    source: "campus",
+                                                    ...selectedSlot,
+                                                })}
+                                            </p>
+                                        )}
+                                    </>
                                 )}
                             </div>
                         )}

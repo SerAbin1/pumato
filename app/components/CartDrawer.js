@@ -20,13 +20,19 @@ import { useCart } from "../context/CartContext";
 import { useUserAuth } from "../context/UserAuthContext";
 import { useRestaurants } from "../hooks/useCartData";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 
 import { serverTimestamp } from "firebase/firestore";
 import { createOrder } from "@/lib/repositories";
 import { checkoutCoupon } from "@/lib/functions";
-import { getISTTime } from "@/lib/dateUtils";
+import { getISTTime, getISTObject } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
+import {
+    getAvailablePreOrderSlots,
+    isPreOrderSlotSelectionValid,
+    buildDeliverySlotFromOccurrence,
+    formatDeliverySlot,
+} from "@/lib/preOrderSlots";
 import toast from "react-hot-toast";
 
 const format12h = (time24) => {
@@ -65,6 +71,7 @@ export default function CartDrawer() {
         minOrderShortfalls,
         campusConfig,
         hasHeavyItems,
+        getCampusPreOrderConfig,
     } = useCart();
     const { user: authUser } = useUserAuth();
     const { restaurants } = useRestaurants();
@@ -77,17 +84,33 @@ export default function CartDrawer() {
     const [isApplying, setIsApplying] = useState(false);
     const [checkoutError, setCheckoutError] = useState(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState("");
+    const [selectedSlot, setSelectedSlot] = useState(null);
 
     const resetCheckoutState = () => {
         setIsCheckingOut(false);
         setCouponMsg(null);
         setInputCode("");
         setCheckoutError(null);
-        setSelectedSlot("");
+        setSelectedSlot(null);
     };
 
+    // Re-render periodically so pre-order slot occurrences roll over while the drawer stays open.
+    const [nowTick, setNowTick] = useState(0);
+    useEffect(() => {
+        const id = setInterval(() => setNowTick((t) => t + 1), 60000);
+        return () => clearInterval(id);
+    }, []);
+
+    const selectedCampusPreOrder = useMemo(
+        () => getCampusPreOrderConfig(userDetails.campus),
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+        [userDetails.campus, orderSettings]
+    );
+    const isCampusPreOrderMode = !!selectedCampusPreOrder.isPreOrderEnabled;
+
     const isStoreOpen = useMemo(() => {
+        // A pre-order-enabled campus is bookable purely on slot cutoffs — "Ordering Hours" is irrelevant there.
+        if (isCampusPreOrderMode) return true;
         if (!isCartOpen) return true;
         const { timeInMinutes } = getISTTime();
         const campusConfig = orderSettings?.deliveryCampusConfig || [];
@@ -98,10 +121,22 @@ export default function CartDrawer() {
             ? selectedCampus.slots || []
             : campusConfig.flatMap((c) => c.slots || []);
         return isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes);
-    }, [isCartOpen, orderSettings, userDetails.campus]);
+    }, [isCartOpen, orderSettings, userDetails.campus, isCampusPreOrderMode]);
 
-    // Compute available delivery slots from cart restaurants
+    // Compute available delivery slots — campus-level pre-order takes over entirely when enabled
+    // for the buyer's campus, even if a cart restaurant also has its own slots.
     const { availableSlots, requiresSlot } = useMemo(() => {
+        if (isCampusPreOrderMode) {
+            const nowIST = getISTObject();
+            return {
+                availableSlots: getAvailablePreOrderSlots(
+                    selectedCampusPreOrder.preOrderSlots,
+                    nowIST
+                ),
+                requiresSlot: true,
+            };
+        }
+
         const restaurantIds = [
             ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
         ];
@@ -128,7 +163,13 @@ export default function CartDrawer() {
         });
 
         return { availableSlots: sorted, requiresSlot: true };
-    }, [cartItems, restaurants]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isCampusPreOrderMode, selectedCampusPreOrder, cartItems, restaurants, nowTick]);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setSelectedSlot(null);
+    }, [userDetails.campus, isCampusPreOrderMode]);
 
     const handleApplyCoupon = async () => {
         if (!inputCode.trim()) return;
@@ -163,6 +204,32 @@ export default function CartDrawer() {
             setCheckoutError("Please select a delivery time slot.");
             return;
         }
+
+        if (requiresSlot && isCampusPreOrderMode) {
+            const nowIST = getISTObject();
+            if (
+                !isPreOrderSlotSelectionValid(
+                    selectedSlot,
+                    selectedCampusPreOrder.preOrderSlots,
+                    nowIST
+                )
+            ) {
+                setCheckoutError(
+                    "Your selected delivery slot is no longer available. Please pick another."
+                );
+                setSelectedSlot(null);
+                return;
+            }
+        }
+
+        const deliverySlotRecord = !selectedSlot
+            ? null
+            : isCampusPreOrderMode
+              ? buildDeliverySlotFromOccurrence(
+                    selectedSlot,
+                    selectedCampusPreOrder.id || userDetails.campus
+                )
+              : { source: "restaurant", label: selectedSlot };
 
         setIsCheckingOut(true);
         setCheckoutError(null);
@@ -305,7 +372,7 @@ export default function CartDrawer() {
                 deliveryCharge: deliveryCharge,
                 discount: discount || 0,
                 finalTotal: finalTotal,
-                ...(selectedSlot ? { deliverySlot: selectedSlot } : {}),
+                ...(deliverySlotRecord ? { deliverySlot: deliverySlotRecord } : {}),
                 createdAt: serverTimestamp(),
             });
 
@@ -331,16 +398,19 @@ export default function CartDrawer() {
                 couponCode,
                 paymentQR,
                 upiId,
-                deliverySlot: selectedSlot,
+                deliverySlot: deliverySlotRecord,
             });
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.location.href = whatsappUrl;
 
-            if (selectedSlot) {
-                toast.success(`Order placed! Delivery expected during ${selectedSlot}`, {
-                    duration: 5000,
-                    icon: "🕐",
-                });
+            if (deliverySlotRecord) {
+                toast.success(
+                    `Order placed! Delivery expected during ${formatDeliverySlot(deliverySlotRecord)}`,
+                    {
+                        duration: 5000,
+                        icon: "🕐",
+                    }
+                );
             }
             setIsCartOpen(false);
             resetCheckoutState();
@@ -834,7 +904,7 @@ export default function CartDrawer() {
                                                 </div>
 
                                                 {/* Delivery Slot Selection */}
-                                                {requiresSlot && availableSlots.length > 0 && (
+                                                {requiresSlot && (
                                                     <div className="space-y-2">
                                                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
                                                             <Timer
@@ -843,29 +913,71 @@ export default function CartDrawer() {
                                                             />
                                                             Delivery Time Slot
                                                         </label>
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            {availableSlots.map((slot) => (
-                                                                <button
-                                                                    key={slot}
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        setSelectedSlot(slot)
-                                                                    }
-                                                                    className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${
-                                                                        selectedSlot === slot
-                                                                            ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400"
-                                                                            : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
-                                                                    }`}
-                                                                >
-                                                                    {slot}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                        {selectedSlot && (
-                                                            <p className="text-[10px] text-cyan-400/70 font-medium pl-1">
-                                                                Your order will be delivered during{" "}
-                                                                {selectedSlot}
+                                                        {availableSlots.length === 0 ? (
+                                                            <p className="text-xs text-orange-400 bg-orange-500/10 px-3 py-2 rounded-xl border border-orange-500/20">
+                                                                No pre-order delivery slots
+                                                                available right now. Please check
+                                                                back later.
                                                             </p>
+                                                        ) : (
+                                                            <>
+                                                                <div className="grid grid-cols-2 gap-2">
+                                                                    {availableSlots.map((entry) => {
+                                                                        const isSelected =
+                                                                            isCampusPreOrderMode
+                                                                                ? selectedSlot &&
+                                                                                  selectedSlot.date ===
+                                                                                      entry.date &&
+                                                                                  selectedSlot.start ===
+                                                                                      entry.start
+                                                                                : selectedSlot ===
+                                                                                  entry;
+                                                                        const label =
+                                                                            isCampusPreOrderMode
+                                                                                ? formatDeliverySlot(
+                                                                                      {
+                                                                                          source: "campus",
+                                                                                          ...entry,
+                                                                                      }
+                                                                                  )
+                                                                                : entry;
+                                                                        const key =
+                                                                            isCampusPreOrderMode
+                                                                                ? `${entry.date}_${entry.start}`
+                                                                                : entry;
+                                                                        return (
+                                                                            <button
+                                                                                key={key}
+                                                                                type="button"
+                                                                                onClick={() =>
+                                                                                    setSelectedSlot(
+                                                                                        entry
+                                                                                    )
+                                                                                }
+                                                                                className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${
+                                                                                    isSelected
+                                                                                        ? "bg-cyan-500/20 border-cyan-500/50 text-cyan-400"
+                                                                                        : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                                                                                }`}
+                                                                            >
+                                                                                {label}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+                                                                {selectedSlot && (
+                                                                    <p className="text-[10px] text-cyan-400/70 font-medium pl-1">
+                                                                        Your order will be delivered
+                                                                        during{" "}
+                                                                        {isCampusPreOrderMode
+                                                                            ? formatDeliverySlot({
+                                                                                  source: "campus",
+                                                                                  ...selectedSlot,
+                                                                              })
+                                                                            : selectedSlot}
+                                                                    </p>
+                                                                )}
+                                                            </>
                                                         )}
                                                     </div>
                                                 )}

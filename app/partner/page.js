@@ -17,6 +17,7 @@ import {
 } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
+import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import { updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import {
@@ -83,7 +84,7 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
                     {order.deliverySlot && (
                         <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border text-cyan-400 bg-cyan-500/10 border-cyan-500/20 flex items-center gap-1">
                             <Timer size={10} />
-                            {order.deliverySlot}
+                            {formatDeliverySlot(order.deliverySlot)}
                         </span>
                     )}
                 </div>
@@ -564,7 +565,7 @@ export default function PartnerDashboard() {
                                                     {order.deliverySlot && (
                                                         <span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border text-cyan-400 bg-cyan-500/10 border-cyan-500/20 flex items-center gap-1">
                                                             <Timer size={10} />
-                                                            {order.deliverySlot}
+                                                            {formatDeliverySlot(order.deliverySlot)}
                                                         </span>
                                                     )}
                                                 </div>

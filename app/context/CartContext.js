@@ -139,6 +139,8 @@ export function CartProvider({ children }) {
 
     const removeCoupon = () => dispatch({ type: "REMOVE_COUPON" });
     const getCampusSlots = (campusId) => Pricing.getCampusSlots(orderSettings, campusId);
+    const getCampusPreOrderConfig = (campusId) =>
+        Pricing.getCampusPreOrderConfig(orderSettings, campusId);
 
     return (
         <CartContext.Provider
@@ -179,6 +181,7 @@ export function CartProvider({ children }) {
                 applyCoupon,
                 removeCoupon,
                 getCampusSlots,
+                getCampusPreOrderConfig,
 
                 // Constants/Config (Passthrough)
                 paymentQR: orderSettings?.paymentQR,

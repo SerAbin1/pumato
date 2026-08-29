@@ -110,6 +110,7 @@ export default function AdminPage() {
     // Baseline snapshots from Firestore — used to compute diff on save
     const [baselineDelivery, setBaselineDelivery] = useState(null);
     const [baselineGlobal, setBaselineGlobal] = useState(null);
+    const [baselineGrocery, setBaselineGrocery] = useState(null);
 
     // Save confirmation modal state
     const [saveConfirm, setSaveConfirm] = useState({
@@ -423,7 +424,9 @@ export default function AdminPage() {
                 doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.GROCERY_SETTINGS)
             );
             if (groceryDoc.exists()) {
-                setGrocerySettings(groceryDoc.data());
+                const groceryData = groceryDoc.data();
+                setGrocerySettings(groceryData);
+                setBaselineGrocery(groceryData);
             }
         } catch (error) {
             console.error("Error fetching data:", error);
@@ -498,19 +501,23 @@ export default function AdminPage() {
 
     const handleSaveGlobalSettings = async () => {
         const diff = computeDiff(baselineGlobal, globalSettings);
-        if (Object.keys(diff).length === 0) return;
+        const groceryDiff = computeDiff(baselineGrocery, grocerySettings);
+        if (Object.keys(diff).length === 0 && Object.keys(groceryDiff).length === 0) return;
         setSaveConfirm({
             isOpen: true,
             title: "Global Settings",
-            data: diff,
+            data: { ...diff, ...groceryDiff },
             onSave: async () => {
                 setIsSaving(true);
                 try {
                     await Promise.all([
-                        saveOrderSettings(diff),
-                        saveGrocerySettings(grocerySettings),
+                        ...(Object.keys(diff).length > 0 ? [saveOrderSettings(diff)] : []),
+                        ...(Object.keys(groceryDiff).length > 0
+                            ? [saveGrocerySettings(grocerySettings)]
+                            : []),
                     ]);
                     setBaselineGlobal({ ...globalSettings });
+                    setBaselineGrocery({ ...grocerySettings });
                     toast.success("Settings saved!");
                 } catch (error) {
                     console.error("Error saving settings:", error);

@@ -15,27 +15,7 @@ import CustomSelect from "../components/CustomSelect";
 import ItemCustomizationModal from "../components/ItemCustomizationModal";
 import Fuse from "fuse.js";
 import { useTrackSearch } from "../hooks/useTrackSearch";
-
-// Simple seeded shuffle to keep order stable for the day
-const seededShuffle = (array, seed) => {
-    let m = array.length,
-        t,
-        i;
-    const random = (s) => {
-        const x = Math.sin(s++) * 10000;
-        return x - Math.floor(x);
-    };
-
-    const shuffled = [...array];
-    let s = seed;
-    while (m) {
-        i = Math.floor(random(s++) * m--);
-        t = shuffled[m];
-        shuffled[m] = shuffled[i];
-        shuffled[i] = t;
-    }
-    return shuffled;
-};
+import { seededShuffle } from "@/lib/shuffle";
 
 function RestaurantContent() {
     const searchParams = useSearchParams();

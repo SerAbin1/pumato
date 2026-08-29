@@ -15,6 +15,7 @@ import CustomSelect from "../components/CustomSelect";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useTrackSearch } from "../hooks/useTrackSearch";
+import { seededShuffle } from "@/lib/shuffle";
 
 function isListingLive(listing) {
     if (listing.isVisible === false) return false;
@@ -67,7 +68,8 @@ function MarketplaceContent() {
             const query = searchQuery.toLowerCase().trim();
             items = items.filter((l) => l.itemName?.toLowerCase().includes(query));
         }
-        return [...items].sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+        const seed = new Date().getDate();
+        return seededShuffle(items, seed);
     }, [listings, filter, searchQuery]);
 
     useTrackSearch(searchQuery, filteredListings.length, "marketplace");

@@ -16,28 +16,7 @@ import { RestaurantSkeleton } from "../components/Skeleton";
 import Fuse from "fuse.js";
 import { where } from "firebase/firestore";
 import { useTrackSearch } from "../hooks/useTrackSearch";
-
-// Simple seeded shuffle to keep order stable for the day
-const seededShuffle = (array, seed) => {
-    let m = array.length,
-        t,
-        i;
-    // Simple seeded pseudo-random generator
-    const random = (s) => {
-        const x = Math.sin(s++) * 10000;
-        return x - Math.floor(x);
-    };
-
-    const shuffled = [...array];
-    let s = seed;
-    while (m) {
-        i = Math.floor(random(s++) * m--);
-        t = shuffled[m];
-        shuffled[m] = shuffled[i];
-        shuffled[i] = t;
-    }
-    return shuffled;
-};
+import { seededShuffle } from "@/lib/shuffle";
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();

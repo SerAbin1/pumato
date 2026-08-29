@@ -1,6 +1,16 @@
-const admin = require("firebase-admin");
-const serviceAccount = require("./test-pumato-firebase-adminsdk-fbsvc-c9312153a9.json");
-const readline = require("readline");
+import admin from "firebase-admin";
+const serviceAccount = JSON.parse(
+    fs.readFileSync(
+        path.resolve(
+            process.cwd(),
+            "../../Downloads/test-pumato-firebase-adminsdk-fbsvc-0921cd2be0.json"
+        ),
+        "utf-8"
+    )
+);
+import fs from "fs";
+import path from "path";
+import readline from "readline";
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -9,11 +19,11 @@ admin.initializeApp({
 const db = admin.firestore();
 const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
 });
 
 const askQuestion = (query) => {
-    return new Promise(resolve => rl.question(query, resolve));
+    return new Promise((resolve) => rl.question(query, resolve));
 };
 
 (async () => {
@@ -26,7 +36,7 @@ const askQuestion = (query) => {
         }
 
         const restaurants = [];
-        snapshot.forEach(doc => {
+        snapshot.forEach((doc) => {
             restaurants.push({ id: doc.id, ...doc.data() });
         });
 
@@ -59,7 +69,7 @@ const askQuestion = (query) => {
             user = await admin.auth().getUserByEmail(email);
             console.log(`\nUser ${email} already exists. Updating claims...`);
         } catch (error) {
-            if (error.code === 'auth/user-not-found') {
+            if (error.code === "auth/user-not-found") {
                 console.log(`\nCreating new user ${email}...`);
                 user = await admin.auth().createUser({
                     email,
@@ -72,14 +82,13 @@ const askQuestion = (query) => {
 
         await admin.auth().setCustomUserClaims(user.uid, {
             restaurantId: selectedRestaurant.id,
-            partner: true
+            partner: true,
         });
 
         console.log("\n✅ Success! Partner account configured.");
         console.log(`User: ${email}`);
         console.log(`Assigned Restaurant: ${selectedRestaurant.name}`);
         console.log("You can now login at /partner/login");
-
     } catch (error) {
         console.error("Error:", error.message);
     } finally {

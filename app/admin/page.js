@@ -343,11 +343,16 @@ export default function AdminPage() {
             const [resSnap, promoRes] = await Promise.all([
                 getDocs(collection(db, COLLECTIONS.RESTAURANTS)),
                 (async () => {
-                    const idToken = await user.getIdToken();
-                    return manageCoupons(
-                        { action: "FETCH_ALL" },
-                        { authorization: `Bearer ${idToken}` }
-                    );
+                    try {
+                        const idToken = await user.getIdToken();
+                        return await manageCoupons(
+                            { action: "FETCH_ALL" },
+                            { authorization: `Bearer ${idToken}` }
+                        );
+                    } catch (err) {
+                        console.error("Failed to fetch coupons", err);
+                        return { data: [] };
+                    }
                 })(),
             ]);
 

@@ -5,7 +5,15 @@ import { useSearchParams } from "next/navigation";
 import { useCart } from "@/app/context/CartContext";
 import Navbar from "@/app/components/Navbar";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Search, ShoppingBag, ChevronDown, Utensils, ArrowUpDown } from "lucide-react";
+import {
+    ArrowLeft,
+    Search,
+    ShoppingBag,
+    ChevronDown,
+    Utensils,
+    ArrowUpDown,
+    Heart,
+} from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import useFirestore from "@/app/hooks/useFirestore";
@@ -16,6 +24,8 @@ import ItemCustomizationModal from "../components/ItemCustomizationModal";
 import Fuse from "fuse.js";
 import { useTrackSearch } from "../hooks/useTrackSearch";
 import { seededShuffle } from "@/lib/shuffle";
+import { useUserAuth } from "@/app/context/UserAuthContext";
+import { useFavourites } from "@/app/hooks/useFavourites";
 
 function RestaurantContent() {
     const searchParams = useSearchParams();
@@ -30,6 +40,8 @@ function RestaurantContent() {
     const [customizingItem, setCustomizingItem] = useState(null);
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
+    const { user: authUser } = useUserAuth();
+    const { isFavourite, toggle: toggleFavourite } = useFavourites(authUser);
     const { getDocument } = useFirestore();
     const highlight = searchParams.get("highlight");
 
@@ -488,6 +500,39 @@ function RestaurantContent() {
                                                                             </span>
                                                                         )}
                                                                     </div>
+                                                                    <button
+                                                                        onClick={() =>
+                                                                            toggleFavourite({
+                                                                                restaurantId:
+                                                                                    restaurant.id,
+                                                                                itemId: item.id,
+                                                                                name: item.name,
+                                                                            })
+                                                                        }
+                                                                        aria-label={
+                                                                            isFavourite({
+                                                                                restaurantId:
+                                                                                    restaurant.id,
+                                                                                itemId: item.id,
+                                                                            })
+                                                                                ? `Remove ${item.name} from favourites`
+                                                                                : `Save ${item.name} to favourites`
+                                                                        }
+                                                                        className="p-1.5 -m-1.5 rounded-full hover:bg-white/10 transition-colors shrink-0"
+                                                                    >
+                                                                        <Heart
+                                                                            size={18}
+                                                                            className={
+                                                                                isFavourite({
+                                                                                    restaurantId:
+                                                                                        restaurant.id,
+                                                                                    itemId: item.id,
+                                                                                })
+                                                                                    ? "text-red-500 fill-red-500"
+                                                                                    : "text-gray-600 hover:text-gray-400"
+                                                                            }
+                                                                        />
+                                                                    </button>
                                                                 </div>
                                                                 <h4 className="font-bold text-white text-base md:text-lg mb-1 group-hover:text-orange-400 transition-colors">
                                                                     {item.name}

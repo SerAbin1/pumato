@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import { sendFcmNotification } from "@/lib/functions";
 import { formatTime } from "@/lib/dateUtils";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
+import { displayOrderNumber } from "@/lib/formatters";
 import ConfirmModal from "@/app/components/ConfirmModal";
 
 const SUB_TABS = [
@@ -196,7 +197,7 @@ function OrderCard({
                 onClose={() => setShowAckModal(false)}
                 onConfirm={handleAcknowledge}
                 title="Acknowledge OOS Order?"
-                message={`This will dismiss the out-of-stock alert for order #${order.id?.slice(-6).toUpperCase()}. It will be removed from the In Progress tab.`}
+                message={`This will dismiss the out-of-stock alert for order ${displayOrderNumber(order)}. It will be removed from the In Progress tab.`}
                 confirmLabel="Yes, Dismiss"
                 cancelLabel="Cancel"
                 isDanger={false}
@@ -206,6 +207,9 @@ function OrderCard({
                 {/* Left: order details */}
                 <div className="flex-1 p-6 space-y-4">
                     <div className="flex items-center gap-3">
+                        <span className="text-xs font-black tracking-widest text-white">
+                            {displayOrderNumber(order)}
+                        </span>
                         <span
                             className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
                         >

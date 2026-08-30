@@ -357,7 +357,7 @@ export default function CartDrawer() {
                 ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
             ];
 
-            const orderId = await createOrder({
+            const { id: orderId, orderNumber } = await createOrder({
                 ...(authUser?.uid ? { userId: authUser.uid } : {}),
                 ...userDetails,
                 items: cartItems.map((item) => ({
@@ -411,6 +411,7 @@ export default function CartDrawer() {
                 paymentQR,
                 upiId,
                 deliverySlot: deliverySlotRecord,
+                orderNumber,
             });
             const whatsappUrl = `https://wa.me/${foodDeliveryNumber}?text=${message}`;
             window.location.href = whatsappUrl;

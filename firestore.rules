@@ -75,6 +75,19 @@ service cloud.firestore {
         && resource.data.deliveryPartnerUid == request.auth.uid;
     }
 
+    // --- Counters: public read + guarded bump ---
+    // Anonymous checkout runs the order-number transaction, so the write has to be
+    // open; the rule pins it to a +1 bump of `last` and nothing else, so a client
+    // can burn a number but can't set an arbitrary one or wind the counter back.
+    match /counters/{name} {
+      allow read: if true;
+      allow create, update: if request.resource.data.keys().hasOnly(['last'])
+        && request.resource.data.last is int
+        && (resource == null
+              ? request.resource.data.last == 1
+              : request.resource.data.last == resource.data.last + 1);
+    }
+
     // --- FCM Tokens: own user only ---
     match /fcm_tokens/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;

@@ -13,6 +13,8 @@
         "prepare": "husky",
         "deploy": "dotenv -e .env.production pnpm run build && firebase deploy",
         "deploy:rules": "firebase deploy --only firestore:rules,storage",
+        "deploy:index": "firebase deploy --only firestore:indexes",
+        "deploy:backend": "firebase deploy --only firestore:rules,firestore:indexes,storage",
         "test:e2e": "dotenv -e .env.test -- playwright test",
         "test:ui": "dotenv -e .env.test -- playwright test --ui",
         "test:debug": "dotenv -e .env.test -- playwright test --debug",

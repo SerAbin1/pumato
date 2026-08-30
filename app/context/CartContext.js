@@ -192,6 +192,7 @@ export function CartProvider({ children }) {
                 laundryNumber: orderSettings?.laundryWhatsappNumber || "919048086503",
                 groceryNumber: grocerySettings?.whatsappNumber || "919048086503",
                 upiId: orderSettings?.upiId || "",
+                upiPayeeName: orderSettings?.upiPayeeName || "Pumato",
                 googleSheetUrl: orderSettings?.googleSheetUrl || "",
                 whatsappGroups: orderSettings?.whatsappGroups || [],
             }}

@@ -10,7 +10,8 @@ import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useCart } from "@/app/context/CartContext";
-import { fetchUserOrders } from "@/lib/repositories";
+import UpiPaymentPanel from "../components/UpiPaymentPanel";
+import { fetchUserOrders, fetchPayment } from "@/lib/repositories";
 import { displayOrderNumber } from "@/lib/formatters";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import { partitionOrders, getRecentlyOrderedItems, customerStatusLabel } from "@/lib/orderHistory";
@@ -34,8 +35,10 @@ const formatDate = (date) =>
           date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "";
 
-function OrderCard({ order }) {
+function OrderCard({ order, user, upiId, upiPayeeName, payment }) {
     const style = STATUS_STYLES[order.status] || STATUS_STYLES.placed;
+    // Nothing to pay on an order that's been cancelled.
+    const payable = order.status !== "cancelled";
 
     return (
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
@@ -91,6 +94,16 @@ function OrderCard({ order }) {
                     </span>
                     <span className="font-black text-white">₹{order.finalTotal}</span>
                 </div>
+
+                {payable && (
+                    <UpiPaymentPanel
+                        order={order}
+                        user={user}
+                        upiId={upiId}
+                        upiPayeeName={upiPayeeName}
+                        existingPayment={payment}
+                    />
+                )}
             </div>
         </div>
     );
@@ -99,9 +112,10 @@ function OrderCard({ order }) {
 export default function OrdersPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useUserAuth();
-    const { addToCart, setIsCartOpen } = useCart();
+    const { addToCart, setIsCartOpen, upiId, upiPayeeName } = useCart();
 
     const [orders, setOrders] = useState([]);
+    const [payments, setPayments] = useState({});
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
 
@@ -109,8 +123,16 @@ export default function OrdersPage() {
         if (!user) return;
         setLoading(true);
         try {
-            setOrders(await fetchUserOrders(user.uid));
+            const history = await fetchUserOrders(user.uid);
+            setOrders(history);
             setFailed(false);
+
+            // Payments are keyed by order id, so this is a direct get each —
+            // no query, no index, and it doubles as the duplicate guard.
+            const filed = await Promise.all(
+                history.map((o) => fetchPayment(o.id).catch(() => null))
+            );
+            setPayments(Object.fromEntries(filed.filter(Boolean).map((p) => [p.orderId, p])));
         } catch (error) {
             console.error("Failed to load order history:", error);
             setFailed(true);
@@ -247,7 +269,14 @@ export default function OrdersPage() {
                         </h2>
                         <div className="space-y-4">
                             {active.map((order) => (
-                                <OrderCard key={order.id} order={order} />
+                                <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    user={user}
+                                    upiId={upiId}
+                                    upiPayeeName={upiPayeeName}
+                                    payment={payments[order.id]}
+                                />
                             ))}
                         </div>
                     </section>
@@ -260,7 +289,14 @@ export default function OrdersPage() {
                         </h2>
                         <div className="space-y-4">
                             {past.map((order) => (
-                                <OrderCard key={order.id} order={order} />
+                                <OrderCard
+                                    key={order.id}
+                                    order={order}
+                                    user={user}
+                                    upiId={upiId}
+                                    upiPayeeName={upiPayeeName}
+                                    payment={payments[order.id]}
+                                />
                             ))}
                         </div>
                     </section>

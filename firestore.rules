@@ -93,6 +93,19 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
+    // --- Payments: customer files one claim per order, admin verifies ---
+    // Document id is the order id, and users get create but never update, so a
+    // second submission for the same order is refused by the rules rather than
+    // relying on the UI to prevent it.
+    match /payments/{orderId} {
+      allow create: if request.auth != null
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.orderId == orderId
+        && request.resource.data.status == 'pending_verification';
+      allow read: if request.auth != null && resource.data.userId == request.auth.uid;
+      allow read, update, delete: if isAdmin();
+    }
+
     // --- FCM Tokens: own user only ---
     match /fcm_tokens/{userId} {
       allow read, write: if request.auth != null && request.auth.uid == userId;

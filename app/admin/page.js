@@ -23,8 +23,6 @@ import { db } from "@/lib/firebase";
 import {
     collection,
     getDocs,
-    doc,
-    getDoc,
     query,
     where,
     orderBy,
@@ -38,18 +36,19 @@ import {
     saveLaundryCampus,
     saveLaundryPricing,
     saveLaundrySlots,
+    fetchOrderSettings,
+    fetchPromoBanners,
+    fetchGrocerySettings,
+    fetchLaundryConfig,
+    fetchLaundrySlots,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import { manageCoupons } from "@/lib/functions";
 import Link from "next/link";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
-import {
-    DEFAULT_CAMPUS_CONFIG,
-    COLLECTIONS,
-    LAUNDRY_SETTINGS_DOCS,
-    SITE_CONTENT_DOCS,
-} from "@/lib/constants";
+import { COLLECTIONS } from "@/lib/constants";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
+import { useSettingsForm } from "./hooks/useSettingsForm";
 
 // Import Extracted Components
 import RestaurantsTab from "./components/RestaurantsTab";
@@ -70,11 +69,64 @@ import { createFileUploadHandler } from "@/lib/uploadImage";
 
 const handleFileUpload = createFileUploadHandler("site-content");
 
+const NAV_TABS = [
+    { id: "orders", label: "Live Orders", icon: Bell, accent: true },
+    { id: "restaurants", label: "Restaurants", icon: Utensils },
+    { id: "delivery", label: "Delivery", icon: Truck },
+    { id: "grocery", label: "Grocery", icon: ShoppingCart },
+    { id: "laundry", label: "Laundry", icon: Clock },
+    { id: "settings", label: "Global", icon: Settings },
+    { id: "coupons", label: "Promo Codes", icon: Tag },
+    { id: "banners", label: "Banners", icon: Sparkles },
+    { id: "users", label: "Users", icon: Users },
+    { id: "marketplace", label: "Marketplace", icon: Store },
+];
+
+// `site_content/order_settings` is written by two tabs. Each owns a disjoint set
+// of keys, and each saves only its own diff, so neither can clobber the other's.
+const DELIVERY_KEYS = [
+    "baseDeliveryCharge",
+    "extraItemThreshold",
+    "extraItemCharge",
+    "minOrderAmount",
+    "lightItems",
+    "lightItemThreshold",
+    "heavyItems",
+    "heavyItemCharge",
+    "deliveryCampusConfig",
+    "manualOverride",
+];
+const GLOBAL_KEYS = [
+    "whatsappNumber",
+    "laundryWhatsappNumber",
+    "paymentQR",
+    "upiId",
+    "googleSheetUrl",
+    "whatsappGroups",
+];
+
+const DEFAULT_BANNERS = {
+    banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
+    banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
+    banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false },
+};
+
+// Array fields the editors mutate in place (spread, .filter) without a guard,
+// so they have to arrive as arrays even when the document has never been written.
+const DELIVERY_DEFAULTS = { lightItems: [], heavyItems: [] };
+const GLOBAL_DEFAULTS = { whatsappGroups: [] };
+
+const project = (obj, keys, defaults) => {
+    const out = Object.fromEntries(keys.map((k) => [k, obj?.[k]]));
+    for (const [key, fallback] of Object.entries(defaults)) out[key] ??= fallback;
+    return out;
+};
+
 export default function AdminPage() {
     const router = useRouter();
     const { user, isAdmin, loading: authLoading, logout } = useAdminAuth();
 
-    const [activeSection, setActiveSection] = useState("orders"); // orders, restaurants, coupons, laundry, delivery, grocery, settings, banners
+    const [activeSection, setActiveSection] = useState("orders");
     const [orders, setOrders] = useState([]); // placed (pending admin action)
     const [inProgressOrders, setInProgressOrders] = useState([]); // confirmed → ready_for_delivery + out_of_stock
     const [pastOrders, setPastOrders] = useState([]); // picked_up / delivered
@@ -83,53 +135,87 @@ export default function AdminPage() {
     const audioRef = useRef(null);
     const [restaurants, setRestaurants] = useState([]);
     const [coupons, setCoupons] = useState([]);
-    const [banners, setBanners] = useState({
-        banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
-        banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
-        banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false },
-    });
-    const [isSaving, setIsSaving] = useState(false);
+    const [laundryOrders, setLaundryOrders] = useState([]);
+    const [loadingLaundryOrders, setLoadingLaundryOrders] = useState(true);
 
-    // Laundry Slots State
+    // Laundry slot editor — per-day docs, edited inline rather than through the
+    // sticky Save bar, so it stays outside the settings-form machinery.
     const [selectedDay, setSelectedDay] = useState("default");
     const [laundrySlots, setLaundrySlots] = useState([]);
     const [slotStart, setSlotStart] = useState("");
     const [slotEnd, setSlotEnd] = useState("");
-    const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
-    const [laundryPricing, setLaundryPricing] = useState({ pricePerKg: "", steamIronPrice: "" });
-    const [laundryOrders, setLaundryOrders] = useState([]);
-    const [loadingLaundryOrders, setLoadingLaundryOrders] = useState(true);
 
-    // Delivery Settings (delivery charges, slots, light/heavy items, override)
-    const [deliverySettings, setDeliverySettings] = useState({});
-    // Global Settings (whatsapp numbers, payment, UPI, google sheet, community groups)
-    const [globalSettings, setGlobalSettings] = useState({});
-    const [settingsLoaded, setSettingsLoaded] = useState(false);
-    const [grocerySettings, setGrocerySettings] = useState({});
+    // --- SETTINGS FORMS ---
+    // One instance per tab: independent fetch, baseline, diff and save state.
 
-    // Baseline snapshots from Firestore — used to compute diff on save
-    const [baselineDelivery, setBaselineDelivery] = useState(null);
-    const [baselineGlobal, setBaselineGlobal] = useState(null);
-    const [baselineGrocery, setBaselineGrocery] = useState(null);
-
-    // Save confirmation modal state
-    const [saveConfirm, setSaveConfirm] = useState({
-        isOpen: false,
-        title: "",
-        data: {},
-        onSave: null,
+    const deliveryForm = useSettingsForm({
+        label: "Delivery settings",
+        confirm: true,
+        load: useCallback(
+            async () => project(await fetchOrderSettings(), DELIVERY_KEYS, DELIVERY_DEFAULTS),
+            []
+        ),
+        // order_settings is written with merge:true, so the diff alone is safe.
+        save: useCallback(({ diff }) => saveOrderSettings(diff), []),
     });
 
-    const computeDiff = (baseline, current) => {
-        if (!baseline) return current;
-        const diff = {};
-        for (const [key, value] of Object.entries(current)) {
-            if (JSON.stringify(value) !== JSON.stringify(baseline[key])) {
-                diff[key] = value;
-            }
-        }
-        return diff;
+    const globalForm = useSettingsForm({
+        label: "Global settings",
+        confirm: true,
+        load: useCallback(
+            async () => project(await fetchOrderSettings(), GLOBAL_KEYS, GLOBAL_DEFAULTS),
+            []
+        ),
+        save: useCallback(({ diff }) => saveOrderSettings(diff), []),
+    });
+
+    const groceryForm = useSettingsForm({
+        label: "Grocery settings",
+        confirm: true,
+        load: useCallback(() => fetchGrocerySettings(), []),
+        // grocery_settings is a full-document overwrite — sending only the diff
+        // would wipe every field the diff doesn't mention.
+        save: useCallback(({ data }) => saveGrocerySettings(data), []),
+    });
+
+    const bannersForm = useSettingsForm({
+        label: "Promo banners",
+        initial: DEFAULT_BANNERS,
+        load: useCallback(() => fetchPromoBanners(), []),
+        save: useCallback(({ data }) => savePromoBanners(data), []), // full overwrite
+    });
+
+    const laundryForm = useSettingsForm({
+        label: "Laundry config",
+        initial: { campuses: [], pricing: { pricePerKg: "", steamIronPrice: "" } },
+        load: useCallback(() => fetchLaundryConfig(), []),
+        save: useCallback(
+            ({ data }) =>
+                Promise.all([
+                    saveLaundryCampus({ campuses: data.campuses }),
+                    saveLaundryPricing(data.pricing),
+                ]),
+            []
+        ),
+    });
+
+    // Which forms the sticky Save bar drives on each tab. The Global tab edits one
+    // grocery field (its WhatsApp number), so it commits both documents.
+    const SETTINGS_TABS = {
+        delivery: { forms: [deliveryForm], title: "Delivery Settings" },
+        grocery: { forms: [groceryForm], title: "Grocery Settings" },
+        settings: { forms: [globalForm, groceryForm], title: "Global Settings" },
+        banners: { forms: [bannersForm], title: "Managing Promo Banners" },
+        laundry: {
+            forms: [laundryForm],
+            title: "Managing Laundry Slots & Charges",
+            saveLabel: "Save Config",
+        },
     };
+
+    const activeSettings = SETTINGS_TABS[activeSection];
+    const activeForms = activeSettings?.forms ?? [];
+    const pendingForms = activeForms.filter((f) => f.pending);
 
     // Redirect to login if not authenticated or not admin
     if (!authLoading && (!user || !isAdmin)) {
@@ -292,53 +378,15 @@ export default function AdminPage() {
         return () => unsub();
     }, [user, isAdmin]);
 
-    const fetchLaundrySlots = async (dateOrType) => {
-        try {
-            const docRef = doc(db, COLLECTIONS.LAUNDRY_SLOTS, dateOrType);
-            const docSnap = await getDoc(docRef);
-            if (docSnap.exists()) {
-                setLaundrySlots(docSnap.data().slots || []);
-            } else {
-                setLaundrySlots([]);
-            }
-        } catch (error) {
-            console.error("Error fetching slots:", error);
-        }
-    };
-
-    const fetchCampusConfig = async () => {
-        try {
-            const campusSnap = await getDoc(
-                doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.CAMPUS)
-            );
-            if (campusSnap.exists() && campusSnap.data().campuses) {
-                setCampusConfig(campusSnap.data().campuses);
-            } else {
-                setCampusConfig(DEFAULT_CAMPUS_CONFIG);
-            }
-
-            const pricingSnap = await getDoc(
-                doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.PRICING)
-            );
-            if (pricingSnap.exists()) {
-                setLaundryPricing(pricingSnap.data() || { pricePerKg: "79", steamIronPrice: "15" });
-            } else {
-                setLaundryPricing({ pricePerKg: "79", steamIronPrice: "15" });
-            }
-        } catch (error) {
-            console.error("Error fetching campus config:", error);
-        }
-    };
-
-    // Fetch Laundry Slots when date changes or section becomes active
+    // Laundry slots are per-day, so they reload when the selected day changes
     useEffect(() => {
-        if (activeSection === "laundry") {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            fetchLaundrySlots(selectedDay);
-            fetchCampusConfig();
-        }
+        if (activeSection !== "laundry") return;
+        fetchLaundrySlots(selectedDay)
+            .then(setLaundrySlots)
+            .catch((error) => console.error("Error fetching slots:", error));
     }, [activeSection, selectedDay]);
 
+    /** Restaurants + coupons. Settings tabs load themselves via useSettingsForm. */
     const fetchData = useCallback(async () => {
         try {
             const [resSnap, promoRes] = await Promise.all([
@@ -357,80 +405,27 @@ export default function AdminPage() {
                 })(),
             ]);
 
-            const restaurantsData = resSnap.docs.map((doc) => ({ ...doc.data(), id: doc.id }));
+            setRestaurants(resSnap.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
 
-            const settingsDoc = await getDoc(
-                doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.ORDER_SETTINGS)
+            setCoupons(
+                (promoRes.data || []).map((c) => ({
+                    id: c.id,
+                    code: c.code,
+                    type: c.type,
+                    value: c.value,
+                    description: c.description,
+                    minOrder: c.min_order,
+                    isVisible: c.is_visible,
+                    isActive: c.is_active,
+                    usageLimit: c.usage_limit,
+                    usedCount: c.used_count,
+                    restaurantId: c.restaurant_id,
+                    itemId: c.item_id,
+                }))
             );
-            if (settingsDoc.exists()) {
-                const data = settingsDoc.data();
-                const deliveryObj = {
-                    baseDeliveryCharge: data.baseDeliveryCharge,
-                    extraItemThreshold: data.extraItemThreshold,
-                    extraItemCharge: data.extraItemCharge,
-                    minOrderAmount: data.minOrderAmount,
-                    lightItems: data.lightItems || [],
-                    lightItemThreshold: data.lightItemThreshold,
-                    heavyItems: data.heavyItems || [],
-                    heavyItemCharge: data.heavyItemCharge,
-                    deliveryCampusConfig: data.deliveryCampusConfig,
-                    manualOverride: data.manualOverride,
-                };
-                const globalObj = {
-                    whatsappNumber: data.whatsappNumber,
-                    laundryWhatsappNumber: data.laundryWhatsappNumber,
-                    paymentQR: data.paymentQR,
-                    upiId: data.upiId,
-                    googleSheetUrl: data.googleSheetUrl,
-                    whatsappGroups: data.whatsappGroups || [],
-                };
-                setDeliverySettings(deliveryObj);
-                setGlobalSettings(globalObj);
-                setBaselineDelivery(deliveryObj);
-                setBaselineGlobal(globalObj);
-            }
-            setSettingsLoaded(true);
-
-            const updatedRestaurants = restaurantsData;
-
-            setRestaurants(updatedRestaurants);
-
-            const mappedCoupons = (promoRes.data || []).map((c) => ({
-                id: c.id,
-                code: c.code,
-                type: c.type,
-                value: c.value,
-                description: c.description,
-                minOrder: c.min_order,
-                isVisible: c.is_visible,
-                isActive: c.is_active,
-                usageLimit: c.usage_limit,
-                usedCount: c.used_count,
-                restaurantId: c.restaurant_id,
-                itemId: c.item_id,
-            }));
-            setCoupons(mappedCoupons);
-
-            // Fetch Banners
-            const bannerDoc = await getDoc(
-                doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.PROMO_BANNERS)
-            );
-            if (bannerDoc.exists()) {
-                setBanners(bannerDoc.data());
-            }
-
-            // Fetch Grocery Settings
-            const groceryDoc = await getDoc(
-                doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.GROCERY_SETTINGS)
-            );
-            if (groceryDoc.exists()) {
-                const groceryData = groceryDoc.data();
-                setGrocerySettings(groceryData);
-                setBaselineGrocery(groceryData);
-            }
         } catch (error) {
             console.error("Error fetching data:", error);
-            alert("Failed to load data");
+            toast.error("Failed to load restaurants and coupons");
         }
     }, [user]);
 
@@ -441,113 +436,34 @@ export default function AdminPage() {
         }
     }, [user, isAdmin, fetchData]);
 
-    // --- SAVE HANDLERS ---
-
-    const saveCampusConfig = async () => {
-        try {
-            await saveLaundryCampus({ campuses: campusConfig });
-            toast.success("Campus settings saved!");
-        } catch (error) {
-            console.error("Error saving campus config:", error);
-            toast.error("Failed to save settings.");
-        }
-    };
-
-    const savePricing = async () => {
-        try {
-            await saveLaundryPricing(laundryPricing);
-            toast.success("Pricing settings saved!");
-        } catch (error) {
-            console.error("Error saving pricing:", error);
-            toast.error("Failed to save pricing.");
-        }
-    };
-
-    const handleSaveBanners = async () => {
-        setIsSaving(true);
-        try {
-            await savePromoBanners(banners);
-            toast.success("Banners updated successfully!");
-        } catch (error) {
-            console.error("Error saving banners:", error);
-            toast.error("Failed to update banners");
-        } finally {
-            setIsSaving(false);
-        }
-    };
-
-    const handleSaveDeliverySettings = async () => {
-        const diff = computeDiff(baselineDelivery, deliverySettings);
-        if (Object.keys(diff).length === 0) return;
-        setSaveConfirm({
-            isOpen: true,
-            title: "Delivery Settings",
-            data: diff,
-            onSave: async () => {
-                setIsSaving(true);
-                try {
-                    await saveOrderSettings(diff);
-                    setBaselineDelivery({ ...deliverySettings });
-                    toast.success("Delivery settings saved!");
-                } catch (error) {
-                    console.error("Error saving delivery settings:", error);
-                    toast.error("Failed to save delivery settings");
-                } finally {
-                    setIsSaving(false);
-                }
-            },
-        });
-    };
-
-    const handleSaveGlobalSettings = async () => {
-        const diff = computeDiff(baselineGlobal, globalSettings);
-        const groceryDiff = computeDiff(baselineGrocery, grocerySettings);
-        if (Object.keys(diff).length === 0 && Object.keys(groceryDiff).length === 0) return;
-        setSaveConfirm({
-            isOpen: true,
-            title: "Global Settings",
-            data: { ...diff, ...groceryDiff },
-            onSave: async () => {
-                setIsSaving(true);
-                try {
-                    await Promise.all([
-                        ...(Object.keys(diff).length > 0 ? [saveOrderSettings(diff)] : []),
-                        ...(Object.keys(groceryDiff).length > 0
-                            ? [saveGrocerySettings(grocerySettings)]
-                            : []),
-                    ]);
-                    setBaselineGlobal({ ...globalSettings });
-                    setBaselineGrocery({ ...grocerySettings });
-                    toast.success("Settings saved!");
-                } catch (error) {
-                    console.error("Error saving settings:", error);
-                    toast.error("Failed to update settings");
-                } finally {
-                    setIsSaving(false);
-                }
-            },
-        });
-    };
-
     // --- LAUNDRY SLOT HANDLERS ---
+    const persistSlots = async (updatedSlots) => {
+        setLaundrySlots(updatedSlots);
+        try {
+            await saveLaundrySlots(selectedDay, { slots: updatedSlots });
+        } catch (error) {
+            console.error("Error saving slots:", error);
+            toast.error("Failed to save slot");
+        }
+    };
+
     const handleAddSlot = async () => {
         if (!slotStart || !slotEnd) {
-            alert("Please select both start and end times.");
+            toast.error("Please select both start and end times.");
             return;
         }
 
         const [startH, startM] = slotStart.split(":").map(Number);
         const [endH, endM] = slotEnd.split(":").map(Number);
         if (startH * 60 + startM >= endH * 60 + endM) {
-            alert("Start time must be before end time.");
+            toast.error("Start time must be before end time.");
             return;
         }
 
         const formattedSlot = `${format12h(slotStart)} - ${format12h(slotEnd)}`;
 
-        // Prevent duplicates
         if (laundrySlots.includes(formattedSlot)) {
-            alert("This slot already exists.");
+            toast.error("This slot already exists.");
             return;
         }
 
@@ -565,31 +481,12 @@ export default function AdminPage() {
             return getMinutes(a) - getMinutes(b);
         });
 
-        setLaundrySlots(updatedSlots);
         setSlotStart("");
         setSlotEnd("");
-
-        const targetDoc = selectedDay;
-
-        try {
-            await saveLaundrySlots(targetDoc, { slots: updatedSlots });
-        } catch (error) {
-            console.error("Error saving slot:", error);
-            toast.error("Failed to save slot");
-        }
+        await persistSlots(updatedSlots);
     };
 
-    const handleDeleteSlot = async (index) => {
-        const updatedSlots = laundrySlots.filter((_, i) => i !== index);
-        setLaundrySlots(updatedSlots);
-        const targetDoc = selectedDay;
-        try {
-            await saveLaundrySlots(targetDoc, { slots: updatedSlots });
-        } catch (error) {
-            console.error("Error deleting slot:", error);
-            toast.error("Failed to delete slot");
-        }
-    };
+    const handleDeleteSlot = (index) => persistSlots(laundrySlots.filter((_, i) => i !== index));
 
     // Loading / Auth guards
     if (authLoading) {
@@ -647,71 +544,30 @@ export default function AdminPage() {
 
                     <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
                         <div className="flex bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-md min-w-max">
-                            <button
-                                onClick={() => setActiveSection("orders")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none relative ${activeSection === "orders" ? "bg-orange-600 text-white shadow-lg shadow-orange-900/40" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Bell size={16} /> Live Orders
-                                {orders.length > 0 && (
-                                    <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border-2 border-black">
-                                        {orders.length}
-                                    </span>
-                                )}
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("restaurants")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "restaurants" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Utensils size={16} /> Restaurants
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("delivery")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "delivery" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Truck size={16} /> Delivery
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("grocery")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "grocery" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <ShoppingCart size={16} /> Grocery
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("laundry")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "laundry" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Clock size={16} /> Laundry
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("settings")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "settings" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Settings size={16} /> Global
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("coupons")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "coupons" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Tag size={16} /> Promo Codes
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("banners")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "banners" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Sparkles size={16} /> Banners
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("users")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "users" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Users size={16} /> Users
-                            </button>
-                            <button
-                                onClick={() => setActiveSection("marketplace")}
-                                className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${activeSection === "marketplace" ? "bg-white/10 text-white shadow-lg border border-white/10" : "text-gray-400 hover:text-white hover:bg-white/5"}`}
-                            >
-                                <Store size={16} /> Marketplace
-                            </button>
+                            {NAV_TABS.map(({ id, label, icon: Icon, accent }) => {
+                                const isActive = activeSection === id;
+                                const activeClass = accent
+                                    ? "bg-orange-600 text-white shadow-lg shadow-orange-900/40"
+                                    : "bg-white/10 text-white shadow-lg border border-white/10";
+                                return (
+                                    <button
+                                        key={id}
+                                        onClick={() => setActiveSection(id)}
+                                        className={`px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none ${accent ? "relative" : ""} ${
+                                            isActive
+                                                ? activeClass
+                                                : "text-gray-400 hover:text-white hover:bg-white/5"
+                                        }`}
+                                    >
+                                        <Icon size={16} /> {label}
+                                        {id === "orders" && orders.length > 0 && (
+                                            <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] flex items-center justify-center rounded-full animate-pulse border-2 border-black">
+                                                {orders.length}
+                                            </span>
+                                        )}
+                                    </button>
+                                );
+                            })}
                             <Link
                                 href="/admin/analytics"
                                 className="px-6 py-3 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all flex-1 md:flex-none text-gray-400 hover:text-white hover:bg-white/5"
@@ -738,7 +594,7 @@ export default function AdminPage() {
                         <RestaurantsTab
                             restaurants={restaurants}
                             fetchData={fetchData}
-                            orderSettings={deliverySettings}
+                            orderSettings={deliveryForm.data}
                         />
                     )}
 
@@ -753,17 +609,17 @@ export default function AdminPage() {
 
                     {activeSection === "delivery" && (
                         <DeliverySettings
-                            orderSettings={deliverySettings}
-                            setOrderSettings={setDeliverySettings}
+                            orderSettings={deliveryForm.data}
+                            setOrderSettings={deliveryForm.setData}
                             restaurants={restaurants}
-                            settingsLoaded={settingsLoaded}
+                            settingsLoaded={deliveryForm.loaded}
                         />
                     )}
 
                     {activeSection === "grocery" && (
                         <GrocerySettings
-                            grocerySettings={grocerySettings}
-                            setGrocerySettings={setGrocerySettings}
+                            grocerySettings={groceryForm.data}
+                            setGrocerySettings={groceryForm.setData}
                             format12h={format12h}
                         />
                     )}
@@ -779,32 +635,37 @@ export default function AdminPage() {
                             setSlotEnd={setSlotEnd}
                             handleAddSlot={handleAddSlot}
                             handleDeleteSlot={handleDeleteSlot}
-                            campusConfig={campusConfig}
-                            setCampusConfig={setCampusConfig}
-                            laundryPricing={laundryPricing}
-                            setLaundryPricing={setLaundryPricing}
-                            onSavePricing={savePricing}
+                            laundryPricing={laundryForm.data.pricing}
+                            setLaundryPricing={(pricing) =>
+                                laundryForm.setData((d) => ({
+                                    ...d,
+                                    pricing:
+                                        typeof pricing === "function"
+                                            ? pricing(d.pricing)
+                                            : pricing,
+                                }))
+                            }
+                            onSavePricing={laundryForm.requestSave}
                             laundryOrders={laundryOrders}
                             loadingLaundryOrders={loadingLaundryOrders}
-                            onSaveSettings={saveCampusConfig}
                         />
                     )}
 
                     {activeSection === "settings" && (
                         <GlobalSettings
-                            orderSettings={globalSettings}
-                            setOrderSettings={setGlobalSettings}
-                            grocerySettings={grocerySettings}
-                            setGrocerySettings={setGrocerySettings}
+                            orderSettings={globalForm.data}
+                            setOrderSettings={globalForm.setData}
+                            grocerySettings={groceryForm.data}
+                            setGrocerySettings={groceryForm.setData}
                             handleFileUpload={handleFileUpload}
-                            settingsLoaded={settingsLoaded}
+                            settingsLoaded={globalForm.loaded && groceryForm.loaded}
                         />
                     )}
 
                     {activeSection === "banners" && (
                         <BannersTab
-                            banners={banners}
-                            setBanners={setBanners}
+                            banners={bannersForm.data}
+                            setBanners={bannersForm.setData}
                             handleFileUpload={handleFileUpload}
                         />
                     )}
@@ -817,46 +678,23 @@ export default function AdminPage() {
                 </div>
             </div>
 
-            {/* Sticky Action Bar for Global Settings Sections */}
-            {(activeSection === "delivery" ||
-                activeSection === "grocery" ||
-                activeSection === "settings" ||
-                activeSection === "banners" ||
-                activeSection === "laundry") && (
+            {activeSettings && (
                 <StickyActionBar
-                    onSave={
-                        activeSection === "delivery"
-                            ? handleSaveDeliverySettings
-                            : activeSection === "banners"
-                              ? handleSaveBanners
-                              : activeSection === "laundry"
-                                ? saveCampusConfig
-                                : handleSaveGlobalSettings
-                    }
-                    onCancel={() => fetchData()}
-                    isSaving={isSaving}
-                    disabled={!settingsLoaded}
-                    title={
-                        activeSection === "delivery"
-                            ? "Delivery Settings"
-                            : activeSection === "grocery"
-                              ? "Grocery Settings"
-                              : activeSection === "laundry"
-                                ? "Managing Laundry Slots & Charges"
-                                : activeSection === "banners"
-                                  ? "Managing Promo Banners"
-                                  : "Global Settings"
-                    }
-                    saveLabel={activeSection === "laundry" ? "Save Config" : "Save Settings"}
+                    onSave={() => activeForms.forEach((f) => f.requestSave())}
+                    onCancel={() => activeForms.forEach((f) => f.reload())}
+                    isSaving={activeForms.some((f) => f.isSaving)}
+                    disabled={!activeForms.every((f) => f.canSave)}
+                    title={activeSettings.title}
+                    saveLabel={activeSettings.saveLabel || "Save Settings"}
                 />
             )}
 
             <SaveConfirmationModal
-                isOpen={saveConfirm.isOpen}
-                onClose={() => setSaveConfirm((s) => ({ ...s, isOpen: false }))}
-                onConfirm={saveConfirm.onSave}
-                title={saveConfirm.title}
-                data={saveConfirm.data}
+                isOpen={pendingForms.length > 0}
+                onClose={() => pendingForms.forEach((f) => f.cancelSave())}
+                onConfirm={() => pendingForms.forEach((f) => f.confirmSave())}
+                title={activeSettings?.title || ""}
+                data={Object.assign({}, ...pendingForms.map((f) => f.pending))}
             />
         </div>
     );

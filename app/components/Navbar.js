@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, X, LogIn, LogOut } from "lucide-react";
+import { ShoppingBag, X, LogIn, LogOut, Package } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useUserAuth } from "../context/UserAuthContext";
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
@@ -287,6 +287,14 @@ const UserMenu = ({ user, logout }) => {
                             </p>
                             <p className="text-xs text-gray-400 truncate">{user?.email}</p>
                         </div>
+                        <Link
+                            href="/orders"
+                            onClick={() => setIsOpen(false)}
+                            className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-300 hover:bg-white/10 hover:text-white transition-colors text-sm font-medium"
+                        >
+                            <Package size={16} />
+                            My Orders
+                        </Link>
                         <button
                             onClick={() => {
                                 setIsOpen(false);

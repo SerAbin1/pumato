@@ -18,6 +18,7 @@ import {
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
+import { displayOrderNumber } from "@/lib/formatters";
 import { updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import {
@@ -76,6 +77,9 @@ function OrderCard({ order, restaurantId, onAction, processing }) {
             {/* Header bar */}
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/5 bg-black/20">
                 <div className="flex items-center gap-2">
+                    <span className="text-xs font-black tracking-widest text-white">
+                        {displayOrderNumber(order)}
+                    </span>
                     <span
                         className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
                     >
@@ -557,6 +561,9 @@ export default function PartnerDashboard() {
                                         >
                                             <div className="flex items-center justify-between px-5 py-3 border-b border-white/5">
                                                 <div className="flex items-center gap-2">
+                                                    <span className="text-xs font-black tracking-widest text-white">
+                                                        {displayOrderNumber(order)}
+                                                    </span>
                                                     <span
                                                         className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border ${statusInfo.color}`}
                                                     >

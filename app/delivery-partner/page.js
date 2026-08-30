@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
+import { displayOrderNumber } from "@/lib/formatters";
 import {
     collection,
     query,
@@ -343,6 +344,9 @@ export default function DeliveryPartnerPage() {
                                                     {isPickedUp ? "Picked Up" : "Ready for Pickup"}
                                                 </span>
                                                 <div className="flex items-center gap-3">
+                                                    <span className="text-xs font-black tracking-widest text-white">
+                                                        {displayOrderNumber(order)}
+                                                    </span>
                                                     {/* Countdown timer */}
                                                     <CountdownTimer readyAt={order.readyAt} />
                                                     {/* Order time */}
@@ -504,7 +508,8 @@ export default function DeliveryPartnerPage() {
                                                 {order.address ? ` · ${order.address}` : ""}
                                             </p>
                                             <p className="text-xs text-gray-500">
-                                                {order.items?.length} item type(s) ·{" "}
+                                                {displayOrderNumber(order)} · {order.items?.length}{" "}
+                                                item type(s) ·{" "}
                                                 {order.createdAt?.toLocaleTimeString([], {
                                                     hour: "2-digit",
                                                     minute: "2-digit",

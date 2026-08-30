@@ -161,8 +161,25 @@ export default function GlobalSettings({
                                 placeholder="example@upi"
                             />
                             <p className="text-xs text-gray-500 mt-2">
-                                This UPI ID will be included in the WhatsApp order message for
-                                payment.
+                                Used for the WhatsApp order message and for the on-site Pay button.
+                            </p>
+                        </div>
+
+                        <div className="pl-13 mt-4">
+                            <FormInput
+                                label="UPI Payee Name"
+                                type="text"
+                                value={orderSettings.upiPayeeName || ""}
+                                onChange={(e) =>
+                                    setOrderSettings({
+                                        ...orderSettings,
+                                        upiPayeeName: e.target.value,
+                                    })
+                                }
+                                placeholder="Pumato"
+                            />
+                            <p className="text-xs text-gray-500 mt-2">
+                                Shown on the confirmation screen inside the customer&apos;s UPI app.
                             </p>
                         </div>
 

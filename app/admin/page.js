@@ -101,6 +101,7 @@ const GLOBAL_KEYS = [
     "laundryWhatsappNumber",
     "paymentQR",
     "upiId",
+    "upiPayeeName",
     "googleSheetUrl",
     "whatsappGroups",
 ];

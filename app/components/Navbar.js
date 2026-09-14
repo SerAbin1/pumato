@@ -17,6 +17,22 @@ import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
 import { format12h } from "@/lib/formatters";
 
+const toMinutes = (hhmm) => {
+    const [h, m] = (hhmm || "00:00").split(":").map(Number);
+    return h * 60 + m;
+};
+
+// Returns the "order by" time (e.g. "7:00 PM") for a pre-order slot's cutoff,
+// or "" when there is no cutoff (orders accepted right up to slot start).
+const getCutoffDisplay = (start, cutoffMinutes) => {
+    const cutoff = Number(cutoffMinutes) || 0;
+    if (cutoff <= 0 || !start) return "";
+    const total = (toMinutes(start) - cutoff + 1440) % 1440;
+    const hh = String(Math.floor(total / 60)).padStart(2, "0");
+    const mm = String(total % 60).padStart(2, "0");
+    return format12h(`${hh}:${mm}`);
+};
+
 const LiveIndicator = ({ isLive, settings, label }) => {
     const [isOpen, setIsOpen] = useState(false);
     const popoverRef = useRef(null);
@@ -96,6 +112,10 @@ const LiveIndicator = ({ isLive, settings, label }) => {
                                         label: `Pre-order Slot ${i + 1}`,
                                         start: slot.start,
                                         end: slot.end,
+                                        cutoffDisplay: getCutoffDisplay(
+                                            slot.start,
+                                            slot.cutoffMinutes
+                                        ),
                                     })),
                                 ];
 
@@ -116,9 +136,17 @@ const LiveIndicator = ({ isLive, settings, label }) => {
                                                         key={i}
                                                         className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-xl border border-white/5"
                                                     >
-                                                        <span className="text-[9px] font-bold text-gray-500 uppercase">
-                                                            {s.label}
-                                                        </span>
+                                                        <div>
+                                                            <span className="text-[9px] font-bold text-gray-500 uppercase">
+                                                                {s.label}
+                                                            </span>
+                                                            {s.type === "preOrder" &&
+                                                                s.cutoffDisplay && (
+                                                                    <span className="block text-[9px] font-semibold text-cyan-400/80 mt-0.5">
+                                                                        Order by {s.cutoffDisplay}
+                                                                    </span>
+                                                                )}
+                                                        </div>
                                                         <span className="text-[10px] font-black text-white">
                                                             {format12h(s.start)} -{" "}
                                                             {format12h(s.end)}

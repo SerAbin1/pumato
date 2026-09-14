@@ -9,12 +9,20 @@ import Link from "next/link";
 export default function GroceryTermsPage() {
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden selection:bg-green-500 selection:text-white pb-20">
-            <div className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+            <div
+                className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                }}
+            ></div>
 
             <Navbar />
 
             <div className="max-w-4xl mx-auto px-4 py-8 pt-24 relative z-10">
-                <Link href="/grocery" className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-colors text-sm font-bold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10">
+                <Link
+                    href="/grocery"
+                    className="inline-flex items-center gap-2 text-gray-400 hover:text-white mb-8 transition-colors text-sm font-bold bg-white/5 px-4 py-2 rounded-full border border-white/10 hover:bg-white/10"
+                >
                     <ArrowLeft size={16} /> Back to Grocery
                 </Link>
 
@@ -32,7 +40,10 @@ export default function GroceryTermsPage() {
                         transition={{ delay: 0.1 }}
                         className="text-4xl md:text-6xl font-black tracking-tight mb-4"
                     >
-                        Terms & <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">Conditions</span>
+                        Terms &{" "}
+                        <span className="text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-emerald-600">
+                            Conditions
+                        </span>
                     </motion.h1>
                     <motion.p
                         initial={{ opacity: 0, y: 20 }}
@@ -49,11 +60,21 @@ export default function GroceryTermsPage() {
                         <ShoppingBasket size={120} />
                     </div>
 
-                    <p className="text-gray-300 leading-relaxed mb-8 font-medium">These Terms and Conditions (&quot;Terms&quot;) govern the use of the PUMATO Grocery Delivery Service (&quot;Service&quot;). By placing an order through PUMATO, you (&quot;User&quot; or &quot;Customer&quot;) agree to be bound by these Terms.</p>
+                    <p className="text-gray-300 leading-relaxed mb-8 font-medium">
+                        These Terms and Conditions (&quot;Terms&quot;) govern the use of the PUMATO
+                        Grocery Delivery Service (&quot;Service&quot;). By placing an order through
+                        PUMATO, you (&quot;User&quot; or &quot;Customer&quot;) agree to be bound by
+                        these Terms.
+                    </p>
 
                     <div className="space-y-12">
                         <TermBlock title="1. Service Overview">
-                            <p>PUMATO Grocery is a student-run personal shopping and campus delivery service operating exclusively within Pondicherry University. We act strictly as a logistics and procurement intermediary, visiting third-party stores on your behalf.</p>
+                            <p>
+                                PUMATO Grocery is a student-run personal shopping and campus
+                                delivery service operating exclusively within Pondicherry
+                                University. We act strictly as a logistics and procurement
+                                intermediary, visiting third-party stores on your behalf.
+                            </p>
                             <ul className="list-disc pl-5 space-y-2 mt-4 text-gray-400">
                                 <li>Does not own or operate any store.</li>
                                 <li>Does not manufacture, stock, or sell goods.</li>
@@ -62,79 +83,159 @@ export default function GroceryTermsPage() {
 
                         <TermBlock title="2. Prohibited Items (Zero Tolerance Policy)">
                             <div className="bg-red-500/10 border border-red-500/20 p-6 rounded-2xl">
-                                <p className="text-red-400 font-bold mb-2">The following items are strictly prohibited:</p>
+                                <p className="text-red-400 font-bold mb-2">
+                                    The following items are strictly prohibited:
+                                </p>
                                 <ul className="list-disc pl-5 space-y-1 text-red-400/80">
                                     <li>Cigarettes, bidis, vapes, or tobacco products</li>
                                     <li>Alcohol in any form</li>
                                     <li>Illegal, banned, or intoxicating substances</li>
                                 </ul>
-                                <p className="mt-4 text-sm text-red-400/60 font-medium">Any attempt to order prohibited items will result in immediate rejection and permanent suspension.</p>
+                                <p className="mt-4 text-sm text-red-400/60 font-medium">
+                                    Any attempt to order prohibited items will result in immediate
+                                    rejection and permanent suspension.
+                                </p>
                             </div>
                         </TermBlock>
 
                         <TermBlock title="3. Ordering Process">
                             <h4 className="font-bold text-white mb-2">Order Placement</h4>
-                            <p>Orders must be placed exclusively through PUMATO&apos;s official WhatsApp: <a href="https://wa.me/919048086503" className="text-green-400 hover:underline">wa.me/919048086503</a></p>
-                            <h4 className="font-bold text-white mt-6 mb-2">Accuracy Requirements</h4>
-                            <p>Users must clearly specify Brand, Quantity, and Size/Variant. For vague requests (e.g., &quot;Buy apples&quot;), the delivery partner is authorized to use reasonable judgment, and the User agrees to accept and pay for the selected item.</p>
+                            <p>
+                                Orders must be placed exclusively through PUMATO&apos;s official
+                                WhatsApp:{" "}
+                                <a
+                                    href="https://wa.me/919048086503"
+                                    className="text-green-400 hover:underline"
+                                >
+                                    wa.me/919048086503
+                                </a>
+                            </p>
+                            <h4 className="font-bold text-white mt-6 mb-2">
+                                Accuracy Requirements
+                            </h4>
+                            <p>
+                                Users must clearly specify Brand, Quantity, and Size/Variant. For
+                                vague requests (e.g., &quot;Buy apples&quot;), the delivery partner
+                                is authorized to use reasonable judgment, and the User agrees to
+                                accept and pay for the selected item.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="4. Pricing & Payments">
                             <h4 className="font-bold text-white mb-2">Delivery Fees</h4>
                             <ul className="list-disc pl-5 space-y-2 text-gray-400">
                                 <li>Standard fee: ₹30 per order.</li>
-                                <li>Variable charges may apply based on weight, number of items, multiple stores, or peak hours (noon/rush).</li>
+                                <li>
+                                    Variable charges may apply based on weight, number of items,
+                                    multiple stores, or peak hours (noon/rush).
+                                </li>
                             </ul>
                             <h4 className="font-bold text-white mt-6 mb-2">Item Pricing</h4>
-                            <p>Users pay the actual store price / MRP as reflected on the purchase bill. <br /> <strong className="text-white">Total Payable = Store Bill + Delivery Fee</strong></p>
+                            <p>
+                                Users pay the actual store price / MRP as reflected on the purchase
+                                bill. <br />{" "}
+                                <strong className="text-white">
+                                    Total Payable = Store Bill + Delivery Fee
+                                </strong>
+                            </p>
                             <h4 className="font-bold text-white mt-6 mb-2">Payment Policy</h4>
-                            <p>Payment must be completed before delivery. Proof of payment (screenshot) is required. PUMATO is not liable for third-party payment delays.</p>
+                            <p>
+                                Payment must be completed before delivery. Proof of payment
+                                (screenshot) is required. PUMATO is not liable for third-party
+                                payment delays.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="5. Grocery Operating Hours">
                             <ul className="list-disc pl-5 space-y-1 text-gray-400 font-medium">
-                                <li><span className="text-white">Weekdays (Mon–Fri):</span> 4:00 PM – 10:00 PM</li>
-                                <li><span className="text-white">Weekends & Holidays:</span> 10:00 AM – 10:00 PM</li>
+                                <li>
+                                    <span className="text-white">Weekdays (Mon–Fri):</span> 4:00 PM
+                                    – 10:00 PM
+                                </li>
+                                <li>
+                                    <span className="text-white">Weekends & Holidays:</span> 10:00
+                                    AM – 10:00 PM
+                                </li>
                             </ul>
                         </TermBlock>
 
                         <TermBlock title="6. Substitutions & Availability">
-                            <p>If an item is unavailable, the rider will attempt contact via WhatsApp. If no response is received within 10 minutes, the rider may skip the item or purchase a reasonable alternative.</p>
+                            <p>
+                                If an item is unavailable, the rider will attempt contact via
+                                WhatsApp. If no response is received within 10 minutes, the rider
+                                may skip the item or purchase a reasonable alternative.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="7. Returns & Quality Policy">
                             <h4 className="font-bold text-white mb-2">Perishables</h4>
-                            <p>Must be inspected at delivery point. Non-returnable once accepted. Any damage must be reported before acceptance.</p>
+                            <p>
+                                Must be inspected at delivery point. Non-returnable once accepted.
+                                Any damage must be reported before acceptance.
+                            </p>
                             <h4 className="font-bold text-white mt-6 mb-2">Packaged Goods</h4>
-                            <p>PUMATO is not responsible for internal manufacturing defects. Returns are subject to the original store&apos;s policy and incurred service fees.</p>
+                            <p>
+                                PUMATO is not responsible for internal manufacturing defects.
+                                Returns are subject to the original store&apos;s policy and incurred
+                                service fees.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="8. Cancellation Policy">
-                            <p>Orders may be cancelled without penalty BEFORE items are purchased. Once purchased, cancellation is not permitted and the User is liable for the full amount.</p>
+                            <p>
+                                Orders may be cancelled without penalty BEFORE items are purchased.
+                                Once purchased, cancellation is not permitted and the User is liable
+                                for the full amount.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="9. Delivery Access">
-                            <p>Deliveries are made to hostel gates, department entrances, or designated access points only. Riders cannot enter rooms or restricted zones. If unreachable for 10 minutes, the delivery is marked failed without refund.</p>
+                            <p>
+                                Deliveries are made to hostel gates, department entrances, or
+                                designated access points only. Riders cannot enter rooms or
+                                restricted zones. If unreachable for 10 minutes, the delivery is
+                                marked failed without refund.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="10. User Conduct & Safety">
-                            <p>Users must treat PUMATO partners with respect. Abusive language, harassment, or refusal to pay will result in immediate suspension or permanent blacklisting. Violations may be reported to University authorities.</p>
+                            <p>
+                                Users must treat PUMATO partners with respect. Abusive language,
+                                harassment, or refusal to pay will result in immediate suspension or
+                                permanent blacklisting. Violations may be reported to University
+                                authorities.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="11. Promo Codes & Offers">
-                            <p>Promo codes are first-come, first-served and may have limits or expiry. Any attempt to abuse or tamper with codes results in immediate suspension or permanent ban.</p>
+                            <p>
+                                Promo codes are first-come, first-served and may have limits or
+                                expiry. Any attempt to abuse or tamper with codes results in
+                                immediate suspension or permanent ban.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="12. Service Suspension & Termination">
-                            <p>PUMATO reserves the right to pause services, refuse service, or modify the Service without notice.</p>
+                            <p>
+                                PUMATO reserves the right to pause services, refuse service, or
+                                modify the Service without notice.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="13. Limitation of Liability">
-                            <p>PUMATO is not liable for product quality, store availability, health consequences (allergic reactions), or delays due to weather/crowding. Liability is limited to procurement and logistics facilitation.</p>
+                            <p>
+                                PUMATO is not liable for product quality, store availability, health
+                                consequences (allergic reactions), or delays due to
+                                weather/crowding. Liability is limited to procurement and logistics
+                                facilitation.
+                            </p>
                         </TermBlock>
 
                         <TermBlock title="14. Modifications">
-                            <p>Continued use of the Service after update constitutes acceptance of the revised Terms.</p>
+                            <p>
+                                Continued use of the Service after update constitutes acceptance of
+                                the revised Terms.
+                            </p>
                         </TermBlock>
                     </div>
                 </div>
@@ -151,9 +252,7 @@ function TermBlock({ title, children }) {
     return (
         <div className="space-y-3">
             <h3 className="text-xl font-bold text-green-400">{title}</h3>
-            <div className="text-gray-300 leading-relaxed text-sm md:text-base">
-                {children}
-            </div>
+            <div className="text-gray-300 leading-relaxed text-sm md:text-base">{children}</div>
         </div>
     );
 }

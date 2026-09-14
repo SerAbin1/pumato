@@ -1,21 +1,14 @@
-"use client";
+import { CANONICAL_URLS } from "@/lib/seo";
+import PartnerLayoutClient from "./PartnerLayoutClient";
 
-import { AdminAuthProvider } from "@/app/context/AdminAuthContext";
-import { Toaster } from "react-hot-toast";
+export const metadata = {
+    title: "Partner Dashboard | Pumato",
+    description: "Manage your restaurant orders and menu.",
+    alternates: {
+        canonical: CANONICAL_URLS.partner,
+    },
+};
 
 export default function PartnerLayout({ children }) {
-    return (
-        <AdminAuthProvider>
-            <div className="min-h-screen bg-black text-white font-sans selection:bg-orange-500/30">
-                {children}
-                <Toaster position="bottom-right" toastOptions={{
-                    style: {
-                        background: '#333',
-                        color: '#fff',
-                        border: '1px solid rgba(255,255,255,0.1)'
-                    }
-                }} />
-            </div>
-        </AdminAuthProvider>
-    );
+    return <PartnerLayoutClient>{children}</PartnerLayoutClient>;
 }

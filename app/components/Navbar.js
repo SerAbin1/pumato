@@ -81,6 +81,23 @@ const LiveIndicator = ({ isLive, settings, label }) => {
                                     (c) => c.id === campus.id || c.name === campus.name
                                 );
                                 const slots = campusData?.slots || [];
+                                const preOrderSlots = campusData?.preOrderSlots || [];
+
+                                // Build display entries: regular slots as "Slot N" and pre-order slots as "Pre-order Slot N"
+                                const allSlots = [
+                                    ...slots.map((slot, i) => ({
+                                        type: "regular",
+                                        label: `Slot ${i + 1}`,
+                                        start: slot.start,
+                                        end: slot.end,
+                                    })),
+                                    ...preOrderSlots.map((slot, i) => ({
+                                        type: "preOrder",
+                                        label: `Pre-order Slot ${i + 1}`,
+                                        start: slot.start,
+                                        end: slot.end,
+                                    })),
+                                ];
 
                                 return (
                                     <div key={campus.id} className="space-y-2">
@@ -89,22 +106,22 @@ const LiveIndicator = ({ isLive, settings, label }) => {
                                                 {campus.name}
                                             </span>
                                             <div
-                                                className={`w-1.5 h-1.5 rounded-full ${slots.length > 0 ? "bg-orange-500" : "bg-zinc-700"}`}
+                                                className={`w-1.5 h-1.5 rounded-full ${allSlots.length > 0 ? "bg-orange-500" : "bg-zinc-700"}`}
                                             ></div>
                                         </div>
                                         <div className="space-y-1.5">
-                                            {slots.length > 0 ? (
-                                                slots.map((slot, i) => (
+                                            {allSlots.length > 0 ? (
+                                                allSlots.map((s, i) => (
                                                     <div
                                                         key={i}
                                                         className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-xl border border-white/5"
                                                     >
                                                         <span className="text-[9px] font-bold text-gray-500 uppercase">
-                                                            Slot {i + 1}
+                                                            {s.label}
                                                         </span>
                                                         <span className="text-[10px] font-black text-white">
-                                                            {format12h(slot.start)} -{" "}
-                                                            {format12h(slot.end)}
+                                                            {format12h(s.start)} -{" "}
+                                                            {format12h(s.end)}
                                                         </span>
                                                     </div>
                                                 ))

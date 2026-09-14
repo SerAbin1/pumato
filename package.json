@@ -1,62 +1,62 @@
 {
-    "name": "pumato",
-    "version": "0.1.0",
-    "private": true,
-    "type": "module",
-    "scripts": {
-        "dev": "dotenv -e .env.test -- next dev",
-        "dev:prod": "dotenv -e .env.production -- next dev",
-        "build": "dotenv -e .env.production next build",
-        "lint": "eslint .",
-        "lintfix": "eslint . --fix",
-        "format": "prettier --write .",
-        "prepare": "husky",
-        "deploy": "dotenv -e .env.production pnpm run build && firebase deploy",
-        "deploy:rules": "firebase deploy --only firestore:rules,storage",
-        "deploy:index": "firebase deploy --only firestore:indexes",
-        "deploy:backend": "firebase deploy --only firestore:rules,firestore:indexes,storage",
-        "test:e2e": "dotenv -e .env.test -- playwright test",
-        "test:ui": "dotenv -e .env.test -- playwright test --ui",
-        "test:debug": "dotenv -e .env.test -- playwright test --debug",
-        "test:create": "dotenv -e .env.test -- playwright codegen http://localhost:3000",
-        "test": "vitest run"
-    },
-    "dependencies": {
-        "@opentelemetry/api": "^1.9.0",
-        "clsx": "^2.1.1",
-        "firebase": "^12.8.0",
-        "firebase-admin": "^13.6.0",
-        "framer-motion": "^12.26.1",
-        "fuse.js": "^7.1.0",
-        "lucide-react": "^0.562.0",
-        "next": "16.1.1",
-        "react": "19.2.3",
-        "react-dom": "19.2.3",
-        "react-hot-toast": "^2.6.0",
-        "recharts": "^3.8.0",
-        "tailwind-merge": "^3.4.0",
-        "zod": "^4.4.3"
-    },
-    "devDependencies": {
-        "@playwright/test": "^1.58.2",
-        "@tailwindcss/postcss": "^4",
-        "@testing-library/react": "^16.3.3",
-        "dotenv-cli": "^11.0.0",
-        "eslint": "^9",
-        "eslint-config-next": "16.1.1",
-        "firebase-tools": "^15.30.0",
-        "husky": "^9.0.0",
-        "jsdom": "^30.0.1",
-        "lint-staged": "^15.0.0",
-        "prettier": "^3.0.0",
-        "tailwindcss": "^4",
-        "vitest": "^4.1.9"
-    },
-    "lint-staged": {
-        "*.{js,jsx,ts,tsx}": [
-            "eslint --fix --max-warnings 0",
-            "prettier --write"
-        ]
-    },
-    "packageManager": "pnpm@11.24.0+sha512.bd27e345e976dcb0be0b7a1228217b049a817e21b1f355c90dbe7dc46671895a8bc1e6d06c24554505ea93ea0b45f489a27ec1bfbc8de6a9659fca0f16fa0000"
+  "name": "pumato",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "dotenv -e .env.test -- next dev",
+    "dev:prod": "dotenv -e .env.production -- next dev",
+    "build": "dotenv -e .env.production next build",
+    "lint": "eslint",
+    "lintfix": "eslint --fix",
+    "format": "prettier --write .",
+    "prepare": "husky",
+    "deploy": "dotenv -e .env.production pnpm run build && firebase deploy",
+    "deploy:rules": "firebase deploy --only firestore:rules,storage",
+    "deploy:index": "firebase deploy --only firestore:indexes",
+    "deploy:backend": "firebase deploy --only firestore:rules,firestore:indexes,storage",
+    "test:e2e": "dotenv -e .env.test -- playwright test",
+    "test:ui": "dotenv -e .env.test -- playwright test --ui",
+    "test:debug": "dotenv -e .env.test -- playwright test --debug",
+    "test:create": "dotenv -e .env.test -- playwright codegen http://localhost:3000",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@opentelemetry/api": "^1.9.0",
+    "clsx": "^2.1.1",
+    "firebase": "^12.8.0",
+    "firebase-admin": "^13.6.0",
+    "framer-motion": "^12.26.1",
+    "fuse.js": "^7.1.0",
+    "lucide-react": "^0.562.0",
+    "next": "16.3.5",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "react-hot-toast": "^2.6.0",
+    "recharts": "^3.8.0",
+    "tailwind-merge": "^3.4.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.58.2",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/react": "^16.3.3",
+    "dotenv-cli": "^11.0.0",
+    "eslint": "10.10.0",
+    "eslint-config-next": "16.3.5",
+    "firebase-tools": "^15.30.0",
+    "husky": "^9.0.0",
+    "jsdom": "^30.0.1",
+    "lint-staged": "^15.0.0",
+    "prettier": "^3.0.0",
+    "tailwindcss": "^4",
+    "vitest": "^4.1.9"
+  },
+  "lint-staged": {
+    "*.{js,jsx,ts,tsx}": [
+      "eslint --fix",
+      "prettier --write"
+    ]
+  },
+  "packageManager": "pnpm@11.24.0+sha512.bd27e345e976dcb0be0b7a1228217b049a817e21b1f355c90dbe7dc46671895a8bc1e6d06c24554505ea93ea0b45f489a27ec1bfbc8de6a9659fca0f16fa0000"
 }

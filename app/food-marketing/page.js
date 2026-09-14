@@ -8,17 +8,38 @@ import Image from "next/image";
 import TestimonialsMarquee from "../components/TestimonialsMarquee";
 
 const REVIEWS = [
-    { name: "Kathyayini", text: "I've been using pumato for around a week now. The delivery charges are reasonable and it's very useful for me as I'm unable to go to the mess due to an ankle injury. The deliveries are on time ninety percent of the time and all of them are very polite and communicate clearly." },
-    { name: "Suchitra", text: "It's a good initiative, getting better with every order. Would surely love to see it grow further. Warm regards." },
+    {
+        name: "Kathyayini",
+        text: "I've been using pumato for around a week now. The delivery charges are reasonable and it's very useful for me as I'm unable to go to the mess due to an ankle injury. The deliveries are on time ninety percent of the time and all of them are very polite and communicate clearly.",
+    },
+    {
+        name: "Suchitra",
+        text: "It's a good initiative, getting better with every order. Would surely love to see it grow further. Warm regards.",
+    },
     { name: "Sohani Borah", text: "Good service!!! 👍" },
     { name: "Jigisha", text: "Niceeee" },
-    { name: "Tanaya", text: "Thank you for the food. And thanks for remembering the things to add on to my order. Service is faster and thanks for bringing food for us. All the best!" },
+    {
+        name: "Tanaya",
+        text: "Thank you for the food. And thanks for remembering the things to add on to my order. Service is faster and thanks for bringing food for us. All the best!",
+    },
     { name: "Adrian Joshua M Murali", text: "Very generous when comes to delivering food." },
-    { name: "Kessiya", text: "You guys have turned into such a necessity in the university. Pumato is the only reason that my belly is full every day. You guys do your part with such professionalism and integrity. Thank you for your timely deliveries and response to my messages." },
+    {
+        name: "Kessiya",
+        text: "You guys have turned into such a necessity in the university. Pumato is the only reason that my belly is full every day. You guys do your part with such professionalism and integrity. Thank you for your timely deliveries and response to my messages.",
+    },
     { name: "Naveen", text: "5/5 excellent" },
-    { name: "Pumato user", text: "Thank you for all the deliveries. This is an inevitable part in my PU life. I will surely miss ordering in PUmato once my course ends." },
-    { name: "Pumato user", text: "I would truly appreciate the services of pumato in the university and overall I can tell it's excellent and outstanding! 🎉🎊" },
-    { name: "Pumato user", text: "Good initiative, useful for students during the exams, late-night sleep and also provide accurate and average time during delivery." }
+    {
+        name: "Pumato user",
+        text: "Thank you for all the deliveries. This is an inevitable part in my PU life. I will surely miss ordering in PUmato once my course ends.",
+    },
+    {
+        name: "Pumato user",
+        text: "I would truly appreciate the services of pumato in the university and overall I can tell it's excellent and outstanding! 🎉🎊",
+    },
+    {
+        name: "Pumato user",
+        text: "Good initiative, useful for students during the exams, late-night sleep and also provide accurate and average time during delivery.",
+    },
 ];
 
 export default function Home() {
@@ -63,7 +84,10 @@ export default function Home() {
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ delay: 0.6 }}
                     >
-                        <Link href="/delivery" className="bg-red-600 hover:bg-red-700 text-white text-xl font-bold px-12 py-4 rounded-full transition-all shadow-xl hover:scale-105 inline-block">
+                        <Link
+                            href="/delivery"
+                            className="bg-red-600 hover:bg-red-700 text-white text-xl font-bold px-12 py-4 rounded-full transition-all shadow-xl hover:scale-105 inline-block"
+                        >
                             Order Now
                         </Link>
                     </motion.div>
@@ -76,14 +100,22 @@ export default function Home() {
                 <div className="grid md:grid-cols-2 gap-12 items-center text-left">
                     <div className="space-y-6 text-lg text-gray-600 leading-relaxed">
                         <p>
-                            We are a group of students from Pondicherry College who realized that good food shouldn&apos;t be hard to get while living in a hostel.
+                            We are a group of students from Pondicherry College who realized that
+                            good food shouldn&apos;t be hard to get while living in a hostel.
                         </p>
                         <p>
-                            Pumato started in a dorm room with a simple vision: to connect every student with the best local food spots, delivered fast and without hassle.
+                            Pumato started in a dorm room with a simple vision: to connect every
+                            student with the best local food spots, delivered fast and without
+                            hassle.
                         </p>
                     </div>
                     <div className="relative h-80 rounded-2xl overflow-hidden shadow-2xl skew-y-3 transform hover:skew-y-0 transition-transform duration-500">
-                        <Image src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&q=80" fill className="w-full h-full object-cover" alt="Student Team" />
+                        <Image
+                            src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=800&q=80"
+                            fill
+                            className="w-full h-full object-cover"
+                            alt="Student Team"
+                        />
                     </div>
                 </div>
             </section>
@@ -95,7 +127,7 @@ export default function Home() {
                         { label: "Happy Students", value: "5000+" },
                         { label: "Orders Delivered", value: "25k+" },
                         { label: "Restaurant Partners", value: "50+" },
-                        { label: "Avg Delivery Time", value: "25m" }
+                        { label: "Avg Delivery Time", value: "25m" },
                     ].map((stat, i) => (
                         <motion.div
                             key={i}
@@ -106,7 +138,9 @@ export default function Home() {
                             className="p-6 rounded-2xl bg-white/10 backdrop-blur-sm"
                         >
                             <h3 className="text-4xl md:text-5xl font-black mb-2">{stat.value}</h3>
-                            <p className="opacity-90 font-medium uppercase tracking-wide text-sm">{stat.label}</p>
+                            <p className="opacity-90 font-medium uppercase tracking-wide text-sm">
+                                {stat.label}
+                            </p>
                         </motion.div>
                     ))}
                 </div>
@@ -122,7 +156,9 @@ export default function Home() {
                         className="text-center mb-16"
                     >
                         <h2 className="text-4xl font-bold text-gray-900 mb-4">How It Works</h2>
-                        <p className="text-xl text-gray-500 max-w-2xl mx-auto">From hunger to happiness in 3 simple steps.</p>
+                        <p className="text-xl text-gray-500 max-w-2xl mx-auto">
+                            From hunger to happiness in 3 simple steps.
+                        </p>
                     </motion.div>
 
                     <div className="grid md:grid-cols-3 gap-12 relative">
@@ -130,9 +166,21 @@ export default function Home() {
                         <div className="hidden md:block absolute top-12 left-0 w-full h-1 bg-gradient-to-r from-red-100 via-red-200 to-red-100 -z-10"></div>
 
                         {[
-                            { title: "Choose", desc: "Browse top restaurants and hostel canteens.", icon: "🍔" },
-                            { title: "Order", desc: "Easy WhatsApp checkout with student discounts.", icon: "📱" },
-                            { title: "Eat", desc: "Lightning fast delivery to your room door.", icon: "😋" }
+                            {
+                                title: "Choose",
+                                desc: "Browse top restaurants and hostel canteens.",
+                                icon: "🍔",
+                            },
+                            {
+                                title: "Order",
+                                desc: "Easy WhatsApp checkout with student discounts.",
+                                icon: "📱",
+                            },
+                            {
+                                title: "Eat",
+                                desc: "Lightning fast delivery to your room door.",
+                                icon: "😋",
+                            },
                         ].map((step, i) => (
                             <motion.div
                                 key={i}
@@ -156,7 +204,9 @@ export default function Home() {
             {/* Features Grid (Bento Box) */}
             <section className="py-24 px-4 bg-gray-50">
                 <div className="max-w-7xl mx-auto">
-                    <h2 className="text-4xl font-bold text-gray-900 mb-12 text-center">Why Pumato?</h2>
+                    <h2 className="text-4xl font-bold text-gray-900 mb-12 text-center">
+                        Why Pumato?
+                    </h2>
                     <div className="grid md:grid-cols-3 md:grid-rows-2 gap-6 h-auto md:h-[600px]">
                         <motion.div
                             whileHover={{ scale: 0.98 }}
@@ -170,7 +220,10 @@ export default function Home() {
                             />
                             <div className="relative z-10">
                                 <h3 className="text-4xl font-bold mb-4">Hostel Delivery Experts</h3>
-                                <p className="text-lg opacity-90 max-w-md">We know exactly where your block is. No more walking to the main gate to pick up your food.</p>
+                                <p className="text-lg opacity-90 max-w-md">
+                                    We know exactly where your block is. No more walking to the main
+                                    gate to pick up your food.
+                                </p>
                             </div>
                         </motion.div>
                         <motion.div
@@ -186,8 +239,12 @@ export default function Home() {
                             whileHover={{ scale: 0.98 }}
                             className="bg-white p-8 rounded-3xl border border-gray-200 flex flex-col justify-center shadow-sm hover:shadow-xl transition-shadow"
                         >
-                            <h3 className="text-2xl font-bold text-gray-800 mb-2">Student Prices</h3>
-                            <p className="text-gray-600">Special discounts for college ID holders on selected brands.</p>
+                            <h3 className="text-2xl font-bold text-gray-800 mb-2">
+                                Student Prices
+                            </h3>
+                            <p className="text-gray-600">
+                                Special discounts for college ID holders on selected brands.
+                            </p>
                         </motion.div>
                     </div>
                 </div>
@@ -197,7 +254,9 @@ export default function Home() {
             <section className="py-24 px-4 bg-white border-t border-gray-100 overflow-hidden text-center">
                 <div className="max-w-7xl mx-auto mb-16">
                     <motion.span
-                        initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }}
+                        initial={{ opacity: 0 }}
+                        whileInView={{ opacity: 1 }}
+                        viewport={{ once: true }}
                         className="text-red-500 font-bold tracking-[0.2em] text-sm uppercase"
                     >
                         Wall of Love
@@ -232,13 +291,30 @@ export default function Home() {
             {/* Connect Section */}
             <section className="bg-white py-24 px-4 text-center">
                 <h2 className="text-4xl font-bold mb-8">Connect With Us</h2>
-                <p className="text-xl text-gray-600 mb-12">Follow our journey and get exclusive deals.</p>
+                <p className="text-xl text-gray-600 mb-12">
+                    Follow our journey and get exclusive deals.
+                </p>
                 <div className="flex justify-center gap-8">
-                    <a href="#" className="p-4 bg-white rounded-full shadow-lg hover:text-pink-600 hover:scale-110 transition-all"><Instagram size={32} /></a>
-                    <a href="#" className="p-4 bg-white rounded-full shadow-lg hover:text-blue-600 hover:scale-110 transition-all"><Linkedin size={32} /></a>
-                    <a href="#" className="p-4 bg-white rounded-full shadow-lg hover:text-blue-400 hover:scale-110 transition-all"><Twitter size={32} /></a>
+                    <a
+                        href="#"
+                        className="p-4 bg-white rounded-full shadow-lg hover:text-pink-600 hover:scale-110 transition-all"
+                    >
+                        <Instagram size={32} />
+                    </a>
+                    <a
+                        href="#"
+                        className="p-4 bg-white rounded-full shadow-lg hover:text-blue-600 hover:scale-110 transition-all"
+                    >
+                        <Linkedin size={32} />
+                    </a>
+                    <a
+                        href="#"
+                        className="p-4 bg-white rounded-full shadow-lg hover:text-blue-400 hover:scale-110 transition-all"
+                    >
+                        <Twitter size={32} />
+                    </a>
                 </div>
             </section>
-        </main >
+        </main>
     );
 }

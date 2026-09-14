@@ -41,7 +41,12 @@ export default function AdminLoginPage() {
     return (
         <div className="min-h-screen bg-black text-white flex items-center justify-center p-4 relative overflow-hidden">
             {/* Noise Overlay */}
-            <div className="fixed inset-0 pointer-events-none opacity-[0.04] z-[0] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }}></div>
+            <div
+                className="fixed inset-0 pointer-events-none opacity-[0.04] z-[0] mix-blend-overlay"
+                style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")`,
+                }}
+            ></div>
 
             {/* Background Glows */}
             <div className="fixed top-0 left-0 w-[500px] h-[500px] bg-purple-900/20 rounded-full blur-[120px] pointer-events-none" />
@@ -63,12 +68,19 @@ export default function AdminLoginPage() {
                     >
                         <Lock size={36} className="text-white" />
                     </motion.div>
-                    <h1 className="text-4xl font-black text-white tracking-tight mb-2">Admin Login</h1>
-                    <p className="text-gray-400 font-medium">Enter your credentials to access the dashboard</p>
+                    <h1 className="text-4xl font-black text-white tracking-tight mb-2">
+                        Admin Login
+                    </h1>
+                    <p className="text-gray-400 font-medium">
+                        Enter your credentials to access the dashboard
+                    </p>
                 </div>
 
                 {/* Login Form */}
-                <form onSubmit={handleSubmit} className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/10 shadow-2xl">
+                <form
+                    onSubmit={handleSubmit}
+                    className="bg-white/5 backdrop-blur-xl p-8 rounded-[2rem] border border-white/10 shadow-2xl"
+                >
                     {/* Error Message */}
                     {error && (
                         <motion.div
@@ -87,7 +99,10 @@ export default function AdminLoginPage() {
                             Email Address
                         </label>
                         <div className="relative">
-                            <Mail size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <Mail
+                                size={20}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                            />
                             <input
                                 type="email"
                                 value={email}
@@ -105,7 +120,10 @@ export default function AdminLoginPage() {
                             Password
                         </label>
                         <div className="relative">
-                            <Lock size={20} className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500" />
+                            <Lock
+                                size={20}
+                                className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
+                            />
                             <input
                                 type={showPassword ? "text" : "password"}
                                 value={password}

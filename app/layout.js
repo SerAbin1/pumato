@@ -3,6 +3,7 @@ import "./globals.css";
 import { CartProvider } from "./context/CartContext";
 import { UserAuthProvider } from "./context/UserAuthContext";
 import AnalyticsInit from "./components/AnalyticsInit";
+import { CANONICAL_URLS } from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -11,6 +12,9 @@ import { Toaster } from "react-hot-toast";
 export const metadata = {
     title: "Pumato - Food Delivery",
     description: "Delicious food delivered to your hostel.",
+    alternates: {
+        canonical: CANONICAL_URLS.home,
+    },
     other: {
         "google-adsense-account": "ca-pub-9528740605995472",
     },

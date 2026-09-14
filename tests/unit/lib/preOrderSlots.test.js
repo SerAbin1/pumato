@@ -11,6 +11,16 @@ import {
 } from "../../../lib/preOrderSlots";
 
 describe("resolvePreOrderSlotOccurrence", () => {
+    it("shows the day's slot right after midnight once the day has started (= 12AM+)", () => {
+        // 12:05 AM, slot 8:00-9:00 PM, 60min cutoff -> same day, still bookable.
+        const now = { year: 2026, month: 7, day: 28, timeInMinutes: 5 }; // just past midnight
+        const slot = { start: "20:00", end: "21:00", cutoffMinutes: 60 };
+        const occ = resolvePreOrderSlotOccurrence(slot, now);
+        expect(occ.date).toBe("2026-08-28");
+        expect(occ.minutesUntilStart).toBe(1195); // 1200 - 5
+        expect(occ.isBookable).toBe(true);
+    });
+
     it("resolves to today when now is strictly before the cutoff instant", () => {
         // 10:00 AM, slot 8:00-9:00 PM, 60min cutoff -> cutoff instant is 7:00 PM
         const now = { year: 2026, month: 7, day: 28, timeInMinutes: 600 };
@@ -30,24 +40,21 @@ describe("resolvePreOrderSlotOccurrence", () => {
         expect(occ.isBookable).toBe(true);
     });
 
-    it("rolls to tomorrow when now is exactly 1 minute past the cutoff instant", () => {
+    it("marks the slot unavailable once past the cutoff — does not roll to tomorrow", () => {
         const now = { year: 2026, month: 7, day: 28, timeInMinutes: 1141 }; // 7:01 PM
         const slot = { start: "20:00", end: "21:00", cutoffMinutes: 60 };
         const occ = resolvePreOrderSlotOccurrence(slot, now);
-        expect(occ.date).toBe("2026-08-29");
-        // Right after cutoff passes but before the slot's own start time, tomorrow's
-        // occurrence is briefly >24h away and therefore not yet bookable — documents
-        // that the slot temporarily disappears from the picker until `now` catches up.
+        expect(occ.date).toBe("2026-08-28");
         expect(occ.isBookable).toBe(false);
     });
 
-    it("rolls to tomorrow once the slot's own start time has already passed today (0 cutoff)", () => {
+    it("marks the slot unavailable once its start time has already passed today (0 cutoff)", () => {
         const now = { year: 2026, month: 7, day: 28, timeInMinutes: 600 }; // 10:00 AM
         const slot = { start: "08:00", end: "09:00", cutoffMinutes: 0 };
         const occ = resolvePreOrderSlotOccurrence(slot, now);
-        expect(occ.date).toBe("2026-08-29");
-        expect(occ.minutesUntilStart).toBe(1320); // 1440 - 600 + 480
-        expect(occ.isBookable).toBe(true);
+        expect(occ.date).toBe("2026-08-28");
+        expect(occ.minutesUntilStart).toBe(-120); // 480 - 600
+        expect(occ.isBookable).toBe(false);
     });
 
     it("defaults cutoffMinutes to 0 when omitted", () => {
@@ -55,39 +62,58 @@ describe("resolvePreOrderSlotOccurrence", () => {
         const slot = { start: "08:00", end: "09:00" }; // no cutoffMinutes field
         const occ = resolvePreOrderSlotOccurrence(slot, now);
         expect(occ.cutoffMinutes).toBe(0);
-        expect(occ.date).toBe("2026-08-29");
+        expect(occ.date).toBe("2026-08-28");
+        expect(occ.isBookable).toBe(false);
     });
 
-    it("rolls the calendar date correctly across a month boundary", () => {
+    it("keeps the slot on its own day (Jan 31) rather than rolling to a future month", () => {
         const now = { year: 2026, month: 0, day: 31, timeInMinutes: 1400 }; // Jan 31, 11:20 PM
         const slot = { start: "23:00", end: "23:30", cutoffMinutes: 0 };
         const occ = resolvePreOrderSlotOccurrence(slot, now);
-        expect(occ.date).toBe("2026-02-01");
+        expect(occ.date).toBe("2026-01-31");
+        expect(occ.isBookable).toBe(false);
     });
 
-    it("rolls the calendar date correctly across a year boundary", () => {
+    it("keeps the slot on its own day (Dec 31) rather than rolling to a new year", () => {
         const now = { year: 2026, month: 11, day: 31, timeInMinutes: 1400 }; // Dec 31, 11:20 PM
         const slot = { start: "23:00", end: "23:30", cutoffMinutes: 0 };
         const occ = resolvePreOrderSlotOccurrence(slot, now);
-        expect(occ.date).toBe("2027-01-01");
+        expect(occ.date).toBe("2026-12-31");
+        expect(occ.isBookable).toBe(false);
     });
 });
 
 describe("getAvailablePreOrderSlots", () => {
-    it("includes a next-day occurrence when it's within the rolling 24h window", () => {
-        // 10:00 PM now; 8-9 AM slot's cutoff already passed today, tomorrow's occurrence
-        // is ~10h away (well within 24h) — the exact case negotiated with the user.
+    it("surfaces the day's upcoming slots well before their cutoff (right after 12AM)", () => {
+        // 12:05 AM; an 8-9 PM slot with a 60min cutoff is later today and bookable.
+        const now = { year: 2026, month: 7, day: 28, timeInMinutes: 5 };
+        const slots = [{ start: "20:00", end: "21:00", cutoffMinutes: 60 }];
+        const result = getAvailablePreOrderSlots(slots, now);
+        expect(result).toHaveLength(1);
+        expect(result[0].date).toBe("2026-08-28");
+    });
+
+    it("does not surface tomorrow's occurrence when today's cutoff has passed (the 8PM confusion case)", () => {
+        // 8:00 PM now; the 8-9 PM slot's 60min cutoff (7:00 PM) already passed.
+        // Previously the picker offered tomorrow's 8-9 PM slot — the exact
+        // confusion this fixes. Now the slot must not appear.
+        const now = { year: 2026, month: 7, day: 28, timeInMinutes: 1200 };
+        const slots = [{ start: "20:00", end: "21:00", cutoffMinutes: 60 }];
+        const result = getAvailablePreOrderSlots(slots, now);
+        expect(result).toHaveLength(0);
+    });
+
+    it("excludes a slot whose day has passed (cutoff missed) — no next-day rollover", () => {
+        // 10:00 PM now; 8-9 AM slot's cutoff (7:30 AM) already passed today.
+        // Previously tomorrow's occurrence (~10h away) appeared; now it must not.
         const now = { year: 2026, month: 7, day: 28, timeInMinutes: 1320 };
         const slots = [{ start: "08:00", end: "09:00", cutoffMinutes: 30 }];
         const result = getAvailablePreOrderSlots(slots, now);
-        expect(result).toHaveLength(1);
-        expect(result[0].date).toBe("2026-08-29");
-        expect(result[0].minutesUntilStart).toBe(600);
+        expect(result).toHaveLength(0);
     });
 
-    it("excludes a next-day occurrence once it's more than 24h away", () => {
-        // 10:00 AM now; an 11-12 slot with a 90min cutoff already missed its cutoff
-        // (9:30 AM) but hasn't started yet, so tomorrow's occurrence is 25h out.
+    it("excludes a slot that has already missed its cutoff earlier today", () => {
+        // 10:00 AM now; an 11-12 slot with a 90min cutoff already missed (9:30 AM cutoff).
         const now = { year: 2026, month: 7, day: 28, timeInMinutes: 600 };
         const slots = [{ start: "11:00", end: "12:00", cutoffMinutes: 90 }];
         const result = getAvailablePreOrderSlots(slots, now);

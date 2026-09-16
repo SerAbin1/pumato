@@ -10,6 +10,7 @@ import {
     buildDeliverySlotFromOccurrence,
     formatDeliverySlot,
     formatProcessingWindow,
+    hasAnyFoodPreOrderAvailable,
 } from "../../../lib/preOrderSlots";
 
 describe("resolvePreOrderSlotOccurrence", () => {
@@ -549,5 +550,38 @@ describe("formatProcessingWindow", () => {
     it("returns '' for null/undefined", () => {
         expect(formatProcessingWindow(null)).toBe("");
         expect(formatProcessingWindow(undefined)).toBe("");
+    });
+});
+
+describe("hasAnyFoodPreOrderAvailable", () => {
+    it("returns true when the campus itself has pre-order enabled", () => {
+        expect(hasAnyFoodPreOrderAvailable({ isPreOrderEnabled: true }, [])).toBe(true);
+    });
+
+    it("returns true when at least one restaurant has pre-order enabled with slots", () => {
+        const restaurants = [
+            { id: "r1", isPreOrderEnabled: false, preOrderSlots: [] },
+            {
+                id: "r2",
+                isPreOrderEnabled: true,
+                preOrderSlots: [{ start: "18:00", end: "19:00" }],
+            },
+        ];
+        expect(hasAnyFoodPreOrderAvailable({ isPreOrderEnabled: false }, restaurants)).toBe(true);
+    });
+
+    it("returns false when a restaurant has the flag on but no slots configured", () => {
+        const restaurants = [{ id: "r1", isPreOrderEnabled: true, preOrderSlots: [] }];
+        expect(hasAnyFoodPreOrderAvailable({ isPreOrderEnabled: false }, restaurants)).toBe(false);
+    });
+
+    it("returns false when neither the campus nor any restaurant has pre-order enabled", () => {
+        const restaurants = [{ id: "r1", isPreOrderEnabled: false, preOrderSlots: [] }];
+        expect(hasAnyFoodPreOrderAvailable({ isPreOrderEnabled: false }, restaurants)).toBe(false);
+    });
+
+    it("handles missing/null campus config and restaurant list", () => {
+        expect(hasAnyFoodPreOrderAvailable(null, null)).toBe(false);
+        expect(hasAnyFoodPreOrderAvailable(undefined, undefined)).toBe(false);
     });
 });

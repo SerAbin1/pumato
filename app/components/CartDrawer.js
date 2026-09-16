@@ -27,7 +27,7 @@ import { createOrder } from "@/lib/repositories";
 import { trackPurchase } from "@/lib/analytics";
 import { checkoutCoupon } from "@/lib/functions";
 import { getISTTime, getISTObject } from "@/lib/dateUtils";
-import { isServiceLive } from "@/lib/serviceStatus";
+import { isCheckoutOpen } from "@/lib/serviceStatus";
 import {
     getSharedPreOrderSlots,
     groupsShareAnyWindow,
@@ -114,21 +114,6 @@ export default function CartDrawer() {
     );
     const isCampusPreOrderMode = !!selectedCampusPreOrder.isPreOrderEnabled;
 
-    const isStoreOpen = useMemo(() => {
-        // A pre-order-enabled campus is bookable purely on slot cutoffs — "Ordering Hours" is irrelevant there.
-        if (isCampusPreOrderMode) return true;
-        if (!isCartOpen) return true;
-        const { timeInMinutes } = getISTTime();
-        const campusConfig = orderSettings?.deliveryCampusConfig || [];
-        const selectedCampus = campusConfig.find(
-            (c) => c.name === userDetails?.campus || c.id === userDetails?.campus
-        );
-        const slotsToCheck = selectedCampus
-            ? selectedCampus.slots || []
-            : campusConfig.flatMap((c) => c.slots || []);
-        return isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes);
-    }, [isCartOpen, orderSettings, userDetails.campus, isCampusPreOrderMode]);
-
     // Compute available delivery slots. Both campus and restaurant mode go through the same
     // getSharedPreOrderSlots intersection — campus is just the one-group case. In restaurant mode,
     // a cart spanning multiple pre-order restaurants only ever offers the overlap of what every one
@@ -186,6 +171,24 @@ export default function CartDrawer() {
             };
             // eslint-disable-next-line react-hooks/exhaustive-deps
         }, [isCampusPreOrderMode, selectedCampusPreOrder, cartItems, restaurants, nowTick]);
+
+    const isStoreOpen = useMemo(() => {
+        if (!isCartOpen) return true;
+        const { timeInMinutes } = getISTTime();
+        const campusConfig = orderSettings?.deliveryCampusConfig || [];
+        const selectedCampus = campusConfig.find(
+            (c) => c.name === userDetails?.campus || c.id === userDetails?.campus
+        );
+        const slotsToCheck = selectedCampus
+            ? selectedCampus.slots || []
+            : campusConfig.flatMap((c) => c.slots || []);
+        return isCheckoutOpen(
+            requiresSlot,
+            orderSettings.manualOverride?.status,
+            slotsToCheck,
+            timeInMinutes
+        );
+    }, [isCartOpen, orderSettings, userDetails.campus, requiresSlot]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect

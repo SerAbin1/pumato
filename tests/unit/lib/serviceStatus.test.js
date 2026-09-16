@@ -1,7 +1,7 @@
 "use strict";
 
 import { describe, it, expect } from "vitest";
-import { isServiceLive } from "../../../lib/serviceStatus";
+import { isServiceLive, isCheckoutOpen } from "../../../lib/serviceStatus";
 
 describe("isServiceLive", () => {
     describe("when manual override is 'closed' (admin force close)", () => {
@@ -161,6 +161,43 @@ describe("isServiceLive", () => {
         it("handles slots with non-numeric time values", () => {
             const slots = [{ start: "09:00", end: "17:00" }];
             expect(isServiceLive(null, slots, "invalid")).toBe(false);
+        });
+    });
+});
+
+describe("isCheckoutOpen", () => {
+    describe("when a pre-order path is active (campus-wide, or via a cart restaurant)", () => {
+        it("returns true outside scheduled slots, with no manual override", () => {
+            const slots = [{ start: "09:00", end: "17:00" }];
+            expect(isCheckoutOpen(true, null, slots, 1140)).toBe(true); // 19:00
+        });
+
+        it("returns true even when the admin has force-closed ordering hours", () => {
+            const slots = [{ start: "09:00", end: "17:00" }];
+            expect(isCheckoutOpen(true, "closed", slots, 900)).toBe(true); // 15:00
+        });
+
+        it("returns true even with no scheduled slots at all", () => {
+            expect(isCheckoutOpen(true, null, [], 900)).toBe(true);
+            expect(isCheckoutOpen(true, null, null, 900)).toBe(true);
+        });
+    });
+
+    describe("when no pre-order path is active", () => {
+        it("defers entirely to isServiceLive — true within scheduled slots", () => {
+            const slots = [{ start: "09:00", end: "17:00" }];
+            expect(isCheckoutOpen(false, null, slots, 900)).toBe(true); // 15:00
+        });
+
+        it("defers entirely to isServiceLive — false outside scheduled slots", () => {
+            const slots = [{ start: "09:00", end: "17:00" }];
+            expect(isCheckoutOpen(false, null, slots, 1140)).toBe(false); // 19:00
+        });
+
+        it("defers entirely to isServiceLive — respects a manual override", () => {
+            const slots = [{ start: "09:00", end: "17:00" }];
+            expect(isCheckoutOpen(false, "open", slots, 1140)).toBe(true); // 19:00, forced open
+            expect(isCheckoutOpen(false, "closed", slots, 900)).toBe(false); // 15:00, forced closed
         });
     });
 });

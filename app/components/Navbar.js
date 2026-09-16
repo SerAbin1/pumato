@@ -4,14 +4,16 @@ import Link from "next/link";
 import { ShoppingBag, X, LogIn, LogOut, Package, Heart } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useUserAuth } from "../context/UserAuthContext";
+import { useRestaurants } from "../hooks/useCartData";
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import CartDrawer from "./CartDrawer";
 import WhatsNewBell from "./WhatsNewBell";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { getISTTime } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
+import { hasAnyFoodPreOrderAvailable } from "@/lib/preOrderSlots";
 import CampusSelector from "./CampusSelector";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
@@ -33,7 +35,13 @@ const getCutoffDisplay = (start, cutoffMinutes) => {
     return format12h(`${hh}:${mm}`);
 };
 
-const LiveIndicator = ({ isLive, settings, label }) => {
+const LiveIndicator = ({
+    isLive,
+    settings,
+    label,
+    hasPreOrder = false,
+    preOrderRestaurantNames = [],
+}) => {
     const [isOpen, setIsOpen] = useState(false);
     const popoverRef = useRef(null);
 
@@ -49,24 +57,30 @@ const LiveIndicator = ({ isLive, settings, label }) => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen]);
 
+    // "Pre-order" is a distinct third state, not just "Offline" — immediate ordering is closed,
+    // but customers can still place a pre-order (campus-wide, or with a restaurant that offers it).
+    const status = isLive ? "live" : hasPreOrder ? "preorder" : "offline";
+    const statusColor = status === "live" ? "green" : status === "preorder" ? "cyan" : "red";
+    const statusText = status === "live" ? "Live" : status === "preorder" ? "Pre-order" : "Offline";
+
     return (
         <div className="relative" ref={popoverRef}>
             <button
                 onClick={() => setIsOpen(!isOpen)}
-                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all border ${isLive ? "bg-green-500/10 border-green-500/20 hover:bg-green-500/20" : "bg-red-500/10 border-red-500/20 hover:bg-red-500/20"}`}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full transition-all border bg-${statusColor}-500/10 border-${statusColor}-500/20 hover:bg-${statusColor}-500/20`}
             >
                 <div className="relative flex h-2 w-2">
                     {isLive && (
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
                     )}
                     <span
-                        className={`relative inline-flex rounded-full h-2 w-2 ${isLive ? "bg-green-500" : "bg-red-500"}`}
+                        className={`relative inline-flex rounded-full h-2 w-2 bg-${statusColor}-500`}
                     ></span>
                 </div>
                 <span
-                    className={`text-[10px] font-black uppercase tracking-wider ${isLive ? "text-green-500" : "text-red-500"}`}
+                    className={`text-[10px] font-black uppercase tracking-wider text-${statusColor}-500`}
                 >
-                    {isLive ? "Live" : "Offline"}
+                    {statusText}
                 </span>
             </button>
 
@@ -166,14 +180,31 @@ const LiveIndicator = ({ isLive, settings, label }) => {
                             })}
                         </div>
 
+                        {!isLive && preOrderRestaurantNames.length > 0 && (
+                            <div className="mt-6 pt-4 border-t border-white/10 space-y-2">
+                                <span className="text-[10px] font-black text-cyan-400 uppercase tracking-wider px-1 block">
+                                    Also accepting pre-orders
+                                </span>
+                                <div className="flex flex-wrap gap-1.5">
+                                    {preOrderRestaurantNames.map((name) => (
+                                        <span
+                                            key={name}
+                                            className="text-[9px] font-bold text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 px-2 py-1 rounded-full"
+                                        >
+                                            {name}
+                                        </span>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
                         <div
-                            className={`mt-6 pt-4 border-t border-white/10 flex items-center justify-center gap-2 ${isLive ? "text-green-500" : "text-red-500"}`}
+                            className={`mt-6 pt-4 border-t border-white/10 flex items-center justify-center gap-2 text-${statusColor}-500`}
                         >
-                            <div
-                                className={`w-1.5 h-1.5 rounded-full ${isLive ? "bg-green-500" : "bg-red-500"}`}
-                            ></div>
+                            <div className={`w-1.5 h-1.5 rounded-full bg-${statusColor}-500`}></div>
                             <span className="text-[10px] font-black uppercase tracking-widest">
-                                Currently {isLive ? "Open" : "Closed"}
+                                Currently{" "}
+                                {isLive ? "Open" : hasPreOrder ? "Pre-order Only" : "Closed"}
                             </span>
                         </div>
                     </motion.div>
@@ -376,8 +407,10 @@ export default function Navbar() {
         userDetails,
         setUserDetails,
         getCampusSlots,
+        getCampusPreOrderConfig,
         isLoaded,
     } = useCart();
+    const { restaurants } = useRestaurants();
     const { user: authUser, logout: authLogout, loading: authLoading } = useUserAuth();
     const pathname = usePathname();
     const [isScrolled, setIsScrolled] = useState(false);
@@ -409,6 +442,19 @@ export default function Navbar() {
 
     // Get slots specific to the user's selected campus
     const currentCampusSlots = getCampusSlots(userDetails.campus);
+
+    // Pre-order availability (food only) — lets a visitor know they can still order even while
+    // immediate ordering is closed, whether that's via campus-wide pre-order or a restaurant's own.
+    const isFoodContext = currentSettings === orderSettings;
+    const campusPreOrderConfig = isFoodContext ? getCampusPreOrderConfig(userDetails.campus) : null;
+    const preOrderRestaurantNames = useMemo(() => {
+        if (!isFoodContext) return [];
+        return restaurants
+            .filter((r) => r?.isPreOrderEnabled && r?.preOrderSlots?.length > 0)
+            .map((r) => r.name);
+    }, [isFoodContext, restaurants]);
+    const hasPreOrder =
+        isFoodContext && hasAnyFoodPreOrderAvailable(campusPreOrderConfig, restaurants);
 
     useEffect(() => {
         const checkLive = () => {
@@ -462,6 +508,8 @@ export default function Navbar() {
                                     isLive={isLive}
                                     settings={currentSettings}
                                     label={settingsLabel}
+                                    hasPreOrder={hasPreOrder}
+                                    preOrderRestaurantNames={preOrderRestaurantNames}
                                 />
                             )}
                         </div>
@@ -502,6 +550,8 @@ export default function Navbar() {
                                 isLive={isLive}
                                 settings={currentSettings}
                                 label={settingsLabel}
+                                hasPreOrder={hasPreOrder}
+                                preOrderRestaurantNames={preOrderRestaurantNames}
                             />
                         )}
                     </div>

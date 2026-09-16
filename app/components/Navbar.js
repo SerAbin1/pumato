@@ -111,7 +111,9 @@ const LiveIndicator = ({
                                     (c) => c.id === campus.id || c.name === campus.name
                                 );
                                 const slots = campusData?.slots || [];
-                                const preOrderSlots = campusData?.preOrderSlots || [];
+                                const preOrderSlots = campusData?.isPreOrderEnabled
+                                    ? campusData?.preOrderSlots || []
+                                    : [];
 
                                 // Build display entries: regular slots as "Slot N" and pre-order slots as "Pre-order Slot N"
                                 const allSlots = [

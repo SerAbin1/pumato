@@ -29,7 +29,8 @@ import { checkoutCoupon } from "@/lib/functions";
 import { getISTTime, getISTObject } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
 import {
-    getAvailablePreOrderSlots,
+    getSharedPreOrderSlots,
+    groupsShareAnyWindow,
     isPreOrderSlotSelectionValid,
     buildDeliverySlotFromOccurrence,
     formatDeliverySlot,
@@ -128,48 +129,63 @@ export default function CartDrawer() {
         return isServiceLive(orderSettings.manualOverride?.status, slotsToCheck, timeInMinutes);
     }, [isCartOpen, orderSettings, userDetails.campus, isCampusPreOrderMode]);
 
-    // Compute available delivery slots — campus-level pre-order takes over entirely when enabled
-    // for the buyer's campus, even if a cart restaurant also has its own slots.
-    const { availableSlots, requiresSlot } = useMemo(() => {
-        if (isCampusPreOrderMode) {
-            const nowIST = getISTObject();
+    // Compute available delivery slots. Both campus and restaurant mode go through the same
+    // getSharedPreOrderSlots intersection — campus is just the one-group case. In restaurant mode,
+    // a cart spanning multiple pre-order restaurants only ever offers the overlap of what every one
+    // of them shares — never a slot (or sub-window) only one of them configured, which would
+    // otherwise get silently applied to another restaurant's items.
+    // `groupSlotDefs` (the raw, unresolved per-group definitions) is exposed so checkout can
+    // re-validate the chosen slot against cutoffs with a fresh `now`.
+    const { availableSlots, requiresSlot, groupSlotDefs, hasSlotConflict, restaurantCount } =
+        useMemo(() => {
+            if (isCampusPreOrderMode) {
+                const defsList = [selectedCampusPreOrder.preOrderSlots];
+                return {
+                    availableSlots: getSharedPreOrderSlots(defsList, getISTObject()),
+                    requiresSlot: true,
+                    groupSlotDefs: defsList,
+                    hasSlotConflict: false,
+                    restaurantCount: 0,
+                };
+            }
+
+            const restaurantIds = [
+                ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
+            ];
+            const slotRestaurants = restaurantIds
+                .map((id) => restaurants.find((r) => r.id === id))
+                .filter((r) => r?.isPreOrderEnabled && r?.preOrderSlots?.length > 0);
+
+            if (slotRestaurants.length === 0)
+                return {
+                    availableSlots: [],
+                    requiresSlot: false,
+                    groupSlotDefs: [],
+                    hasSlotConflict: false,
+                    restaurantCount: 0,
+                };
+
+            const defsList = slotRestaurants.map((r) => r.preOrderSlots);
+            const shared = getSharedPreOrderSlots(defsList, getISTObject());
+
             return {
-                availableSlots: getAvailablePreOrderSlots(
-                    selectedCampusPreOrder.preOrderSlots,
-                    nowIST
-                ),
+                availableSlots: shared,
                 requiresSlot: true,
+                groupSlotDefs: defsList,
+                // Multiple pre-order restaurants in the cart with nothing in common — distinct from
+                // "nothing bookable right now" so the customer isn't told to just check back later.
+                // Only a real "these restaurants don't share a delivery window" case when their
+                // configured windows never overlap at all — not when they overlap but happen to
+                // have nothing bookable right now (e.g. one restaurant's cutoff just passed),
+                // which is the same transient "check back later" case as a single restaurant.
+                hasSlotConflict:
+                    slotRestaurants.length > 1 &&
+                    shared.length === 0 &&
+                    !groupsShareAnyWindow(defsList),
+                restaurantCount: slotRestaurants.length,
             };
-        }
-
-        const restaurantIds = [
-            ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
-        ];
-        const slotRestaurants = restaurantIds
-            .map((id) => restaurants.find((r) => r.id === id))
-            .filter((r) => r?.isSlotEnabled && r?.slots?.length > 0);
-
-        if (slotRestaurants.length === 0) return { availableSlots: [], requiresSlot: false };
-
-        // Merge slots from all slot-enabled restaurants (union)
-        const allSlots = [...new Set(slotRestaurants.flatMap((r) => r.slots))];
-        const sorted = allSlots.sort((a, b) => {
-            const getMinutes = (s) => {
-                const parts = s.split(" - ")[0].match(/(\d+):(\d+) (AM|PM)/);
-                if (!parts) return 0;
-                let h = parseInt(parts[1]);
-                const m = parseInt(parts[2]);
-                const amp = parts[3];
-                if (amp === "PM" && h !== 12) h += 12;
-                if (amp === "AM" && h === 12) h = 0;
-                return h * 60 + m;
-            };
-            return getMinutes(a) - getMinutes(b);
-        });
-
-        return { availableSlots: sorted, requiresSlot: true };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isCampusPreOrderMode, selectedCampusPreOrder, cartItems, restaurants, nowTick]);
+            // eslint-disable-next-line react-hooks/exhaustive-deps
+        }, [isCampusPreOrderMode, selectedCampusPreOrder, cartItems, restaurants, nowTick]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -211,15 +227,8 @@ export default function CartDrawer() {
             return;
         }
 
-        if (requiresSlot && isCampusPreOrderMode) {
-            const nowIST = getISTObject();
-            if (
-                !isPreOrderSlotSelectionValid(
-                    selectedSlot,
-                    selectedCampusPreOrder.preOrderSlots,
-                    nowIST
-                )
-            ) {
+        if (requiresSlot) {
+            if (!isPreOrderSlotSelectionValid(selectedSlot, groupSlotDefs, getISTObject())) {
                 setCheckoutError(
                     "Your selected delivery slot is no longer available. Please pick another."
                 );
@@ -230,12 +239,11 @@ export default function CartDrawer() {
 
         const deliverySlotRecord = !selectedSlot
             ? null
-            : isCampusPreOrderMode
-              ? buildDeliverySlotFromOccurrence(
-                    selectedSlot,
-                    selectedCampusPreOrder.id || userDetails.campus
-                )
-              : { source: "restaurant", label: selectedSlot };
+            : buildDeliverySlotFromOccurrence(
+                  selectedSlot,
+                  isCampusPreOrderMode ? "campus" : "restaurant",
+                  isCampusPreOrderMode ? selectedCampusPreOrder.id || userDetails.campus : undefined
+              );
 
         setIsCheckingOut(true);
         setCheckoutError(null);
@@ -926,50 +934,47 @@ export default function CartDrawer() {
                                                             />
                                                             Delivery Time Slot
                                                         </label>
+                                                        {restaurantCount > 1 &&
+                                                            availableSlots.length > 0 && (
+                                                                <p className="text-[10px] text-gray-500 pl-1 -mt-1 mb-1">
+                                                                    Showing times that work for all{" "}
+                                                                    {restaurantCount} restaurants in
+                                                                    your cart — one of them may
+                                                                    offer earlier or later times on
+                                                                    its own.
+                                                                </p>
+                                                            )}
                                                         {availableSlots.length === 0 ? (
                                                             <p className="text-xs text-orange-400 bg-orange-500/10 px-3 py-2 rounded-xl border border-orange-500/20">
-                                                                No pre-order delivery slots
-                                                                available right now. Please check
-                                                                back later.
+                                                                {hasSlotConflict
+                                                                    ? "These restaurants don't share a delivery time slot. Please order from one at a time."
+                                                                    : "No pre-order delivery slots available right now. Please check back later."}
                                                             </p>
                                                         ) : (
                                                             <>
                                                                 <div className="grid grid-cols-2 gap-2">
                                                                     {availableSlots.map((entry) => {
                                                                         const isSelected =
-                                                                            isCampusPreOrderMode
-                                                                                ? selectedSlot &&
-                                                                                  selectedSlot.date ===
-                                                                                      entry.date &&
-                                                                                  selectedSlot.start ===
-                                                                                      entry.start
-                                                                                : selectedSlot ===
-                                                                                  entry;
+                                                                            selectedSlot &&
+                                                                            selectedSlot.date ===
+                                                                                entry.date &&
+                                                                            selectedSlot.start ===
+                                                                                entry.start;
                                                                         const label =
-                                                                            isCampusPreOrderMode
-                                                                                ? formatDeliverySlot(
-                                                                                      {
-                                                                                          source: "campus",
-                                                                                          ...entry,
-                                                                                      }
-                                                                                  )
-                                                                                : entry;
-                                                                        const key =
-                                                                            isCampusPreOrderMode
-                                                                                ? `${entry.date}_${entry.start}`
-                                                                                : entry;
+                                                                            formatDeliverySlot({
+                                                                                source: isCampusPreOrderMode
+                                                                                    ? "campus"
+                                                                                    : "restaurant",
+                                                                                ...entry,
+                                                                            });
                                                                         return (
                                                                             <button
-                                                                                key={key}
+                                                                                key={`${entry.date}_${entry.start}`}
                                                                                 type="button"
                                                                                 onClick={() =>
-                                                                                    isCampusPreOrderMode
-                                                                                        ? setPendingSlot(
-                                                                                              entry
-                                                                                          )
-                                                                                        : setSelectedSlot(
-                                                                                              entry
-                                                                                          )
+                                                                                    setPendingSlot(
+                                                                                        entry
+                                                                                    )
                                                                                 }
                                                                                 className={`py-3 px-3 rounded-xl text-xs font-bold transition-all border ${
                                                                                     isSelected
@@ -986,12 +991,12 @@ export default function CartDrawer() {
                                                                     <p className="text-[10px] text-cyan-400/70 font-medium pl-1">
                                                                         Your order will be delivered
                                                                         during{" "}
-                                                                        {isCampusPreOrderMode
-                                                                            ? formatDeliverySlot({
-                                                                                  source: "campus",
-                                                                                  ...selectedSlot,
-                                                                              })
-                                                                            : selectedSlot}
+                                                                        {formatDeliverySlot({
+                                                                            source: isCampusPreOrderMode
+                                                                                ? "campus"
+                                                                                : "restaurant",
+                                                                            ...selectedSlot,
+                                                                        })}
                                                                     </p>
                                                                 )}
                                                             </>

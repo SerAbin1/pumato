@@ -167,6 +167,7 @@ export function CartProvider({ children }) {
                 itemTotal,
                 totalItems,
                 deliveryCharge: deliveryMetrics.deliveryCharge,
+                largeOrderSurcharge: deliveryMetrics.largeOrderSurcharge,
                 campusDeliveryCharge: deliveryMetrics.campusDeliveryCharge,
                 hasHeavyItems: deliveryMetrics.hasHeavyItems,
                 isMultiRestaurant: deliveryMetrics.isMultiRestaurant,

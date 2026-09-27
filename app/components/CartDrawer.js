@@ -58,6 +58,7 @@ export default function CartDrawer() {
         setUserDetails,
         itemTotal,
         deliveryCharge,
+        largeOrderSurcharge,
         finalTotal,
         totalItems,
         couponCode,
@@ -811,10 +812,10 @@ export default function CartDrawer() {
                                                     <span>- ₹{discount}</span>
                                                 </div>
                                             )}
-                                            {totalItems > 3 && (
+                                            {largeOrderSurcharge > 0 && (
                                                 <div className="flex justify-between text-xs text-orange-400 bg-orange-500/10 p-2 rounded-lg border border-orange-500/10">
                                                     <span>Large Order Surcharge</span>
-                                                    <span>Applied</span>
+                                                    <span>₹{largeOrderSurcharge} applied</span>
                                                 </div>
                                             )}
                                             {hasHeavyItems && (

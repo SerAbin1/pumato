@@ -3,12 +3,31 @@
 import { describe, it, expect } from "vitest";
 import {
     calculateItemTotal,
+    calculateDeliveryCharge,
     calculateDiscount,
     calculateMinOrderShortfalls,
 } from "../../../lib/cartPricing";
 
 // Helper builders
 const single = (overrides = {}) => [{ id: "1", price: "100", quantity: 1, ...overrides }];
+
+// Base 30 / threshold 3 / extra 10 / light bundle 3 — the admin defaults worked
+// through by hand: 3 units of headroom, then ₹10 per unit beyond it.
+const SETTINGS = {
+    baseDeliveryCharge: "30",
+    extraItemThreshold: "3",
+    extraItemCharge: "10",
+    lightItemThreshold: "3",
+};
+const NO_CAMPUS = { campus: "" };
+const line = (id, quantity, extra = {}) => ({
+    id,
+    name: id,
+    price: "50",
+    quantity,
+    restaurantId: "r1",
+    ...extra,
+});
 
 describe("calculateItemTotal", () => {
     it("uses unitPrice when present (variant/addons selected)", () => {
@@ -49,6 +68,152 @@ describe("calculateItemTotal", () => {
     it("returns 0 when quantity is 0", () => {
         const items = [{ id: "1", price: "100", unitPrice: 200, quantity: 0 }];
         expect(calculateItemTotal(items)).toBe(0);
+    });
+});
+
+describe("calculateDeliveryCharge - normal and heavy weights", () => {
+    it("charges the base only while the cart is within the threshold", () => {
+        const cart = [line("paratha", 3)];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(30);
+    });
+
+    it("adds the extra charge for every unit past the threshold", () => {
+        const cart = [line("paratha", 4)];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("treats a menu item that predates the weight field as normal", () => {
+        const cart = [line("paratha", 4)]; // no weight at all
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS)).toMatchObject({
+            deliveryCharge: 40,
+            hasHeavyItems: false,
+        });
+    });
+
+    it("counts a heavy item as more than one unit each", () => {
+        // 2 x weight 2 = 4 units, which is one unit past the threshold.
+        const cart = [line("biryani", 2, { weight: 2 })];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("charges heavy items more than the same quantity of normal items", () => {
+        const heavy = calculateDeliveryCharge(
+            [line("biryani", 2, { weight: 3 })],
+            SETTINGS,
+            null,
+            NO_CAMPUS
+        );
+        const normal = calculateDeliveryCharge([line("biryani", 2)], SETTINGS, null, NO_CAMPUS);
+        expect(heavy.deliveryCharge).toBe(60); // 6 units - 3 = 3 extra units
+        expect(normal.deliveryCharge).toBe(30); // 2 units, within threshold
+    });
+
+    it("flags a heavy item in the cart for the UI", () => {
+        const cart = [line("biryani", 1, { weight: 2 })];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).hasHeavyItems).toBe(true);
+    });
+
+    it("treats a zero or unparseable weight as normal", () => {
+        const zero = [line("paratha", 4, { weight: 0 })];
+        const junk = [line("paratha", 4, { weight: "heavy" })];
+        expect(calculateDeliveryCharge(zero, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+        expect(calculateDeliveryCharge(junk, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("reports the surcharge separately from the base charge", () => {
+        const within = calculateDeliveryCharge([line("paratha", 3)], SETTINGS, null, NO_CAMPUS);
+        expect(within.largeOrderSurcharge).toBe(0);
+        const past = calculateDeliveryCharge([line("paratha", 4)], SETTINGS, null, NO_CAMPUS);
+        expect(past.largeOrderSurcharge).toBe(10);
+    });
+
+    it("falls back to the default charge when no settings are configured", () => {
+        const cart = [line("paratha", 4)];
+        expect(calculateDeliveryCharge(cart, {}, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+});
+
+describe("calculateDeliveryCharge - light weights", () => {
+    // Light items pool separately: they only bill in whole bundles, so a light
+    // cart under the bundle size is free no matter how many normal items it has.
+    it("bills a light cart once it reaches a whole bundle", () => {
+        const cart = [line("chappati", 6, { weight: -2 })]; // 6 qty = 3 units = 1 bundle
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("does not bill a light cart that stays under a whole bundle", () => {
+        const cart = [line("chappati", 5, { weight: -2 })]; // 5 qty = 2.5 units
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(30);
+    });
+
+    it("bills for each whole bundle of light items", () => {
+        const cart = [line("chappati", 11, { weight: -2 })]; // 5.5 units = 1 bundle
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+        const doubled = [line("chappati", 12, { weight: -2 })]; // 6 units = 2 bundles
+        expect(calculateDeliveryCharge(doubled, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(50);
+    });
+
+    it("honours a larger bundle size", () => {
+        const cart = [line("chappati", 6, { weight: -2 })];
+        const settings = { ...SETTINGS, lightItemThreshold: "4" }; // 3 units < 4
+        expect(calculateDeliveryCharge(cart, settings, null, NO_CAMPUS).deliveryCharge).toBe(30);
+    });
+
+    it("keeps the light pool separate from the normal threshold", () => {
+        // 6 chappati fill a light bundle while the 2 normal items stay under the
+        // normal threshold: exactly one extra unit either way.
+        const cart = [line("chappati", 6, { weight: -2 }), line("paratha", 2)];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("stacks a light bundle on top of a normal overage", () => {
+        const cart = [line("chappati", 6, { weight: -2 }), line("paratha", 4)];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(50);
+    });
+
+    it("counts a light item of weight -1 without bundling", () => {
+        const bundle = [line("paratha", 3, { weight: -1 })]; // 3 qty = 3 units = 1 bundle
+        expect(calculateDeliveryCharge(bundle, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+        const under = [line("paratha", 2, { weight: -1 })];
+        expect(calculateDeliveryCharge(under, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(30);
+    });
+
+    it("does not flag a light item as heavy", () => {
+        const cart = [line("chappati", 6, { weight: -2 })];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).hasHeavyItems).toBe(false);
+    });
+});
+
+describe("calculateDeliveryCharge - charge stacking", () => {
+    const campus = { deliveryCampusConfig: [{ id: "c1", name: "Hostel", deliveryCharge: 5 }] };
+
+    it("adds the campus charge on top of the base", () => {
+        const cart = [line("paratha", 2)];
+        const result = calculateDeliveryCharge(cart, { ...SETTINGS, ...campus }, null, {
+            campus: "c1",
+        });
+        expect(result).toMatchObject({ deliveryCharge: 35, campusDeliveryCharge: 5 });
+    });
+
+    it("adds ₹10 for each extra restaurant in the cart", () => {
+        const cart = [
+            line("paratha", 1, { restaurantId: "r1" }),
+            line("biryani", 1, { restaurantId: "r2" }),
+            line("rice", 1, { restaurantId: "r3" }),
+        ];
+        const result = calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS);
+        expect(result).toMatchObject({ deliveryCharge: 50, isMultiRestaurant: true });
+    });
+
+    it("falls back to the restaurant's own thresholds when the admin set none", () => {
+        const cart = [line("paratha", 2)];
+        const restaurant = {
+            baseDeliveryCharge: "40",
+            extraItemThreshold: "1",
+            extraItemCharge: "20",
+        };
+        const result = calculateDeliveryCharge(cart, {}, restaurant, NO_CAMPUS);
+        expect(result.deliveryCharge).toBe(60); // 40 base + 1 unit past threshold x 20
     });
 });
 

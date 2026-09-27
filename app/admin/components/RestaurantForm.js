@@ -3,6 +3,7 @@ import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock } from "lucide-react
 import Fuse from "fuse.js";
 import { toTitleCase } from "@/lib/formatters";
 import { createFileUploadHandler } from "@/lib/uploadImage";
+import { getItemWeight, isLightItem, isHeavyItem } from "@/lib/restaurants/menuItem";
 import {
     PRICE_CHANGE_FIXED,
     PRICE_CHANGE_PERCENT,
@@ -24,7 +25,6 @@ export default function RestaurantForm({
     onCancel,
     isSaving = false,
     isPartnerPage = false,
-    orderSettings,
 }) {
     const [formData, setFormData] = useState({
         name: "",
@@ -93,6 +93,7 @@ export default function RestaurantForm({
                     isVeg: false,
                     isVisible: true,
                     category: "",
+                    weight: 1,
                     variants: [],
                     addons: [],
                 },
@@ -162,19 +163,17 @@ export default function RestaurantForm({
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const getLightItemIds = () => orderSettings?.lightItems || [];
-    const getHeavyItemIds = () => orderSettings?.heavyItems || [];
+    // Light/heavy is a per-item weight, so the bulk price change can derive it
+    // from the menu itself instead of a global id list.
+    const [excludeLightItems, setExcludeLightItems] = useState(false);
+    const [excludeHeavyItems, setExcludeHeavyItems] = useState(false);
 
-    const getPriceChangeOptions = () => {
-        const excludeLight = excludedItemIds.includes("__light_items__");
-        const excludeHeavy = excludedItemIds.includes("__heavy_items__");
-        return {
-            excludedItemIds,
-            excludedCategories,
-            excludedLightItemIds: excludeLight ? getLightItemIds() : [],
-            excludedHeavyItemIds: excludeHeavy ? getHeavyItemIds() : [],
-        };
-    };
+    const getPriceChangeOptions = () => ({
+        excludedItemIds,
+        excludedCategories,
+        excludeLightItems,
+        excludeHeavyItems,
+    });
 
     const getAffectedItemsCount = () => {
         const amount = parseFloat(priceIncreaseAmount) || 0;
@@ -235,6 +234,8 @@ export default function RestaurantForm({
         setPriceIncreaseAmount(0);
         setExcludedCategories([]);
         setExcludedItemIds([]);
+        setExcludeLightItems(false);
+        setExcludeHeavyItems(false);
         setPriceIncreaseApplied(false);
     };
 
@@ -264,6 +265,8 @@ export default function RestaurantForm({
                 description: (item.description || "").trim(),
                 extraInfo: (item.extraInfo || "").trim(),
                 category: (item.category || "").trim().toUpperCase(),
+                // Blank or nonsense weights mean "normal", never a 0 that divides.
+                weight: getItemWeight(item),
                 variants: (item.variants || [])
                     .filter((v) => (v.name || "").trim() && (v.price || "").toString().trim())
                     .map((v) => ({
@@ -670,16 +673,8 @@ export default function RestaurantForm({
                             <input
                                 type="checkbox"
                                 id="exclude-light-items"
-                                checked={excludedItemIds.includes("__light_items__")}
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        setExcludedItemIds((prev) => [...prev, "__light_items__"]);
-                                    } else {
-                                        setExcludedItemIds((prev) =>
-                                            prev.filter((id) => id !== "__light_items__")
-                                        );
-                                    }
-                                }}
+                                checked={excludeLightItems}
+                                onChange={(e) => setExcludeLightItems(e.target.checked)}
                                 className="w-5 h-5 accent-orange-500 rounded"
                             />
                             <label
@@ -695,16 +690,8 @@ export default function RestaurantForm({
                             <input
                                 type="checkbox"
                                 id="exclude-heavy-items"
-                                checked={excludedItemIds.includes("__heavy_items__")}
-                                onChange={(e) => {
-                                    if (e.target.checked) {
-                                        setExcludedItemIds((prev) => [...prev, "__heavy_items__"]);
-                                    } else {
-                                        setExcludedItemIds((prev) =>
-                                            prev.filter((id) => id !== "__heavy_items__")
-                                        );
-                                    }
-                                }}
+                                checked={excludeHeavyItems}
+                                onChange={(e) => setExcludeHeavyItems(e.target.checked)}
                                 className="w-5 h-5 accent-red-500 rounded"
                             />
                             <label
@@ -751,8 +738,8 @@ export default function RestaurantForm({
                                                     .includes(itemSearchQuery.toLowerCase()) &&
                                                 !excludedItemIds.includes(item.id) &&
                                                 !excludedCategories.includes(item.category) &&
-                                                !getLightItemIds().includes(item.id) &&
-                                                !getHeavyItemIds().includes(item.id)
+                                                !isLightItem(item) &&
+                                                !isHeavyItem(item)
                                         )
                                         .slice(0, 5)
                                         .map((item) => (
@@ -1015,6 +1002,28 @@ export default function RestaurantForm({
                                                     )
                                                 }
                                             />
+                                            {!isPartnerPage && (
+                                                <div>
+                                                    <input
+                                                        type="number"
+                                                        step="1"
+                                                        className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white"
+                                                        placeholder="Delivery Weight"
+                                                        value={item.weight ?? 1}
+                                                        onChange={(e) =>
+                                                            updateMenuItem(
+                                                                actualIdx,
+                                                                "weight",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                    <p className="text-[10px] text-gray-500 mt-1 leading-snug">
+                                                        Delivery weight: 1 counts as 1, 2 counts as
+                                                        2 (heavy), -2 makes 2 count as 1 (light).
+                                                    </p>
+                                                </div>
+                                            )}
                                             <input
                                                 className="p-3 bg-white/5 border border-white/10 rounded-lg w-full text-white text-xs"
                                                 placeholder="Extra Info (e.g. Must Try)"

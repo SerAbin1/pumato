@@ -5,8 +5,6 @@ import { AlertCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
-const SKIP_KEYS = new Set(["heavyItems", "heavyItemCharge"]);
-
 const formatValue = (key, value) => {
     if (value === null || value === undefined) return "(not set)";
     if (key === "deliveryCampusConfig" && Array.isArray(value)) {
@@ -48,9 +46,6 @@ const formatValue = (key, value) => {
             })
             .join("\n");
     }
-    if (key === "lightItems" && Array.isArray(value)) {
-        return value.length === 0 ? "(none)" : `${value.length} item(s)`;
-    }
     if (key === "whatsappGroups" && Array.isArray(value)) {
         return value.length === 0 ? "(none)" : `${value.length} group(s)`;
     }
@@ -68,10 +63,7 @@ const FIELD_LABELS = {
     extraItemThreshold: "Extra Item Threshold",
     extraItemCharge: "Extra Item Charge",
     minOrderAmount: "Min Order Amount",
-    lightItems: "Light Items",
     lightItemThreshold: "Light Item Bundle Size",
-    heavyItems: "Heavy Items",
-    heavyItemCharge: "Heavy Item Charge",
     deliveryCampusConfig: "Campus Delivery Config",
     campusPreOrder: "Grocery Pre-order Config",
     manualOverride: "Service Override",
@@ -101,7 +93,7 @@ export default function SaveConfirmationModal({ isOpen, onClose, onConfirm, titl
 
     if (!mounted) return null;
 
-    const entries = Object.entries(data).filter(([k, v]) => !SKIP_KEYS.has(k) && v !== undefined);
+    const entries = Object.entries(data).filter(([, v]) => v !== undefined);
 
     const modalContent = (
         <AnimatePresence>

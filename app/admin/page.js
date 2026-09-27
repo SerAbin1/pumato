@@ -89,10 +89,7 @@ const DELIVERY_KEYS = [
     "extraItemThreshold",
     "extraItemCharge",
     "minOrderAmount",
-    "lightItems",
     "lightItemThreshold",
-    "heavyItems",
-    "heavyItemCharge",
     "deliveryCampusConfig",
     "manualOverride",
 ];
@@ -114,10 +111,9 @@ const DEFAULT_BANNERS = {
 
 // Array fields the editors mutate in place (spread, .filter) without a guard,
 // so they have to arrive as arrays even when the document has never been written.
-const DELIVERY_DEFAULTS = { lightItems: [], heavyItems: [] };
 const GLOBAL_DEFAULTS = { whatsappGroups: [] };
 
-const project = (obj, keys, defaults) => {
+const project = (obj, keys, defaults = {}) => {
     const out = Object.fromEntries(keys.map((k) => [k, obj?.[k]]));
     for (const [key, fallback] of Object.entries(defaults)) out[key] ??= fallback;
     return out;
@@ -152,10 +148,7 @@ export default function AdminPage() {
     const deliveryForm = useSettingsForm({
         label: "Delivery settings",
         confirm: true,
-        load: useCallback(
-            async () => project(await fetchOrderSettings(), DELIVERY_KEYS, DELIVERY_DEFAULTS),
-            []
-        ),
+        load: useCallback(async () => project(await fetchOrderSettings(), DELIVERY_KEYS), []),
         // order_settings is written with merge:true, so the diff alone is safe.
         save: useCallback(({ diff }) => saveOrderSettings(diff), []),
     });
@@ -592,11 +585,7 @@ export default function AdminPage() {
                     )}
 
                     {activeSection === "restaurants" && (
-                        <RestaurantsTab
-                            restaurants={restaurants}
-                            fetchData={fetchData}
-                            orderSettings={deliveryForm.data}
-                        />
+                        <RestaurantsTab restaurants={restaurants} fetchData={fetchData} />
                     )}
 
                     {activeSection === "coupons" && (
@@ -612,7 +601,6 @@ export default function AdminPage() {
                         <DeliverySettings
                             orderSettings={deliveryForm.data}
                             setOrderSettings={deliveryForm.setData}
-                            restaurants={restaurants}
                             settingsLoaded={deliveryForm.loaded}
                         />
                     )}

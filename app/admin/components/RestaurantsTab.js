@@ -7,7 +7,7 @@ import { saveRestaurant, updateRestaurant, deleteRestaurant } from "@/lib/reposi
 import RestaurantForm from "./RestaurantForm";
 import ConfirmModal from "../../components/ConfirmModal";
 
-export default function RestaurantsTab({ restaurants, fetchData, orderSettings }) {
+export default function RestaurantsTab({ restaurants, fetchData }) {
     const [activeTab, setActiveTab] = useState("list");
     const [editingId, setEditingId] = useState(null);
     const [selectedRestaurant, setSelectedRestaurant] = useState(null);
@@ -206,7 +206,6 @@ export default function RestaurantsTab({ restaurants, fetchData, orderSettings }
                     initialData={selectedRestaurant}
                     onSave={handleSaveRestaurant}
                     onCancel={() => setActiveTab("list")}
-                    orderSettings={orderSettings}
                 />
             )}
 

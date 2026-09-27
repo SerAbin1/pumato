@@ -10,12 +10,19 @@ import {
     isItemAffected,
 } from "../../../../lib/restaurants/priceAdjustments";
 
-const item = (id, price, category = "Starters") => ({ id, price, category });
+const item = (id, price, category = "Starters", weight) => ({ id, price, category, weight });
 
 const menu = [
     item("1", "100", "Starters"),
     item("2", "200", "Starters"),
     item("3", "300", "Main Course"),
+];
+
+// Light and heavy are a property of the item now, not a global id list.
+const typedMenu = [
+    item("1", "100", "Starters", 1),
+    item("2", "200", "Starters", -2), // light: two qty count as one
+    item("3", "300", "Main Course", 3), // heavy: one qty is three units
 ];
 
 describe("applyPriceChange - fixed", () => {
@@ -120,14 +127,21 @@ describe("applyPriceChange - exclusions", () => {
     });
 
     it("leaves light and heavy items untouched", () => {
-        const menuWithTypes = [item("1", "100"), item("2", "200"), item("3", "300")];
-        const updated = applyPriceChange(menuWithTypes, {
+        const updated = applyPriceChange(typedMenu, {
             mode: PRICE_CHANGE_PERCENT,
             value: 10,
-            excludedLightItemIds: ["1"],
-            excludedHeavyItemIds: ["3"],
+            excludeLightItems: true,
+            excludeHeavyItems: true,
         });
-        expect(updated.map((i) => i.price)).toEqual(["100", "220", "300"]);
+        expect(updated.map((i) => i.price)).toEqual(["110", "200", "300"]);
+    });
+
+    it("leaves the item weight alone while changing the price", () => {
+        const updated = applyPriceChange(typedMenu, {
+            mode: PRICE_CHANGE_PERCENT,
+            value: 10,
+        });
+        expect(updated.map((i) => i.weight)).toEqual([1, -2, 3]);
     });
 
     it("returns a new array without mutating the input", () => {
@@ -152,10 +166,10 @@ describe("getAffectedItemsCount", () => {
 
     it("counts items after item and light/heavy exclusions", () => {
         expect(
-            getAffectedItemsCount(menu, {
+            getAffectedItemsCount(typedMenu, {
                 excludedItemIds: ["1"],
-                excludedLightItemIds: ["2"],
-                excludedHeavyItemIds: ["3"],
+                excludeLightItems: true,
+                excludeHeavyItems: true,
             })
         ).toBe(0);
     });
@@ -170,8 +184,24 @@ describe("isItemAffected", () => {
         expect(isItemAffected(item("1", "100"))).toBe(true);
         expect(isItemAffected(item("1", "100"), { excludedItemIds: ["1"] })).toBe(false);
         expect(isItemAffected(item("1", "100"), { excludedCategories: ["Starters"] })).toBe(false);
-        expect(isItemAffected(item("1", "100"), { excludedLightItemIds: ["1"] })).toBe(false);
-        expect(isItemAffected(item("1", "100"), { excludedHeavyItemIds: ["1"] })).toBe(false);
+    });
+
+    it("skips light items only when light items are excluded", () => {
+        const light = item("2", "200", "Starters", -2);
+        expect(isItemAffected(light, { excludeLightItems: true })).toBe(false);
+        expect(isItemAffected(light, { excludeHeavyItems: true })).toBe(true);
+    });
+
+    it("skips heavy items only when heavy items are excluded", () => {
+        const heavy = item("3", "300", "Starters", 3);
+        expect(isItemAffected(heavy, { excludeHeavyItems: true })).toBe(false);
+        expect(isItemAffected(heavy, { excludeLightItems: true })).toBe(true);
+    });
+
+    it("treats a normal weight as neither light nor heavy", () => {
+        const normal = item("1", "100", "Starters", 1);
+        expect(isItemAffected(normal, { excludeLightItems: true })).toBe(true);
+        expect(isItemAffected(normal, { excludeHeavyItems: true })).toBe(true);
     });
 });
 

@@ -4,12 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { Package, MessageCircle, Link as LinkIcon } from "lucide-react";
+import { Maximize2, Package, MessageCircle, Link as LinkIcon } from "lucide-react";
 import { formatMarketplaceOfferMessage } from "@/lib/whatsapp";
 import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
+import ImageLightbox from "./ImageLightbox";
 
 export default function ListingCard({ listing, index = 0 }) {
     const [willingPrice, setWillingPrice] = useState(listing.askingPrice);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
+    const [lightboxIndex, setLightboxIndex] = useState(0);
 
     const whatsappLink = (listing.customLinks || []).find((l) => l.type === "whatsapp")?.link;
     const hasWhatsApp = Boolean(listing.sellerWhatsApp || whatsappLink);
@@ -87,6 +90,17 @@ export default function ListingCard({ listing, index = 0 }) {
                     </div>
                 </Link>
 
+                {/* Sits outside the Link so tapping it opens the viewer instead of navigating */}
+                {listing.images?.[0] && (
+                    <button
+                        onClick={() => setLightboxOpen(true)}
+                        aria-label={`View full size image of ${listing.itemName || "listing"}`}
+                        className="absolute top-4 right-4 z-30 bg-black/50 hover:bg-black/80 backdrop-blur-md text-white p-2 rounded-full border border-white/10 transition-all duration-200 cursor-zoom-in [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 [@media(hover:hover)]:focus-visible:opacity-100"
+                    >
+                        <Maximize2 size={16} />
+                    </button>
+                )}
+
                 <div className="px-6 pb-6 border-t border-white/10 pt-4 space-y-3">
                     {isBuyable && (
                         <>
@@ -141,6 +155,15 @@ export default function ListingCard({ listing, index = 0 }) {
                     )}
                 </div>
             </div>
+
+            <ImageLightbox
+                isOpen={lightboxOpen}
+                onClose={() => setLightboxOpen(false)}
+                images={listing.images}
+                index={lightboxIndex}
+                onIndexChange={setLightboxIndex}
+                alt={listing.itemName || ""}
+            />
         </motion.div>
     );
 }

@@ -4,13 +4,15 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
-import { ArrowLeft, Package, MessageCircle, Link as LinkIcon } from "lucide-react";
+import { ArrowLeft, Package, MessageCircle, Link as LinkIcon, Maximize2 } from "lucide-react";
 import { formatMarketplaceOfferMessage } from "@/lib/whatsapp";
 import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
+import ImageLightbox from "./ImageLightbox";
 
 export default function ListingDetail({ listing }) {
     const [willingPrice, setWillingPrice] = useState(listing.askingPrice);
     const [activeImage, setActiveImage] = useState(0);
+    const [lightboxOpen, setLightboxOpen] = useState(false);
 
     const whatsappLink = (listing.customLinks || []).find((l) => l.type === "whatsapp")?.link;
     const hasWhatsApp = Boolean(listing.sellerWhatsApp || whatsappLink);
@@ -37,7 +39,15 @@ export default function ListingDetail({ listing }) {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div>
-                    <div className="relative h-80 md:h-96 rounded-[2rem] overflow-hidden border border-white/10 bg-white/5">
+                    <button
+                        type="button"
+                        onClick={() => listing.images?.length && setLightboxOpen(true)}
+                        aria-label="View full size image"
+                        disabled={!listing.images?.length}
+                        className={`relative block w-full h-80 md:h-96 rounded-[2rem] overflow-hidden border border-white/10 bg-white/5 group ${
+                            listing.images?.length ? "cursor-zoom-in" : "cursor-default"
+                        }`}
+                    >
                         {listing.images?.length ? (
                             <Image
                                 src={listing.images[activeImage]}
@@ -52,7 +62,12 @@ export default function ListingDetail({ listing }) {
                                 <Package className="text-white/20" size={64} />
                             </div>
                         )}
-                    </div>
+                        {listing.images?.length > 0 && (
+                            <span className="absolute bottom-4 right-4 z-10 bg-black/50 group-hover:bg-black/80 backdrop-blur-md text-white p-2.5 rounded-full border border-white/10 transition-colors">
+                                <Maximize2 size={18} />
+                            </span>
+                        )}
+                    </button>
                     {listing.images?.length > 1 && (
                         <div className="flex gap-3 mt-4">
                             {listing.images.map((img, i) => (
@@ -150,6 +165,15 @@ export default function ListingDetail({ listing }) {
                     )}
                 </motion.div>
             </div>
+
+            <ImageLightbox
+                isOpen={lightboxOpen}
+                onClose={() => setLightboxOpen(false)}
+                images={listing.images}
+                index={activeImage}
+                onIndexChange={setActiveImage}
+                alt={listing.itemName || ""}
+            />
         </div>
     );
 }

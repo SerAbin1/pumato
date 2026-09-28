@@ -311,6 +311,11 @@ export default function MarketplaceListingForm({
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
                         Images
                     </label>
+                    <p className="text-xs text-gray-500 -mt-1">
+                        Any image size or shape works. Photos are shown in a fixed frame on the
+                        listing, and buyers can tap to view the full uncropped image. Landscape
+                        photos fill the frame best.
+                    </p>
                     <div className="flex flex-wrap gap-4">
                         {(formData.images || []).map((img) => (
                             <div

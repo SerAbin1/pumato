@@ -183,11 +183,14 @@ export default function AdminPage() {
         label: "Laundry config",
         initial: { campuses: [], pricing: { pricePerKg: "", steamIronPrice: "" } },
         load: useCallback(() => fetchLaundryConfig(), []),
+        // Campus config and pricing live in separate full-overwrite documents —
+        // write only the ones whose key actually changed, so a pricing edit can't
+        // clobber campus config (or persist the fallback defaults over it).
         save: useCallback(
-            ({ data }) =>
+            ({ diff }) =>
                 Promise.all([
-                    saveLaundryCampus({ campuses: data.campuses }),
-                    saveLaundryPricing(data.pricing),
+                    diff.campuses && saveLaundryCampus({ campuses: diff.campuses }),
+                    diff.pricing && saveLaundryPricing(diff.pricing),
                 ]),
             []
         ),

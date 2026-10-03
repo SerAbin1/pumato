@@ -7,6 +7,7 @@ import {
     getRecentlyOrderedItems,
     customerStatusLabel,
     totalSpent,
+    resolveReorderItems,
 } from "../../../lib/orderHistory";
 
 const item = (overrides = {}) => ({
@@ -197,5 +198,59 @@ describe("totalSpent", () => {
         expect(totalSpent([])).toBe(0);
         expect(totalSpent()).toBe(0);
         expect(totalSpent([order({ status: "placed" })])).toBe(0);
+    });
+});
+
+describe("resolveReorderItems", () => {
+    const menuItem = (overrides = {}) => ({
+        id: "biryani",
+        name: "Chicken Biryani",
+        price: "200",
+        category: "Biryani",
+        isVisible: true,
+        ...overrides,
+    });
+    const restaurant = (overrides = {}) => ({
+        id: "res-1",
+        name: "Hotel Ashiana",
+        isVisible: true,
+        menu: [menuItem()],
+        ...overrides,
+    });
+    const recent = getRecentlyOrderedItems([order()]);
+
+    it("uses the live menu price, not the price paid at order time", () => {
+        const [resolved] = resolveReorderItems(recent, [restaurant()]);
+        expect(resolved.price).toBe("200");
+        expect(resolved.available).toBe(true);
+        expect(resolved.live).toMatchObject({ id: "biryani" });
+    });
+
+    it("marks items unavailable when hidden, category out of stock, or deleted", () => {
+        const hidden = restaurant({ menu: [menuItem({ isVisible: false })] });
+        const categoryOos = restaurant({ outOfStockCategories: ["Biryani"] });
+        const deleted = restaurant({ menu: [] });
+
+        for (const r of [hidden, categoryOos, deleted]) {
+            expect(resolveReorderItems(recent, [r])[0].available).toBe(false);
+        }
+    });
+
+    it("marks items unavailable when the restaurant is closed or gone", () => {
+        expect(resolveReorderItems(recent, [restaurant({ isVisible: false })])[0].available).toBe(
+            false
+        );
+        const [gone] = resolveReorderItems(recent, []);
+        expect(gone.available).toBe(false);
+        expect(gone.live).toBeNull();
+        expect(gone.price).toBe(180);
+    });
+
+    it("flags items whose variants or addons must be chosen on the menu", () => {
+        const withVariants = restaurant({
+            menu: [menuItem({ variants: [{ id: "v1", name: "Full", price: "250" }] })],
+        });
+        expect(resolveReorderItems(recent, [withVariants])[0].needsChoice).toBe(true);
+        expect(resolveReorderItems(recent, [restaurant()])[0].needsChoice).toBe(false);
     });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -14,7 +14,14 @@ import UpiPaymentPanel from "../components/UpiPaymentPanel";
 import { fetchUserOrders, fetchPayment } from "@/lib/repositories";
 import { displayOrderNumber } from "@/lib/formatters";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
-import { partitionOrders, getRecentlyOrderedItems, customerStatusLabel } from "@/lib/orderHistory";
+import {
+    partitionOrders,
+    getRecentlyOrderedItems,
+    resolveReorderItems,
+    customerStatusLabel,
+} from "@/lib/orderHistory";
+import useFirestore from "@/app/hooks/useFirestore";
+import { COLLECTIONS } from "@/lib/constants";
 
 const STATUS_STYLES = {
     placed: "text-blue-400 bg-blue-500/10 border-blue-500/20",
@@ -118,6 +125,8 @@ export default function OrdersPage() {
     const [payments, setPayments] = useState({});
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
+    const [restaurants, setRestaurants] = useState(null);
+    const { getDocument } = useFirestore();
 
     const load = useCallback(async () => {
         if (!user) return;
@@ -153,10 +162,34 @@ export default function OrdersPage() {
     }, [authLoading, user, router]);
 
     const { active, past } = partitionOrders(orders);
-    const recentItems = getRecentlyOrderedItems(orders);
+    const recentItems = useMemo(() => getRecentlyOrderedItems(orders), [orders]);
+
+    // Reorder must price and stock-check against the live menu, not the
+    // snapshot stored on the order — fetch just the restaurants involved.
+    useEffect(() => {
+        const ids = [...new Set(recentItems.map((i) => i.restaurantId).filter(Boolean))];
+        if (ids.length === 0) return;
+        let cancelled = false;
+        Promise.all(
+            ids.map((id) => getDocument(COLLECTIONS.RESTAURANTS, id).catch(() => null))
+        ).then((docs) => {
+            if (!cancelled) setRestaurants(docs.filter(Boolean));
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [recentItems, getDocument]);
+
+    const reorderItems = useMemo(
+        () => (restaurants ? resolveReorderItems(recentItems, restaurants) : []),
+        [recentItems, restaurants]
+    );
 
     const reorder = (item) => {
-        addToCart(item, 1);
+        addToCart(
+            { ...item.live, restaurantId: item.restaurantId, restaurantName: item.restaurantName },
+            1
+        );
         setIsCartOpen(true);
         toast.success(`${item.name} added to cart`);
     };
@@ -217,7 +250,7 @@ export default function OrdersPage() {
                     </div>
                 )}
 
-                {recentItems.length > 0 && (
+                {reorderItems.length > 0 && (
                     <motion.section
                         initial={{ opacity: 0, y: 12 }}
                         animate={{ opacity: 1, y: 0 }}
@@ -227,7 +260,7 @@ export default function OrdersPage() {
                             Order again
                         </h2>
                         <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-                            {recentItems.map((item) => (
+                            {reorderItems.map((item) => (
                                 <div
                                     key={`${item.restaurantId}:${item.id}`}
                                     className="bg-white/5 border border-white/10 rounded-2xl p-4 min-w-[200px] flex flex-col gap-2"
@@ -241,15 +274,30 @@ export default function OrdersPage() {
                                         </p>
                                     </div>
                                     <div className="flex items-center justify-between mt-auto pt-2">
-                                        <span className="text-sm font-black text-white">
+                                        <span
+                                            className={`text-sm font-black ${item.available ? "text-white" : "text-gray-600 line-through"}`}
+                                        >
                                             ₹{item.price}
                                         </span>
-                                        <button
-                                            onClick={() => reorder(item)}
-                                            className="flex items-center gap-1.5 text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg transition-colors"
-                                        >
-                                            <RotateCcw size={12} /> Reorder
-                                        </button>
+                                        {!item.available ? (
+                                            <span className="text-xs font-bold text-gray-500 px-3 py-1.5">
+                                                Unavailable
+                                            </span>
+                                        ) : item.needsChoice ? (
+                                            <Link
+                                                href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
+                                                className="flex items-center gap-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors"
+                                            >
+                                                Customize
+                                            </Link>
+                                        ) : (
+                                            <button
+                                                onClick={() => reorder(item)}
+                                                className="flex items-center gap-1.5 text-xs font-bold bg-orange-600 hover:bg-orange-500 text-white px-3 py-1.5 rounded-lg transition-colors"
+                                            >
+                                                <RotateCcw size={12} /> Reorder
+                                            </button>
+                                        )}
                                     </div>
                                     {item.timesOrdered > 1 && (
                                         <p className="text-[10px] text-gray-600">

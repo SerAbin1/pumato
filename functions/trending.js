@@ -28,9 +28,10 @@ function lastWeekWindow(now = new Date()) {
 }
 
 /**
- * Most-ordered menu items across delivered orders, from featured restaurants
- * only — trending is promotion, and it shouldn't send customers to
- * restaurants that don't pay commission.
+ * Most-ordered menu items across non-cancelled orders, from featured
+ * restaurants only — trending is promotion, and it shouldn't send customers to
+ * restaurants that don't pay commission. Orders aren't reliably marked
+ * delivered yet, so anything placed and not cancelled counts.
  *
  * Ranked by how many distinct orders contained the item, not by quantity, so
  * one hostel's bulk order of 40 chapatis can't top the list on its own.
@@ -47,7 +48,7 @@ function computeTrending(orders = [], { featuredIds, limit = LIMIT }) {
     const tally = new Map();
 
     for (const order of orders) {
-        if (order?.status !== "delivered") continue;
+        if (!order || order.status === "cancelled") continue;
         const seenInOrder = new Set();
 
         for (const item of order.items || []) {

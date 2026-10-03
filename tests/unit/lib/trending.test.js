@@ -65,13 +65,22 @@ describe("computeTrending", () => {
         expect(ids(computeTrending(orders, { featuredIds }))).toEqual(["garlic", "pizza"]);
     });
 
-    it("ignores undelivered orders and items without ids", () => {
+    it("ignores cancelled orders and items without ids", () => {
         const orders = [
             { status: "cancelled", items: [line("biryani")] },
-            { status: "placed", items: [line("biryani")] },
             { status: "delivered", items: [{ name: "legacy", restaurantId: "res-1" }] },
         ];
         expect(computeTrending(orders, { featuredIds })).toEqual([]);
+    });
+
+    it("counts orders that haven't been marked delivered", () => {
+        const orders = [
+            { status: "placed", items: [line("biryani")] },
+            { status: "confirmed", items: [line("biryani"), line("lime")] },
+            { status: "picked_up", items: [line("lime")] },
+            { status: "placed", items: [line("lime")] },
+        ];
+        expect(ids(computeTrending(orders, { featuredIds }))).toEqual(["lime", "biryani"]);
     });
 
     it("keys items per restaurant", () => {

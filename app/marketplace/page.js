@@ -32,7 +32,7 @@ function MarketplaceContent() {
         const fetchListings = async () => {
             try {
                 const data = await getCollection(COLLECTIONS.MARKETPLACE_LISTINGS);
-                setListings(data.filter(isListingLive));
+                setListings(data.filter((listing) => isListingLive(listing)));
             } catch (err) {
                 console.error("Error fetching marketplace listings:", err);
             }

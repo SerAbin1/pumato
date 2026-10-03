@@ -18,8 +18,7 @@
             "firebase.json",
             "**/.*",
             "**/node_modules/**",
-            "**/*.json",
-            "./createAdmin.js"
+            "**/*.json"
         ],
         "rewrites": []
     }

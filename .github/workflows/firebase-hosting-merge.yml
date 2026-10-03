@@ -14,6 +14,7 @@ jobs:
                   node-version: 24
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
+            - run: pnpm test
             - run: pnpm next build
               env:
                   NEXT_PUBLIC_FIREBASE_API_KEY: ${{ secrets.NEXT_PUBLIC_FIREBASE_API_KEY }}
@@ -23,9 +24,11 @@ jobs:
                   NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID }}
                   NEXT_PUBLIC_FIREBASE_APP_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_APP_ID }}
                   NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID: ${{ secrets.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID }}
-            - uses: FirebaseExtended/action-hosting-deploy@v0
-              with:
-                  repoToken: ${{ secrets.GITHUB_TOKEN }}
-                  firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PUMATO_84497 }}
-                  channelId: live
-                  projectId: pumato-84497
+            # The CLI loads the functions source to analyse it, so its deps must be installed.
+            - run: npm ci --prefix functions
+            - name: Deploy hosting, functions, rules and indexes
+              run: |
+                  echo "$FIREBASE_SERVICE_ACCOUNT" > "$RUNNER_TEMP/sa.json"
+                  GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json" pnpm firebase deploy --project pumato-84497 --non-interactive --force
+              env:
+                  FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_PUMATO_84497 }}

@@ -9,10 +9,10 @@
 // Dry run by default. Pass --apply to write.
 //
 // Phase 1 (now, additive — the deployed app keeps working off the old lists):
-//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node migrateItemWeights.js --apply
+//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.js --apply
 //
 // Phase 2 (only after the new code is deployed, since the old code reads the lists):
-//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node migrateItemWeights.js --apply --drop-old-lists
+//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.js --apply --drop-old-lists
 
 import fs from "fs";
 import admin from "firebase-admin";
@@ -83,10 +83,10 @@ const serviceAccount = loadServiceAccount();
 if (!serviceAccount && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     console.error("No credentials found. Either of these will work:\n");
     console.error(
-        "  FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node migrateItemWeights.js"
+        "  FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.js"
     );
     console.error(
-        "  FIREBASE_PROJECT_ID=pumato-84497 GOOGLE_APPLICATION_CREDENTIALS=/path/to/adminsdk.json node migrateItemWeights.js"
+        "  FIREBASE_PROJECT_ID=pumato-84497 GOOGLE_APPLICATION_CREDENTIALS=/path/to/adminsdk.json node scripts/migrateItemWeights.js"
     );
     console.error("\nDownload a service account key from:");
     console.error("  https://console.firebase.google.com/project/");
@@ -214,7 +214,7 @@ const plan = {
     } else {
         console.log(`\n✅ Updated ${writes.length} restaurant(s). Old lists left in place.`);
         console.log("\nNow deploy the new code, then finish with:\n");
-        console.log("  node migrateItemWeights.js --apply --drop-old-lists\n");
+        console.log("  node scripts/migrateItemWeights.js --apply --drop-old-lists\n");
         console.log("Until then, a partner editing a menu on the old admin will strip the");
         console.log("new weight field, since the old zod schema drops unknown keys.\n");
     }

@@ -1,6 +1,14 @@
-const admin = require("firebase-admin");
-const serviceAccount = require("./test-pumato-firebase-adminsdk-fbsvc-c9312153a9.json");
-const readline = require("readline");
+import admin from "firebase-admin";
+import fs from "fs";
+import path from "path";
+import readline from "readline";
+
+const serviceAccount = JSON.parse(
+    fs.readFileSync(
+        path.resolve(process.cwd(), "test-pumato-firebase-adminsdk-fbsvc-c9312153a9.json"),
+        "utf-8"
+    )
+);
 
 admin.initializeApp({
     credential: admin.credential.cert(serviceAccount),
@@ -8,17 +16,18 @@ admin.initializeApp({
 
 const rl = readline.createInterface({
     input: process.stdin,
-    output: process.stdout
+    output: process.stdout,
 });
 
 const askQuestion = (query) => {
-    return new Promise(resolve => rl.question(query, resolve));
+    return new Promise((resolve) => rl.question(query, resolve));
 };
 
 (async () => {
     try {
-        const email = process.argv[2] || await askQuestion("Enter User Email: ");
-        const password = process.argv[3] || await askQuestion("Enter User Password (min 6 chars): ");
+        const email = process.argv[2] || (await askQuestion("Enter User Email: "));
+        const password =
+            process.argv[3] || (await askQuestion("Enter User Password (min 6 chars): "));
 
         if (!email || !password || password.length < 6) {
             console.error("Invalid email or password (must be 6+ chars).");
@@ -30,7 +39,7 @@ const askQuestion = (query) => {
             user = await admin.auth().getUserByEmail(email);
             console.log(`\nUser ${email} already exists. Updating claims...`);
         } catch (error) {
-            if (error.code === 'auth/user-not-found') {
+            if (error.code === "auth/user-not-found") {
                 console.log(`\nCreating new user ${email}...`);
                 user = await admin.auth().createUser({
                     email,
@@ -42,14 +51,13 @@ const askQuestion = (query) => {
         }
 
         await admin.auth().setCustomUserClaims(user.uid, {
-            deliveryPartner: true
+            deliveryPartner: true,
         });
 
         console.log("\n✅ Success! Delivery Partner account configured.");
         console.log(`User: ${email}`);
         console.log("Custom claims set: { deliveryPartner: true }");
         console.log("They can now login at /delivery-partner");
-
     } catch (error) {
         console.error("Error:", error.message);
     } finally {

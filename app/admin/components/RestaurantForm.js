@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock } from "lucide-react";
+import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock, Star } from "lucide-react";
 import Fuse from "fuse.js";
 import { toTitleCase } from "@/lib/formatters";
 import { createFileUploadHandler } from "@/lib/uploadImage";
@@ -477,6 +477,52 @@ export default function RestaurantForm({
                             </p>
                         </div>
                     </div>
+
+                    {/* Featured Toggle (admin only) */}
+                    {!isPartnerPage && (
+                        <div className="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-amber-500/10">
+                            <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
+                                <input
+                                    type="checkbox"
+                                    id="restaurant-featured"
+                                    className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
+                                    checked={formData.isFeatured === true}
+                                    onChange={(e) =>
+                                        setFormData({ ...formData, isFeatured: e.target.checked })
+                                    }
+                                    style={{
+                                        right: formData.isFeatured === true ? "0" : "auto",
+                                        left: formData.isFeatured === true ? "auto" : "0",
+                                    }}
+                                />
+                                <label
+                                    htmlFor="restaurant-featured"
+                                    className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${formData.isFeatured === true ? "bg-amber-500" : "bg-gray-600"}`}
+                                ></label>
+                            </div>
+                            <div className="flex-1">
+                                <label
+                                    htmlFor="restaurant-featured"
+                                    className="text-sm font-bold text-white cursor-pointer select-none flex items-center gap-2"
+                                >
+                                    <Star
+                                        size={18}
+                                        className={
+                                            formData.isFeatured === true
+                                                ? "text-amber-400"
+                                                : "text-gray-400"
+                                        }
+                                    />
+                                    Featured
+                                </label>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    {formData.isFeatured === true
+                                        ? "Tagged and shuffled at the top of the list"
+                                        : "Shuffled below featured restaurants"}
+                                </p>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 

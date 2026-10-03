@@ -31,11 +31,11 @@ function ListingImage({ listing, sizes, iconSize }) {
 }
 
 /**
- * An L2 marketplace listing rendered in-between regular items.
+ * An in-feed promoted marketplace listing rendered in-between regular items.
  * @param {{ listing: object, surface: string, variant?: "menu" | "grid" }} props
  */
 export default function SponsoredListingCard({ listing, surface, variant = "menu" }) {
-    const params = { listing_id: listing.id, tier: "L2", surface };
+    const params = { listing_id: listing.id, placement: "inFeed", surface };
     const href = `/marketplace?id=${listing.id}`;
 
     if (variant === "grid") {

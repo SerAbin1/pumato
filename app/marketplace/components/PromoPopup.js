@@ -8,11 +8,11 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Package } from "lucide-react";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { useCart } from "@/app/context/CartContext";
-import { DEFAULT_POPUP_COOLDOWN_HOURS, isInCooldown } from "@/lib/marketplacePromotions";
+import { isInCooldown, normalizePromotion } from "@/lib/marketplacePromotions";
 import { trackEvent } from "@/lib/analytics";
 
 const DISMISSALS_KEY = "pumato_promo_dismissals";
-// At most one popup per browser session, however many L3 listings are live
+// At most one popup per browser session, however many popup listings are live
 const SESSION_SHOWN_KEY = "pumato_promo_shown";
 const SHOW_DELAY_MS = 1500;
 const EXCLUDED_PATH_PREFIXES = ["/admin", "/partner", "/delivery-partner", "/login"];
@@ -51,11 +51,11 @@ function markShownThisSession() {
     }
 }
 
-/** Shows one eligible L3 marketplace listing as a dismissible popup. */
+/** Shows one eligible popup-promoted marketplace listing as a dismissible popup. */
 export default function PromoPopup() {
     const pathname = usePathname();
     const { userDetails } = useCart();
-    const promos = usePromotedListings("L3");
+    const promos = usePromotedListings("popup");
     const [listing, setListing] = useState(null);
 
     const excluded = EXCLUDED_PATH_PREFIXES.some((p) => pathname?.startsWith(p));
@@ -67,24 +67,21 @@ export default function PromoPopup() {
         const dismissals = readDismissals();
         const candidates = promos.filter(
             (p) =>
-                !isInCooldown(
-                    dismissals[p.id],
-                    p.promotion?.cooldownHours ?? DEFAULT_POPUP_COOLDOWN_HOURS
-                )
+                !isInCooldown(dismissals[p.id], normalizePromotion(p.promotion).popup.cooldownHours)
         );
         if (candidates.length === 0) return;
         const pick = candidates[Math.floor(Math.random() * candidates.length)];
         const timer = setTimeout(() => {
             markShownThisSession();
             setListing(pick);
-            trackEvent("promo_impression", { listing_id: pick.id, tier: "L3" });
+            trackEvent("promo_impression", { listing_id: pick.id, placement: "popup" });
         }, SHOW_DELAY_MS);
         return () => clearTimeout(timer);
     }, [ready, promos, listing]);
 
     const close = (event) => {
         recordDismissal(listing.id);
-        trackEvent(event, { listing_id: listing.id, tier: "L3" });
+        trackEvent(event, { listing_id: listing.id, placement: "popup" });
         setListing(null);
     };
 

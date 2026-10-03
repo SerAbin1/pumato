@@ -16,6 +16,14 @@ import toast from "react-hot-toast";
 import { Trash, Eye, EyeOff, Plus, MessageCircle, Check, Clock, Radio } from "lucide-react";
 import MarketplaceListingForm from "./MarketplaceListingForm";
 import ConfirmModal from "../../components/ConfirmModal";
+import { normalizePromotion } from "@/lib/marketplacePromotions";
+
+function promotionBadge(promotion) {
+    const { inFeed, popup } = normalizePromotion(promotion);
+    return [inFeed.enabled && `In-feed ${inFeed.reach}%`, popup.enabled && `Popup ${popup.reach}%`]
+        .filter(Boolean)
+        .join(" · ");
+}
 
 export default function MarketplaceTab() {
     const [subSection, setSubSection] = useState("requests"); // requests, listings, filters, categories, settings
@@ -771,7 +779,7 @@ export default function MarketplaceTab() {
                                     )}
                                     {listing.promotion?.tier && listing.promotion.tier !== "L1" && (
                                         <span className="bg-purple-600/90 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg">
-                                            {listing.promotion.tier} · {listing.promotion.reach}%
+                                            {promotionBadge(listing.promotion)}
                                         </span>
                                     )}
                                     {isExpired(listing) && (

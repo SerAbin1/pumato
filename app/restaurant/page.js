@@ -170,7 +170,7 @@ function RestaurantContent() {
         return finalMenu;
     }, [restaurant, searchQuery, filter, sortOrder]);
 
-    const promos = usePromotedListings("L2", "restaurant_menu");
+    const promos = usePromotedListings("inFeed", "restaurant_menu");
     // Item id -> sponsored listing shown right after it. Skipped while searching.
     const sponsoredAfter = useMemo(() => {
         if (searchQuery) return new Map();

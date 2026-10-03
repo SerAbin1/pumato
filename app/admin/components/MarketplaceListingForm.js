@@ -10,11 +10,54 @@ import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
 import { saveMarketplaceFilters } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import {
-    DEFAULT_PROMOTION,
     PROMOTION_SURFACES,
-    PROMOTION_TIERS,
     REACH_PRESETS,
+    deriveTier,
+    normalizePromotion,
 } from "@/lib/marketplacePromotions";
+
+function ReachPicker({ value, onChange }) {
+    return (
+        <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-1">
+                Reach
+            </span>
+            {REACH_PRESETS.map((r) => (
+                <button
+                    key={r}
+                    type="button"
+                    onClick={() => onChange(r)}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition-colors ${value === r ? "border-purple-500 bg-purple-500/20 text-white" : "border-white/10 text-gray-300 hover:bg-white/5"}`}
+                >
+                    {r}%
+                </button>
+            ))}
+        </div>
+    );
+}
+
+function PlacementToggle({ id, label, description, enabled, onToggle, children }) {
+    return (
+        <div
+            className={`p-4 rounded-xl border space-y-4 transition-colors ${enabled ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-black/20"}`}
+        >
+            <label htmlFor={id} className="flex items-start gap-3 cursor-pointer select-none">
+                <input
+                    type="checkbox"
+                    id={id}
+                    checked={enabled}
+                    onChange={(e) => onToggle(e.target.checked)}
+                    className="w-5 h-5 mt-0.5 accent-purple-500"
+                />
+                <span>
+                    <span className="block text-sm font-bold text-white">{label}</span>
+                    <span className="block text-xs text-gray-400 mt-1">{description}</span>
+                </span>
+            </label>
+            {enabled && <div className="space-y-4 pl-8">{children}</div>}
+        </div>
+    );
+}
 
 export default function MarketplaceListingForm({
     initialData,
@@ -35,7 +78,7 @@ export default function MarketplaceListingForm({
         expiryDate: "",
         customLinks: [],
         ...initialData,
-        promotion: { ...DEFAULT_PROMOTION, ...initialData?.promotion },
+        promotion: normalizePromotion(initialData?.promotion),
     });
     const [filters, setFilters] = useState([]);
     const [creatingFilter, setCreatingFilter] = useState(false);
@@ -105,6 +148,17 @@ export default function MarketplaceListingForm({
 
     const setPromotion = (patch) =>
         setFormData((prev) => ({ ...prev, promotion: { ...prev.promotion, ...patch } }));
+
+    const setPlacement = (placement, patch) =>
+        setFormData((prev) => ({
+            ...prev,
+            promotion: {
+                ...prev.promotion,
+                [placement]: { ...prev.promotion[placement], ...patch },
+            },
+        }));
+
+    const { inFeed, popup, targetCampuses } = formData.promotion;
 
     const toggleInList = (list, value) =>
         list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
@@ -370,77 +424,65 @@ export default function MarketplaceListingForm({
                     <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
                         Promotion
                     </label>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                        {PROMOTION_TIERS.map((t) => (
-                            <button
-                                key={t.id}
-                                type="button"
-                                onClick={() => setPromotion({ tier: t.id })}
-                                className={`text-left p-4 rounded-xl border transition-colors ${formData.promotion.tier === t.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-black/20 hover:bg-white/5"}`}
-                            >
-                                <span className="block text-sm font-bold text-white">
-                                    {t.id} · {t.label}
-                                </span>
-                                <span className="block text-xs text-gray-400 mt-1">
-                                    {t.description}
-                                </span>
-                            </button>
-                        ))}
-                    </div>
+                    <span className="ml-3 text-[10px] font-bold text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider border border-purple-500/30">
+                        {deriveTier(formData.promotion)}
+                    </span>
+                    <p className="text-xs text-gray-500 -mt-2">
+                        Every listing appears on the Marketplace page. Turn on either or both below
+                        to promote it further.
+                    </p>
 
-                    {formData.promotion.tier !== "L1" && (
+                    <PlacementToggle
+                        id="promo-in-feed"
+                        label="In-feed"
+                        description="Appears as a sponsored card in-between items while browsing."
+                        enabled={inFeed.enabled}
+                        onToggle={(enabled) => setPlacement("inFeed", { enabled })}
+                    >
+                        <ReachPicker
+                            value={inFeed.reach}
+                            onChange={(reach) => setPlacement("inFeed", { reach })}
+                        />
+                        <div className="flex flex-wrap items-center gap-4">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                                Show in
+                            </span>
+                            {PROMOTION_SURFACES.map((s) => (
+                                <label
+                                    key={s.id}
+                                    className="flex items-center gap-2 text-sm text-white cursor-pointer"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        checked={inFeed.surfaces.includes(s.id)}
+                                        onChange={() =>
+                                            setPlacement("inFeed", {
+                                                surfaces: toggleInList(inFeed.surfaces, s.id),
+                                            })
+                                        }
+                                        className="w-4 h-4 accent-purple-500"
+                                    />
+                                    {s.label}
+                                </label>
+                            ))}
+                        </div>
+                    </PlacementToggle>
+
+                    <PlacementToggle
+                        id="promo-popup"
+                        label="Popup"
+                        description="Pops up and interrupts the flow until the user dismisses it. Shown at most once a day per visitor."
+                        enabled={popup.enabled}
+                        onToggle={(enabled) => setPlacement("popup", { enabled })}
+                    >
+                        <ReachPicker
+                            value={popup.reach}
+                            onChange={(reach) => setPlacement("popup", { reach })}
+                        />
+                    </PlacementToggle>
+
+                    {(inFeed.enabled || popup.enabled) && (
                         <>
-                            <div className="space-y-2">
-                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-                                    Reach (% of visitors)
-                                </span>
-                                <div className="flex flex-wrap gap-2">
-                                    {REACH_PRESETS.map((r) => (
-                                        <button
-                                            key={r}
-                                            type="button"
-                                            onClick={() => setPromotion({ reach: r })}
-                                            className={`px-4 py-2 rounded-xl text-sm font-bold border transition-colors ${formData.promotion.reach === r ? "border-purple-500 bg-purple-500/20 text-white" : "border-white/10 text-gray-300 hover:bg-white/5"}`}
-                                        >
-                                            {r}%
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {formData.promotion.tier === "L2" && (
-                                <div className="space-y-2">
-                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
-                                        Show in
-                                    </span>
-                                    <div className="flex flex-wrap gap-4">
-                                        {PROMOTION_SURFACES.map((s) => (
-                                            <label
-                                                key={s.id}
-                                                className="flex items-center gap-2 text-sm text-white cursor-pointer"
-                                            >
-                                                <input
-                                                    type="checkbox"
-                                                    checked={formData.promotion.surfaces.includes(
-                                                        s.id
-                                                    )}
-                                                    onChange={() =>
-                                                        setPromotion({
-                                                            surfaces: toggleInList(
-                                                                formData.promotion.surfaces,
-                                                                s.id
-                                                            ),
-                                                        })
-                                                    }
-                                                    className="w-4 h-4 accent-purple-500"
-                                                />
-                                                {s.label}
-                                            </label>
-                                        ))}
-                                    </div>
-                                </div>
-                            )}
-
                             <div className="space-y-2">
                                 <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
                                     Target campuses
@@ -449,7 +491,7 @@ export default function MarketplaceListingForm({
                                     <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
                                         <input
                                             type="checkbox"
-                                            checked={formData.promotion.targetCampuses.length === 0}
+                                            checked={targetCampuses.length === 0}
                                             onChange={() => setPromotion({ targetCampuses: [] })}
                                             className="w-4 h-4 accent-purple-500"
                                         />
@@ -462,13 +504,11 @@ export default function MarketplaceListingForm({
                                         >
                                             <input
                                                 type="checkbox"
-                                                checked={formData.promotion.targetCampuses.includes(
-                                                    c.id
-                                                )}
+                                                checked={targetCampuses.includes(c.id)}
                                                 onChange={() =>
                                                     setPromotion({
                                                         targetCampuses: toggleInList(
-                                                            formData.promotion.targetCampuses,
+                                                            targetCampuses,
                                                             c.id
                                                         ),
                                                     })

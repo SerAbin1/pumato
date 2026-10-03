@@ -16,7 +16,7 @@ import { RestaurantSkeleton } from "../components/Skeleton";
 import Fuse from "fuse.js";
 import { where } from "firebase/firestore";
 import { useTrackSearch } from "../hooks/useTrackSearch";
-import { seededShuffle } from "@/lib/shuffle";
+import { shuffleRestaurants } from "@/lib/shuffle";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 
 export default function DeliveryPage() {
@@ -29,7 +29,7 @@ export default function DeliveryPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [promoBanners, setPromoBanners] = useState(null);
-    const sponsoredListings = usePromotedListings("L2", "restaurant_list");
+    const sponsoredListings = usePromotedListings("inFeed", "restaurant_list");
     const [recentSearches, setRecentSearches] = useState([]);
 
     useEffect(() => {
@@ -95,7 +95,7 @@ export default function DeliveryPage() {
                     where("isAvailable", "==", true),
                 ]);
                 const seed = new Date().toDateString(); // Changes daily
-                const shuffledData = seededShuffle(
+                const shuffledData = shuffleRestaurants(
                     data,
                     seed.split("").reduce((a, b) => a + b.charCodeAt(0), 0)
                 );

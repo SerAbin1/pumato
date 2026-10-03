@@ -43,11 +43,11 @@ function getVisitorId() {
 }
 
 /**
- * Promoted marketplace listings this visitor should see.
- * @param {"L2"|"L3"} tier
- * @param {string} [surface] - required for L2, see PROMOTION_SURFACES
+ * Promoted marketplace listings this visitor should see in one placement.
+ * @param {"inFeed"|"popup"} placement
+ * @param {string} [surface] - required for inFeed, see PROMOTION_SURFACES
  */
-export default function usePromotedListings(tier, surface) {
+export default function usePromotedListings(placement, surface) {
     const { userDetails, isLoaded } = useCart();
     const [listings, setListings] = useState([]);
     const [visitorId, setVisitorId] = useState(null);
@@ -67,6 +67,6 @@ export default function usePromotedListings(tier, surface) {
     const campus = userDetails?.campus;
     return useMemo(() => {
         if (!isLoaded || !visitorId) return [];
-        return selectPromotions(listings, { tier, surface, campus, visitorId });
-    }, [listings, tier, surface, campus, visitorId, isLoaded]);
+        return selectPromotions(listings, { placement, surface, campus, visitorId });
+    }, [listings, placement, surface, campus, visitorId, isLoaded]);
 }

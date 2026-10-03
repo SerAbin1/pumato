@@ -2,7 +2,7 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { Trash, Save, Eye, EyeOff, Plus } from "lucide-react";
+import { Trash, Save, Eye, EyeOff, Plus, Star } from "lucide-react";
 import { saveRestaurant, updateRestaurant, deleteRestaurant } from "@/lib/repositories";
 import RestaurantForm from "./RestaurantForm";
 import ConfirmModal from "../../components/ConfirmModal";
@@ -46,6 +46,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
             outOfStockCategories: restaurant.outOfStockCategories || [],
             isVisible: restaurant.isVisible !== false,
             isAvailable: restaurant.isAvailable !== false,
+            isFeatured: restaurant.isFeatured === true,
         });
         setActiveTab("form");
     };
@@ -119,6 +120,11 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
                                                 sizes="(max-width: 768px) 100vw, 400px"
                                                 className="object-cover group-hover:scale-110 transition-transform duration-700 opacity-80 group-hover:opacity-100"
                                             />
+                                        )}
+                                        {r.isFeatured === true && r.isVisible !== false && (
+                                            <div className="absolute top-3 left-3 bg-amber-500/90 backdrop-blur-md text-black px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">
+                                                <Star size={12} /> Featured
+                                            </div>
                                         )}
                                         {r.isVisible === false && (
                                             <div className="absolute top-3 left-3 bg-red-500/90 backdrop-blur-md text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">

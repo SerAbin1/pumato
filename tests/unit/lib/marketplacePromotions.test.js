@@ -9,16 +9,22 @@ import {
     planInsertions,
     isInCooldown,
     isListingLive,
+    deriveTier,
+    normalizePromotion,
 } from "../../../lib/marketplacePromotions";
 import { MarketplaceListingSchema } from "../../../lib/schemas/marketplace";
 
 const TODAY = "2026-10-03";
 
-const listing = (id, promotion = {}, extra = {}) => ({
+const listing = (id, { inFeed = {}, popup = {}, ...rest } = {}, extra = {}) => ({
     id,
     isVisible: true,
     expiryDate: "",
-    promotion: { tier: "L2", reach: 100, surfaces: ["restaurant_menu"], ...promotion },
+    promotion: {
+        inFeed: { enabled: true, reach: 100, surfaces: ["restaurant_menu"], ...inFeed },
+        popup: { enabled: false, reach: 100, ...popup },
+        ...rest,
+    },
     ...extra,
 });
 
@@ -68,18 +74,18 @@ describe("matchesCampus", () => {
 
 describe("selectPromotions", () => {
     const opts = {
-        tier: "L2",
+        placement: "inFeed",
         surface: "restaurant_menu",
         campus: "PU",
         visitorId: "v1",
         todayStr: TODAY,
     };
 
-    it("filters by tier, surface, campus and liveness", () => {
+    it("filters by placement, surface, campus and liveness", () => {
         const listings = [
             listing("ok"),
-            listing("popup", { tier: "L3" }),
-            listing("other-surface", { surfaces: ["restaurant_list"] }),
+            listing("popup-only", { inFeed: { enabled: false }, popup: { enabled: true } }),
+            listing("other-surface", { inFeed: { surfaces: ["restaurant_list"] } }),
             listing("other-campus", { targetCampuses: ["XYZ"] }),
             listing("hidden", {}, { isVisible: false }),
             listing("expired", {}, { expiryDate: "2026-10-02" }),
@@ -88,11 +94,49 @@ describe("selectPromotions", () => {
         expect(selectPromotions(listings, opts).map((l) => l.id)).toEqual(["ok"]);
     });
 
-    it("ignores surface for popups", () => {
-        const listings = [listing("p", { tier: "L3", surfaces: [] })];
+    it("lets one listing be both in-feed and a popup", () => {
+        const listings = [listing("both", { popup: { enabled: true } })];
+        expect(selectPromotions(listings, opts)).toHaveLength(1);
         expect(
-            selectPromotions(listings, { ...opts, tier: "L3", surface: undefined })
+            selectPromotions(listings, { ...opts, placement: "popup", surface: undefined })
         ).toHaveLength(1);
+    });
+
+    it("nests the smaller placement audience inside the larger one", () => {
+        const both = listing("both", {
+            inFeed: { reach: 75 },
+            popup: { enabled: true, reach: 25 },
+        });
+        for (let i = 0; i < 500; i++) {
+            const o = { ...opts, visitorId: `v${i}` };
+            const seesPopup =
+                selectPromotions([both], { ...o, placement: "popup", surface: undefined }).length >
+                0;
+            const seesFeed = selectPromotions([both], o).length > 0;
+            if (seesPopup) expect(seesFeed).toBe(true);
+        }
+    });
+
+    it("reads listings saved with the old single-tier shape", () => {
+        const legacy = {
+            id: "old",
+            isVisible: true,
+            expiryDate: "",
+            promotion: { tier: "L2", reach: 100, surfaces: ["restaurant_menu"] },
+        };
+        expect(selectPromotions([legacy], opts)).toHaveLength(1);
+        expect(
+            selectPromotions([legacy], { ...opts, placement: "popup", surface: undefined })
+        ).toHaveLength(0);
+    });
+});
+
+describe("deriveTier", () => {
+    it("labels by the most aggressive placement", () => {
+        expect(deriveTier(normalizePromotion())).toBe("L1");
+        expect(deriveTier({ inFeed: { enabled: true } })).toBe("L2");
+        expect(deriveTier({ popup: { enabled: true } })).toBe("L3");
+        expect(deriveTier({ inFeed: { enabled: true }, popup: { enabled: true } })).toBe("L3");
     });
 });
 
@@ -152,23 +196,28 @@ describe("MarketplaceListingSchema promotion", () => {
         expect(MarketplaceListingSchema.parse(base).promotion).toBeUndefined();
     });
 
-    it("fills promotion defaults", () => {
-        const parsed = MarketplaceListingSchema.parse({ ...base, promotion: { tier: "L3" } });
+    it("fills promotion defaults and derives the tier", () => {
+        const parsed = MarketplaceListingSchema.parse({
+            ...base,
+            promotion: { popup: { enabled: true, reach: 25 } },
+        });
         expect(parsed.promotion).toEqual({
-            tier: "L3",
-            reach: 100,
-            surfaces: [],
+            inFeed: { enabled: false, reach: 100, surfaces: [] },
+            popup: { enabled: true, reach: 25, cooldownHours: 24 },
             targetCampuses: [],
-            cooldownHours: 24,
+            tier: "L3",
         });
     });
 
-    it("rejects unknown tiers and out-of-range reach", () => {
+    it("rejects out-of-range reach and unknown surfaces", () => {
         expect(() =>
-            MarketplaceListingSchema.parse({ ...base, promotion: { tier: "L9" } })
+            MarketplaceListingSchema.parse({ ...base, promotion: { popup: { reach: 150 } } })
         ).toThrow();
         expect(() =>
-            MarketplaceListingSchema.parse({ ...base, promotion: { tier: "L2", reach: 150 } })
+            MarketplaceListingSchema.parse({
+                ...base,
+                promotion: { inFeed: { surfaces: ["nowhere"] } },
+            })
         ).toThrow();
     });
 });

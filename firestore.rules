@@ -23,7 +23,10 @@ service cloud.firestore {
     // --- Restaurants: public read, partners update own, admins full ---
     match /restaurants/{restaurantId} {
       allow read: if true;
-      allow update: if isPartner(restaurantId) || isAdmin();
+      // Partners can edit their own restaurant, but not its featured status.
+      allow update: if isAdmin()
+        || (isPartner(restaurantId)
+            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isFeatured']));
       allow create, delete: if isAdmin();
     }
 

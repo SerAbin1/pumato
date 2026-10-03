@@ -67,6 +67,11 @@ export default function RestaurantList({ restaurants, promos = [] }) {
                                                 </div>
                                             </div>
                                         )}
+                                        {restaurant.isFeatured === true && (
+                                            <div className="absolute top-5 -right-10 z-30 w-40 rotate-45 bg-gradient-to-r from-amber-400 to-orange-500 py-1 text-center text-[10px] font-black uppercase tracking-[0.2em] text-black shadow-lg">
+                                                Featured
+                                            </div>
+                                        )}
                                         {restaurant.offer && !isClosed && (
                                             <div className="absolute top-4 left-4 z-20 bg-blue-600/90 backdrop-blur-md text-white px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg">
                                                 {restaurant.offer}

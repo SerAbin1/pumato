@@ -3,7 +3,12 @@ import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock, Star } from "lucide
 import Fuse from "fuse.js";
 import { toTitleCase } from "@/lib/formatters";
 import { createFileUploadHandler } from "@/lib/uploadImage";
-import { getItemWeight, isLightItem, isHeavyItem } from "@/lib/restaurants/menuItem";
+import {
+    getItemWeight,
+    getVariantWeight,
+    isLightItem,
+    isHeavyItem,
+} from "@/lib/restaurants/menuItem";
 import {
     PRICE_CHANGE_FIXED,
     PRICE_CHANGE_PERCENT,
@@ -273,6 +278,8 @@ export default function RestaurantForm({
                         id: v.id,
                         name: toTitleCase((v.name || "").trim()),
                         price: (v.price || "").toString().trim(),
+                        // Blank inherits the item's weight, so only store a real override.
+                        ...(getVariantWeight(v) !== null ? { weight: getVariantWeight(v) } : {}),
                     })),
                 addons: (item.addons || [])
                     .filter((a) => (a.name || "").trim() && (a.price || "").toString().trim())
@@ -1231,6 +1238,24 @@ export default function RestaurantForm({
                                                         )
                                                     }
                                                 />
+                                                {!isPartnerPage && (
+                                                    <input
+                                                        type="number"
+                                                        step="1"
+                                                        className="w-20 p-2 bg-white/5 border border-white/10 rounded-lg text-white text-xs"
+                                                        placeholder={`Wt ${getItemWeight(item)}`}
+                                                        title="Delivery weight for this variant. Blank uses the item's weight."
+                                                        value={variant.weight ?? ""}
+                                                        onChange={(e) =>
+                                                            updateVariant(
+                                                                actualIdx,
+                                                                vIdx,
+                                                                "weight",
+                                                                e.target.value
+                                                            )
+                                                        }
+                                                    />
+                                                )}
                                                 <button
                                                     type="button"
                                                     onClick={() => removeVariant(actualIdx, vIdx)}

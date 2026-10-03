@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { X, Plus, Minus, Check } from "lucide-react";
 import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
+import { getVariantWeight } from "@/lib/restaurants/menuItem";
 
 const toNumber = (v) => {
     const n = Number(v);
@@ -61,6 +62,9 @@ export default function ItemCustomizationModal({
                           id: selectedVariant.id,
                           name: selectedVariant.name,
                           price: toNumber(selectedVariant.price),
+                          ...(getVariantWeight(selectedVariant) !== null
+                              ? { weight: getVariantWeight(selectedVariant) }
+                              : {}),
                       }
                     : undefined,
                 addons: (item.addons || [])

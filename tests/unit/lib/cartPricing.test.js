@@ -184,6 +184,45 @@ describe("calculateDeliveryCharge - light weights", () => {
     });
 });
 
+describe("calculateDeliveryCharge - variant weights", () => {
+    const large = { id: "lg", name: "Large", price: 349, weight: 2 };
+    const regular = { id: "rg", name: "Regular", price: 199 };
+
+    it("lets a variant's weight override the item's", () => {
+        // 2 large pizzas at weight 2 = 4 units, one past the threshold.
+        const cart = [line("pizza", 2, { weight: 1, variant: large })];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS)).toMatchObject({
+            deliveryCharge: 40,
+            hasHeavyItems: true,
+        });
+    });
+
+    it("falls back to the item's weight when the variant has none", () => {
+        const cart = [line("pizza", 2, { weight: 2, variant: regular })];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("treats a zero variant weight as unset", () => {
+        const cart = [line("pizza", 2, { weight: 2, variant: { ...regular, weight: 0 } })];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("lets a variant make a normal item light", () => {
+        const mini = { id: "mn", name: "Mini", price: 99, weight: -2 };
+        const cart = [line("pizza", 6, { weight: 1, variant: mini })]; // 3 units = 1 bundle
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(40);
+    });
+
+    it("weighs each variant line on its own", () => {
+        // 1 large (2 units) + 1 regular (1 unit) = 3 units, within the threshold.
+        const cart = [
+            line("pizza", 1, { weight: 1, variant: large }),
+            line("pizza", 1, { weight: 1, variant: regular }),
+        ];
+        expect(calculateDeliveryCharge(cart, SETTINGS, null, NO_CAMPUS).deliveryCharge).toBe(30);
+    });
+});
+
 describe("calculateDeliveryCharge - charge stacking", () => {
     const campus = { deliveryCampusConfig: [{ id: "c1", name: "Hostel", deliveryCharge: 5 }] };
 

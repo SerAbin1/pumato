@@ -50,3 +50,20 @@ describe("RestaurantSchema - menu item weight", () => {
         expect(saved.menu[0].weight).toBeUndefined();
     });
 });
+
+describe("RestaurantSchema - variant weight", () => {
+    const withVariant = (variant) =>
+        restaurant([
+            menuItem({ variants: [{ id: "v1", name: "Large", price: "349", ...variant }] }),
+        ]);
+
+    it("keeps a variant's weight through a save", () => {
+        const saved = RestaurantSchema.parse(withVariant({ weight: "2" }));
+        expect(saved.menu[0].variants[0].weight).toBe(2);
+    });
+
+    it("leaves a variant without a weight inheriting the item's", () => {
+        const saved = RestaurantSchema.parse(withVariant({}));
+        expect(saved.menu[0].variants[0].weight).toBeUndefined();
+    });
+});

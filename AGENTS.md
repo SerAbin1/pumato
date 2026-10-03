@@ -1,1 +1,2 @@
-pnpm lint is broken.
+Use package.json scripts for running lint, format etc
+

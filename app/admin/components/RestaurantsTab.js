@@ -2,8 +2,10 @@ import { useState } from "react";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { Trash, Save, Eye, EyeOff, Plus, Star } from "lucide-react";
+import { Trash, Save, Eye, EyeOff, Plus, Star, Flame, Loader2 } from "lucide-react";
 import { saveRestaurant, updateRestaurant, deleteRestaurant } from "@/lib/repositories";
+import { refreshTrending } from "@/lib/functions";
+import { TRENDING_CACHE_KEY } from "@/lib/trending";
 import RestaurantForm from "./RestaurantForm";
 import ConfirmModal from "../../components/ConfirmModal";
 
@@ -11,6 +13,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
     const [activeTab, setActiveTab] = useState("list");
     const [editingId, setEditingId] = useState(null);
     const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+    const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
     const [confirmModal, setConfirmModal] = useState({
         isOpen: false,
         restaurantId: null,
@@ -61,6 +64,28 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
         }
     };
 
+    // Trending is also recomputed every Sunday; this re-runs it now, e.g. after
+    // changing which restaurants are featured.
+    const handleRefreshTrending = async () => {
+        setIsRefreshingTrending(true);
+        try {
+            const { data } = await refreshTrending();
+            // Customers pick the new ranking up when their day-long cache
+            // expires; drop this browser's copy so the admin sees it now.
+            try {
+                localStorage.removeItem(TRENDING_CACHE_KEY);
+            } catch {
+                // Storage unavailable — nothing cached to clear.
+            }
+            toast.success(`Trending refreshed: ${data.count} items from last week`);
+        } catch (error) {
+            console.error(error);
+            toast.error("Failed to refresh trending items");
+        } finally {
+            setIsRefreshingTrending(false);
+        }
+    };
+
     const handleSaveRestaurant = async (data) => {
         const id = editingId || Date.now().toString();
         // data is already formatted by RestaurantForm, but we might want to ensure ID is set.
@@ -82,7 +107,19 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
     return (
         <div className="animate-in fade-in duration-500">
             {activeTab === "list" && (
-                <div className="flex justify-end mb-8">
+                <div className="flex flex-wrap justify-end gap-4 mb-8">
+                    <button
+                        onClick={handleRefreshTrending}
+                        disabled={isRefreshingTrending}
+                        className="bg-white/5 border border-white/10 text-white px-6 py-4 rounded-2xl font-bold hover:bg-white/10 transition-all flex items-center gap-2 disabled:opacity-50"
+                    >
+                        {isRefreshingTrending ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                            <Flame size={20} className="text-orange-500" />
+                        )}
+                        Refresh Trending
+                    </button>
                     <button
                         onClick={handleAddNew}
                         className="bg-orange-600 text-white px-8 py-4 rounded-2xl font-bold shadow-lg shadow-orange-900/40 hover:bg-orange-500 hover:scale-105 transition-all flex items-center gap-2"

@@ -4,10 +4,10 @@ import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
 import TermsFooter from "../components/TermsFooter";
 import Link from "next/link";
-import { Search, Sparkles, ShoppingBag, Clock } from "lucide-react";
+import { Search, Sparkles, ShoppingBag, Clock, Flame } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
 
 import useFirestore from "@/app/hooks/useFirestore";
@@ -18,6 +18,8 @@ import { where } from "firebase/firestore";
 import { useTrackSearch } from "../hooks/useTrackSearch";
 import { shuffleRestaurants } from "@/lib/shuffle";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
+import { resolveTrending, loadTrendingEntries, TRENDING_MIN_ITEMS } from "@/lib/trending";
+import { fetchTrending } from "@/lib/repositories";
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();
@@ -31,6 +33,7 @@ export default function DeliveryPage() {
     const [promoBanners, setPromoBanners] = useState(null);
     const sponsoredListings = usePromotedListings("inFeed", "restaurant_list");
     const [recentSearches, setRecentSearches] = useState([]);
+    const [trendingEntries, setTrendingEntries] = useState([]);
 
     useEffect(() => {
         try {
@@ -86,6 +89,21 @@ export default function DeliveryPage() {
         };
         fetchBanners();
     }, [getDocument]);
+
+    // Trending is ranked server-side; resolve it against the open restaurants
+    // so price and stock are live. A missing doc just means no section. Read
+    // directly rather than via useFirestore so it can't flip the shared
+    // loading flag that drives the restaurant skeleton. Cached for a day.
+    useEffect(() => {
+        loadTrendingEntries(fetchTrending)
+            .then(setTrendingEntries)
+            .catch((error) => console.error("Failed to load trending items:", error));
+    }, []);
+
+    const trendingItems = useMemo(
+        () => resolveTrending(trendingEntries, restaurants),
+        [trendingEntries, restaurants]
+    );
 
     // Fetch restaurants on load
     useEffect(() => {
@@ -420,6 +438,64 @@ export default function DeliveryPage() {
                                     </div>
                                 );
                             })}
+                        </div>
+                    </section>
+                )}
+
+                {/* Trending Items */}
+                {!searchQuery && trendingItems.length >= TRENDING_MIN_ITEMS && (
+                    <section>
+                        <div className="flex items-center justify-between mb-6">
+                            <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                                <Flame size={22} className="text-orange-500" /> Trending
+                            </h2>
+                        </div>
+                        <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                            {trendingItems.map((item, idx) => (
+                                <div
+                                    key={`${item.restaurantId}:${item.id}`}
+                                    className="bg-white/5 border border-white/10 rounded-2xl p-4 min-w-[220px] max-w-[220px] flex flex-col gap-2 hover:bg-white/10 transition-colors group"
+                                >
+                                    <Link
+                                        href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
+                                        className="min-w-0"
+                                    >
+                                        <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">
+                                            #{idx + 1}
+                                        </span>
+                                        <h4 className="font-bold text-white group-hover:text-orange-400 transition-colors line-clamp-1">
+                                            {item.name}
+                                        </h4>
+                                        <p className="text-xs text-gray-400 line-clamp-1">
+                                            {item.restaurantName}
+                                        </p>
+                                    </Link>
+                                    <div className="flex items-center justify-between mt-auto pt-2">
+                                        <span className="font-bold text-green-400">
+                                            ₹{item.price}
+                                        </span>
+                                        {item.needsChoice ? (
+                                            <Link
+                                                href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
+                                                className="bg-white/10 text-white px-3 py-1.5 rounded-xl font-black text-[10px] hover:bg-white/20 transition-colors tracking-widest"
+                                            >
+                                                CUSTOMIZE
+                                            </Link>
+                                        ) : (
+                                            <button
+                                                onClick={() => {
+                                                    addToCart(item);
+                                                    setToast(`Added ${item.name}`);
+                                                    setTimeout(() => setToast(null), 2000);
+                                                }}
+                                                className="bg-white text-black px-4 py-1.5 rounded-xl font-black text-xs hover:bg-gray-200 transition-colors shadow-lg active:scale-95"
+                                            >
+                                                ADD
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
                         </div>
                     </section>
                 )}

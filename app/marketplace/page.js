@@ -16,13 +16,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useTrackSearch } from "../hooks/useTrackSearch";
 import { seededShuffle } from "@/lib/shuffle";
-
-function isListingLive(listing) {
-    if (listing.isVisible === false) return false;
-    if (!listing.expiryDate) return true;
-    const todayStr = new Date().toISOString().slice(0, 10);
-    return listing.expiryDate >= todayStr;
-}
+import { isListingLive } from "@/lib/marketplacePromotions";
 
 function MarketplaceContent() {
     const searchParams = useSearchParams();

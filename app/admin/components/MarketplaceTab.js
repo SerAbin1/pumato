@@ -769,6 +769,11 @@ export default function MarketplaceTab() {
                                             Hidden
                                         </span>
                                     )}
+                                    {listing.promotion?.tier && listing.promotion.tier !== "L1" && (
+                                        <span className="bg-purple-600/90 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg">
+                                            {listing.promotion.tier} · {listing.promotion.reach}%
+                                        </span>
+                                    )}
                                     {isExpired(listing) && (
                                         <span className="bg-orange-500/90 text-white px-2 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg flex items-center gap-1">
                                             <Clock size={10} /> Expired

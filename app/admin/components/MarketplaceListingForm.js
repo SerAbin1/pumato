@@ -9,6 +9,12 @@ import { db } from "@/lib/firebase";
 import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
 import { saveMarketplaceFilters } from "@/lib/repositories";
 import toast from "react-hot-toast";
+import {
+    DEFAULT_PROMOTION,
+    PROMOTION_SURFACES,
+    PROMOTION_TIERS,
+    REACH_PRESETS,
+} from "@/lib/marketplacePromotions";
 
 export default function MarketplaceListingForm({
     initialData,
@@ -29,6 +35,7 @@ export default function MarketplaceListingForm({
         expiryDate: "",
         customLinks: [],
         ...initialData,
+        promotion: { ...DEFAULT_PROMOTION, ...initialData?.promotion },
     });
     const [filters, setFilters] = useState([]);
     const [creatingFilter, setCreatingFilter] = useState(false);
@@ -95,6 +102,12 @@ export default function MarketplaceListingForm({
             ),
         }));
     };
+
+    const setPromotion = (patch) =>
+        setFormData((prev) => ({ ...prev, promotion: { ...prev.promotion, ...patch } }));
+
+    const toggleInList = (list, value) =>
+        list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
     const handleSave = async () => {
         let filter = formData.filter;
@@ -351,6 +364,124 @@ export default function MarketplaceListingForm({
                             />
                         </label>
                     </div>
+                </div>
+
+                <div className="col-span-full space-y-5 bg-white/5 p-5 rounded-2xl border border-white/5">
+                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                        Promotion
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        {PROMOTION_TIERS.map((t) => (
+                            <button
+                                key={t.id}
+                                type="button"
+                                onClick={() => setPromotion({ tier: t.id })}
+                                className={`text-left p-4 rounded-xl border transition-colors ${formData.promotion.tier === t.id ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-black/20 hover:bg-white/5"}`}
+                            >
+                                <span className="block text-sm font-bold text-white">
+                                    {t.id} · {t.label}
+                                </span>
+                                <span className="block text-xs text-gray-400 mt-1">
+                                    {t.description}
+                                </span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {formData.promotion.tier !== "L1" && (
+                        <>
+                            <div className="space-y-2">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Reach (% of visitors)
+                                </span>
+                                <div className="flex flex-wrap gap-2">
+                                    {REACH_PRESETS.map((r) => (
+                                        <button
+                                            key={r}
+                                            type="button"
+                                            onClick={() => setPromotion({ reach: r })}
+                                            className={`px-4 py-2 rounded-xl text-sm font-bold border transition-colors ${formData.promotion.reach === r ? "border-purple-500 bg-purple-500/20 text-white" : "border-white/10 text-gray-300 hover:bg-white/5"}`}
+                                        >
+                                            {r}%
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {formData.promotion.tier === "L2" && (
+                                <div className="space-y-2">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                        Show in
+                                    </span>
+                                    <div className="flex flex-wrap gap-4">
+                                        {PROMOTION_SURFACES.map((s) => (
+                                            <label
+                                                key={s.id}
+                                                className="flex items-center gap-2 text-sm text-white cursor-pointer"
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={formData.promotion.surfaces.includes(
+                                                        s.id
+                                                    )}
+                                                    onChange={() =>
+                                                        setPromotion({
+                                                            surfaces: toggleInList(
+                                                                formData.promotion.surfaces,
+                                                                s.id
+                                                            ),
+                                                        })
+                                                    }
+                                                    className="w-4 h-4 accent-purple-500"
+                                                />
+                                                {s.label}
+                                            </label>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            <div className="space-y-2">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    Target campuses
+                                </span>
+                                <div className="flex flex-wrap gap-4">
+                                    <label className="flex items-center gap-2 text-sm text-white cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            checked={formData.promotion.targetCampuses.length === 0}
+                                            onChange={() => setPromotion({ targetCampuses: [] })}
+                                            className="w-4 h-4 accent-purple-500"
+                                        />
+                                        All campuses
+                                    </label>
+                                    {DEFAULT_CAMPUS_CONFIG.map((c) => (
+                                        <label
+                                            key={c.id}
+                                            className="flex items-center gap-2 text-sm text-white cursor-pointer"
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={formData.promotion.targetCampuses.includes(
+                                                    c.id
+                                                )}
+                                                onChange={() =>
+                                                    setPromotion({
+                                                        targetCampuses: toggleInList(
+                                                            formData.promotion.targetCampuses,
+                                                            c.id
+                                                        ),
+                                                    })
+                                                }
+                                                className="w-4 h-4 accent-purple-500"
+                                            />
+                                            {c.name}
+                                        </label>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="col-span-full flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5 w-fit">

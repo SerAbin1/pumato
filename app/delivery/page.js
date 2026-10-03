@@ -17,6 +17,7 @@ import Fuse from "fuse.js";
 import { where } from "firebase/firestore";
 import { useTrackSearch } from "../hooks/useTrackSearch";
 import { seededShuffle } from "@/lib/shuffle";
+import usePromotedListings from "@/app/hooks/usePromotedListings";
 
 export default function DeliveryPage() {
     const { addToCart } = useCart();
@@ -28,6 +29,7 @@ export default function DeliveryPage() {
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [promoBanners, setPromoBanners] = useState(null);
+    const sponsoredListings = usePromotedListings("L2", "restaurant_list");
     const [recentSearches, setRecentSearches] = useState([]);
 
     useEffect(() => {
@@ -440,7 +442,10 @@ export default function DeliveryPage() {
                             ))}
                         </div>
                     ) : (
-                        <RestaurantList restaurants={filteredRestaurants} />
+                        <RestaurantList
+                            restaurants={filteredRestaurants}
+                            promos={sponsoredListings}
+                        />
                     )}
                 </section>
             </div>

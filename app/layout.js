@@ -3,6 +3,7 @@ import "./globals.css";
 import { CartProvider } from "./context/CartContext";
 import { UserAuthProvider } from "./context/UserAuthContext";
 import AnalyticsInit from "./components/AnalyticsInit";
+import PromoPopup from "./marketplace/components/PromoPopup";
 import { CANONICAL_URLS } from "@/lib/seo";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -37,6 +38,7 @@ export default function RootLayout({ children }) {
                 <UserAuthProvider>
                     <CartProvider>
                         {children}
+                        <PromoPopup />
                         <Toaster
                             position="bottom-center"
                             toastOptions={{

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Heart, Loader2, ShoppingBag } from "lucide-react";
@@ -9,33 +9,25 @@ import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useCart } from "@/app/context/CartContext";
-import { useFavourites } from "@/app/hooks/useFavourites";
+import { useFavourites } from "@/app/context/FavouritesContext";
 import { resolveFavourites } from "@/lib/favourites";
-import useFirestore from "@/app/hooks/useFirestore";
-import { COLLECTIONS } from "@/lib/constants";
 
 export default function FavouritesPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useUserAuth();
-    const { addToCart, setIsCartOpen } = useCart();
-    const { favourites, loaded, toggle } = useFavourites(user);
-    const { getCollection } = useFirestore();
-
-    const [restaurants, setRestaurants] = useState([]);
-    const [loadingRestaurants, setLoadingRestaurants] = useState(true);
-
-    useEffect(() => {
-        getCollection(COLLECTIONS.RESTAURANTS)
-            .then(setRestaurants)
-            .catch((error) => console.error("Failed to load restaurants:", error))
-            .finally(() => setLoadingRestaurants(false));
-    }, [getCollection]);
+    // The cart already holds every restaurant (it needs them for pricing), so
+    // resolving favourites against it costs no extra reads.
+    const { addToCart, setIsCartOpen, restaurants, restaurantsLoaded } = useCart();
+    const { favourites, loaded, toggle } = useFavourites();
 
     useEffect(() => {
         if (!authLoading && !user) router.push("/login");
     }, [authLoading, user, router]);
 
-    const entries = resolveFavourites(favourites, restaurants);
+    const entries = useMemo(
+        () => resolveFavourites(favourites, restaurants),
+        [favourites, restaurants]
+    );
 
     const add = (entry) => {
         addToCart(
@@ -55,7 +47,7 @@ export default function FavouritesPage() {
         toast.success(`${entry.item.name} added to cart`);
     };
 
-    if (authLoading || !loaded || loadingRestaurants) {
+    if (authLoading || !loaded || !restaurantsLoaded) {
         return (
             <div className="min-h-screen bg-black text-white">
                 <Navbar />

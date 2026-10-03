@@ -6,6 +6,7 @@ import { useState, useEffect } from "react";
 
 export function useRestaurants() {
     const [restaurants, setRestaurants] = useState([]);
+    const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {
         const fetchRestaurants = async () => {
@@ -15,12 +16,14 @@ export function useRestaurants() {
                 setRestaurants(data);
             } catch (err) {
                 console.error("Failed to fetch restaurants", err);
+            } finally {
+                setLoaded(true);
             }
         };
         fetchRestaurants();
     }, []);
 
-    return { restaurants };
+    return { restaurants, loaded };
 }
 
 export function useCoupons() {

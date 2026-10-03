@@ -20,7 +20,7 @@ export function CartProvider({ children }) {
     const [isLoaded, setIsLoaded] = useState(false);
 
     // --- Data Hooks ---
-    const { restaurants } = useRestaurants();
+    const { restaurants, loaded: restaurantsLoaded } = useRestaurants();
     const { availableCoupons, setAvailableCoupons } = useCoupons();
     const { orderSettings } = useOrderSettings();
     const { grocerySettings } = useGrocerySettings();
@@ -157,6 +157,8 @@ export function CartProvider({ children }) {
                 isLoaded,
 
                 // Data
+                restaurants,
+                restaurantsLoaded,
                 availableCoupons,
                 orderSettings,
                 grocerySettings,

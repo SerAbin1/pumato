@@ -24,8 +24,7 @@ import ItemCustomizationModal from "../components/ItemCustomizationModal";
 import Fuse from "fuse.js";
 import { useTrackSearch } from "../hooks/useTrackSearch";
 import { seededShuffle } from "@/lib/shuffle";
-import { useUserAuth } from "@/app/context/UserAuthContext";
-import { useFavourites } from "@/app/hooks/useFavourites";
+import { useFavourites } from "@/app/context/FavouritesContext";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { planInsertions } from "@/lib/marketplacePromotions";
 import SponsoredListingCard from "@/app/marketplace/components/SponsoredListingCard";
@@ -43,8 +42,7 @@ function RestaurantContent() {
     const [customizingItem, setCustomizingItem] = useState(null);
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
-    const { user: authUser } = useUserAuth();
-    const { isFavourite, toggle: toggleFavourite } = useFavourites(authUser);
+    const { isFavourite, toggle: toggleFavourite } = useFavourites();
     const { getDocument } = useFirestore();
     const highlight = searchParams.get("highlight");
 

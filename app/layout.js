@@ -2,6 +2,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "./context/CartContext";
 import { UserAuthProvider } from "./context/UserAuthContext";
+import { FavouritesProvider } from "./context/FavouritesContext";
 import AnalyticsInit from "./components/AnalyticsInit";
 import PromoPopup from "./marketplace/components/PromoPopup";
 import { CANONICAL_URLS } from "@/lib/seo";
@@ -37,7 +38,7 @@ export default function RootLayout({ children }) {
                 <AnalyticsInit />
                 <UserAuthProvider>
                     <CartProvider>
-                        {children}
+                        <FavouritesProvider>{children}</FavouritesProvider>
                         <PromoPopup />
                         <Toaster
                             position="bottom-center"

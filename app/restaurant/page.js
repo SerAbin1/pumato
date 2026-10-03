@@ -767,6 +767,9 @@ function RestaurantContent() {
             </AnimatePresence>
 
             <ItemCustomizationModal
+                // Remount per item so selections, quantity and search don't
+                // leak from the previously customized item.
+                key={customizingItem?.id}
                 item={customizingItem}
                 restaurantId={restaurant?.id}
                 restaurantName={restaurant?.name}

@@ -1,10 +1,10 @@
 "use client";
 
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Plus, Minus, Check } from "lucide-react";
+import { X, Plus, Minus, Check, Search } from "lucide-react";
 import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
-import { getVariantWeight } from "@/lib/restaurants/menuItem";
+import { getVariantWeight, searchItemOptions, OPTION_SEARCH_MIN } from "@/lib/restaurants/menuItem";
 
 const toNumber = (v) => {
     const n = Number(v);
@@ -28,6 +28,16 @@ export default function ItemCustomizationModal({
     const [selectedVariantId, setSelectedVariantId] = useState(null);
     const [selectedAddonIds, setSelectedAddonIds] = useState([]);
     const [quantity, setQuantity] = useState(1);
+    const [query, setQuery] = useState("");
+
+    const showSearch =
+        (item?.variants?.length || 0) + (item?.addons?.length || 0) >= OPTION_SEARCH_MIN;
+    const {
+        base: showBaseOption,
+        variants: visibleVariants,
+        addons: visibleAddons,
+        empty: noMatches,
+    } = useMemo(() => searchItemOptions(item, query), [item, query]);
 
     const selectedVariant = useMemo(
         () => item?.variants?.find((v) => v.id === selectedVariantId) || null,
@@ -119,29 +129,56 @@ export default function ItemCustomizationModal({
                         </div>
 
                         <div className="p-4 space-y-6">
-                            {hasVariants && (
+                            {showSearch && (
+                                <div className="relative">
+                                    <Search
+                                        size={16}
+                                        className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500"
+                                    />
+                                    <input
+                                        type="search"
+                                        value={query}
+                                        onChange={(e) => setQuery(e.target.value)}
+                                        placeholder="Search options"
+                                        className="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:outline-none focus:border-orange-500"
+                                    />
+                                </div>
+                            )}
+
+                            {noMatches && (
+                                <p className="text-sm text-gray-500 text-center py-4">
+                                    No options match &ldquo;{query.trim()}&rdquo;
+                                </p>
+                            )}
+
+                            {(showBaseOption || visibleVariants.length > 0) && (
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
                                         Choose Size / Quantity
                                     </p>
                                     <div className="space-y-2">
-                                        <button
-                                            onClick={() => setSelectedVariantId(null)}
-                                            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
-                                                selectedVariantId === null
-                                                    ? "border-orange-500 bg-orange-500/10 text-white"
-                                                    : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
-                                            }`}
-                                        >
-                                            <span className="font-semibold">{item.name}</span>
-                                            <span className="flex items-center gap-2">
-                                                <span className="font-bold">₹{item.price}</span>
-                                                {selectedVariantId === null && (
-                                                    <Check size={16} className="text-orange-400" />
-                                                )}
-                                            </span>
-                                        </button>
-                                        {item.variants.map((v) => {
+                                        {showBaseOption && (
+                                            <button
+                                                onClick={() => setSelectedVariantId(null)}
+                                                className={`w-full flex items-center justify-between px-4 py-3 rounded-xl border transition-colors ${
+                                                    selectedVariantId === null
+                                                        ? "border-orange-500 bg-orange-500/10 text-white"
+                                                        : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"
+                                                }`}
+                                            >
+                                                <span className="font-semibold">{item.name}</span>
+                                                <span className="flex items-center gap-2">
+                                                    <span className="font-bold">₹{item.price}</span>
+                                                    {selectedVariantId === null && (
+                                                        <Check
+                                                            size={16}
+                                                            className="text-orange-400"
+                                                        />
+                                                    )}
+                                                </span>
+                                            </button>
+                                        )}
+                                        {visibleVariants.map((v) => {
                                             const active = v.id === selectedVariantId;
                                             return (
                                                 <button
@@ -172,13 +209,13 @@ export default function ItemCustomizationModal({
                                 </div>
                             )}
 
-                            {hasAddons && (
+                            {hasAddons && visibleAddons.length > 0 && (
                                 <div>
                                     <p className="text-xs font-bold uppercase tracking-wider text-gray-400 mb-3">
                                         Add-ons (optional)
                                     </p>
                                     <div className="space-y-2">
-                                        {item.addons.map((a) => {
+                                        {visibleAddons.map((a) => {
                                             const active = selectedAddonIds.includes(a.id);
                                             return (
                                                 <button

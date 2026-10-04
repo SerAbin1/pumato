@@ -90,7 +90,7 @@ const LiveIndicator = ({
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute left-0 md:left-auto md:right-0 top-full mt-3 w-72 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl z-[60]"
+                        className="fixed inset-x-0 mx-auto top-[88px] md:absolute md:inset-x-auto md:mx-0 md:right-0 md:top-full md:mt-3 w-72 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-5 shadow-2xl z-[60]"
                     >
                         <div className="flex items-center justify-between mb-4">
                             <h4 className="text-[10px] font-black uppercase tracking-widest text-gray-400">
@@ -260,7 +260,7 @@ const CommunityDropdown = ({ groups }) => {
                         initial={{ opacity: 0, y: 10, scale: 0.95 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                        className="absolute left-0 md:left-auto md:right-0 top-full mt-3 w-56 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl z-[60]"
+                        className="fixed inset-x-0 mx-auto top-[88px] md:absolute md:inset-x-auto md:mx-0 md:right-0 md:top-full md:mt-3 w-56 bg-zinc-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-4 shadow-2xl z-[60]"
                     >
                         <div className="flex items-center justify-between mb-3">
                             <h4 className="text-xs font-black uppercase tracking-widest text-gray-400">

@@ -21,6 +21,7 @@ import toast from "react-hot-toast";
 // Fallback is defined in context
 
 import { doc, getDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase";
 import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
 import { getISTTime, getISTObject } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";

@@ -21,13 +21,14 @@ import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { resolveTrending, loadTrendingEntries, TRENDING_MIN_ITEMS } from "@/lib/trending";
 import { fetchTrending } from "@/lib/repositories";
 
+const SEARCH_DEBOUNCE_MS = 200;
+const SEARCH_MIN_CHARS = 2;
+
 export default function DeliveryPage() {
     const { addToCart } = useCart();
     const { getCollection, getDocument, loading: dbLoading } = useFirestore();
     const [toast, setToast] = useState(null);
     const [restaurants, setRestaurants] = useState([]);
-    const [filteredRestaurants, setFilteredRestaurants] = useState([]);
-    const [filteredFoods, setFilteredFoods] = useState([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
     const [promoBanners, setPromoBanners] = useState(null);
@@ -119,7 +120,6 @@ export default function DeliveryPage() {
                 );
 
                 setRestaurants(shuffledData);
-                setFilteredRestaurants(shuffledData);
             } catch (err) {
                 console.error("Error fetching restaurants:", err);
             }
@@ -127,91 +127,89 @@ export default function DeliveryPage() {
         fetchRestaurants();
     }, [getCollection]);
 
-    // Apply search filtering with Fuse.js fuzzy matching
+    // Wait for a pause in typing before searching, and skip 1-character
+    // queries (they fuzzy-match almost everything). Clearing the box takes
+    // effect immediately because activeQuery is derived from searchQuery.
+    const [debouncedQuery, setDebouncedQuery] = useState("");
     useEffect(() => {
-        if (!searchQuery) {
-            // eslint-disable-next-line react-hooks/set-state-in-effect
-            setFilteredRestaurants(restaurants);
-            setFilteredFoods([]);
-            return;
+        const handle = setTimeout(() => setDebouncedQuery(searchQuery.trim()), SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(handle);
+    }, [searchQuery]);
+    const activeQuery = searchQuery.trim() ? debouncedQuery : "";
+
+    // Built once per restaurant load, not per keystroke: one flat list of every
+    // menu item (tagged with its restaurant) and the Fuse indexes over it.
+    const searchIndex = useMemo(() => {
+        const foods = restaurants.flatMap((r) =>
+            (r.menu || []).map((item) => ({
+                ...item,
+                restaurantId: r.id,
+                restaurantName: r.name,
+                outOfStockCategories: r.outOfStockCategories || [],
+            }))
+        );
+        return {
+            restaurantFuse: new Fuse(restaurants, {
+                keys: ["name", "cuisine"],
+                threshold: 0.3,
+            }),
+            foodFuse: new Fuse(foods, {
+                keys: ["name"],
+                threshold: 0.3,
+                includeScore: true,
+            }),
+            foods,
+        };
+    }, [restaurants]);
+
+    const { filteredRestaurants, filteredFoods } = useMemo(() => {
+        if (activeQuery.length < SEARCH_MIN_CHARS) {
+            return { filteredRestaurants: restaurants, filteredFoods: [] };
         }
 
-        const query = searchQuery.toLowerCase().trim();
+        const query = activeQuery.toLowerCase();
+        const { restaurantFuse, foodFuse, foods } = searchIndex;
 
-        // 1. Filter Restaurants using Fuse.js (name, cuisine, or has matching menu item)
-        const restaurantFuse = new Fuse(restaurants, {
-            keys: ["name", "cuisine"],
-            threshold: 0.3, // Stricter threshold
-            includeScore: true,
-        });
-
-        const restaurantResults = restaurantFuse.search(searchQuery);
-        const matchedByRestaurant = restaurantResults.map((r) => r.item);
-
-        // Also check menu items for restaurant matching
-        const restaurantsWithMenuMatch = restaurants.filter((r) => {
-            if (!r.menu || r.menu.length === 0) return false;
-            // First check exact substring match
-            const exactMatch = r.menu.some((item) => item.name.toLowerCase().includes(query));
-            if (exactMatch) return true;
-            // Then check fuzzy match
-            const menuFuse = new Fuse(r.menu, {
-                keys: ["name"],
-                threshold: 0.3, // Stricter for menu items too
-            });
-            return menuFuse.search(searchQuery).length > 0;
-        });
-
-        // Combine and deduplicate restaurant results
-        const allMatchedRestaurants = [...matchedByRestaurant];
-        restaurantsWithMenuMatch.forEach((r) => {
-            if (!allMatchedRestaurants.find((existing) => existing.id === r.id)) {
-                allMatchedRestaurants.push(r);
+        // Fuzzy matches plus exact substrings, which Fuse can miss when the
+        // match sits far into a long name.
+        const fuzzyFoods = foodFuse.search(activeQuery);
+        const matchedFoods = fuzzyFoods.map((result) => {
+            const itemName = result.item.name.toLowerCase();
+            // Boost score for exact substring matches
+            let adjustedScore = result.score;
+            if (itemName === query) {
+                adjustedScore -= 0.5; // Exact match gets huge boost
+            } else if (itemName.startsWith(query)) {
+                adjustedScore -= 0.3; // Starts with query gets boost
+            } else if (itemName.includes(query)) {
+                adjustedScore -= 0.2; // Contains query gets small boost
             }
+            return { ...result.item, score: adjustedScore };
         });
 
-        // 2. Find specific matching foods (Global Search)
-        const matchedFoods = [];
-        restaurants.forEach((r) => {
-            if (r.menu && r.menu.length > 0) {
-                const menuFuse = new Fuse(r.menu, {
-                    keys: ["name"],
-                    threshold: 0.3, // Stricter threshold
-                    includeScore: true,
-                });
-                const menuResults = menuFuse.search(searchQuery);
-
-                menuResults.forEach((result) => {
-                    const itemName = result.item.name.toLowerCase();
-                    // Boost score for exact substring matches
-                    let adjustedScore = result.score;
-                    if (itemName === query) {
-                        adjustedScore -= 0.5; // Exact match gets huge boost
-                    } else if (itemName.startsWith(query)) {
-                        adjustedScore -= 0.3; // Starts with query gets boost
-                    } else if (itemName.includes(query)) {
-                        adjustedScore -= 0.2; // Contains query gets small boost
-                    }
-
-                    matchedFoods.push({
-                        ...result.item,
-                        restaurantId: r.id,
-                        restaurantName: r.name,
-                        outOfStockCategories: r.outOfStockCategories || [],
-                        score: adjustedScore,
-                    });
-                });
-            }
+        // Restaurants: name/cuisine matches, then any restaurant with a matching
+        // menu item (fuzzy or exact substring).
+        const matchedRestaurantIds = new Set();
+        const matchedByRestaurant = restaurantFuse.search(activeQuery).map((r) => {
+            matchedRestaurantIds.add(r.item.id);
+            return r.item;
         });
+        const menuMatchIds = new Set(matchedFoods.map((f) => f.restaurantId));
+        foods.forEach((item) => {
+            if (item.name.toLowerCase().includes(query)) menuMatchIds.add(item.restaurantId);
+        });
+        const allMatchedRestaurants = [
+            ...matchedByRestaurant,
+            ...restaurants.filter((r) => menuMatchIds.has(r.id) && !matchedRestaurantIds.has(r.id)),
+        ];
 
         // Sort foods by relevance score (lower is better)
         matchedFoods.sort((a, b) => (a.score || 1) - (b.score || 1));
 
-        setFilteredRestaurants(allMatchedRestaurants);
-        setFilteredFoods(matchedFoods);
-    }, [restaurants, searchQuery]);
+        return { filteredRestaurants: allMatchedRestaurants, filteredFoods: matchedFoods };
+    }, [restaurants, searchIndex, activeQuery]);
 
-    useTrackSearch(searchQuery, filteredRestaurants.length + filteredFoods.length, "delivery");
+    useTrackSearch(activeQuery, filteredRestaurants.length + filteredFoods.length, "delivery");
 
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden">

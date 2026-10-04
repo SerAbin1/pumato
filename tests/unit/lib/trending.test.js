@@ -38,10 +38,10 @@ describe("computeTrending", () => {
         ]);
     });
 
-    it("stores only the ids needed to find the item", () => {
+    it("stores only the ids and order count needed to find the item", () => {
         const orders = [{ status: "delivered", items: [line("biryani")] }];
         expect(computeTrending(orders, { featuredIds })).toEqual([
-            { restaurantId: "res-1", itemId: "biryani" },
+            { restaurantId: "res-1", itemId: "biryani", orders: 1 },
         ]);
     });
 

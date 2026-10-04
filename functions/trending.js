@@ -35,14 +35,14 @@ function lastWeekWindow(now = new Date()) {
  *
  * Ranked by how many distinct orders contained the item, not by quantity, so
  * one hostel's bulk order of 40 chapatis can't top the list on its own.
- * Quantity only breaks ties. Only ids are returned; the client reads name,
- * price and stock from the live restaurant document.
+ * Quantity only breaks ties. Only ids and the order count are returned; the
+ * client reads name, price and stock from the live restaurant document.
  *
  * @param {Array} orders - Order documents with `status` and `items`
  * @param {Object} options
  * @param {Set<string>} options.featuredIds - Restaurant ids allowed to trend
  * @param {number} [options.limit]
- * @returns {Array<{restaurantId: string, itemId: string}>} best first
+ * @returns {Array<{restaurantId: string, itemId: string, orders: number}>} best first
  */
 function computeTrending(orders = [], { featuredIds, limit = LIMIT }) {
     const tally = new Map();
@@ -72,7 +72,7 @@ function computeTrending(orders = [], { featuredIds, limit = LIMIT }) {
     return [...tally.values()]
         .sort((a, b) => b.orders - a.orders || b.quantity - a.quantity)
         .slice(0, limit)
-        .map(({ restaurantId, itemId }) => ({ restaurantId, itemId }));
+        .map(({ restaurantId, itemId, orders }) => ({ restaurantId, itemId, orders }));
 }
 
 /** Ranks last week's orders and overwrites `site_content/trending`. */

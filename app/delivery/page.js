@@ -469,6 +469,13 @@ export default function DeliveryPage() {
                                         <p className="text-xs text-gray-400 line-clamp-1">
                                             {item.restaurantName}
                                         </p>
+                                        {item.orderCount > 0 && (
+                                            <p className="text-[11px] text-orange-300 mt-1">
+                                                {item.orderCount}{" "}
+                                                {item.orderCount === 1 ? "order" : "orders"} last
+                                                week
+                                            </p>
+                                        )}
                                     </Link>
                                     <div className="flex items-center justify-between mt-auto pt-2">
                                         <span className="font-bold text-green-400">

@@ -54,7 +54,9 @@ describe("toggleFavourite", () => {
     });
 
     it("stores only identity plus a display name", () => {
-        const next = toggleFavourite([], { ...fav(), price: 180, description: "spicy" });
+        // A whole menu item can be passed; only the identity fields are kept.
+        const menuItem = { ...fav(), price: 180, description: "spicy" };
+        const next = toggleFavourite([], menuItem);
 
         expect(next[0]).toEqual({
             restaurantId: "res-1",
@@ -109,7 +111,7 @@ describe("resolveFavourites", () => {
     it("pairs a favourite with its live menu item", () => {
         const [entry] = resolveFavourites([fav()], restaurants);
 
-        expect(entry.item.price).toBe("180");
+        expect(entry.item?.price).toBe("180");
         expect(entry.restaurantName).toBe("Hotel Ashiana");
         expect(entry.available).toBe(true);
     });

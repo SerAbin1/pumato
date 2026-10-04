@@ -12,11 +12,24 @@ import {
     deriveTier,
     normalizePromotion,
 } from "../../../lib/marketplacePromotions";
+import type { InFeedPromotion, PopupPromotion } from "../../../lib/marketplacePromotions";
 import { MarketplaceListingSchema } from "../../../lib/schemas/marketplace";
 
 const TODAY = "2026-10-03";
 
-const listing = (id, { inFeed = {}, popup = {}, ...rest } = {}, extra = {}) => ({
+const listing = (
+    id: string,
+    {
+        inFeed = {},
+        popup = {},
+        ...rest
+    }: {
+        inFeed?: Partial<InFeedPromotion>;
+        popup?: Partial<PopupPromotion>;
+        targetCampuses?: string[];
+    } = {},
+    extra: Record<string, unknown> = {}
+) => ({
     id,
     isVisible: true,
     expiryDate: "",
@@ -74,7 +87,7 @@ describe("matchesCampus", () => {
 
 describe("selectPromotions", () => {
     const opts = {
-        placement: "inFeed",
+        placement: "inFeed" as const,
         surface: "restaurant_menu",
         campus: "PU",
         visitorId: "v1",

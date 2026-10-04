@@ -160,6 +160,7 @@ describe("isServiceLive", () => {
 
         it("handles slots with non-numeric time values", () => {
             const slots = [{ start: "09:00", end: "17:00" }];
+            // @ts-expect-error: deliberately not a number
             expect(isServiceLive(null, slots, "invalid")).toBe(false);
         });
     });

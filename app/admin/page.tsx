@@ -486,7 +486,7 @@ export default function AdminPage() {
             console.error("Error fetching data:", error);
             toast.error("Failed to load restaurants and coupons");
         }
-    }, [user]);
+    }, []);
 
     useEffect(() => {
         if (user && isAdmin) {

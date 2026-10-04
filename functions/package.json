@@ -1,8 +1,9 @@
 {
   "name": "pumato-functions",
   "private": true,
-  "main": "index.js",
+  "main": "lib/index.js",
   "scripts": {
+    "build": "tsc",
     "logs": "firebase functions:log"
   },
   "dependencies": {
@@ -12,5 +13,9 @@
   "allowScripts": {
     "@firebase/util@1.15.1": true,
     "protobufjs@7.6.5": true
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "typescript": "^7.0.2"
   }
 }

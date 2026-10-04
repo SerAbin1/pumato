@@ -13,7 +13,7 @@ export interface UpiLinkParams {
     /** Shown in the UPI app's confirm screen */
     payeeName?: string;
     /** Rupees */
-    amount?: number | string;
+    amount?: number | string | null;
     /** Becomes the merchant reference */
     orderNumber?: string;
     /** Transaction note */

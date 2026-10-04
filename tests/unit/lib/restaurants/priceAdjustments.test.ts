@@ -10,7 +10,12 @@ import {
     isItemAffected,
 } from "../../../../lib/restaurants/priceAdjustments";
 
-const item = (id, price, category = "Starters", weight) => ({ id, price, category, weight });
+const item = (id: string, price: string, category = "Starters", weight?: number) => ({
+    id,
+    price,
+    category,
+    weight,
+});
 
 const menu = [
     item("1", "100", "Starters"),

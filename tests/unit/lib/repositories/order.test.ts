@@ -21,25 +21,29 @@ vi.mock("firebase/firestore", () => ({
 
 const { createOrder, updateOrder } = await import("@/lib/repositories/order");
 
+type OrderInput = Parameters<typeof createOrder>[0];
+
 const AUTO_ID = "auto-generated-id";
 
 /**
  * Records every tx operation in call order so tests can assert both the payloads
  * and that the read precedes the writes (Firestore enforces this at runtime).
  */
-function makeTransaction(counterData) {
-    const ops = [];
+type Op = { op: "get" | "set"; ref: any; data?: any; options?: unknown };
+
+function makeTransaction(counterData?: { last?: unknown }) {
+    const ops: Op[] = [];
     return {
         ops,
         tx: {
-            get: vi.fn(async (ref) => {
+            get: vi.fn(async (ref: unknown) => {
                 ops.push({ op: "get", ref });
                 return {
                     exists: () => counterData !== undefined,
                     data: () => counterData,
                 };
             }),
-            set: vi.fn((ref, data, options) => {
+            set: vi.fn((ref: unknown, data: unknown, options?: unknown) => {
                 ops.push({ op: "set", ref, data, options });
             }),
         },
@@ -47,7 +51,10 @@ function makeTransaction(counterData) {
 }
 
 /** Runs createOrder against a counter doc holding `counterData` (undefined = doc absent). */
-async function runCreate(data, counterData) {
+async function runCreate(
+    data: Parameters<typeof createOrder>[0] & Record<string, unknown>,
+    counterData?: { last?: unknown }
+) {
     const { ops, tx } = makeTransaction(counterData);
     mocks.runTransaction.mockImplementation(async (_db, fn) => fn(tx));
     const result = await createOrder(data);
@@ -55,12 +62,12 @@ async function runCreate(data, counterData) {
     return {
         result,
         ops,
-        counterSet: sets.find((o) => o.ref.path === "counters/orders"),
-        orderSet: sets.find((o) => o.ref.id === AUTO_ID),
+        counterSet: sets.find((o) => o.ref.path === "counters/orders")!,
+        orderSet: sets.find((o) => o.ref.id === AUTO_ID)!,
     };
 }
 
-const validOrder = () => ({
+const validOrder = (): OrderInput => ({
     status: "placed",
     items: [
         {
@@ -192,14 +199,15 @@ describe("createOrder — validation", () => {
     });
 
     it("rejects an invalid status before opening a transaction", async () => {
+        // @ts-expect-error: deliberately not an order status
         await expect(createOrder({ ...validOrder(), status: "teleported" })).rejects.toThrow();
         expect(mocks.runTransaction).not.toHaveBeenCalled();
     });
 
     it("rejects a missing required field before opening a transaction", async () => {
-        const data = validOrder();
-        delete data.phone;
+        const { phone: _phone, ...data } = validOrder();
 
+        // @ts-expect-error: deliberately missing the required phone
         await expect(createOrder(data)).rejects.toThrow();
         expect(mocks.runTransaction).not.toHaveBeenCalled();
     });
@@ -212,7 +220,7 @@ describe("createOrder — validation", () => {
             end: "20:00",
             cutoffMinutes: 60,
             campusId: "PU",
-        };
+        } as const;
         const { orderSet } = await runCreate({ ...validOrder(), deliverySlot }, { last: 1 });
 
         expect(orderSet.data.deliverySlot).toEqual(deliverySlot);

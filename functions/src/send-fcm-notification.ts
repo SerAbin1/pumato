@@ -1,13 +1,20 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { getAuth } = require("firebase-admin/auth");
-const { getFirestore } = require("firebase-admin/firestore");
-const { getMessaging } = require("firebase-admin/messaging");
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
+import { getMessaging } from "firebase-admin/messaging";
 
 const auth = getAuth();
 const db = getFirestore();
 const messaging = getMessaging();
 
-async function verifyCaller(token) {
+interface SendFcmRequest {
+    role?: string;
+    orderId?: string;
+    targetUids?: string[];
+    restaurantIds?: string[];
+}
+
+async function verifyCaller(token: string) {
     try {
         return await auth.verifyIdToken(token);
     } catch {
@@ -15,13 +22,13 @@ async function verifyCaller(token) {
     }
 }
 
-async function getFcmTokensByUids(uids) {
-    const tokens = [];
+async function getFcmTokensByUids(uids: string[]) {
+    const tokens: string[] = [];
     const docs = await Promise.all(uids.map((uid) => db.collection("fcm_tokens").doc(uid).get()));
 
     for (const doc of docs) {
         if (doc.exists) {
-            const token = doc.data().token;
+            const token = doc.data()?.token;
             if (token) tokens.push(token);
         }
     }
@@ -29,8 +36,8 @@ async function getFcmTokensByUids(uids) {
     return tokens;
 }
 
-async function getFcmTokensByRestaurantIds(restaurantIds) {
-    const tokens = [];
+async function getFcmTokensByRestaurantIds(restaurantIds: string[]) {
+    const tokens: string[] = [];
     const snapshots = await Promise.all(
         restaurantIds.map((restaurantId) =>
             db.collection("fcm_tokens").where("restaurantId", "==", restaurantId).get()
@@ -47,7 +54,7 @@ async function getFcmTokensByRestaurantIds(restaurantIds) {
     return tokens;
 }
 
-exports.sendFcmNotification = onCall(async (request) => {
+export const sendFcmNotification = onCall<SendFcmRequest>(async (request) => {
     const authHeader = request.rawRequest.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
         throw new HttpsError("unauthenticated", "Missing authorization header.");
@@ -65,7 +72,7 @@ exports.sendFcmNotification = onCall(async (request) => {
         return { sent: 0, message: "Admin notifications disabled" };
     }
 
-    let fcmTokens = [];
+    let fcmTokens: string[] = [];
 
     if (targetUids && Array.isArray(targetUids) && targetUids.length > 0) {
         fcmTokens = await getFcmTokensByUids(targetUids);

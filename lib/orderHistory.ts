@@ -1,4 +1,4 @@
-import type { MenuSource } from "@/lib/favourites";
+import type { LiveMenuItem, MenuSource } from "@/lib/favourites";
 
 /**
  * Pure derivations over a customer's past orders.
@@ -28,6 +28,13 @@ export interface OrderLineLike {
     image?: string;
 }
 
+/** What reordering reads from a live menu item. */
+export interface ReorderMenuItem extends LiveMenuItem {
+    price?: string | number;
+    variants?: unknown[];
+    addons?: unknown[];
+}
+
 export interface RecentItem {
     id?: string;
     name?: string;
@@ -54,8 +61,8 @@ export const CUSTOMER_STATUS_LABELS: Record<string, string> = {
     cancelled: "Cancelled",
 };
 
-export const customerStatusLabel = (status: string): string =>
-    CUSTOMER_STATUS_LABELS[status] || "Placed";
+export const customerStatusLabel = (status: string | undefined): string =>
+    CUSTOMER_STATUS_LABELS[status as string] || "Placed";
 
 /** An order still moving through the pipeline, as opposed to history. */
 export const isActiveOrder = (order: OrderLike | null | undefined): boolean =>
@@ -153,7 +160,8 @@ export const totalSpent = (orders: OrderLike[] = []): number =>
  */
 export function resolveReorderItems<
     I extends Pick<RecentItem, "id" | "name" | "price" | "restaurantId" | "restaurantName">,
->(items: I[] = [], restaurants: MenuSource[] = []) {
+    M extends ReorderMenuItem,
+>(items: I[] = [], restaurants: MenuSource<M>[] = []) {
     const byId = new Map(restaurants.map((r) => [r.id, r]));
 
     return items.map((item) => {

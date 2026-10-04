@@ -78,7 +78,6 @@ export interface CartItemInput {
     weight?: number | string | null;
     variant?: SelectedOption;
     addons?: SelectedOption[];
-    [key: string]: any;
 }
 
 /** A line in the cart: what was added, plus how many. */
@@ -95,7 +94,6 @@ export interface UserDetails {
     campus: string;
     address: string;
     instructions: string;
-    [key: string]: any;
 }
 
 // --- Coupons (stored snake_case by functions/manage-coupons.js) ---
@@ -124,7 +122,6 @@ export interface Coupon {
     usedCount?: number;
     restaurantId?: string | null;
     itemId?: string | null;
-    [key: string]: any;
 }
 
 // --- Orders ---
@@ -139,7 +136,7 @@ export type Order = z.infer<typeof OrderSchema> & { id: string };
 
 export type LaundryOrderStatus = (typeof LAUNDRY_ORDER_STATUSES)[number];
 export type LaundryItem = z.infer<typeof LaundryItemSchema>;
-export type LaundryOrder = z.infer<typeof LaundryOrderSchema> & { [key: string]: any };
+export type LaundryOrder = z.infer<typeof LaundryOrderSchema>;
 export type LaundryPricing = z.infer<typeof LaundryPricingSchema>;
 export type CampusConfig = z.infer<typeof CampusConfigSchema>;
 
@@ -166,12 +163,8 @@ export interface CustomLink {
 
 export type MarketplaceListing = Omit<z.infer<typeof MarketplaceListingSchema>, "customLinks"> & {
     customLinks?: CustomLink[];
-    [key: string]: any;
 };
-export type MarketplaceRequest = z.infer<typeof MarketplaceRequestSchema> & {
-    id: string;
-    [key: string]: any;
-};
+export type MarketplaceRequest = z.infer<typeof MarketplaceRequestSchema> & { id: string };
 
 // --- Feedback & payments ---
 

@@ -10,7 +10,8 @@ import {
 } from "../../../lib/upi";
 
 /** Parses a upi://pay link's query so assertions read as intent, not string matching. */
-const params = (link) => Object.fromEntries(new URLSearchParams(link.split("?")[1]));
+const params = (link: string | null) =>
+    Object.fromEntries(new URLSearchParams(link!.split("?")[1]));
 
 describe("isValidVpa", () => {
     it("accepts the handles people actually use", () => {
@@ -68,7 +69,7 @@ describe("buildUpiLink", () => {
     it("builds a pay intent with the payee, amount and currency", () => {
         const p = params(buildUpiLink(base));
 
-        expect(buildUpiLink(base).startsWith("upi://pay?")).toBe(true);
+        expect(buildUpiLink(base)!.startsWith("upi://pay?")).toBe(true);
         expect(p.pa).toBe("pumato@okhdfcbank");
         expect(p.pn).toBe("Pumato");
         expect(p.am).toBe("380.00");

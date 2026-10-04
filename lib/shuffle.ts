@@ -20,11 +20,9 @@ export const seededShuffle = <T>(array: T[], seed: number): T[] => {
 
 // Featured restaurants are shuffled among themselves and always lead; the rest
 // are shuffled among themselves and follow.
-export const shuffleRestaurants = <R extends { isFeatured?: boolean }>(
-    restaurants: R[],
-    seed: number
-): R[] => {
-    const featured = restaurants.filter((r) => r.isFeatured === true);
-    const others = restaurants.filter((r) => r.isFeatured !== true);
+export const shuffleRestaurants = <R extends object>(restaurants: R[], seed: number): R[] => {
+    const isFeatured = (r: R) => (r as { isFeatured?: boolean }).isFeatured === true;
+    const featured = restaurants.filter(isFeatured);
+    const others = restaurants.filter((r) => !isFeatured(r));
     return [...seededShuffle(featured, seed), ...seededShuffle(others, seed)];
 };

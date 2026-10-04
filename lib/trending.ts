@@ -1,9 +1,21 @@
 import type { MenuItem, Restaurant } from "@/lib/types";
 
-export type TrendingRestaurant = Pick<Restaurant, "id" | "name"> &
-    Partial<Pick<Restaurant, "menu" | "outOfStockCategories" | "isVisible" | "isFeatured">>;
+/** What resolving trending entries reads from a live menu item. */
+export interface TrendingMenuItem {
+    id: string;
+    category?: string;
+    isVisible?: boolean;
+    variants?: unknown[];
+    addons?: unknown[];
+}
 
-export type TrendingItem = MenuItem & {
+export type TrendingRestaurant<M extends TrendingMenuItem = MenuItem> = Pick<
+    Restaurant,
+    "id" | "name"
+> &
+    Partial<Pick<Restaurant, "outOfStockCategories" | "isVisible" | "isFeatured">> & { menu?: M[] };
+
+export type TrendingItem<M extends TrendingMenuItem = MenuItem> = M & {
     restaurantId: string;
     restaurantName: string;
     orderCount?: number;
@@ -78,13 +90,13 @@ export async function loadTrendingEntries(
  *   `needsChoice`; unavailable items, and items from restaurants that have
  *   stopped being featured since the last ranking, are dropped
  */
-export function resolveTrending(
+export function resolveTrending<M extends TrendingMenuItem>(
     entries: (TrendingEntry | null | undefined)[] = [],
-    restaurants: TrendingRestaurant[] = [],
+    restaurants: TrendingRestaurant<M>[] = [],
     { limit = 8 }: { limit?: number } = {}
-): TrendingItem[] {
+): TrendingItem<M>[] {
     const byId = new Map(restaurants.map((r) => [r.id, r]));
-    const resolved: TrendingItem[] = [];
+    const resolved: TrendingItem<M>[] = [];
 
     for (const entry of entries) {
         if (!entry) continue;
@@ -95,7 +107,7 @@ export function resolveTrending(
 
         const item = restaurant.menu?.find((m) => m.id === entry.itemId);
         if (!item || item.isVisible === false) continue;
-        if ((restaurant.outOfStockCategories || []).includes(item.category)) continue;
+        if ((restaurant.outOfStockCategories || []).includes(item.category as string)) continue;
 
         resolved.push({
             ...item,

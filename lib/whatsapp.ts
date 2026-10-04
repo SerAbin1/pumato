@@ -5,7 +5,7 @@ export interface WhatsAppTotals {
     itemTotal: number;
     deliveryCharge: number;
     finalTotal: number;
-    discount: number;
+    discount?: number;
     couponCode?: string | null;
     orderNumber?: string;
     deliverySlot?: Parameters<typeof formatDeliverySlot>[0];
@@ -22,8 +22,14 @@ interface CustomLink {
  * Formats user order details into a structured WhatsApp message string.
  * @returns URL encoded WhatsApp message string
  */
+/** A cart line as the message reads it. */
+type MessageLine = Pick<
+    CartItem,
+    "name" | "quantity" | "price" | "unitPrice" | "restaurantName" | "variant" | "addons"
+>;
+
 export const formatWhatsAppMessage = (
-    cartItems: CartItem[],
+    cartItems: MessageLine[],
     userDetails: Partial<UserDetails>,
     totals: WhatsAppTotals
 ): string => {
@@ -43,7 +49,7 @@ export const formatWhatsAppMessage = (
     }
 
     message += `*Order Details:*\n`;
-    const groupedItems = cartItems.reduce<Record<string, CartItem[]>>((acc, item) => {
+    const groupedItems = cartItems.reduce<Record<string, MessageLine[]>>((acc, item) => {
         const rName = item.restaurantName?.trim() || "Other Items";
         if (!acc[rName]) acc[rName] = [];
         acc[rName].push(item);
@@ -69,7 +75,7 @@ export const formatWhatsAppMessage = (
     message += `\n----------------\n`;
     message += `Item Total: ₹${itemTotal}\n`;
     message += `Delivery Charge: ₹${deliveryCharge}\n`;
-    if (totals.discount > 0) {
+    if ((totals.discount ?? 0) > 0) {
         message += `Discount (${totals.couponCode || "APPLIED"}): -₹${totals.discount}\n`;
     }
     message += `*Grand Total: ₹${finalTotal}*\n`;

@@ -1,6 +1,18 @@
-const { onSchedule } = require("firebase-functions/v2/scheduler");
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { getFirestore, Timestamp, FieldValue } = require("firebase-admin/firestore");
+import { onSchedule } from "firebase-functions/v2/scheduler";
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
+
+/** The parts of an order document the ranking reads. */
+export interface TrendingOrder {
+    status?: string;
+    items?: ({ id?: string; restaurantId?: string; quantity?: number | string } | null)[];
+}
+
+export interface TrendingEntry {
+    restaurantId: string;
+    itemId: string;
+    orders: number;
+}
 
 const LIMIT = 10;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -13,10 +25,8 @@ const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
  * the scheduled run and an admin refresh always agree on what "this week's
  * trending" means.
  *
- * @param {Date} now
- * @returns {{ start: Date, end: Date }}
  */
-function lastWeekWindow(now = new Date()) {
+export function lastWeekWindow(now = new Date()): { start: Date; end: Date } {
     const ist = new Date(now.getTime() + IST_OFFSET_MS);
     const sundayMidnightIst = Date.UTC(
         ist.getUTCFullYear(),
@@ -38,24 +48,25 @@ function lastWeekWindow(now = new Date()) {
  * Quantity only breaks ties. Only ids and the order count are returned; the
  * client reads name, price and stock from the live restaurant document.
  *
- * @param {Array} orders - Order documents with `status` and `items`
- * @param {Object} options
- * @param {Set<string>} options.featuredIds - Restaurant ids allowed to trend
- * @param {number} [options.limit]
- * @returns {Array<{restaurantId: string, itemId: string, orders: number}>} best first
+ * @param orders - Order documents with `status` and `items`
+ * @param options.featuredIds - Restaurant ids allowed to trend
+ * @returns best first
  */
-function computeTrending(orders = [], { featuredIds, limit = LIMIT }) {
-    const tally = new Map();
+export function computeTrending(
+    orders: (TrendingOrder | null | undefined)[] = [],
+    { featuredIds, limit = LIMIT }: { featuredIds: Set<string | undefined>; limit?: number }
+): TrendingEntry[] {
+    const tally = new Map<string, TrendingEntry & { quantity: number }>();
 
     for (const order of orders) {
         if (!order || order.status === "cancelled") continue;
-        const seenInOrder = new Set();
+        const seenInOrder = new Set<string>();
 
         for (const item of order.items || []) {
             if (!item?.id || !featuredIds.has(item.restaurantId)) continue;
             const key = `${item.restaurantId}:${item.id}`;
             const entry = tally.get(key) || {
-                restaurantId: item.restaurantId,
+                restaurantId: item.restaurantId as string,
                 itemId: item.id,
                 orders: 0,
                 quantity: 0,
@@ -76,7 +87,7 @@ function computeTrending(orders = [], { featuredIds, limit = LIMIT }) {
 }
 
 /** Ranks last week's orders and overwrites `site_content/trending`. */
-async function recomputeTrending(now = new Date()) {
+async function recomputeTrending(now = new Date()): Promise<{ count: number }> {
     const db = getFirestore();
     const { start, end } = lastWeekWindow(now);
 
@@ -89,9 +100,9 @@ async function recomputeTrending(now = new Date()) {
             .get(),
     ]);
 
-    const featuredIds = new Set(featuredSnap.docs.map((d) => d.id));
+    const featuredIds = new Set<string | undefined>(featuredSnap.docs.map((d) => d.id));
     const items = computeTrending(
-        ordersSnap.docs.map((d) => d.data()),
+        ordersSnap.docs.map((d) => d.data() as TrendingOrder),
         { featuredIds }
     );
 
@@ -110,17 +121,17 @@ async function recomputeTrending(now = new Date()) {
 
 // Sunday morning rather than midnight, so Saturday's late orders have been
 // delivered by the time they're counted.
-const scheduledTrending = onSchedule(
+export const scheduledTrending = onSchedule(
     { schedule: "every sunday 06:00", timeZone: "Asia/Kolkata" },
-    () => recomputeTrending()
+    async () => {
+        await recomputeTrending();
+    }
 );
 
 /** Admin "Refresh trending" button — same computation, on demand. */
-const refreshTrending = onCall(async (request) => {
+export const refreshTrending = onCall(async (request) => {
     if (request.auth?.token?.admin !== true) {
         throw new HttpsError("permission-denied", "Admin access required.");
     }
     return recomputeTrending();
 });
-
-module.exports = { lastWeekWindow, computeTrending, scheduledTrending, refreshTrending };

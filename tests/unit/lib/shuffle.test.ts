@@ -46,8 +46,9 @@ describe("seededShuffle", () => {
 });
 
 describe("shuffleRestaurants", () => {
-    const featured = ["f1", "f2", "f3", "f4"].map((id) => ({ id, isFeatured: true }));
-    const others = ["o1", "o2", "o3", "o4", "o5"].map((id) => ({ id }));
+    type R = { id: string; isFeatured?: boolean };
+    const featured: R[] = ["f1", "f2", "f3", "f4"].map((id) => ({ id, isFeatured: true }));
+    const others: R[] = ["o1", "o2", "o3", "o4", "o5"].map((id) => ({ id }));
     const all = [
         others[0],
         featured[0],

@@ -7,6 +7,7 @@ import {
     calculateDiscount,
     calculateMinOrderShortfalls,
 } from "../../../lib/cartPricing";
+import type { CartItem } from "../../../lib/types";
 
 // Helper builders
 const single = (overrides = {}) => [{ id: "1", price: "100", quantity: 1, ...overrides }];
@@ -20,7 +21,7 @@ const SETTINGS = {
     lightItemThreshold: "3",
 };
 const NO_CAMPUS = { campus: "" };
-const line = (id, quantity, extra = {}) => ({
+const line = (id: string, quantity: number, extra: Partial<CartItem> = {}) => ({
     id,
     name: id,
     price: "50",
@@ -415,8 +416,8 @@ describe("calculateMinOrderShortfalls", () => {
         expect(shortfalls).toHaveLength(2);
         const r1 = shortfalls.find((s) => s.restaurantId === "r1");
         const r2 = shortfalls.find((s) => s.restaurantId === "r2");
-        expect(r1.shortfall).toBe(200);
-        expect(r2.shortfall).toBe(100);
+        expect(r1?.shortfall).toBe(200);
+        expect(r2?.shortfall).toBe(100);
     });
 
     it("returns no shortfalls for a restaurant with no minimum set", () => {

@@ -1,9 +1,25 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { getAuth } = require("firebase-admin/auth");
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { getAuth } from "firebase-admin/auth";
+import type { UserRecord } from "firebase-admin/auth";
 
 const auth = getAuth();
 
-async function verifyAdmin(token) {
+interface ManageUsersRequest {
+    action?: string;
+    email?: string;
+    password?: string;
+    restaurantId?: string;
+    uid?: string;
+}
+
+interface ManagedUser {
+    uid: string;
+    email?: string;
+    restaurantId?: string;
+    lastSignInTime?: string;
+}
+
+async function verifyAdmin(token: string) {
     try {
         const decoded = await auth.verifyIdToken(token);
         return decoded.admin === true;
@@ -12,7 +28,7 @@ async function verifyAdmin(token) {
     }
 }
 
-exports.manageUsers = onCall(async (request) => {
+export const manageUsers = onCall<ManageUsersRequest>(async (request) => {
     const authHeader = request.rawRequest.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
         throw new HttpsError("unauthenticated", "Missing authorization header.");
@@ -31,7 +47,7 @@ exports.manageUsers = onCall(async (request) => {
             throw new HttpsError("invalid-argument", "Email and password required.");
         }
 
-        let userRecord;
+        let userRecord: UserRecord;
         try {
             userRecord = await auth.getUserByEmail(email);
         } catch {
@@ -47,7 +63,7 @@ exports.manageUsers = onCall(async (request) => {
             throw new HttpsError("invalid-argument", "Email and password required.");
         }
 
-        let userRecord;
+        let userRecord: UserRecord;
         try {
             userRecord = await auth.getUserByEmail(email);
         } catch {
@@ -68,8 +84,8 @@ exports.manageUsers = onCall(async (request) => {
 
     if (action === "LIST_USERS") {
         const listResult = await auth.listUsers(1000);
-        const partners = [];
-        const deliveryPartners = [];
+        const partners: ManagedUser[] = [];
+        const deliveryPartners: ManagedUser[] = [];
 
         for (const user of listResult.users) {
             const claims = user.customClaims || {};

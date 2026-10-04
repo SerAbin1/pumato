@@ -3,7 +3,7 @@
 import { describe, it, expect } from "vitest";
 import { RestaurantSchema } from "../../../../lib/schemas/restaurant";
 
-const restaurant = (menu = []) => ({
+const restaurant = (menu: unknown[] = []) => ({
     id: "r1",
     name: "Spice Hub",
     image: "",
@@ -18,7 +18,7 @@ const restaurant = (menu = []) => ({
     menu,
 });
 
-const menuItem = (overrides = {}) => ({
+const menuItem = (overrides: Record<string, unknown> = {}) => ({
     id: "m1",
     name: "Chappati",
     price: "20",
@@ -32,38 +32,38 @@ const menuItem = (overrides = {}) => ({
 describe("RestaurantSchema - menu item weight", () => {
     it("keeps a heavy item's weight through a save", () => {
         const saved = RestaurantSchema.parse(restaurant([menuItem({ weight: 3 })]));
-        expect(saved.menu[0].weight).toBe(3);
+        expect(saved.menu![0].weight).toBe(3);
     });
 
     it("keeps a light item's negative weight through a save", () => {
         const saved = RestaurantSchema.parse(restaurant([menuItem({ weight: -2 })]));
-        expect(saved.menu[0].weight).toBe(-2);
+        expect(saved.menu![0].weight).toBe(-2);
     });
 
     it("coerces a weight typed into the form as a string", () => {
         const saved = RestaurantSchema.parse(restaurant([menuItem({ weight: "-2" })]));
-        expect(saved.menu[0].weight).toBe(-2);
+        expect(saved.menu![0].weight).toBe(-2);
     });
 
     it("leaves an item that never had a weight alone", () => {
         const saved = RestaurantSchema.parse(restaurant([menuItem()]));
-        expect(saved.menu[0].weight).toBeUndefined();
+        expect(saved.menu![0].weight).toBeUndefined();
     });
 });
 
 describe("RestaurantSchema - variant weight", () => {
-    const withVariant = (variant) =>
+    const withVariant = (variant: Record<string, unknown>) =>
         restaurant([
             menuItem({ variants: [{ id: "v1", name: "Large", price: "349", ...variant }] }),
         ]);
 
     it("keeps a variant's weight through a save", () => {
         const saved = RestaurantSchema.parse(withVariant({ weight: "2" }));
-        expect(saved.menu[0].variants[0].weight).toBe(2);
+        expect(saved.menu![0].variants![0].weight).toBe(2);
     });
 
     it("leaves a variant without a weight inheriting the item's", () => {
         const saved = RestaurantSchema.parse(withVariant({}));
-        expect(saved.menu[0].variants[0].weight).toBeUndefined();
+        expect(saved.menu![0].variants![0].weight).toBeUndefined();
     });
 });

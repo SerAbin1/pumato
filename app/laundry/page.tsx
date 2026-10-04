@@ -196,9 +196,6 @@ export default function LaundryPage() {
         fetchSlots();
     }, [formData.date]);
 
-    // Get today's date for min attribute
-    const today = new Date().toISOString().split("T")[0];
-
     const handleAddItem = () => {
         setItems([...items, { id: Date.now(), name: "", quantity: "", steamIron: false }]);
         setTimeout(() => newItemRef.current?.focus(), 0);
@@ -359,7 +356,6 @@ export default function LaundryPage() {
                             campusConfig={campusConfig}
                             availableSlots={availableSlots}
                             loadingSlots={loadingSlots}
-                            today={today}
                             items={items}
                             handleAddItem={handleAddItem}
                             handleRemoveItem={handleRemoveItem}

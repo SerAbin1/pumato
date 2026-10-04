@@ -1,5 +1,6 @@
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { getItemWeight, isHeavyItem } from "@/lib/restaurants/menuItem";
+import type { Weighted } from "@/lib/restaurants/menuItem";
 import type {
     CartItem,
     Coupon,
@@ -22,7 +23,25 @@ type PricingRestaurant = Pick<Restaurant, "id" | "name"> &
         >
     >;
 
-type PricingSettings = Partial<OrderSettings> | null | undefined;
+/** Campus entries need only what pricing reads; slot config is optional here. */
+type PricingCampus = Pick<DeliveryCampusConfig, "id" | "name" | "deliveryCharge"> &
+    Partial<DeliveryCampusConfig>;
+
+type PricingSettings =
+    | (Omit<Partial<OrderSettings>, "deliveryCampusConfig"> & {
+          deliveryCampusConfig?: PricingCampus[];
+      })
+    | null
+    | undefined;
+
+/** A cart line as delivery pricing reads it. */
+type DeliveryLine = Weighted & Pick<CartItem, "quantity" | "restaurantId">;
+
+/** A cart line as coupon discounts read it. */
+type DiscountLine = PricedLine & Pick<CartItem, "id" | "category">;
+
+/** A cart line as the min-order check reads it. */
+type MinOrderLine = PricedLine & Pick<CartItem, "restaurantId">;
 
 // --- Validations & Parsing ---
 
@@ -66,7 +85,7 @@ export const getCurrentRestaurant = <R extends { id: string }>(
 // --- Delivery Charge Logic ---
 
 export const calculateDeliveryCharge = (
-    cartItems: CartItem[],
+    cartItems: DeliveryLine[],
     orderSettings: PricingSettings,
     currentRestaurant: Partial<PricingRestaurant> | null | undefined,
     userDetails: Pick<UserDetails, "campus">
@@ -124,7 +143,7 @@ export const calculateDeliveryCharge = (
     const largeOrderSurcharge = totalExtraUnits * extraChargeAmt;
 
     // 4. Campus Delivery Charge
-    const campusConfig: Pick<DeliveryCampusConfig, "id" | "name" | "deliveryCharge">[] =
+    const campusConfig: PricingCampus[] =
         orderSettings?.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
     // Helper to match campus by ID or Name (legacy support)
     const selectedCampus =
@@ -144,9 +163,9 @@ export const calculateDeliveryCharge = (
 // --- Discount Logic ---
 
 export const calculateDiscount = (
-    activeCoupon: Coupon | null | undefined,
+    activeCoupon: Partial<Coupon> | null | undefined,
     itemTotal: number,
-    cartItems: CartItem[]
+    cartItems: DiscountLine[]
 ): number => {
     if (!activeCoupon) return 0;
 
@@ -260,7 +279,7 @@ export interface MinOrderShortfall {
 }
 
 export const calculateMinOrderShortfalls = (
-    cartItems: CartItem[],
+    cartItems: MinOrderLine[],
     restaurants: PricingRestaurant[]
 ): MinOrderShortfall[] => {
     const shortfalls: MinOrderShortfall[] = [];
@@ -303,8 +322,7 @@ export const calculateMinOrderShortfalls = (
 
 export const getCampusSlots = (orderSettings: PricingSettings, campusId: string) => {
     if (!orderSettings) return [];
-    const config: Pick<DeliveryCampusConfig, "id" | "slots">[] =
-        orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
+    const config: PricingCampus[] = orderSettings.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
     const campus = config.find((c) => c.id === campusId);
     return campus?.slots || [];
 };
@@ -321,8 +339,7 @@ export const getCampusPreOrderConfig = (
     orderSettings: PricingSettings,
     campusIdentifier: string
 ): CampusPreOrderConfig => {
-    const config: Omit<DeliveryCampusConfig, "deliveryCharge" | "slots">[] =
-        orderSettings?.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
+    const config: PricingCampus[] = orderSettings?.deliveryCampusConfig || DEFAULT_CAMPUS_CONFIG;
     const campus =
         config.find((c) => c.id === campusIdentifier) ||
         config.find((c) => c.name === campusIdentifier);

@@ -1,11 +1,32 @@
-const { onCall, HttpsError } = require("firebase-functions/v2/https");
-const { getAuth } = require("firebase-admin/auth");
-const { getFirestore } = require("firebase-admin/firestore");
+import { onCall, HttpsError } from "firebase-functions/v2/https";
+import { getAuth } from "firebase-admin/auth";
+import { getFirestore } from "firebase-admin/firestore";
 
 const db = getFirestore();
 const COLLECTION = "promocodes";
 
-async function verifyAdmin(token) {
+/** A coupon as the admin editor sends it (camelCase); stored snake_case. */
+interface CouponPayload {
+    id?: string;
+    code: string;
+    type?: string;
+    value?: string | number;
+    minOrder?: string | number;
+    description?: string;
+    isVisible?: boolean;
+    isActive?: boolean;
+    usageLimit?: string | number | null;
+    usedCount?: number;
+    restaurantId?: string | null;
+    itemId?: string | null;
+}
+
+interface ManageCouponsRequest {
+    action?: string;
+    payload?: CouponPayload;
+}
+
+async function verifyAdmin(token: string) {
     try {
         const decoded = await getAuth().verifyIdToken(token);
         return decoded.admin === true;
@@ -14,7 +35,7 @@ async function verifyAdmin(token) {
     }
 }
 
-exports.manageCoupons = onCall(async (request) => {
+export const manageCoupons = onCall<ManageCouponsRequest>(async (request) => {
     const { action, payload } = request.data;
 
     if (action === "FETCH_VISIBLE") {
@@ -58,6 +79,8 @@ exports.manageCoupons = onCall(async (request) => {
     }
 
     if (action === "CREATE" || action === "UPDATE") {
+        // A malformed request without a payload fails here, as it always has.
+        const payload = request.data.payload!;
         const docId = payload.id || payload.code.toUpperCase();
         const docData = {
             code: payload.code.toUpperCase(),

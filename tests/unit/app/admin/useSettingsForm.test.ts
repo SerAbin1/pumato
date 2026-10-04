@@ -3,6 +3,7 @@
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
+import type { SettingsFormOptions } from "@/app/admin/hooks/useSettingsForm";
 
 const toastMock = vi.hoisted(() => ({ success: vi.fn(), error: vi.fn() }));
 vi.mock("react-hot-toast", () => ({ default: toastMock }));
@@ -10,7 +11,7 @@ vi.mock("react-hot-toast", () => ({ default: toastMock }));
 const { useSettingsForm } = await import("@/app/admin/hooks/useSettingsForm");
 
 /** Mounts the hook and waits for the initial load to settle. */
-async function mountForm(options) {
+async function mountForm(options: SettingsFormOptions<Record<string, any>>) {
     const view = renderHook((props) => useSettingsForm(props), { initialProps: options });
     await waitFor(() => expect(view.result.current.loaded).toBe(true));
     return view;
@@ -52,7 +53,7 @@ describe("useSettingsForm — loading", () => {
 });
 
 describe("useSettingsForm — failed load", () => {
-    const failing = (save) => ({
+    const failing = (save: SettingsFormOptions<Record<string, any>>["save"]) => ({
         label: "Grocery settings",
         initial: {},
         load: vi.fn().mockRejectedValue(new Error("offline")),
@@ -100,7 +101,7 @@ describe("useSettingsForm — failed load", () => {
 describe("useSettingsForm — saving", () => {
     it("hands the save both the diff and the full data", async () => {
         // order_settings merges (wants diff); grocery_settings overwrites (wants data).
-        const save = vi.fn().mockResolvedValue();
+        const save = vi.fn().mockResolvedValue(undefined);
         const { result } = await mountForm({
             label: "Delivery settings",
             load: vi.fn().mockResolvedValue({ a: "1", b: "2" }),
@@ -132,7 +133,7 @@ describe("useSettingsForm — saving", () => {
         const { result } = await mountForm({
             label: "Delivery settings",
             load: vi.fn().mockResolvedValue({ a: "1" }),
-            save: vi.fn().mockResolvedValue(),
+            save: vi.fn().mockResolvedValue(undefined),
         });
 
         act(() => result.current.setData({ a: "9" }));
@@ -160,7 +161,7 @@ describe("useSettingsForm — saving", () => {
 });
 
 describe("useSettingsForm — confirmation step", () => {
-    const withConfirm = (save) => ({
+    const withConfirm = (save: SettingsFormOptions<Record<string, any>>["save"]) => ({
         label: "Global settings",
         confirm: true,
         load: vi.fn().mockResolvedValue({ upiId: "old@upi" }),
@@ -179,7 +180,7 @@ describe("useSettingsForm — confirmation step", () => {
     });
 
     it("writes only once confirmed", async () => {
-        const save = vi.fn().mockResolvedValue();
+        const save = vi.fn().mockResolvedValue(undefined);
         const { result } = await mountForm(withConfirm(save));
 
         act(() => result.current.setData({ upiId: "new@upi" }));

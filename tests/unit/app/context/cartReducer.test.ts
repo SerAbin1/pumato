@@ -2,9 +2,11 @@
 
 import { describe, it, expect } from "vitest";
 import { cartReducer, initialState } from "@/app/context/cartReducer";
+import type { CartAction, CartState } from "@/app/context/cartReducer";
+import type { CartItem, CartItemInput } from "@/lib/types";
 
 /** Bare cart line. `cartKey` is what distinguishes variants of the same item. */
-const item = (overrides = {}) => ({
+const item = (overrides: Partial<CartItemInput> = {}): CartItemInput => ({
     id: "biryani",
     name: "Chicken Biryani",
     price: 180,
@@ -15,9 +17,12 @@ const item = (overrides = {}) => ({
 });
 
 /** State with the given lines already in the cart. */
-const withItems = (...cartItems) => ({ ...initialState, cartItems });
+const withItems = (...cartItems: CartItem[]): CartState => ({ ...initialState, cartItems });
 
-const add = (payload) => ({ type: "ADD_ITEM", payload });
+const add = (payload: { item: CartItemInput; quantityDelta?: number }): CartAction => ({
+    type: "ADD_ITEM",
+    payload,
+});
 
 describe("cartReducer — ADD_ITEM", () => {
     it("adds a new line with quantity 1 by default", () => {
@@ -117,7 +122,10 @@ describe("cartReducer — REMOVE_ITEM", () => {
 });
 
 describe("cartReducer — UPDATE_QUANTITY", () => {
-    const bump = (id, delta) => ({ type: "UPDATE_QUANTITY", payload: { id, delta } });
+    const bump = (id: string, delta: number): CartAction => ({
+        type: "UPDATE_QUANTITY",
+        payload: { id, delta },
+    });
 
     it("applies the delta to the matching line", () => {
         const state = withItems({ ...item(), cartKey: "biryani", quantity: 2 });
@@ -145,7 +153,7 @@ describe("cartReducer — UPDATE_QUANTITY", () => {
         );
         const next = cartReducer(state, bump("biryani", 1));
 
-        expect(next.cartItems.find((i) => i.cartKey === "naan").quantity).toBe(2);
+        expect(next.cartItems.find((i) => i.cartKey === "naan")?.quantity).toBe(2);
     });
 });
 
@@ -153,17 +161,17 @@ describe("cartReducer — coupons", () => {
     const applied = {
         ...initialState,
         couponCode: "SAVE50",
-        activeCoupon: { code: "SAVE50", value: 50 },
+        activeCoupon: { code: "SAVE50", type: "FLAT", value: 50 },
     };
 
     it("stores the code and the resolved coupon", () => {
         const next = cartReducer(initialState, {
             type: "APPLY_COUPON",
-            payload: { code: "SAVE50", coupon: { code: "SAVE50", value: 50 } },
+            payload: { code: "SAVE50", coupon: { code: "SAVE50", type: "FLAT", value: 50 } },
         });
 
         expect(next.couponCode).toBe("SAVE50");
-        expect(next.activeCoupon).toEqual({ code: "SAVE50", value: 50 });
+        expect(next.activeCoupon).toEqual({ code: "SAVE50", type: "FLAT", value: 50 });
     });
 
     it("clears both on removal", () => {
@@ -240,6 +248,7 @@ describe("cartReducer — misc", () => {
     it("returns the same state object for an unknown action", () => {
         const state = withItems({ ...item(), quantity: 1 });
 
+        // @ts-expect-error: deliberately not a CartAction
         expect(cartReducer(state, { type: "NOPE" })).toBe(state);
     });
 

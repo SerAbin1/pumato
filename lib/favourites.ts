@@ -1,4 +1,4 @@
-import type { Restaurant } from "@/lib/types";
+import type { MenuItem, Restaurant } from "@/lib/types";
 
 /**
  * Favourites live as one array on the user's own document, so the whole list
@@ -20,9 +20,17 @@ export interface Favourite {
 
 type FavouriteRef = Partial<Favourite> | null | undefined;
 
+/** What resolving against a live menu reads from each menu item. */
+export interface LiveMenuItem {
+    id: string;
+    name?: string;
+    category?: string;
+    isVisible?: boolean;
+}
+
 /** The fields of a restaurant that favourites/reorders resolve against. */
-export type MenuSource = Pick<Restaurant, "id" | "name"> &
-    Partial<Pick<Restaurant, "menu" | "outOfStockCategories" | "isVisible">>;
+export type MenuSource<M extends LiveMenuItem = MenuItem> = Pick<Restaurant, "id" | "name"> &
+    Partial<Pick<Restaurant, "outOfStockCategories" | "isVisible">> & { menu?: M[] };
 
 export const favouriteKey = (fav: FavouriteRef): string =>
     `${fav?.restaurantId || ""}:${fav?.itemId || ""}`;
@@ -63,9 +71,14 @@ export function toggleFavourite(favourites: Favourite[] = [], fav: FavouriteRef)
  *
  * @returns entries with `item` (or null when it's gone) and `available`
  */
-export type ResolvedFavourite = ReturnType<typeof resolveFavourites>[number];
+export type ResolvedFavourite<M extends LiveMenuItem = MenuItem> = ReturnType<
+    typeof resolveFavourites<M>
+>[number];
 
-export function resolveFavourites(favourites: Favourite[] = [], restaurants: MenuSource[] = []) {
+export function resolveFavourites<M extends LiveMenuItem>(
+    favourites: Favourite[] = [],
+    restaurants: MenuSource<M>[] = []
+) {
     const byId = new Map(restaurants.map((r) => [r.id, r]));
 
     return favourites.map((fav) => {

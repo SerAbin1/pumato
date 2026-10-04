@@ -7,11 +7,10 @@ import {
     TRENDING_CACHE_KEY,
     TRENDING_CACHE_TTL_MS,
 } from "../../../lib/trending";
-import trending from "../../../functions/trending";
+import { computeTrending, lastWeekWindow } from "../../../functions/src/trending";
+import type { TrendingMenuItem, TrendingRestaurant } from "../../../lib/trending";
 
-const { computeTrending, lastWeekWindow } = trending;
-
-const line = (id, overrides = {}) => ({
+const line = (id: string, overrides: Record<string, unknown> = {}) => ({
     id,
     name: id,
     quantity: 1,
@@ -21,7 +20,7 @@ const line = (id, overrides = {}) => ({
 });
 
 const featuredIds = new Set(["res-1", "res-2"]);
-const ids = (entries) => entries.map((e) => e.itemId);
+const ids = (entries: { itemId: string }[]) => entries.map((e) => e.itemId);
 
 describe("computeTrending", () => {
     it("ranks by distinct orders, using quantity only to break ties", () => {
@@ -124,7 +123,10 @@ describe("lastWeekWindow", () => {
 });
 
 describe("resolveTrending", () => {
-    const restaurant = (overrides = {}) => ({
+    type Dish = TrendingMenuItem & { name: string; price: string };
+    const restaurant = (
+        overrides: Partial<TrendingRestaurant<Dish>> = {}
+    ): TrendingRestaurant<Dish> => ({
         id: "res-1",
         name: "Hotel Ashiana",
         isFeatured: true,
@@ -166,8 +168,8 @@ describe("resolveTrending", () => {
 
     it("drops hidden, deleted and category-out-of-stock items", () => {
         const r = restaurant({ outOfStockCategories: ["Drinks"] });
-        r.menu[0].isVisible = false;
-        r.menu.pop();
+        r.menu![0].isVisible = false;
+        r.menu!.pop();
         expect(resolveTrending(entries, [r])).toEqual([]);
     });
 
@@ -177,11 +179,11 @@ describe("resolveTrending", () => {
 });
 
 describe("loadTrendingEntries", () => {
-    const memoryStorage = (initial = {}) => {
-        const data = { ...initial };
+    const memoryStorage = (initial: Record<string, string> = {}) => {
+        const data: Record<string, string> = { ...initial };
         return {
-            getItem: (k) => (k in data ? data[k] : null),
-            setItem: (k, v) => {
+            getItem: (k: string) => (k in data ? data[k] : null),
+            setItem: (k: string, v: string) => {
                 data[k] = String(v);
             },
             data,

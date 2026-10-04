@@ -52,6 +52,7 @@ firebase-debug.log
 
 # cloud functions
 functions/node_modules/
+functions/lib/
 .aider*
 
 # VibeWise learning notes

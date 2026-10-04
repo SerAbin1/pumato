@@ -18,7 +18,6 @@ interface LaundryFormProps {
     campusConfig: CampusConfig[];
     availableSlots: string[];
     loadingSlots: boolean;
-    today: string;
     items: LaundryItemDraft[];
     handleAddItem: () => void;
     handleRemoveItem: (id: number) => void;
@@ -41,7 +40,6 @@ export default function LaundryForm({
     campusConfig,
     availableSlots,
     loadingSlots,
-    today,
     items,
     handleAddItem,
     handleRemoveItem,

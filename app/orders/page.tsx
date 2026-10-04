@@ -24,10 +24,11 @@ import useFirestore from "@/app/hooks/useFirestore";
 import { COLLECTIONS } from "@/lib/constants";
 import { plainCartLine } from "@/lib/restaurants/menuItem";
 import type { User } from "firebase/auth";
-import type { Payment, Restaurant } from "@/lib/types";
+import type { MenuItem, Payment, Restaurant } from "@/lib/types";
+import type { RecentItem } from "@/lib/orderHistory";
 
 type UserOrder = Awaited<ReturnType<typeof fetchUserOrders>>[number];
-type ReorderItem = ReturnType<typeof resolveReorderItems>[number];
+type ReorderItem = ReturnType<typeof resolveReorderItems<RecentItem, MenuItem>>[number];
 
 const STATUS_STYLES: Record<string, string> = {
     placed: "text-blue-400 bg-blue-500/10 border-blue-500/20",

@@ -151,6 +151,7 @@ describe("getAvailablePreOrderSlots", () => {
         expect(getAvailablePreOrderSlots(undefined, now)).toEqual([]);
         expect(getAvailablePreOrderSlots(null, now)).toEqual([]);
         expect(getAvailablePreOrderSlots([], now)).toEqual([]);
+        // @ts-expect-error: deliberately not an array
         expect(getAvailablePreOrderSlots("not-an-array", now)).toEqual([]);
     });
 });
@@ -268,12 +269,17 @@ describe("buildDeliverySlotFromOccurrence", () => {
 
 describe("formatDeliverySlot", () => {
     it("formats a campus slot object into a dated display string", () => {
-        const slot = { source: "campus", date: "2026-08-29", start: "08:00", end: "09:00" };
+        const slot = {
+            source: "campus",
+            date: "2026-08-29",
+            start: "08:00",
+            end: "09:00",
+        } as const;
         expect(formatDeliverySlot(slot)).toBe("Aug 29, 8:00 AM - 9:00 AM");
     });
 
     it("returns a restaurant slot object's label unchanged", () => {
-        const slot = { source: "restaurant", label: "7:00 PM - 8:00 PM" };
+        const slot = { source: "restaurant", label: "7:00 PM - 8:00 PM" } as const;
         expect(formatDeliverySlot(slot)).toBe("7:00 PM - 8:00 PM");
     });
 

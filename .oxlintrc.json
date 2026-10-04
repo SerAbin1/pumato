@@ -45,7 +45,8 @@
             "rules": {
                 "vitest/require-to-throw-message": "off",
                 "vitest/no-conditional-expect": "warn",
-                "vitest/expect-expect": "warn"
+                "vitest/expect-expect": "warn",
+                "vitest/require-mock-type-parameters": "off"
             }
         }
     ],

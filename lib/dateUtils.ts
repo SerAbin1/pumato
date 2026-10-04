@@ -1,0 +1,133 @@
+/**
+ * Returns current time in IST components (hours, minutes, total minutes).
+ * @returns {{hours: number, minutes: number, timeInMinutes: number}}
+ */
+export const getISTTime = () => {
+    const now = new Date();
+    // specific formatting to extract HH and MM in IST (Asia/Kolkata)
+    const timeString = now.toLocaleTimeString("en-US", {
+        timeZone: "Asia/Kolkata",
+        hour12: false,
+        hour: "2-digit",
+        minute: "2-digit",
+    });
+
+    // Handle cases where timeString might include "24" or other variations,
+    // though "en-US" with hour12:false usually gives "HH:MM"
+    const [hours, minutes] = timeString.split(":").map(Number);
+    return { hours, minutes, timeInMinutes: hours * 60 + minutes };
+};
+
+/**
+ * Returns a Date object representing the current time shifted to IST.
+ * Note: The UTC methods of this object will return IST values.
+ * @returns {Date}
+ */
+export const getISTDate = () => {
+    // Returns a Date object that represents current time in IST
+    const now = new Date();
+    const utc = now.getTime() + now.getTimezoneOffset() * 60000;
+    const istOffset = 5.5 * 60 * 60000; // IST is UTC + 5:30
+    return new Date(utc + istOffset);
+};
+
+/**
+ * Returns detailed date components in IST, including a "local" Date object.
+ * @returns {{dateObj: Date, dayName: string, day: number, month: number, year: number, hours: number, minutes: number, timeInMinutes: number}}
+ */
+export const getISTObject = () => {
+    const now = new Date();
+    const options: Intl.DateTimeFormatOptions = {
+        timeZone: "Asia/Kolkata",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        weekday: "long",
+    };
+
+    // Use Intl.DateTimeFormat for reliable parts extraction
+    const formatter = new Intl.DateTimeFormat("en-US", options);
+    const parts = formatter.formatToParts(now);
+
+    const part = (type: Intl.DateTimeFormatPartTypes) =>
+        parts.find((p) => p.type === type)?.value ?? "";
+
+    const year = parseInt(part("year"));
+    const month = parseInt(part("month")) - 1; // 0-indexed
+    const day = parseInt(part("day"));
+    const hour = parseInt(part("hour"));
+    const minute = parseInt(part("minute"));
+
+    const dayName = part("weekday");
+
+    return {
+        dateObj: new Date(year, month, day, hour, minute), // Local representation of IST
+        dayName,
+        day: day,
+        month: month,
+        year: year,
+        hours: hour,
+        minutes: minute,
+        timeInMinutes: hour * 60 + minute,
+    };
+};
+
+/**
+ * Formats a {year, month(0-idx), day} triple into a "YYYY-MM-DD" key.
+ * Pure — no clock reads.
+ * @param {{year: number, month: number, day: number}} param0
+ * @returns {string}
+ */
+export interface DateParts {
+    year: number;
+    month: number;
+    day: number;
+}
+
+export const formatISTDateKey = ({ year, month, day }: DateParts): string => {
+    return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+};
+
+/**
+ * Adds `dayOffset` days to a {year, month(0-idx), day} triple, normalizing
+ * month/year rollover. Pure — no clock reads.
+ * @param {{year: number, month: number, day: number}} param0
+ * @param {number} dayOffset
+ * @returns {{year: number, month: number, day: number}}
+ */
+export const addDaysToISTDateKey = (
+    { year, month, day }: DateParts,
+    dayOffset: number
+): DateParts => {
+    const d = new Date(year, month, day + dayOffset);
+    return { year: d.getFullYear(), month: d.getMonth(), day: d.getDate() };
+};
+
+/**
+ * Formats a "YYYY-MM-DD" date key into a short display string, e.g. "Aug 29".
+ * @param {string} dateKey
+ * @returns {string}
+ */
+export const formatDateKeyShort = (dateKey: string | null | undefined): string => {
+    if (!dateKey) return "";
+    const [y, m, d] = dateKey.split("-").map(Number);
+    return new Date(y, m - 1, d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+};
+
+/** A Firestore Timestamp, or anything `new Date()` accepts. */
+export type DateLike = { toDate: () => Date } | Date | string | number;
+
+export const formatTime = (date: DateLike | null | undefined): string => {
+    if (!date) return "";
+    // If it's a Firestore timestamp, convert to JS Date
+    const d = typeof date === "object" && "toDate" in date ? date.toDate() : new Date(date as Date);
+
+    return d.toLocaleTimeString("en-US", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: true,
+    });
+};

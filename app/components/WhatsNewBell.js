@@ -23,7 +23,8 @@ export default function WhatsNewBell() {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, [isOpen]);
 
-    if (!announcement) return null;
+    // Keep the bell mounted while the popover is open, since opening it marks the announcement seen.
+    if (!announcement || (!hasUnseen && !isOpen)) return null;
 
     const handleToggle = () => {
         setIsOpen((prev) => !prev);

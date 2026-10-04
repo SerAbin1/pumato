@@ -7,9 +7,9 @@
     "dev": "dotenv -e .env.test -- next dev",
     "dev:prod": "dotenv -e .env.production -- next dev",
     "build": "dotenv -e .env.production next build",
-    "lint": "eslint",
-    "lintfix": "eslint --fix",
-    "format": "prettier --write .",
+    "lint": "oxlint",
+    "lintfix": "oxlint --fix",
+    "format": "oxfmt",
     "prepare": "husky",
     "deploy": "dotenv -e .env.production pnpm run build && firebase deploy",
     "deploy:rules": "firebase deploy --only firestore:rules,storage",
@@ -19,7 +19,8 @@
     "test:ui": "dotenv -e .env.test -- playwright test --ui",
     "test:debug": "dotenv -e .env.test -- playwright test --debug",
     "test:create": "dotenv -e .env.test -- playwright codegen http://localhost:3000",
-    "test": "vitest run"
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",
@@ -41,22 +42,25 @@
     "@playwright/test": "^1.58.2",
     "@tailwindcss/postcss": "^4",
     "@testing-library/react": "^16.3.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
     "dotenv-cli": "^11.0.0",
-    "eslint": "10.10.0",
-    "eslint-config-next": "16.3.5",
-    "espree": "^11.2.0",
     "firebase-tools": "^15.30.0",
     "husky": "^9.0.0",
     "jsdom": "^30.0.1",
     "lint-staged": "^15.0.0",
-    "prettier": "^3.0.0",
+    "oxfmt": "^0.71.0",
+    "oxlint": "^1.86.0",
+    "oxlint-tsgolint": "^7.0.2003",
     "tailwindcss": "^4",
+    "typescript": "^7.0.2",
     "vitest": "^4.1.9"
   },
   "lint-staged": {
-    "*.{js,jsx,ts,tsx}": [
-      "eslint --fix",
-      "prettier --write"
+    "*.{js,jsx,ts,tsx,mjs,cjs}": [
+      "oxlint --fix",
+      "oxfmt --no-error-on-unmatched-pattern"
     ]
   },
   "packageManager": "pnpm@11.24.0+sha512.bd27e345e976dcb0be0b7a1228217b049a817e21b1f355c90dbe7dc46671895a8bc1e6d06c24554505ea93ea0b45f489a27ec1bfbc8de6a9659fca0f16fa0000"

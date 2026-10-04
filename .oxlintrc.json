@@ -1,0 +1,58 @@
+{
+    "$schema": "./node_modules/oxlint/configuration_schema.json",
+    "plugins": [
+        "react",
+        "nextjs",
+        "jsx-a11y",
+        "import",
+        "typescript",
+        "unicorn",
+        "oxc"
+    ],
+    "categories": {
+        "correctness": "error"
+    },
+    "env": {
+        "browser": true,
+        "node": true,
+        "es2024": true
+    },
+    "rules": {
+        "no-unused-vars": "warn",
+        "react/rules-of-hooks": "error",
+        "react/exhaustive-deps": "warn",
+        "nextjs/no-img-element": "warn",
+        "nextjs/no-html-link-for-pages": "warn",
+        "typescript/consistent-type-imports": "warn",
+        "typescript/no-explicit-any": "warn",
+        "jsx-a11y/label-has-associated-control": "warn",
+        "jsx-a11y/no-static-element-interactions": "warn",
+        "jsx-a11y/click-events-have-key-events": "warn",
+        "jsx-a11y/anchor-is-valid": "warn",
+        "jsx-a11y/prefer-tag-over-role": "warn",
+        "jsx-a11y/control-has-associated-label": "warn",
+        "react/purity": "warn",
+        "react/preserve-manual-memoization": "warn"
+    },
+    "overrides": [
+        {
+            "files": [
+                "tests/**"
+            ],
+            "plugins": [
+                "vitest"
+            ],
+            "rules": {
+                "vitest/require-to-throw-message": "off",
+                "vitest/no-conditional-expect": "warn",
+                "vitest/expect-expect": "warn"
+            }
+        }
+    ],
+    "ignorePatterns": [
+        ".next/**",
+        "out/**",
+        "build/**",
+        "next-env.d.ts"
+    ]
+}

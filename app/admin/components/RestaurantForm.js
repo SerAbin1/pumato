@@ -927,7 +927,7 @@ export default function RestaurantForm({
                             );
 
                             // Combine and deduplicate
-                            const allMatches = [...results.map((r) => r.item)];
+                            const allMatches = results.map((r) => r.item);
                             substringMatches.forEach((item) => {
                                 if (!allMatches.find((m) => m.id === item.id)) {
                                     allMatches.push(item);

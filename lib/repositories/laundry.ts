@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { db } from "@/lib/firebase";
-import { doc, updateDoc, deleteDoc, addDoc, collection } from "firebase/firestore";
+import { doc, updateDoc, deleteDoc, addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { LaundryOrderSchema } from "@/lib/schemas/laundry";
 import { parsePatch } from "@/lib/schemas/patch";
 import { COLLECTIONS } from "@/lib/constants";
@@ -9,7 +9,11 @@ export async function createLaundryOrder(
     data: Omit<z.input<typeof LaundryOrderSchema>, "id" | "createdAt">
 ): Promise<string> {
     const validated = LaundryOrderSchema.omit({ id: true, createdAt: true }).parse(data);
-    const docRef = await addDoc(collection(db, COLLECTIONS.LAUNDRY_ORDERS), validated);
+    // Stamped after parsing: the schema omits createdAt, so a caller-supplied one is stripped.
+    const docRef = await addDoc(collection(db, COLLECTIONS.LAUNDRY_ORDERS), {
+        ...validated,
+        createdAt: serverTimestamp(),
+    });
     return docRef.id;
 }
 

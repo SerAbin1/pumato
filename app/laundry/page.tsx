@@ -7,7 +7,7 @@ import { motion } from "framer-motion";
 import LaundryHero from "./components/LaundryHero";
 import LaundryForm from "./components/LaundryForm";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
-import { doc, getDoc, serverTimestamp } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createLaundryOrder } from "@/lib/repositories";
 import {
@@ -265,7 +265,6 @@ export default function LaundryPage() {
                 status: "ReadyForPickup",
                 customerPaidAmount: null,
                 paidToShopAmount: null,
-                createdAt: serverTimestamp(),
             });
         } catch (dbError) {
             console.error("Failed to record laundry order in Firestore:", dbError);

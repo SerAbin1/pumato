@@ -5,7 +5,7 @@ import toast from "react-hot-toast";
 import Navbar from "../../components/Navbar";
 import TermsFooter from "../../components/TermsFooter";
 import SellForm from "./components/SellForm";
-import { serverTimestamp, doc, getDoc } from "firebase/firestore";
+import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS, SITE_CONTENT_DOCS, DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { createMarketplaceRequest } from "@/lib/repositories";
@@ -171,7 +171,6 @@ export default function MarketplaceSellPage() {
             await createMarketplaceRequest({
                 ...request,
                 status: "pending",
-                createdAt: serverTimestamp(),
             });
         } catch (err) {
             console.error("Failed to save marketplace request", err);

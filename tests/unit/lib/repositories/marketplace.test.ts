@@ -6,19 +6,27 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const mocks = vi.hoisted(() => ({
     doc: vi.fn(),
     updateDoc: vi.fn(),
+    addDoc: vi.fn(),
+    collection: vi.fn(),
 }));
 
 vi.mock("@/lib/firebase", () => ({ db: { __db: true } }));
 vi.mock("firebase/firestore", () => ({
     doc: mocks.doc,
     updateDoc: mocks.updateDoc,
+    addDoc: mocks.addDoc,
+    collection: mocks.collection,
+    serverTimestamp: () => "SERVER_TIMESTAMP",
 }));
 
-const { updateListing, updateMarketplaceRequest } = await import("@/lib/repositories/marketplace");
+const { updateListing, updateMarketplaceRequest, createMarketplaceRequest } =
+    await import("@/lib/repositories/marketplace");
 
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.doc.mockImplementation((_db, ...segments) => ({ path: segments.join("/") }));
+    mocks.collection.mockImplementation((_db, path) => ({ path }));
+    mocks.addDoc.mockResolvedValue({ id: "new-request" });
 });
 
 describe("updateListing", () => {
@@ -55,5 +63,21 @@ describe("updateMarketplaceRequest", () => {
             expect.objectContaining({ path: "marketplace_requests/request-1" }),
             { status: "handled" }
         );
+    });
+});
+
+describe("createMarketplaceRequest", () => {
+    it("stamps createdAt itself, since the schema strips a caller-supplied one", async () => {
+        const id = await createMarketplaceRequest({
+            sellerName: "Asha",
+            sellerWhatsApp: "919000000000",
+            status: "pending",
+        });
+
+        expect(id).toBe("new-request");
+        const [ref, written] = mocks.addDoc.mock.calls[0];
+        expect(ref).toEqual({ path: "marketplace_requests" });
+        expect(written.createdAt).toBe("SERVER_TIMESTAMP");
+        expect(written.sellerName).toBe("Asha");
     });
 });

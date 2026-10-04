@@ -38,7 +38,11 @@ export async function createMarketplaceRequest(
     data: Omit<z.input<typeof MarketplaceRequestSchema>, "createdAt">
 ): Promise<string> {
     const validated = MarketplaceRequestSchema.omit({ createdAt: true }).parse(data);
-    const docRef = await addDoc(collection(db, COLLECTIONS.MARKETPLACE_REQUESTS), validated);
+    // Stamped after parsing: the schema omits createdAt, so a caller-supplied one is stripped.
+    const docRef = await addDoc(collection(db, COLLECTIONS.MARKETPLACE_REQUESTS), {
+        ...validated,
+        createdAt: serverTimestamp(),
+    });
     return docRef.id;
 }
 

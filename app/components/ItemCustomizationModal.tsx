@@ -5,13 +5,23 @@ import { X, Plus, Minus, Check, Search } from "lucide-react";
 import { useState, useMemo } from "react";
 import toast from "react-hot-toast";
 import { getVariantWeight, searchItemOptions, OPTION_SEARCH_MIN } from "@/lib/restaurants/menuItem";
+import type { CartItemInput, MenuItem } from "@/lib/types";
 
-const toNumber = (v) => {
+interface ItemCustomizationModalProps {
+    item: MenuItem | null;
+    restaurantId: string;
+    restaurantName: string;
+    open: boolean;
+    onClose: () => void;
+    onAdd: (line: CartItemInput, quantity: number) => void;
+}
+
+const toNumber = (v: unknown) => {
     const n = Number(v);
     return isNaN(n) ? 0 : n;
 };
 
-const buildCartKey = (itemId, variantId, addonIds) =>
+const buildCartKey = (itemId: string, variantId: string | null, addonIds: string[]) =>
     `${itemId}::${variantId || "none"}::${(addonIds || []).slice().sort().join(",")}`;
 
 export default function ItemCustomizationModal({
@@ -21,12 +31,12 @@ export default function ItemCustomizationModal({
     open,
     onClose,
     onAdd,
-}) {
+}: ItemCustomizationModalProps) {
     const hasVariants = Array.isArray(item?.variants) && item.variants.length > 0;
     const hasAddons = Array.isArray(item?.addons) && item.addons.length > 0;
 
-    const [selectedVariantId, setSelectedVariantId] = useState(null);
-    const [selectedAddonIds, setSelectedAddonIds] = useState([]);
+    const [selectedVariantId, setSelectedVariantId] = useState<string | null>(null);
+    const [selectedAddonIds, setSelectedAddonIds] = useState<string[]>([]);
     const [quantity, setQuantity] = useState(1);
     const [query, setQuery] = useState("");
 
@@ -56,7 +66,7 @@ export default function ItemCustomizationModal({
 
     if (!item) return null;
 
-    const toggleAddon = (id) => {
+    const toggleAddon = (id: string) => {
         setSelectedAddonIds((prev) =>
             prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
         );

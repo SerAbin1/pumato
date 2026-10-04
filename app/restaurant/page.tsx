@@ -26,7 +26,9 @@ import { seededShuffle } from "@/lib/shuffle";
 import { useFavourites } from "@/app/context/FavouritesContext";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { planInsertions } from "@/lib/marketplacePromotions";
+import { plainCartLine } from "@/lib/restaurants/menuItem";
 import SponsoredListingCard from "@/app/marketplace/components/SponsoredListingCard";
+import type { MarketplaceListing, MenuItem, Restaurant } from "@/lib/types";
 
 const SEARCH_DEBOUNCE_MS = 200;
 const SEARCH_MIN_CHARS = 2;
@@ -35,13 +37,13 @@ function RestaurantContent() {
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
 
-    const [restaurant, setRestaurant] = useState(null);
+    const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("all");
-    const [sortOrder, setSortOrder] = useState("default"); // default, asc, desc
+    const [sortOrder, setSortOrder] = useState<"default" | "asc" | "desc">("default");
     const [searchQuery, setSearchQuery] = useState("");
-    const [collapsedSections, setCollapsedSections] = useState({});
-    const [customizingItem, setCustomizingItem] = useState(null);
+    const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
+    const [customizingItem, setCustomizingItem] = useState<MenuItem | null>(null);
 
     const { addToCart, cartItems, itemTotal, totalItems, isCartOpen, setIsCartOpen } = useCart();
     const { isFavourite, toggle: toggleFavourite } = useFavourites();
@@ -71,7 +73,7 @@ function RestaurantContent() {
         if (!id) return;
         const fetchRestaurant = async () => {
             try {
-                const data = await getDocument(COLLECTIONS.RESTAURANTS, id);
+                const data = await getDocument<Restaurant>(COLLECTIONS.RESTAURANTS, id);
                 if (data) {
                     setRestaurant(data);
                 } else {
@@ -111,7 +113,7 @@ function RestaurantContent() {
     );
 
     // Derived state for filtering
-    const processedMenu = useMemo(() => {
+    const processedMenu = useMemo((): Record<string, MenuItem[]> => {
         if (!restaurant || !restaurant.menu) return {};
 
         const seedString = new Date().toDateString();
@@ -127,7 +129,8 @@ function RestaurantContent() {
             // Boost scores for exact matches
             const scoredResults = results.map((result) => {
                 const itemName = result.item.name.toLowerCase();
-                let adjustedScore = result.score;
+                // Always set: the index is built with includeScore.
+                let adjustedScore = result.score!;
                 if (itemName === query) adjustedScore -= 0.5;
                 else if (itemName.startsWith(query)) adjustedScore -= 0.3;
                 else if (itemName.includes(query)) adjustedScore -= 0.2;
@@ -163,7 +166,7 @@ function RestaurantContent() {
         }
 
         // 2. Group by category
-        const grouped = items.reduce((acc, item) => {
+        const grouped = items.reduce<Record<string, MenuItem[]>>((acc, item) => {
             const cat = item.category || "Recommended";
             if (!acc[cat]) acc[cat] = [];
             acc[cat].push(item);
@@ -174,7 +177,7 @@ function RestaurantContent() {
         const categories = Object.keys(grouped);
         const shuffledCategories = seededShuffle(categories, seed + 2); // Different seed for categories
 
-        const finalMenu = {};
+        const finalMenu: Record<string, MenuItem[]> = {};
         shuffledCategories.forEach((cat) => {
             finalMenu[cat] = grouped[cat];
         });
@@ -185,12 +188,12 @@ function RestaurantContent() {
     const promos = usePromotedListings("inFeed", "restaurant_menu");
     // Item id -> sponsored listing shown right after it. Skipped while searching.
     const sponsoredAfter = useMemo(() => {
-        if (searchTerm) return new Map();
+        if (searchTerm) return new Map<string, MarketplaceListing>();
         const itemIds = Object.values(processedMenu).flatMap((items) => items.map((i) => i.id));
         return planInsertions(itemIds, promos);
     }, [processedMenu, promos, searchTerm]);
 
-    const toggleSection = (category) => {
+    const toggleSection = (category: string) => {
         setCollapsedSections((prev) => ({
             ...prev,
             [category]: !prev[category],
@@ -587,7 +590,9 @@ function RestaurantContent() {
                                                                                     );
                                                                                 } else {
                                                                                     addToCart({
-                                                                                        ...item,
+                                                                                        ...plainCartLine(
+                                                                                            item
+                                                                                        ),
                                                                                         restaurantId:
                                                                                             restaurant.id,
                                                                                         restaurantName:
@@ -607,7 +612,9 @@ function RestaurantContent() {
                                                                                 onClick={() =>
                                                                                     addToCart(
                                                                                         {
-                                                                                            ...item,
+                                                                                            ...plainCartLine(
+                                                                                                item
+                                                                                            ),
                                                                                             ...(cartKey
                                                                                                 ? {
                                                                                                       cartKey,
@@ -644,7 +651,9 @@ function RestaurantContent() {
                                                                                 onClick={() =>
                                                                                     addToCart(
                                                                                         {
-                                                                                            ...item,
+                                                                                            ...plainCartLine(
+                                                                                                item
+                                                                                            ),
                                                                                             ...(cartKey
                                                                                                 ? {
                                                                                                       cartKey,
@@ -669,7 +678,9 @@ function RestaurantContent() {
                                                                                 onClick={() =>
                                                                                     addToCart(
                                                                                         {
-                                                                                            ...item,
+                                                                                            ...plainCartLine(
+                                                                                                item
+                                                                                            ),
                                                                                             restaurantId:
                                                                                                 restaurant.id,
                                                                                             restaurantName:
@@ -689,7 +700,9 @@ function RestaurantContent() {
                                                                                 onClick={() =>
                                                                                     addToCart(
                                                                                         {
-                                                                                            ...item,
+                                                                                            ...plainCartLine(
+                                                                                                item
+                                                                                            ),
                                                                                             restaurantId:
                                                                                                 restaurant.id,
                                                                                             restaurantName:
@@ -710,7 +723,7 @@ function RestaurantContent() {
                                                                 <SponsoredListingCard
                                                                     listing={sponsoredAfter.get(
                                                                         item.id
-                                                                    )}
+                                                                    )!}
                                                                 />
                                                             )}
                                                         </Fragment>

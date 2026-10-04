@@ -1,5 +1,6 @@
 import { formatISTDateKey, formatDateKeyShort } from "@/lib/dateUtils";
 import { format12h } from "@/lib/formatters";
+import type { DeliverySlot } from "@/lib/types";
 
 /** A recurring slot definition, as configured by admins ("HH:MM" times). */
 export interface SlotDef {
@@ -270,7 +271,8 @@ export function buildDeliverySlotFromOccurrence(
         Partial<Pick<SlotOccurrence, "processingStart" | "processingEnd">>,
     source: "campus" | "restaurant",
     campusId?: string
-) {
+): DeliverySlot {
+    // OrderSchema checks the campus/restaurant shape (campusId present for campus) at write time.
     return {
         source,
         date: occurrence.date,
@@ -280,7 +282,7 @@ export function buildDeliverySlotFromOccurrence(
         processingStart: occurrence.processingStart || "",
         processingEnd: occurrence.processingEnd || "",
         ...(source === "campus" ? { campusId } : {}),
-    };
+    } as DeliverySlot;
 }
 
 /**

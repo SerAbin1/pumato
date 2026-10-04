@@ -19,6 +19,9 @@ import { shuffleRestaurants } from "@/lib/shuffle";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { resolveTrending, loadTrendingEntries, TRENDING_MIN_ITEMS } from "@/lib/trending";
 import { fetchTrending } from "@/lib/repositories";
+import { plainCartLine } from "@/lib/restaurants/menuItem";
+import type { TrendingEntry } from "@/lib/trending";
+import type { PromoBanners, Restaurant } from "@/lib/types";
 
 const SEARCH_DEBOUNCE_MS = 200;
 const SEARCH_MIN_CHARS = 2;
@@ -26,14 +29,14 @@ const SEARCH_MIN_CHARS = 2;
 export default function DeliveryPage() {
     const { addToCart } = useCart();
     const { getCollection, getDocument, loading: dbLoading } = useFirestore();
-    const [toast, setToast] = useState(null);
-    const [restaurants, setRestaurants] = useState([]);
+    const [toast, setToast] = useState<string | null>(null);
+    const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [isSearchFocused, setIsSearchFocused] = useState(false);
-    const [promoBanners, setPromoBanners] = useState(null);
+    const [promoBanners, setPromoBanners] = useState<PromoBanners | null>(null);
     const sponsoredListings = usePromotedListings("inFeed", "restaurant_list");
-    const [recentSearches, setRecentSearches] = useState([]);
-    const [trendingEntries, setTrendingEntries] = useState([]);
+    const [recentSearches, setRecentSearches] = useState<string[]>([]);
+    const [trendingEntries, setTrendingEntries] = useState<TrendingEntry[]>([]);
 
     useEffect(() => {
         try {
@@ -47,7 +50,7 @@ export default function DeliveryPage() {
         }
     }, []);
 
-    const saveSearch = (term) => {
+    const saveSearch = (term: string) => {
         const trimmed = term.trim();
         if (!trimmed) return;
         setRecentSearches((prev) => {
@@ -64,7 +67,7 @@ export default function DeliveryPage() {
     useEffect(() => {
         const fetchBanners = async () => {
             try {
-                const data = await getDocument(
+                const data = await getDocument<PromoBanners>(
                     COLLECTIONS.SITE_CONTENT,
                     SITE_CONTENT_DOCS.PROMO_BANNERS
                 );
@@ -109,7 +112,7 @@ export default function DeliveryPage() {
     useEffect(() => {
         const fetchRestaurants = async () => {
             try {
-                const data = await getCollection(COLLECTIONS.RESTAURANTS, [
+                const data = await getCollection<Restaurant>(COLLECTIONS.RESTAURANTS, [
                     where("isAvailable", "==", true),
                 ]);
                 const seed = new Date().toDateString(); // Changes daily
@@ -175,7 +178,8 @@ export default function DeliveryPage() {
         const matchedFoods = fuzzyFoods.map((result) => {
             const itemName = result.item.name.toLowerCase();
             // Boost score for exact substring matches
-            let adjustedScore = result.score;
+            // Always set: the index is built with includeScore.
+            let adjustedScore = result.score!;
             if (itemName === query) {
                 adjustedScore -= 0.5; // Exact match gets huge boost
             } else if (itemName.startsWith(query)) {
@@ -188,7 +192,7 @@ export default function DeliveryPage() {
 
         // Restaurants: name/cuisine matches, then any restaurant with a matching
         // menu item (fuzzy or exact substring).
-        const matchedRestaurantIds = new Set();
+        const matchedRestaurantIds = new Set<string>();
         const matchedByRestaurant = restaurantFuse.search(activeQuery).map((r) => {
             matchedRestaurantIds.add(r.item.id);
             return r.item;
@@ -301,7 +305,7 @@ export default function DeliveryPage() {
                                     onBlur={() => setIsSearchFocused(false)}
                                     onKeyDown={(e) => {
                                         if (e.key === "Enter") {
-                                            e.target.blur();
+                                            e.currentTarget.blur();
                                             saveSearch(searchQuery);
                                         }
                                     }}
@@ -430,7 +434,7 @@ export default function DeliveryPage() {
                                                     e.stopPropagation();
                                                     saveSearch(searchQuery);
                                                     addToCart({
-                                                        ...item,
+                                                        ...plainCartLine(item),
                                                         restaurantId: item.restaurantId,
                                                         restaurantName: item.restaurantName,
                                                     });
@@ -476,7 +480,7 @@ export default function DeliveryPage() {
                                         <p className="text-xs text-gray-400 line-clamp-1">
                                             {item.restaurantName}
                                         </p>
-                                        {item.orderCount > 0 && (
+                                        {(item.orderCount ?? 0) > 0 && (
                                             <p className="text-[11px] text-orange-300 mt-1">
                                                 {item.orderCount}{" "}
                                                 {item.orderCount === 1 ? "order" : "orders"} last
@@ -498,7 +502,7 @@ export default function DeliveryPage() {
                                         ) : (
                                             <button
                                                 onClick={() => {
-                                                    addToCart(item);
+                                                    addToCart(plainCartLine(item));
                                                     setToast(`Added ${item.name}`);
                                                     setTimeout(() => setToast(null), 2000);
                                                 }}

@@ -37,8 +37,10 @@ import {
 } from "@/lib/preOrderSlots";
 import ConfirmModal from "./ConfirmModal";
 import toast from "react-hot-toast";
+import type { FirebaseError } from "firebase/app";
+import type { SlotOccurrence } from "@/lib/preOrderSlots";
 
-const format12h = (time24) => {
+const format12h = (time24: string | null | undefined) => {
     if (!time24) return "";
     const [h, m] = time24.split(":").map(Number);
     const ampm = h >= 12 ? "PM" : "AM";
@@ -84,12 +86,12 @@ export default function CartDrawer() {
 
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [inputCode, setInputCode] = useState("");
-    const [couponMsg, setCouponMsg] = useState(null);
+    const [couponMsg, setCouponMsg] = useState<{ success: boolean; message: string } | null>(null);
     const [isApplying, setIsApplying] = useState(false);
-    const [checkoutError, setCheckoutError] = useState(null);
+    const [checkoutError, setCheckoutError] = useState<string | null>(null);
     const [showDuplicateModal, setShowDuplicateModal] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState(null);
-    const [pendingSlot, setPendingSlot] = useState(null);
+    const [selectedSlot, setSelectedSlot] = useState<SlotOccurrence | null>(null);
+    const [pendingSlot, setPendingSlot] = useState<SlotOccurrence | null>(null);
 
     const resetCheckoutState = () => {
         setIsCheckingOut(false);
@@ -139,7 +141,10 @@ export default function CartDrawer() {
             ];
             const slotRestaurants = restaurantIds
                 .map((id) => restaurants.find((r) => r.id === id))
-                .filter((r) => r?.isPreOrderEnabled && r?.preOrderSlots?.length > 0);
+                .filter(
+                    (r): r is NonNullable<typeof r> =>
+                        !!r?.isPreOrderEnabled && (r?.preOrderSlots?.length ?? 0) > 0
+                );
 
             if (slotRestaurants.length === 0)
                 return {
@@ -272,9 +277,12 @@ export default function CartDrawer() {
             if (couponCode) {
                 try {
                     await checkoutCoupon({ couponCode });
-                } catch (funcError) {
+                } catch (err) {
                     // Cloud Functions throw HttpsError with code and message
-                    const error = new Error(funcError.message || "Coupon validation failed");
+                    const funcError = err as FirebaseError;
+                    const error = new Error(
+                        funcError.message || "Coupon validation failed"
+                    ) as Error & { code: string };
                     error.code = funcError.code || "unknown";
                     throw error;
                 }
@@ -365,7 +373,11 @@ export default function CartDrawer() {
 
             // --- NEW: SAVE TO DB FIRST, THEN OPEN WHATSAPP ---
             const uniqueRestaurantIds = [
-                ...new Set(cartItems.map((item) => item.restaurantId).filter(Boolean)),
+                ...new Set(
+                    cartItems
+                        .map((item) => item.restaurantId)
+                        .filter((id): id is string => Boolean(id))
+                ),
             ];
 
             const { orderNumber } = await createOrder({
@@ -377,9 +389,10 @@ export default function CartDrawer() {
                     price: Number(item.price),
                     unitPrice: Number(item.unitPrice ?? item.price),
                     quantity: item.quantity,
-                    restaurantId: item.restaurantId,
-                    restaurantName: item.restaurantName,
-                    category: item.category,
+                    // Food cart lines always carry these; OrderSchema rejects any that don't.
+                    restaurantId: item.restaurantId as string,
+                    restaurantName: item.restaurantName as string,
+                    category: item.category as string,
                     ...(item.variant ? { variant: item.variant } : {}),
                     ...(item.addons && item.addons.length > 0 ? { addons: item.addons } : {}),
                 })),
@@ -432,7 +445,8 @@ export default function CartDrawer() {
             }
             setIsCartOpen(false);
             resetCheckoutState();
-        } catch (error) {
+        } catch (err) {
+            const error = err as { code?: string; message?: string };
             console.error("Checkout error:", error);
             if (error.code === "resource-exhausted" || error.message?.includes("limit reached")) {
                 setCheckoutError("Coupon usage limit reached. Please remove it to proceed.");
@@ -549,9 +563,10 @@ export default function CartDrawer() {
                                                                     </h4>
                                                                     <p className="font-bold text-white whitespace-nowrap">
                                                                         ₹
-                                                                        {(item.unitPrice ??
-                                                                            item.price) *
-                                                                            item.quantity}
+                                                                        {Number(
+                                                                            item.unitPrice ??
+                                                                                item.price
+                                                                        ) * item.quantity}
                                                                     </p>
                                                                 </div>
                                                                 {item.variant && (

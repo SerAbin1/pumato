@@ -18,15 +18,35 @@ import CampusSelector from "./CampusSelector";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
 import { format12h } from "@/lib/formatters";
+import type { ReactNode } from "react";
+import type { User } from "firebase/auth";
+import type { GrocerySettings, OrderSettings } from "@/lib/types";
 
-const toMinutes = (hhmm) => {
+interface HoursEntry {
+    type: "regular" | "preOrder";
+    label: string;
+    start: string;
+    end: string;
+    cutoffDisplay?: string;
+}
+
+interface LiveIndicatorProps {
+    isLive: boolean;
+    settings: OrderSettings | GrocerySettings;
+    mode?: "food" | "grocery";
+    label: ReactNode;
+    hasPreOrder?: boolean;
+    preOrderRestaurantNames?: string[];
+}
+
+const toMinutes = (hhmm: string | undefined) => {
     const [h, m] = (hhmm || "00:00").split(":").map(Number);
     return h * 60 + m;
 };
 
 // Returns the "order by" time (e.g. "7:00 PM") for a pre-order slot's cutoff,
 // or "" when there is no cutoff (orders accepted right up to slot start).
-const getCutoffDisplay = (start, cutoffMinutes) => {
+const getCutoffDisplay = (start: string, cutoffMinutes: number | string | undefined) => {
     const cutoff = Number(cutoffMinutes) || 0;
     if (cutoff <= 0 || !start) return "";
     const total = (toMinutes(start) - cutoff + 1440) % 1440;
@@ -42,13 +62,13 @@ const LiveIndicator = ({
     label,
     hasPreOrder = false,
     preOrderRestaurantNames = [],
-}) => {
+}: LiveIndicatorProps) => {
     const [isOpen, setIsOpen] = useState(false);
-    const popoverRef = useRef(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -64,7 +84,7 @@ const LiveIndicator = ({
     const statusColor = status === "live" ? "green" : status === "preorder" ? "cyan" : "red";
     const statusText = status === "live" ? "Live" : status === "preorder" ? "Pre-order" : "Offline";
 
-    const toRegularEntries = (slots = []) =>
+    const toRegularEntries = (slots: { start: string; end: string }[] = []): HoursEntry[] =>
         slots.map((slot, i) => ({
             type: "regular",
             label: `Slot ${i + 1}`,
@@ -72,7 +92,9 @@ const LiveIndicator = ({
             end: slot.end,
         }));
 
-    const toPreOrderEntries = (slots = []) =>
+    const toPreOrderEntries = (
+        slots: { start: string; end: string; cutoffMinutes?: number }[] = []
+    ): HoursEntry[] =>
         slots.map((slot, i) => ({
             type: "preOrder",
             label: `Pre-order Slot ${i + 1}`,
@@ -89,10 +111,10 @@ const LiveIndicator = ({
                   {
                       key: "grocery",
                       title: null,
-                      entries: toRegularEntries(settings?.service_hours),
+                      entries: toRegularEntries((settings as GrocerySettings)?.service_hours),
                   },
                   ...DEFAULT_CAMPUS_CONFIG.map((campus) => {
-                      const campusData = (settings?.campusPreOrder || []).find(
+                      const campusData = ((settings as GrocerySettings)?.campusPreOrder || []).find(
                           (c) => c.id === campus.id
                       );
                       const slots = campusData?.isPreOrderEnabled
@@ -106,7 +128,7 @@ const LiveIndicator = ({
                   }).filter((section) => section.entries.length > 0),
               ]
             : DEFAULT_CAMPUS_CONFIG.map((campus) => {
-                  const config = settings?.deliveryCampusConfig || [];
+                  const config = (settings as OrderSettings)?.deliveryCampusConfig || [];
                   const campusData = config.find(
                       (c) => c.id === campus.id || c.name === campus.name
                   );
@@ -246,13 +268,13 @@ const LiveIndicator = ({
     );
 };
 
-const CommunityDropdown = ({ groups }) => {
+const CommunityDropdown = ({ groups }: { groups: { name: string; link: string }[] }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const dropdownRef = useRef(null);
+    const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -337,13 +359,13 @@ const CommunityDropdown = ({ groups }) => {
     );
 };
 
-const UserMenu = ({ user, logout }) => {
+const UserMenu = ({ user, logout }: { user: User; logout: () => Promise<void> }) => {
     const [isOpen, setIsOpen] = useState(false);
-    const menuRef = useRef(null);
+    const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (menuRef.current && !menuRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };
@@ -482,7 +504,7 @@ export default function Navbar() {
     const preOrderRestaurantNames = useMemo(() => {
         if (!isFoodContext) return [];
         return restaurants
-            .filter((r) => r?.isPreOrderEnabled && r?.preOrderSlots?.length > 0)
+            .filter((r) => r?.isPreOrderEnabled && (r?.preOrderSlots?.length ?? 0) > 0)
             .map((r) => r.name);
     }, [isFoodContext, restaurants]);
     const hasPreOrder = isGroceryPage

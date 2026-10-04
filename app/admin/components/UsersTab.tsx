@@ -205,9 +205,8 @@ export default function UsersTab({ restaurants }: { restaurants: Restaurant[] })
                                     {u.lastSignInTime && (
                                         <div className="mt-2 flex items-center gap-2 text-xs text-gray-500 font-medium">
                                             <Clock size={14} /> Last Login:{" "}
-                                            {new Date(
-                                                parseInt(u.lastSignInTime)
-                                            ).toLocaleDateString()}
+                                            {/* Firebase Admin gives a UTC date string, not a timestamp. */}
+                                            {new Date(u.lastSignInTime).toLocaleDateString()}
                                         </div>
                                     )}
                                 </div>

@@ -126,9 +126,16 @@ function computeMetrics(orders: AnalyticsOrder[]) {
         ),
     };
 
+    // fetchOrders has already turned createdAt into a Date; skip any that didn't parse.
+    const createdDate = (o: AnalyticsOrder): Date | undefined => {
+        if (!o.createdAt) return undefined;
+        const d = toDate(o.createdAt);
+        return Number.isNaN(d.getTime()) ? undefined : d;
+    };
+
     const hourCounts: Record<number, number> = {};
     completedOrders.forEach((o) => {
-        const hour = (o.createdAt as { toDate?: () => Date } | undefined)?.toDate?.()?.getHours();
+        const hour = createdDate(o)?.getHours();
         if (hour !== undefined) hourCounts[hour] = (hourCounts[hour] || 0) + 1;
     });
     const sortedHours = Object.entries(hourCounts).sort((a, b) => b[1] - a[1]);
@@ -136,10 +143,7 @@ function computeMetrics(orders: AnalyticsOrder[]) {
 
     const revenueByDate: Record<string, number> = {};
     completedOrders.forEach((o) => {
-        const date = (o.createdAt as { toDate?: () => Date } | undefined)
-            ?.toDate?.()
-            ?.toISOString()
-            .split("T")[0];
+        const date = createdDate(o)?.toISOString().split("T")[0];
         if (date) {
             revenueByDate[date] = (revenueByDate[date] || 0) + (o.finalTotal || o.total || 0);
         }
@@ -147,10 +151,7 @@ function computeMetrics(orders: AnalyticsOrder[]) {
 
     const profitByDate: Record<string, number> = {};
     completedOrders.forEach((o) => {
-        const date = (o.createdAt as { toDate?: () => Date } | undefined)
-            ?.toDate?.()
-            ?.toISOString()
-            .split("T")[0];
+        const date = createdDate(o)?.toISOString().split("T")[0];
         if (date) {
             const orderItemAmount =
                 o.items?.reduce((s, i) => s + (i.price || 0) * i.quantity, 0) || 0;

@@ -11,6 +11,7 @@ import {
     formatDeliverySlot,
     formatProcessingWindow,
     hasAnyFoodPreOrderAvailable,
+    hasGroceryPreOrderAvailable,
 } from "../../../lib/preOrderSlots";
 
 describe("resolvePreOrderSlotOccurrence", () => {
@@ -583,5 +584,40 @@ describe("hasAnyFoodPreOrderAvailable", () => {
     it("handles missing/null campus config and restaurant list", () => {
         expect(hasAnyFoodPreOrderAvailable(null, null)).toBe(false);
         expect(hasAnyFoodPreOrderAvailable(undefined, undefined)).toBe(false);
+    });
+});
+
+describe("hasGroceryPreOrderAvailable", () => {
+    const slots = [{ start: "10:00", end: "12:00" }];
+    const campusPreOrder = [
+        { id: "PU", isPreOrderEnabled: true, preOrderSlots: slots },
+        { id: "PTU", isPreOrderEnabled: false, preOrderSlots: slots },
+        { id: "PIMS", isPreOrderEnabled: true, preOrderSlots: [] },
+    ];
+
+    it("is true when the selected campus has pre-order enabled with slots", () => {
+        expect(hasGroceryPreOrderAvailable(campusPreOrder, "PU")).toBe(true);
+    });
+
+    it("is false when the selected campus has it off, even if another campus has it on", () => {
+        expect(hasGroceryPreOrderAvailable(campusPreOrder, "PTU")).toBe(false);
+    });
+
+    it("is false when the selected campus has it enabled but no slots configured", () => {
+        expect(hasGroceryPreOrderAvailable(campusPreOrder, "PIMS")).toBe(false);
+    });
+
+    it("is false for a selected campus with no config entry", () => {
+        expect(hasGroceryPreOrderAvailable(campusPreOrder, "OTHER")).toBe(false);
+    });
+
+    it("checks all campuses when none is selected", () => {
+        expect(hasGroceryPreOrderAvailable(campusPreOrder, "")).toBe(true);
+        expect(hasGroceryPreOrderAvailable(campusPreOrder.slice(1), "")).toBe(false);
+    });
+
+    it("handles missing config", () => {
+        expect(hasGroceryPreOrderAvailable(null, "PU")).toBe(false);
+        expect(hasGroceryPreOrderAvailable(undefined, undefined)).toBe(false);
     });
 });

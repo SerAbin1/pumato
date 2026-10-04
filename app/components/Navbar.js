@@ -13,7 +13,7 @@ import { usePathname } from "next/navigation";
 import Image from "next/image";
 import { getISTTime } from "@/lib/dateUtils";
 import { isServiceLive } from "@/lib/serviceStatus";
-import { hasAnyFoodPreOrderAvailable } from "@/lib/preOrderSlots";
+import { hasAnyFoodPreOrderAvailable, hasGroceryPreOrderAvailable } from "@/lib/preOrderSlots";
 import CampusSelector from "./CampusSelector";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
@@ -38,6 +38,7 @@ const getCutoffDisplay = (start, cutoffMinutes) => {
 const LiveIndicator = ({
     isLive,
     settings,
+    mode = "food",
     label,
     hasPreOrder = false,
     preOrderRestaurantNames = [],
@@ -62,6 +63,65 @@ const LiveIndicator = ({
     const status = isLive ? "live" : hasPreOrder ? "preorder" : "offline";
     const statusColor = status === "live" ? "green" : status === "preorder" ? "cyan" : "red";
     const statusText = status === "live" ? "Live" : status === "preorder" ? "Pre-order" : "Offline";
+
+    const toRegularEntries = (slots = []) =>
+        slots.map((slot, i) => ({
+            type: "regular",
+            label: `Slot ${i + 1}`,
+            start: slot.start,
+            end: slot.end,
+        }));
+
+    const toPreOrderEntries = (slots = []) =>
+        slots.map((slot, i) => ({
+            type: "preOrder",
+            label: `Pre-order Slot ${i + 1}`,
+            start: slot.start,
+            end: slot.end,
+            cutoffDisplay: getCutoffDisplay(slot.start, slot.cutoffMinutes),
+        }));
+
+    // Food hours are set per campus. Grocery hours are campus-wide, so they get one untitled
+    // section, followed by a section for each campus that has grocery pre-orders enabled.
+    const sections =
+        mode === "grocery"
+            ? [
+                  {
+                      key: "grocery",
+                      title: null,
+                      entries: toRegularEntries(settings?.service_hours),
+                  },
+                  ...DEFAULT_CAMPUS_CONFIG.map((campus) => {
+                      const campusData = (settings?.campusPreOrder || []).find(
+                          (c) => c.id === campus.id
+                      );
+                      const slots = campusData?.isPreOrderEnabled
+                          ? campusData.preOrderSlots || []
+                          : [];
+                      return {
+                          key: campus.id,
+                          title: campus.name,
+                          entries: toPreOrderEntries(slots),
+                      };
+                  }).filter((section) => section.entries.length > 0),
+              ]
+            : DEFAULT_CAMPUS_CONFIG.map((campus) => {
+                  const config = settings?.deliveryCampusConfig || [];
+                  const campusData = config.find(
+                      (c) => c.id === campus.id || c.name === campus.name
+                  );
+                  const preOrderSlots = campusData?.isPreOrderEnabled
+                      ? campusData?.preOrderSlots || []
+                      : [];
+                  return {
+                      key: campus.id,
+                      title: campus.name,
+                      entries: [
+                          ...toRegularEntries(campusData?.slots),
+                          ...toPreOrderEntries(preOrderSlots),
+                      ],
+                  };
+              });
 
     return (
         <div className="relative" ref={popoverRef}>
@@ -105,81 +165,51 @@ const LiveIndicator = ({
                         </div>
 
                         <div className="space-y-6">
-                            {DEFAULT_CAMPUS_CONFIG.map((campus) => {
-                                const config = settings?.deliveryCampusConfig || [];
-                                const campusData = config.find(
-                                    (c) => c.id === campus.id || c.name === campus.name
-                                );
-                                const slots = campusData?.slots || [];
-                                const preOrderSlots = campusData?.isPreOrderEnabled
-                                    ? campusData?.preOrderSlots || []
-                                    : [];
-
-                                // Build display entries: regular slots as "Slot N" and pre-order slots as "Pre-order Slot N"
-                                const allSlots = [
-                                    ...slots.map((slot, i) => ({
-                                        type: "regular",
-                                        label: `Slot ${i + 1}`,
-                                        start: slot.start,
-                                        end: slot.end,
-                                    })),
-                                    ...preOrderSlots.map((slot, i) => ({
-                                        type: "preOrder",
-                                        label: `Pre-order Slot ${i + 1}`,
-                                        start: slot.start,
-                                        end: slot.end,
-                                        cutoffDisplay: getCutoffDisplay(
-                                            slot.start,
-                                            slot.cutoffMinutes
-                                        ),
-                                    })),
-                                ];
-
-                                return (
-                                    <div key={campus.id} className="space-y-2">
+                            {sections.map((section) => (
+                                <div key={section.key} className="space-y-2">
+                                    {section.title && (
                                         <div className="flex items-center justify-between px-1">
                                             <span className="text-[10px] font-black text-white uppercase tracking-wider">
-                                                {campus.name}
+                                                {section.title}
                                             </span>
                                             <div
-                                                className={`w-1.5 h-1.5 rounded-full ${allSlots.length > 0 ? "bg-orange-500" : "bg-zinc-700"}`}
+                                                className={`w-1.5 h-1.5 rounded-full ${section.entries.length > 0 ? "bg-orange-500" : "bg-zinc-700"}`}
                                             ></div>
                                         </div>
-                                        <div className="space-y-1.5">
-                                            {allSlots.length > 0 ? (
-                                                allSlots.map((s, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-xl border border-white/5"
-                                                    >
-                                                        <div>
-                                                            <span className="text-[9px] font-bold text-gray-500 uppercase">
-                                                                {s.label}
-                                                            </span>
-                                                            {s.type === "preOrder" &&
-                                                                s.cutoffDisplay && (
-                                                                    <span className="block text-[9px] font-semibold text-cyan-400/80 mt-0.5">
-                                                                        Order by {s.cutoffDisplay}
-                                                                    </span>
-                                                                )}
-                                                        </div>
-                                                        <span className="text-[10px] font-black text-white">
-                                                            {format12h(s.start)} -{" "}
-                                                            {format12h(s.end)}
+                                    )}
+                                    <div className="space-y-1.5">
+                                        {section.entries.length > 0 ? (
+                                            section.entries.map((s, i) => (
+                                                <div
+                                                    key={i}
+                                                    className="flex items-center justify-between bg-white/5 px-3 py-2 rounded-xl border border-white/5"
+                                                >
+                                                    <div>
+                                                        <span className="text-[9px] font-bold text-gray-500 uppercase">
+                                                            {s.label}
                                                         </span>
+                                                        {s.type === "preOrder" &&
+                                                            s.cutoffDisplay && (
+                                                                <span className="block text-[9px] font-semibold text-cyan-400/80 mt-0.5">
+                                                                    Order by {s.cutoffDisplay}
+                                                                </span>
+                                                            )}
                                                     </div>
-                                                ))
-                                            ) : (
-                                                <div className="bg-black/20 px-3 py-2 rounded-xl border border-white/5 text-center">
-                                                    <span className="text-[9px] text-gray-500 italic">
-                                                        No hours set
+                                                    <span className="text-[10px] font-black text-white">
+                                                        {format12h(s.start)} - {format12h(s.end)}
                                                     </span>
                                                 </div>
-                                            )}
-                                        </div>
+                                            ))
+                                        ) : (
+                                            <div className="bg-black/20 px-3 py-2 rounded-xl border border-white/5 text-center">
+                                                <span className="text-[9px] text-gray-500 italic">
+                                                    No hours set
+                                                </span>
+                                            </div>
+                                        )}
                                     </div>
-                                );
-                            })}
+                                </div>
+                            ))}
                         </div>
 
                         {!isLive && preOrderRestaurantNames.length > 0 && (
@@ -455,8 +485,9 @@ export default function Navbar() {
             .filter((r) => r?.isPreOrderEnabled && r?.preOrderSlots?.length > 0)
             .map((r) => r.name);
     }, [isFoodContext, restaurants]);
-    const hasPreOrder =
-        isFoodContext && hasAnyFoodPreOrderAvailable(campusPreOrderConfig, restaurants);
+    const hasPreOrder = isGroceryPage
+        ? hasGroceryPreOrderAvailable(grocerySettings?.campusPreOrder, userDetails.campus)
+        : isFoodContext && hasAnyFoodPreOrderAvailable(campusPreOrderConfig, restaurants);
 
     useEffect(() => {
         const checkLive = () => {
@@ -509,6 +540,7 @@ export default function Navbar() {
                                 <LiveIndicator
                                     isLive={isLive}
                                     settings={currentSettings}
+                                    mode={isGroceryPage ? "grocery" : "food"}
                                     label={settingsLabel}
                                     hasPreOrder={hasPreOrder}
                                     preOrderRestaurantNames={preOrderRestaurantNames}
@@ -551,6 +583,7 @@ export default function Navbar() {
                             <LiveIndicator
                                 isLive={isLive}
                                 settings={currentSettings}
+                                mode={isGroceryPage ? "grocery" : "food"}
                                 label={settingsLabel}
                                 hasPreOrder={hasPreOrder}
                                 preOrderRestaurantNames={preOrderRestaurantNames}

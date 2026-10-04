@@ -25,7 +25,7 @@ export async function saveListing(
     await setDoc(doc(db, COLLECTIONS.MARKETPLACE_LISTINGS, id), validated);
 }
 
-export async function updateListing(id: string, data: Record<string, unknown>): Promise<void> {
+export async function updateListing(id: string, data: object): Promise<void> {
     const validated = parsePatch(MarketplaceListingSchema, data);
     await updateDoc(doc(db, COLLECTIONS.MARKETPLACE_LISTINGS, id), validated);
 }
@@ -46,10 +46,7 @@ export async function createMarketplaceRequest(
     return docRef.id;
 }
 
-export async function updateMarketplaceRequest(
-    id: string,
-    data: Record<string, unknown>
-): Promise<void> {
+export async function updateMarketplaceRequest(id: string, data: object): Promise<void> {
     const validated = parsePatch(MarketplaceRequestSchema, data);
     await updateDoc(doc(db, COLLECTIONS.MARKETPLACE_REQUESTS, id), validated);
 }

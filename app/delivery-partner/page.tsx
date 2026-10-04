@@ -22,13 +22,22 @@ import { Loader2, Truck, MapPin, Package, LogIn, LogOut, Check, Clock, User } fr
 import toast from "react-hot-toast";
 
 import CountdownTimer from "./components/CountdownTimer";
+import type { FirebaseError } from "firebase/app";
+import type { User as FirebaseUser } from "firebase/auth";
+import type { Order, OrderItem } from "@/lib/types";
 
-const STATUS_LABELS = {
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     picked_up: { label: "Picked Up", color: "text-orange-400" },
     delivered: { label: "Delivered", color: "text-green-400" },
 };
 
-function LoginScreen({ onLogin, loading }) {
+function LoginScreen({
+    onLogin,
+    loading,
+}: {
+    onLogin: (email: string, password: string) => void;
+    loading: boolean;
+}) {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     return (
@@ -76,13 +85,13 @@ function LoginScreen({ onLogin, loading }) {
 }
 
 export default function DeliveryPartnerPage() {
-    const [user, setUser] = useState(undefined); // undefined = loading, null = not logged in
+    const [user, setUser] = useState<FirebaseUser | null | undefined>(undefined); // undefined = loading, null = not logged in
     const [isDeliveryPartner, setIsDeliveryPartner] = useState(false);
     const [authLoading, setAuthLoading] = useState(false);
-    const [readyOrders, setReadyOrders] = useState([]);
-    const [myOrders, setMyOrders] = useState([]);
-    const [claiming, setClaiming] = useState(null);
-    const [delivering, setDelivering] = useState(null);
+    const [readyOrders, setReadyOrders] = useState<Order[]>([]);
+    const [myOrders, setMyOrders] = useState<Order[]>([]);
+    const [claiming, setClaiming] = useState<string | null>(null);
+    const [delivering, setDelivering] = useState<string | null>(null);
 
     // Listen for auth state
     useEffect(() => {
@@ -105,7 +114,7 @@ export default function DeliveryPartnerPage() {
         return () => unsub();
     }, []);
 
-    const handleLogin = async (email, password) => {
+    const handleLogin = async (email: string, password: string) => {
         setAuthLoading(true);
         try {
             const cred = await signInWithEmailAndPassword(auth, email, password);
@@ -116,7 +125,7 @@ export default function DeliveryPartnerPage() {
             }
         } catch (err) {
             toast.error(
-                err.code === "auth/invalid-credential"
+                (err as FirebaseError).code === "auth/invalid-credential"
                     ? "Invalid email or password"
                     : "Login failed"
             );
@@ -147,14 +156,17 @@ export default function DeliveryPartnerPage() {
 
         const unsub = onSnapshot(q, (snap) => {
             setReadyOrders(
-                snap.docs.map((d) => ({
-                    id: d.id,
-                    ...d.data(),
-                    createdAt: d.data().createdAt?.toDate(),
-                    readyAt: d.data().readyAt?.toDate
-                        ? d.data().readyAt.toDate()
-                        : d.data().readyAt,
-                }))
+                snap.docs.map(
+                    (d) =>
+                        ({
+                            id: d.id,
+                            ...d.data(),
+                            createdAt: d.data().createdAt?.toDate(),
+                            readyAt: d.data().readyAt?.toDate
+                                ? d.data().readyAt.toDate()
+                                : d.data().readyAt,
+                        }) as Order
+                )
             );
         });
         return () => unsub();
@@ -177,17 +189,20 @@ export default function DeliveryPartnerPage() {
 
         const unsub = onSnapshot(q, (snap) => {
             setMyOrders(
-                snap.docs.map((d) => ({
-                    id: d.id,
-                    ...d.data(),
-                    createdAt: d.data().createdAt?.toDate(),
-                }))
+                snap.docs.map(
+                    (d) =>
+                        ({
+                            id: d.id,
+                            ...d.data(),
+                            createdAt: d.data().createdAt?.toDate(),
+                        }) as Order
+                )
             );
         });
         return () => unsub();
     }, [user, isDeliveryPartner]);
 
-    const handlePickup = async (order) => {
+    const handlePickup = async (order: Order) => {
         setClaiming(order.id);
         try {
             await runTransaction(db, async (tx) => {
@@ -199,14 +214,14 @@ export default function DeliveryPartnerPage() {
 
                 tx.update(ref, {
                     status: "picked_up",
-                    deliveryPartnerUid: user.uid,
-                    deliveryPartnerEmail: user.email,
+                    deliveryPartnerUid: user!.uid,
+                    deliveryPartnerEmail: user!.email,
                     pickedUpAt: serverTimestamp(),
                 });
             });
             toast.success("Order picked up! 🚴");
         } catch (err) {
-            if (err.message === "Order already claimed") {
+            if ((err as Error).message === "Order already claimed") {
                 toast.error("Someone else just claimed this order.");
             } else {
                 toast.error("Failed to claim order. Try again.");
@@ -217,7 +232,7 @@ export default function DeliveryPartnerPage() {
         }
     };
 
-    const handleDeliver = async (order) => {
+    const handleDeliver = async (order: Order) => {
         setDelivering(order.id);
         try {
             await runTransaction(db, async (tx) => {
@@ -235,7 +250,7 @@ export default function DeliveryPartnerPage() {
 
             toast.success("Order marked as Delivered! ✅");
         } catch (err) {
-            if (err.message === "Order not in picked_up state") {
+            if ((err as Error).message === "Order not in picked_up state") {
                 toast.error("Order is no longer in picked_up state.");
             } else {
                 toast.error("Failed to mark as delivered.");
@@ -375,7 +390,9 @@ export default function DeliveryPartnerPage() {
                                                 {/* Items grouped by restaurant */}
                                                 <div className="space-y-3">
                                                     {Object.entries(
-                                                        (order.items || []).reduce((acc, item) => {
+                                                        (order.items || []).reduce<
+                                                            Record<string, OrderItem[]>
+                                                        >((acc, item) => {
                                                             const rName =
                                                                 item.restaurantName || "Restaurant";
                                                             if (!acc[rName]) acc[rName] = [];

@@ -50,6 +50,18 @@ import { useAdminAuth } from "@/app/context/AdminAuthContext";
 import { COLLECTIONS } from "@/lib/constants";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { useSettingsForm } from "./hooks/useSettingsForm";
+import type { SettingsFormControls } from "./hooks/useSettingsForm";
+import type { AdminLaundryOrder } from "./components/LaundrySettings";
+import type { GrocerySettingsDraft, OrderSettingsDraft } from "./types";
+import type {
+    AnyRecord,
+    CampusConfig,
+    Coupon,
+    LaundryPricing,
+    Order,
+    PromoBanners,
+    Restaurant,
+} from "@/lib/types";
 
 // Import Extracted Components
 import RestaurantsTab from "./components/RestaurantsTab";
@@ -106,7 +118,7 @@ const GLOBAL_KEYS = [
     "whatsappGroups",
 ];
 
-const DEFAULT_BANNERS = {
+const DEFAULT_BANNERS: PromoBanners = {
     banner1: { title: "50% OFF", sub: "Welcome Bonus", hidden: false },
     banner2: { title: "Free Delivery", sub: "On all orders", hidden: false },
     banner3: { title: "Tasty Deals", sub: "Flat ₹100 Off", hidden: false },
@@ -116,92 +128,129 @@ const DEFAULT_BANNERS = {
 // so they have to arrive as arrays even when the document has never been written.
 const GLOBAL_DEFAULTS = { whatsappGroups: [] };
 
-const project = (obj, keys, defaults = {}) => {
-    const out = Object.fromEntries(keys.map((k) => [k, obj?.[k]]));
+const project = <T extends AnyRecord>(
+    obj: AnyRecord | null,
+    keys: string[],
+    defaults: AnyRecord = {}
+): T => {
+    const out: AnyRecord = Object.fromEntries(keys.map((k) => [k, obj?.[k]]));
     for (const [key, fallback] of Object.entries(defaults)) out[key] ??= fallback;
-    return out;
+    return out as T;
 };
+
+/** Settings drafts are loosely typed while edited; the repository's zod schema validates them. */
+type SaveInput<F extends (...args: any) => any> = Parameters<F>[0];
+
+type GlobalSettingsDraft = OrderSettingsDraft & {
+    whatsappGroups: NonNullable<OrderSettingsDraft["whatsappGroups"]>;
+};
+
+interface LaundryConfigDraft {
+    campuses: CampusConfig[];
+    pricing: LaundryPricing;
+}
 
 export default function AdminPage() {
     const router = useRouter();
     const { user, isAdmin, loading: authLoading, logout } = useAdminAuth();
 
     const [activeSection, setActiveSection] = useState("orders");
-    const [orders, setOrders] = useState([]); // placed (pending admin action)
-    const [inProgressOrders, setInProgressOrders] = useState([]); // confirmed → ready_for_delivery + out_of_stock
-    const [pastOrders, setPastOrders] = useState([]); // picked_up / delivered
+    const [orders, setOrders] = useState<Order[]>([]); // placed (pending admin action)
+    const [inProgressOrders, setInProgressOrders] = useState<Order[]>([]); // confirmed → ready_for_delivery + out_of_stock
+    const [pastOrders, setPastOrders] = useState<Order[]>([]); // picked_up / delivered
     const [loadingOrders, setLoadingOrders] = useState(true);
     const isInitialLoad = useRef(true);
-    const audioRef = useRef(null);
-    const [restaurants, setRestaurants] = useState([]);
-    const [coupons, setCoupons] = useState([]);
-    const [laundryOrders, setLaundryOrders] = useState([]);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
+    const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
+    const [coupons, setCoupons] = useState<Coupon[]>([]);
+    const [laundryOrders, setLaundryOrders] = useState<AdminLaundryOrder[]>([]);
     const [loadingLaundryOrders, setLoadingLaundryOrders] = useState(true);
 
     // Laundry slot editor — per-day docs, edited inline rather than through the
     // sticky Save bar, so it stays outside the settings-form machinery.
     const [selectedDay, setSelectedDay] = useState("default");
-    const [laundrySlots, setLaundrySlots] = useState([]);
+    const [laundrySlots, setLaundrySlots] = useState<string[]>([]);
     const [slotStart, setSlotStart] = useState("");
     const [slotEnd, setSlotEnd] = useState("");
 
     // --- SETTINGS FORMS ---
     // One instance per tab: independent fetch, baseline, diff and save state.
 
-    const deliveryForm = useSettingsForm({
+    const deliveryForm = useSettingsForm<OrderSettingsDraft>({
         label: "Delivery settings",
         confirm: true,
-        load: useCallback(async () => project(await fetchOrderSettings(), DELIVERY_KEYS), []),
+        load: useCallback(
+            async () => project<OrderSettingsDraft>(await fetchOrderSettings(), DELIVERY_KEYS),
+            []
+        ),
         // order_settings is written with merge:true, so the diff alone is safe.
-        save: useCallback(({ diff }) => saveOrderSettings(diff), []),
+        save: useCallback(
+            ({ diff }: { diff: Partial<OrderSettingsDraft> }) =>
+                saveOrderSettings(diff as SaveInput<typeof saveOrderSettings>),
+            []
+        ),
     });
 
-    const globalForm = useSettingsForm({
+    const globalForm = useSettingsForm<GlobalSettingsDraft>({
         label: "Global settings",
         confirm: true,
         load: useCallback(
-            async () => project(await fetchOrderSettings(), GLOBAL_KEYS, GLOBAL_DEFAULTS),
+            async () =>
+                project<GlobalSettingsDraft>(
+                    await fetchOrderSettings(),
+                    GLOBAL_KEYS,
+                    GLOBAL_DEFAULTS
+                ),
             []
         ),
-        save: useCallback(({ diff }) => saveOrderSettings(diff), []),
+        save: useCallback(
+            ({ diff }: { diff: Partial<GlobalSettingsDraft> }) =>
+                saveOrderSettings(diff as SaveInput<typeof saveOrderSettings>),
+            []
+        ),
     });
 
-    const groceryForm = useSettingsForm({
+    const groceryForm = useSettingsForm<GrocerySettingsDraft>({
         label: "Grocery settings",
         confirm: true,
-        load: useCallback(() => fetchGrocerySettings(), []),
+        load: useCallback(() => fetchGrocerySettings() as Promise<GrocerySettingsDraft | null>, []),
         // grocery_settings is a full-document overwrite — sending only the diff
         // would wipe every field the diff doesn't mention.
-        save: useCallback(({ data }) => saveGrocerySettings(data), []),
+        save: useCallback(
+            ({ data }: { data: GrocerySettingsDraft }) =>
+                saveGrocerySettings(data as SaveInput<typeof saveGrocerySettings>),
+            []
+        ),
     });
 
-    const bannersForm = useSettingsForm({
+    const bannersForm = useSettingsForm<PromoBanners>({
         label: "Promo banners",
         initial: DEFAULT_BANNERS,
         load: useCallback(() => fetchPromoBanners(), []),
-        save: useCallback(({ data }) => savePromoBanners(data), []), // full overwrite
+        save: useCallback(({ data }: { data: PromoBanners }) => savePromoBanners(data), []), // full overwrite
     });
 
-    const laundryForm = useSettingsForm({
+    const laundryForm = useSettingsForm<LaundryConfigDraft>({
         label: "Laundry config",
         initial: { campuses: [], pricing: { pricePerKg: "", steamIronPrice: "" } },
         load: useCallback(() => fetchLaundryConfig(), []),
         // Campus config and pricing live in separate full-overwrite documents —
         // write only the ones whose key actually changed, so a pricing edit can't
         // clobber campus config (or persist the fallback defaults over it).
-        save: useCallback(
-            ({ diff }) =>
-                Promise.all([
-                    diff.campuses && saveLaundryCampus({ campuses: diff.campuses }),
-                    diff.pricing && saveLaundryPricing(diff.pricing),
-                ]),
-            []
-        ),
+        save: useCallback(async ({ diff }: { diff: Partial<LaundryConfigDraft> }) => {
+            await Promise.all([
+                diff.campuses && saveLaundryCampus({ campuses: diff.campuses }),
+                diff.pricing && saveLaundryPricing(diff.pricing),
+            ]);
+        }, []),
     });
 
     // Which forms the sticky Save bar drives on each tab. The Global tab edits one
     // grocery field (its WhatsApp number), so it commits both documents.
-    const SETTINGS_TABS = {
+    const SETTINGS_TABS: Record<
+        string,
+        { forms: SettingsFormControls[]; title: string; saveLabel?: string }
+    > = {
         delivery: { forms: [deliveryForm], title: "Delivery Settings" },
         grocery: { forms: [groceryForm], title: "Grocery Settings" },
         settings: { forms: [globalForm, groceryForm], title: "Global Settings" },
@@ -237,8 +286,8 @@ export default function AdminPage() {
                 audioRef.current
                     .play()
                     .then(() => {
-                        audioRef.current.pause();
-                        audioRef.current.currentTime = 0;
+                        audioRef.current!.pause();
+                        audioRef.current!.currentTime = 0;
                     })
                     .catch((err) => console.warn("Audio playback error:", err));
             }
@@ -272,11 +321,14 @@ export default function AdminPage() {
         const unsubscribe = onSnapshot(
             q,
             (snapshot) => {
-                const newOrders = snapshot.docs.map((doc) => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    createdAt: doc.data().createdAt?.toDate(),
-                }));
+                const newOrders = snapshot.docs.map(
+                    (doc) =>
+                        ({
+                            id: doc.id,
+                            ...doc.data(),
+                            createdAt: doc.data().createdAt?.toDate(),
+                        }) as Order
+                );
 
                 // Play sound for new orders (not on initial load)
                 if (isInitialLoad.current) {
@@ -311,11 +363,14 @@ export default function AdminPage() {
         );
         const unsub = onSnapshot(q, (snap) => {
             setInProgressOrders(
-                snap.docs.map((d) => ({
-                    id: d.id,
-                    ...d.data(),
-                    createdAt: d.data().createdAt?.toDate(),
-                }))
+                snap.docs.map(
+                    (d) =>
+                        ({
+                            id: d.id,
+                            ...d.data(),
+                            createdAt: d.data().createdAt?.toDate(),
+                        }) as Order
+                )
             );
         });
         return () => unsub();
@@ -328,11 +383,14 @@ export default function AdminPage() {
             collection(db, COLLECTIONS.LAUNDRY_ORDERS),
             (snap) => {
                 const ordersData = snap.docs
-                    .map((snapshotDoc) => ({
-                        id: snapshotDoc.id,
-                        ...snapshotDoc.data(),
-                        createdAt: snapshotDoc.data().createdAt?.toDate?.() || null,
-                    }))
+                    .map(
+                        (snapshotDoc) =>
+                            ({
+                                id: snapshotDoc.id,
+                                ...snapshotDoc.data(),
+                                createdAt: snapshotDoc.data().createdAt?.toDate?.() || null,
+                            }) as AdminLaundryOrder
+                    )
                     .sort((a, b) => {
                         const dateCompare = (a.scheduledDate || "").localeCompare(
                             b.scheduledDate || ""
@@ -368,11 +426,14 @@ export default function AdminPage() {
         );
         const unsub = onSnapshot(q, (snap) => {
             setPastOrders(
-                snap.docs.map((d) => ({
-                    id: d.id,
-                    ...d.data(),
-                    createdAt: d.data().createdAt?.toDate(),
-                }))
+                snap.docs.map(
+                    (d) =>
+                        ({
+                            id: d.id,
+                            ...d.data(),
+                            createdAt: d.data().createdAt?.toDate(),
+                        }) as Order
+                )
             );
         });
         return () => unsub();
@@ -401,10 +462,12 @@ export default function AdminPage() {
                 })(),
             ]);
 
-            setRestaurants(resSnap.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+            setRestaurants(
+                resSnap.docs.map((doc) => ({ ...doc.data(), id: doc.id }) as Restaurant)
+            );
 
             setCoupons(
-                (promoRes.data || []).map((c) => ({
+                ((promoRes.data || []) as Coupon[]).map((c) => ({
                     id: c.id,
                     code: c.code,
                     type: c.type,
@@ -433,7 +496,7 @@ export default function AdminPage() {
     }, [user, isAdmin, fetchData]);
 
     // --- LAUNDRY SLOT HANDLERS ---
-    const persistSlots = async (updatedSlots) => {
+    const persistSlots = async (updatedSlots: string[]) => {
         setLaundrySlots(updatedSlots);
         try {
             await saveLaundrySlots(selectedDay, { slots: updatedSlots });
@@ -464,7 +527,7 @@ export default function AdminPage() {
         }
 
         const updatedSlots = [...laundrySlots, formattedSlot].sort((a, b) => {
-            const getMinutes = (s) => {
+            const getMinutes = (s: string) => {
                 const parts = s.split(" - ")[0].match(/(\d+):(\d+) (AM|PM)/);
                 if (!parts) return 0;
                 let h = parseInt(parts[1]);
@@ -482,7 +545,8 @@ export default function AdminPage() {
         await persistSlots(updatedSlots);
     };
 
-    const handleDeleteSlot = (index) => persistSlots(laundrySlots.filter((_, i) => i !== index));
+    const handleDeleteSlot = (index: number) =>
+        persistSlots(laundrySlots.filter((_, i) => i !== index));
 
     // Loading / Auth guards
     if (authLoading) {

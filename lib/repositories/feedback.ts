@@ -17,7 +17,7 @@ export async function createFeedback(
     return docRef.id;
 }
 
-export async function updateFeedback(id: string, data: Record<string, unknown>): Promise<void> {
+export async function updateFeedback(id: string, data: object): Promise<void> {
     const validated = parsePatch(FeedbackSchema, data);
     await updateDoc(doc(db, COLLECTIONS.FEEDBACK, id), validated);
 }

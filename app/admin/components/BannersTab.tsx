@@ -5,8 +5,8 @@ import type { Banner, PromoBanners } from "@/lib/types";
 import type { createFileUploadHandler } from "@/lib/uploadImage";
 
 interface BannersTabProps {
-    banners: Partial<PromoBanners>;
-    setBanners: (banners: Partial<PromoBanners>) => void;
+    banners: PromoBanners;
+    setBanners: (banners: PromoBanners) => void;
     handleFileUpload: ReturnType<typeof createFileUploadHandler>;
 }
 
@@ -20,7 +20,8 @@ export default function BannersTab({ banners, setBanners, handleFileUpload }: Ba
             <div className="grid gap-8">
                 {[1, 2, 3].map((num) => {
                     const bannerKey = `banner${num}` as keyof PromoBanners;
-                    const banner: Partial<Banner> = banners[bannerKey] || {};
+                    // A banner missing from the stored doc starts empty.
+                    const banner: Banner = banners[bannerKey] || ({} as Banner);
 
                     return (
                         <div

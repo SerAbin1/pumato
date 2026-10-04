@@ -35,8 +35,19 @@ import {
 import toast from "react-hot-toast";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { motion, AnimatePresence } from "framer-motion";
+import type { Order, Restaurant } from "@/lib/types";
+import type { RestaurantDraft } from "@/app/admin/types";
 
-const STATUS_LABELS = {
+type PartnerAction = "viewed" | "ready_for_delivery" | "out_of_stock";
+
+interface OrderCardProps {
+    order: Order;
+    restaurantId: string | null | undefined;
+    onAction: (order: Order, action: PartnerAction, oosItemIds?: string[]) => void;
+    processing: string | null;
+}
+
+const STATUS_LABELS: Record<string, { label: string; color: string }> = {
     confirmed: { label: "Confirmed", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
     viewed: { label: "Viewed", color: "text-green-400 bg-green-500/10 border-green-500/20" },
     ready_for_delivery: {
@@ -51,16 +62,16 @@ const STATUS_LABELS = {
     delivered: { label: "Delivered", color: "text-gray-400 bg-gray-500/10 border-gray-500/20" },
 };
 
-function OrderCard({ order, restaurantId, onAction, processing }) {
+function OrderCard({ order, restaurantId, onAction, processing }: OrderCardProps) {
     const restaurantItems = order.items?.filter((i) => i.restaurantId === restaurantId) || [];
-    const [oosItems, setOosItems] = useState([]);
+    const [oosItems, setOosItems] = useState<string[]>([]);
     const [showOosPicker, setShowOosPicker] = useState(false);
     const statusInfo = STATUS_LABELS[order.status] || {
         label: order.status,
         color: "text-gray-400 bg-gray-500/10 border-gray-500/20",
     };
 
-    const toggleOosItem = (itemId) => {
+    const toggleOosItem = (itemId: string) => {
         setOosItems((prev) =>
             prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
         );
@@ -240,14 +251,14 @@ export default function PartnerDashboard() {
     const { user, loading, logout } = useAdminAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState("orders");
-    const [restaurantData, setRestaurantData] = useState(null);
+    const [restaurantData, setRestaurantData] = useState<Restaurant | null>(null);
     const [isFetching, setIsFetching] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
-    const [liveOrders, setLiveOrders] = useState([]);
-    const [pastOrders, setPastOrders] = useState([]);
-    const [processing, setProcessing] = useState(null);
+    const [liveOrders, setLiveOrders] = useState<Order[]>([]);
+    const [pastOrders, setPastOrders] = useState<Order[]>([]);
+    const [processing, setProcessing] = useState<string | null>(null);
     const isInitialLoad = useRef(true);
-    const audioRef = useRef(null);
+    const audioRef = useRef<HTMLAudioElement | null>(null);
 
     useFcmToken(user ?? null);
 
@@ -259,8 +270,8 @@ export default function PartnerDashboard() {
             audioRef.current
                 ?.play()
                 .then(() => {
-                    audioRef.current.pause();
-                    audioRef.current.currentTime = 0;
+                    audioRef.current!.pause();
+                    audioRef.current!.currentTime = 0;
                 })
                 .catch((err) => console.warn("Audio playback error:", err));
             document.removeEventListener("click", unlock);
@@ -294,11 +305,14 @@ export default function PartnerDashboard() {
         );
 
         const unsub = onSnapshot(q, (snap) => {
-            const docs = snap.docs.map((d) => ({
-                id: d.id,
-                ...d.data(),
-                createdAt: d.data().createdAt?.toDate(),
-            }));
+            const docs = snap.docs.map(
+                (d) =>
+                    ({
+                        id: d.id,
+                        ...d.data(),
+                        createdAt: d.data().createdAt?.toDate(),
+                    }) as Order
+            );
             if (isInitialLoad.current) {
                 isInitialLoad.current = false;
             } else if (snap.docChanges().some((c) => c.type === "added")) {
@@ -327,11 +341,14 @@ export default function PartnerDashboard() {
 
         const unsub = onSnapshot(q, (snap) => {
             setPastOrders(
-                snap.docs.map((d) => ({
-                    id: d.id,
-                    ...d.data(),
-                    createdAt: d.data().createdAt?.toDate(),
-                }))
+                snap.docs.map(
+                    (d) =>
+                        ({
+                            id: d.id,
+                            ...d.data(),
+                            createdAt: d.data().createdAt?.toDate(),
+                        }) as Order
+                )
             );
         });
         return () => unsub();
@@ -346,7 +363,8 @@ export default function PartnerDashboard() {
         if (user?.restaurantId) {
             getDoc(doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId))
                 .then((snap) => {
-                    if (snap.exists()) setRestaurantData({ id: snap.id, ...snap.data() });
+                    if (snap.exists())
+                        setRestaurantData({ id: snap.id, ...snap.data() } as Restaurant);
                     else toast.error("Restaurant not found.");
                 })
                 .catch(() => toast.error("Failed to load restaurant."))
@@ -358,10 +376,10 @@ export default function PartnerDashboard() {
         }
     }, [user, loading, router]);
 
-    const handleAction = async (order, action, oosItemIds = []) => {
+    const handleAction = async (order: Order, action: PartnerAction, oosItemIds: string[] = []) => {
         setProcessing(order.id);
         try {
-            const updates = { status: action };
+            const updates: Record<string, unknown> = { status: action };
 
             if (action === "viewed") {
                 updates.partnerViewedAt = serverTimestamp();
@@ -371,30 +389,32 @@ export default function PartnerDashboard() {
                 updates.outOfStockItems = oosItemIds;
                 updates.outOfStockAt = serverTimestamp();
 
-                if (oosItemIds.length > 0 && user.restaurantId) {
+                if (oosItemIds.length > 0 && user!.restaurantId) {
                     const restSnap = await getDoc(
-                        doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId)
+                        doc(db, COLLECTIONS.RESTAURANTS, user!.restaurantId)
                     );
                     if (restSnap.exists()) {
                         const rData = restSnap.data();
-                        const updatedMenu = (rData.menu || []).map((item) => {
-                            if (oosItemIds.includes(item.id)) {
-                                return {
-                                    ...item,
-                                    isVisible: false,
-                                    hiddenAt: new Date().toISOString(),
-                                };
+                        const updatedMenu = ((rData.menu || []) as Restaurant["menu"] & {}).map(
+                            (item) => {
+                                if (oosItemIds.includes(item.id)) {
+                                    return {
+                                        ...item,
+                                        isVisible: false,
+                                        hiddenAt: new Date().toISOString(),
+                                    };
+                                }
+                                return item;
                             }
-                            return item;
-                        });
-                        await updateRestaurant(user.restaurantId, { menu: updatedMenu });
+                        );
+                        await updateRestaurant(user!.restaurantId, { menu: updatedMenu });
                     }
                 }
             }
 
             await updateOrder(order.id, updates);
 
-            const labels = {
+            const labels: Record<string, string> = {
                 viewed: "Marked as Viewed",
                 ready_for_delivery: "Marked as Ready!",
                 out_of_stock: "Order marked Out of Stock",
@@ -408,12 +428,12 @@ export default function PartnerDashboard() {
         }
     };
 
-    const handleSave = async (data) => {
+    const handleSave = async (data: RestaurantDraft) => {
         if (!user?.restaurantId) return;
         setIsSaving(true);
         try {
             await updateRestaurant(user.restaurantId, data);
-            setRestaurantData((prev) => ({ ...prev, ...data }));
+            setRestaurantData((prev) => ({ ...prev, ...data }) as Restaurant);
             toast.success("Saved!");
         } catch {
             toast.error("Failed to save.");
@@ -631,10 +651,13 @@ export default function PartnerDashboard() {
                                 onSave={handleSave}
                                 onCancel={() => {
                                     getDoc(
-                                        doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId)
+                                        doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId!)
                                     ).then((snap) => {
                                         if (snap.exists())
-                                            setRestaurantData({ id: snap.id, ...snap.data() });
+                                            setRestaurantData({
+                                                id: snap.id,
+                                                ...snap.data(),
+                                            } as Restaurant);
                                     });
                                     toast("Changes discarded.");
                                 }}

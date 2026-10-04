@@ -17,8 +17,19 @@ import { Trash, Eye, EyeOff, Plus, MessageCircle, Check, Clock, Radio } from "lu
 import MarketplaceListingForm from "./MarketplaceListingForm";
 import ConfirmModal from "../../components/ConfirmModal";
 import { normalizePromotion } from "@/lib/marketplacePromotions";
+import type { StoredPromotion } from "@/lib/marketplacePromotions";
+import type {
+    MarketplaceCategory,
+    MarketplaceListing,
+    MarketplaceRedirectLinks,
+    MarketplaceRequest,
+} from "@/lib/types";
+import type { MarketplaceField } from "@/app/marketplace/sell/types";
+import type { ListingDraft } from "../types";
 
-function promotionBadge(promotion) {
+type RedirectLink = MarketplaceRedirectLinks["redirectLinks"][number];
+
+function promotionBadge(promotion: StoredPromotion | null | undefined) {
     const { inFeed, popup } = normalizePromotion(promotion);
     return [inFeed.enabled && `In-feed ${inFeed.reach}%`, popup.enabled && `Popup ${popup.reach}%`]
         .filter(Boolean)
@@ -27,18 +38,23 @@ function promotionBadge(promotion) {
 
 export default function MarketplaceTab() {
     const [subSection, setSubSection] = useState("requests"); // requests, listings, filters, categories, settings
-    const [requests, setRequests] = useState([]);
-    const [listings, setListings] = useState([]);
-    const [categories, setCategories] = useState([]);
-    const [filters, setFilters] = useState([]);
-    const [redirectLinks, setRedirectLinks] = useState([]);
+    const [requests, setRequests] = useState<MarketplaceRequest[]>([]);
+    const [listings, setListings] = useState<MarketplaceListing[]>([]);
+    const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
+    const [filters, setFilters] = useState<{ label: string }[]>([]);
+    const [redirectLinks, setRedirectLinks] = useState<RedirectLink[]>([]);
     const [loading, setLoading] = useState(true);
     const [listingView, setListingView] = useState("list"); // list, form
-    const [editingId, setEditingId] = useState(null);
-    const [selectedListing, setSelectedListing] = useState(null);
-    const [sourceRequestId, setSourceRequestId] = useState(null);
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [selectedListing, setSelectedListing] = useState<Partial<ListingDraft> | null>(null);
+    const [sourceRequestId, setSourceRequestId] = useState<string | null>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const [confirmModal, setConfirmModal] = useState({
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        type: "listing" | null;
+        id: string | null;
+        name: string;
+    }>({
         isOpen: false,
         type: null,
         id: null,
@@ -53,13 +69,16 @@ export default function MarketplaceTab() {
     // Category form state
     const [catLabel, setCatLabel] = useState("");
     const [catActionLabel, setCatActionLabel] = useState("");
-    const [catFields, setCatFields] = useState([
+    const [catFields, setCatFields] = useState<MarketplaceField[]>([
         "itemName",
         "description",
         "askingPrice",
         "campus",
     ]);
-    const [catOptionalFields, setCatOptionalFields] = useState(["description", "customLinks"]);
+    const [catOptionalFields, setCatOptionalFields] = useState<MarketplaceField[]>([
+        "description",
+        "customLinks",
+    ]);
     const [isSavingCategories, setIsSavingCategories] = useState(false);
 
     // Filter form state
@@ -87,8 +106,12 @@ export default function MarketplaceTab() {
                         )
                     ),
                 ]);
-            setRequests(requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
-            setListings(listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            setRequests(
+                requestsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as MarketplaceRequest)
+            );
+            setListings(
+                listingsSnap.docs.map((d) => ({ id: d.id, ...d.data() }) as MarketplaceListing)
+            );
             if (categoriesSnap.exists()) {
                 setCategories(categoriesSnap.data().categories || []);
             }
@@ -114,7 +137,7 @@ export default function MarketplaceTab() {
         .filter((r) => r.status !== "handled")
         .sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
 
-    const handleCreateFromRequest = (request) => {
+    const handleCreateFromRequest = (request: MarketplaceRequest) => {
         setEditingId(null);
         setSourceRequestId(request.id);
         setSelectedListing({
@@ -134,7 +157,7 @@ export default function MarketplaceTab() {
         setListingView("form");
     };
 
-    const handleDismissRequest = async (id) => {
+    const handleDismissRequest = async (id: string) => {
         try {
             await updateMarketplaceRequest(id, { status: "handled" });
             await fetchData();
@@ -151,18 +174,19 @@ export default function MarketplaceTab() {
         setListingView("form");
     };
 
-    const handleEditListing = (listing) => {
+    const handleEditListing = (listing: MarketplaceListing) => {
         setEditingId(listing.id);
         setSourceRequestId(null);
         setSelectedListing(listing);
         setListingView("form");
     };
 
-    const handleSaveListing = async (data) => {
+    const handleSaveListing = async (data: ListingDraft) => {
         setIsSaving(true);
         const id = editingId || Date.now().toString();
         try {
-            await saveListing(id, data);
+            // The form edits a loose draft; MarketplaceListingSchema validates it.
+            await saveListing(id, data as Parameters<typeof saveListing>[1]);
             if (sourceRequestId) {
                 await updateMarketplaceRequest(sourceRequestId, { status: "handled" });
             }
@@ -176,7 +200,7 @@ export default function MarketplaceTab() {
         }
     };
 
-    const handleToggleVisibility = async (listing) => {
+    const handleToggleVisibility = async (listing: MarketplaceListing) => {
         try {
             await updateListing(listing.id, {
                 isVisible: listing.isVisible === false,
@@ -188,7 +212,7 @@ export default function MarketplaceTab() {
         }
     };
 
-    const handleDeleteListing = async (id) => {
+    const handleDeleteListing = async (id: string) => {
         try {
             await deleteListing(id);
             await fetchData();
@@ -225,7 +249,7 @@ export default function MarketplaceTab() {
         }
     };
 
-    const handleDeleteCategory = async (index) => {
+    const handleDeleteCategory = async (index: number) => {
         setIsSavingCategories(true);
         try {
             const updated = categories.filter((_, i) => i !== index);
@@ -265,7 +289,7 @@ export default function MarketplaceTab() {
         }
     };
 
-    const handleDeleteFilter = async (index) => {
+    const handleDeleteFilter = async (index: number) => {
         setIsSavingFilters(true);
         try {
             const updated = filters.filter((_, i) => i !== index);
@@ -297,12 +321,12 @@ export default function MarketplaceTab() {
         toast.success("Link added. Save to apply changes.");
     };
 
-    const handleDeleteRedirectLink = (index) => {
+    const handleDeleteRedirectLink = (index: number) => {
         setRedirectLinks((prev) => prev.filter((_, i) => i !== index));
         toast.success("Link removed. Save to apply changes.");
     };
 
-    const handleSetActiveLink = (index) => {
+    const handleSetActiveLink = (index: number) => {
         setRedirectLinks((prev) => prev.map((link, i) => ({ ...link, active: i === index })));
     };
 
@@ -319,7 +343,7 @@ export default function MarketplaceTab() {
         }
     };
 
-    const isExpired = (listing) => {
+    const isExpired = (listing: MarketplaceListing) => {
         if (!listing.expiryDate) return false;
         return listing.expiryDate < new Date().toISOString().slice(0, 10);
     };
@@ -845,7 +869,7 @@ export default function MarketplaceTab() {
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                onConfirm={() => handleDeleteListing(confirmModal.id)}
+                onConfirm={() => handleDeleteListing(confirmModal.id!)}
                 title="Delete Listing?"
                 message={`Are you sure you want to delete "${confirmModal.name}"? This will permanently remove it from the database.`}
                 confirmLabel="Delete Listing"

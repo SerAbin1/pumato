@@ -21,8 +21,30 @@ import { serverTimestamp } from "firebase/firestore";
 import { updateLaundryOrder, deleteLaundryOrder } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import ConfirmModal from "../../components/ConfirmModal";
+import type { Dispatch, HTMLInputTypeAttribute, ReactNode, SetStateAction } from "react";
+import type { LucideIcon } from "lucide-react";
+import type { LaundryOrder, LaundryPricing } from "@/lib/types";
 
-const PIPELINE_TABS = [
+/** A laundry order as the admin listener delivers it: with its id and createdAt as a Date. */
+export type AdminLaundryOrder = LaundryOrder & { id: string };
+
+type PipelineStage =
+    | "ReadyForPickup"
+    | "PendingCustomerPayment"
+    | "DeliveryPending"
+    | "PendingShopPayment"
+    | "Completed";
+
+interface PipelineTab {
+    id: PipelineStage;
+    label: string;
+    emptyMessage: string;
+    actionLabel: string | null;
+    actionIcon: LucideIcon;
+    actionClass: string;
+}
+
+const PIPELINE_TABS: PipelineTab[] = [
     {
         id: "ReadyForPickup",
         label: "Ready For Pickup",
@@ -65,21 +87,23 @@ const PIPELINE_TABS = [
     },
 ];
 
-const TOP_TABS = [
+const TOP_TABS: { id: PipelineStage | "settings"; label: string }[] = [
     ...PIPELINE_TABS.map((tab) => ({ id: tab.id, label: tab.label })),
     { id: "settings", label: "Settings" },
 ];
 
-const formatDisplayDate = (dateString) => {
+const formatDisplayDate = (dateString: string | undefined) => {
     if (!dateString) return "No Date";
     const [year, month, day] = dateString.split("-");
     if (!year || !month || !day) return dateString;
     return `${day}-${month}-${year}`;
 };
 
-const formatTimestamp = (value) => {
+const formatTimestamp = (value: unknown) => {
     if (!value) return "";
-    const date = value?.toDate ? value.toDate() : new Date(value);
+    const date = (value as { toDate?: () => Date })?.toDate
+        ? (value as { toDate: () => Date }).toDate()
+        : new Date(value as string | number | Date);
     if (Number.isNaN(date.getTime())) return "";
 
     return date.toLocaleString("en-IN", {
@@ -92,7 +116,7 @@ const formatTimestamp = (value) => {
     });
 };
 
-const resolveOrderStage = (order) => {
+const resolveOrderStage = (order: AdminLaundryOrder): PipelineStage => {
     if (order.status === "Completed" || order.status === "PaidToShop" || order.paidToShopAt) {
         return "Completed";
     }
@@ -116,7 +140,7 @@ const resolveOrderStage = (order) => {
     return "ReadyForPickup";
 };
 
-function EmptyOrdersState({ message }) {
+function EmptyOrdersState({ message }: { message: ReactNode }) {
     return (
         <div className="text-center py-16 text-gray-500 border border-dashed border-white/10 rounded-[2rem] bg-white/5">
             <Package className="mx-auto mb-4 text-gray-600" size={28} />
@@ -125,7 +149,15 @@ function EmptyOrdersState({ message }) {
     );
 }
 
-function OrderDateGroup({ title, orders, renderOrder }) {
+function OrderDateGroup({
+    title,
+    orders,
+    renderOrder,
+}: {
+    title: ReactNode;
+    orders: AdminLaundryOrder[];
+    renderOrder: (order: AdminLaundryOrder) => ReactNode;
+}) {
     return (
         <div className="space-y-4">
             <div className="flex items-center gap-3">
@@ -156,6 +188,22 @@ function InputModal({
     setSecondaryValue,
     secondaryPlaceholder,
     secondaryType = "text",
+}: {
+    isOpen: boolean;
+    title: ReactNode;
+    description: ReactNode;
+    value: string;
+    setValue: (value: string) => void;
+    placeholder?: string;
+    confirmLabel: ReactNode;
+    onClose: () => void;
+    onConfirm: () => void;
+    loading: boolean;
+    inputType?: HTMLInputTypeAttribute;
+    secondaryValue?: string;
+    setSecondaryValue?: (value: string) => void;
+    secondaryPlaceholder?: string;
+    secondaryType?: HTMLInputTypeAttribute;
 }) {
     return (
         <AnimatePresence>
@@ -230,6 +278,19 @@ function PipelineOrderCard({
     onReschedule,
     onDelete,
     processing,
+}: {
+    order: AdminLaundryOrder;
+    stageId: PipelineStage;
+    stageLabel: string;
+    actionLabel: string | null;
+    ActionIcon: LucideIcon;
+    actionClass: string;
+    isExpanded: boolean;
+    onToggle: () => void;
+    onPrimaryAction: () => void;
+    onReschedule: () => void;
+    onDelete: () => void;
+    processing: boolean;
 }) {
     const itemCount =
         order.items?.reduce((acc, item) => acc + (Number(item.quantity) || 1), 0) || 0;
@@ -478,31 +539,68 @@ export default function LaundrySettings({
     onSavePricing,
     laundryOrders = [],
     loadingLaundryOrders = false,
+}: {
+    laundrySlots: string[];
+    selectedDay: string;
+    setSelectedDay: Dispatch<SetStateAction<string>>;
+    slotStart: string;
+    setSlotStart: Dispatch<SetStateAction<string>>;
+    slotEnd: string;
+    setSlotEnd: Dispatch<SetStateAction<string>>;
+    handleAddSlot: () => void;
+    handleDeleteSlot: (index: number) => void;
+    laundryPricing: LaundryPricing;
+    setLaundryPricing: Dispatch<SetStateAction<LaundryPricing>>;
+    onSavePricing: () => void;
+    laundryOrders?: AdminLaundryOrder[];
+    loadingLaundryOrders?: boolean;
 }) {
-    const [confirmModal, setConfirmModal] = useState({
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        slotIdx: number | null;
+        slotName: string;
+    }>({
         isOpen: false,
         slotIdx: null,
         slotName: "",
     });
-    const [deleteModal, setDeleteModal] = useState({ isOpen: false, order: null });
-    const [activeTab, setActiveTab] = useState("ReadyForPickup");
-    const [expandedOrderId, setExpandedOrderId] = useState(null);
-    const [processingOrderId, setProcessingOrderId] = useState(null);
-    const [paymentModal, setPaymentModal] = useState({
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        order: AdminLaundryOrder | null;
+    }>({ isOpen: false, order: null });
+    const [activeTab, setActiveTab] = useState<PipelineStage | "settings">("ReadyForPickup");
+    const [expandedOrderId, setExpandedOrderId] = useState<string | null>(null);
+    const [processingOrderId, setProcessingOrderId] = useState<string | null>(null);
+    const [paymentModal, setPaymentModal] = useState<{
+        isOpen: boolean;
+        type: "customer" | "shop" | null;
+        order: AdminLaundryOrder | null;
+        amount: string;
+        weight?: string;
+    }>({
         isOpen: false,
         type: null,
         order: null,
         amount: "",
         weight: "",
     });
-    const [rescheduleModal, setRescheduleModal] = useState({
+    const [rescheduleModal, setRescheduleModal] = useState<{
+        isOpen: boolean;
+        order: AdminLaundryOrder | null;
+        date: string;
+        slot: string;
+    }>({
         isOpen: false,
         order: null,
         date: "",
         slot: "",
     });
 
-    const updateOrder = async (orderId, updates, successMessage) => {
+    const updateOrder = async (
+        orderId: string,
+        updates: Record<string, unknown>,
+        successMessage: string
+    ) => {
         setProcessingOrderId(orderId);
         try {
             await updateLaundryOrder(orderId, {
@@ -523,7 +621,7 @@ export default function LaundrySettings({
     }, [laundryOrders, activeTab]);
 
     const groupedOrders = useMemo(() => {
-        return filteredOrders.reduce((acc, order) => {
+        return filteredOrders.reduce<Record<string, AdminLaundryOrder[]>>((acc, order) => {
             const key = order.scheduledDate || "No Date";
             if (!acc[key]) acc[key] = [];
             acc[key].push(order);
@@ -531,7 +629,7 @@ export default function LaundrySettings({
         }, {});
     }, [filteredOrders]);
 
-    const handlePrimaryAction = async (order, stageId) => {
+    const handlePrimaryAction = async (order: AdminLaundryOrder, stageId: PipelineStage) => {
         if (stageId === "ReadyForPickup") {
             await updateOrder(
                 order.id,
@@ -615,7 +713,7 @@ export default function LaundrySettings({
         setPaymentModal({ isOpen: false, type: null, order: null, amount: "", weight: "" });
     };
 
-    const openRescheduleModal = (order) => {
+    const openRescheduleModal = (order: AdminLaundryOrder) => {
         setRescheduleModal({
             isOpen: true,
             order,
@@ -643,7 +741,7 @@ export default function LaundrySettings({
         setRescheduleModal({ isOpen: false, order: null, date: "", slot: "" });
     };
 
-    const handleDeleteOrder = async (order) => {
+    const handleDeleteOrder = async (order: AdminLaundryOrder) => {
         try {
             await deleteLaundryOrder(order.id);
             toast.success("Order deleted successfully");
@@ -693,9 +791,10 @@ export default function LaundrySettings({
                                 {Object.entries(groupedOrders)
                                     .sort(([dateA], [dateB]) => dateA.localeCompare(dateB))
                                     .map(([date, ordersForDate]) => {
+                                        // Always found: this branch only renders for pipeline tabs.
                                         const currentTab = PIPELINE_TABS.find(
                                             (tab) => tab.id === activeTab
-                                        );
+                                        )!;
                                         return (
                                             <OrderDateGroup
                                                 key={date}
@@ -705,7 +804,7 @@ export default function LaundrySettings({
                                                     <PipelineOrderCard
                                                         key={order.id}
                                                         order={order}
-                                                        stageId={activeTab}
+                                                        stageId={activeTab as PipelineStage}
                                                         stageLabel={currentTab.label}
                                                         actionLabel={currentTab.actionLabel}
                                                         ActionIcon={currentTab.actionIcon}
@@ -717,7 +816,10 @@ export default function LaundrySettings({
                                                             )
                                                         }
                                                         onPrimaryAction={() =>
-                                                            handlePrimaryAction(order, activeTab)
+                                                            handlePrimaryAction(
+                                                                order,
+                                                                activeTab as PipelineStage
+                                                            )
                                                         }
                                                         onReschedule={() =>
                                                             openRescheduleModal(order)
@@ -977,7 +1079,7 @@ export default function LaundrySettings({
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal((prev) => ({ ...prev, isOpen: false }))}
-                onConfirm={() => handleDeleteSlot(confirmModal.slotIdx)}
+                onConfirm={() => handleDeleteSlot(confirmModal.slotIdx!)}
                 title="Delete Timeslot?"
                 message={`Are you sure you want to delete the timeslot "${confirmModal.slotName}"?`}
                 confirmLabel="Delete"
@@ -986,7 +1088,7 @@ export default function LaundrySettings({
             <ConfirmModal
                 isOpen={deleteModal.isOpen}
                 onClose={() => setDeleteModal({ isOpen: false, order: null })}
-                onConfirm={() => handleDeleteOrder(deleteModal.order)}
+                onConfirm={() => handleDeleteOrder(deleteModal.order!)}
                 title="Delete Order?"
                 message={
                     deleteModal.order

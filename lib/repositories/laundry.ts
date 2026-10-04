@@ -17,7 +17,7 @@ export async function createLaundryOrder(
     return docRef.id;
 }
 
-export async function updateLaundryOrder(id: string, data: Record<string, unknown>): Promise<void> {
+export async function updateLaundryOrder(id: string, data: object): Promise<void> {
     const validated = parsePatch(LaundryOrderSchema, data);
     await updateDoc(doc(db, COLLECTIONS.LAUNDRY_ORDERS, id), validated);
 }

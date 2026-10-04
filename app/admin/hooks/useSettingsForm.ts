@@ -28,6 +28,17 @@ export interface SettingsFormOptions<T extends Record<string, any>> {
  * A form whose own load failed reports `canSave: false` and refuses to save,
  * since without a trustworthy baseline every field looks changed.
  */
+/** The controls the admin page drives every settings form through, whatever its data. */
+export interface SettingsFormControls {
+    canSave: boolean;
+    isSaving: boolean;
+    pending: Record<string, unknown> | null;
+    requestSave: () => void;
+    confirmSave: () => Promise<void>;
+    cancelSave: () => void;
+    reload: () => Promise<void>;
+}
+
 export function useSettingsForm<T extends Record<string, any>>({
     load,
     save,

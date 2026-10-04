@@ -13,7 +13,7 @@ export async function saveRestaurant(
     await setDoc(doc(db, COLLECTIONS.RESTAURANTS, id), validated);
 }
 
-export async function updateRestaurant(id: string, data: Record<string, unknown>): Promise<void> {
+export async function updateRestaurant(id: string, data: object): Promise<void> {
     const validated = parsePatch(RestaurantSchema, data);
     await updateDoc(doc(db, COLLECTIONS.RESTAURANTS, id), validated);
 }

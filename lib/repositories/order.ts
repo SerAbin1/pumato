@@ -44,7 +44,7 @@ export async function createOrder(
     return { id: orderRef.id, orderNumber };
 }
 
-export async function updateOrder(id: string, data: Record<string, unknown>): Promise<void> {
+export async function updateOrder(id: string, data: object): Promise<void> {
     const validated = parsePatch(OrderSchema, data);
     await updateDoc(doc(db, COLLECTIONS.ORDERS, id), validated);
 }

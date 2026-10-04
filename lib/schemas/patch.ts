@@ -8,10 +8,7 @@ import type { z } from "zod";
  * `itemName: ""` etc. and overwrite the stored values. Keys the schema does not
  * define are dropped, as `.partial()` did.
  */
-export function parsePatch<S extends z.ZodObject>(
-    schema: S,
-    data: Record<string, unknown>
-): Partial<z.output<S>> {
+export function parsePatch<S extends z.ZodObject>(schema: S, data: object): Partial<z.output<S>> {
     const keys = Object.fromEntries(
         Object.keys(data)
             .filter((key) => key in schema.shape)

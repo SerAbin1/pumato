@@ -1,5 +1,7 @@
 import type { SlotDef } from "@/lib/preOrderSlots";
+import type { StoredPromotion } from "@/lib/marketplacePromotions";
 import type {
+    CustomLink,
     DeliveryCampusConfig,
     GrocerySettings,
     MenuItem,
@@ -64,3 +66,21 @@ export type GrocerySettingsDraft = Omit<GrocerySettings, "campusPreOrder" | "man
 
 /** A settings editor's state and its setter, as useSettingsForm hands them out. */
 export type SetDraft<T> = (next: T) => void;
+
+/** A marketplace listing as the admin listing form edits it. */
+export interface ListingDraft {
+    id?: string;
+    itemName: string;
+    description: string;
+    askingPrice: number | string;
+    filter: string;
+    campus: string;
+    sellerName: string;
+    sellerWhatsApp: string;
+    images: string[];
+    isVisible: boolean;
+    expiryDate: string;
+    customLinks: CustomLink[];
+    promotion?: StoredPromotion | null;
+    createdAt?: unknown;
+}

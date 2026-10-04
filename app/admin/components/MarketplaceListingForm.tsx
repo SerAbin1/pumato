@@ -15,8 +15,14 @@ import {
     deriveTier,
     normalizePromotion,
 } from "@/lib/marketplacePromotions";
+import type { ChangeEvent, ReactNode } from "react";
+import type { Placement, Promotion } from "@/lib/marketplacePromotions";
+import type { CustomLink } from "@/lib/types";
+import type { ListingDraft } from "../types";
 
-function ReachPicker({ value, onChange }) {
+type ListingFormState = ListingDraft & { promotion: Promotion };
+
+function ReachPicker({ value, onChange }: { value: number; onChange: (reach: number) => void }) {
     return (
         <div className="flex flex-wrap items-center gap-2">
             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest mr-1">
@@ -36,7 +42,21 @@ function ReachPicker({ value, onChange }) {
     );
 }
 
-function PlacementToggle({ id, label, description, enabled, onToggle, children }) {
+function PlacementToggle({
+    id,
+    label,
+    description,
+    enabled,
+    onToggle,
+    children,
+}: {
+    id: string;
+    label: ReactNode;
+    description: ReactNode;
+    enabled: boolean;
+    onToggle: (enabled: boolean) => void;
+    children: ReactNode;
+}) {
     return (
         <div
             className={`p-4 rounded-xl border space-y-4 transition-colors ${enabled ? "border-purple-500 bg-purple-500/10" : "border-white/10 bg-black/20"}`}
@@ -64,8 +84,13 @@ export default function MarketplaceListingForm({
     onSave,
     onCancel,
     isSaving = false,
+}: {
+    initialData: Partial<ListingDraft> | null;
+    onSave: (data: ListingFormState) => void;
+    onCancel: () => void;
+    isSaving?: boolean;
 }) {
-    const [formData, setFormData] = useState({
+    const [formData, setFormData] = useState<ListingFormState>({
         itemName: "",
         description: "",
         askingPrice: "",
@@ -80,7 +105,7 @@ export default function MarketplaceListingForm({
         ...initialData,
         promotion: normalizePromotion(initialData?.promotion),
     });
-    const [filters, setFilters] = useState([]);
+    const [filters, setFilters] = useState<{ label: string }[]>([]);
     const [creatingFilter, setCreatingFilter] = useState(false);
     const [newFilterName, setNewFilterName] = useState("");
     const [uploading, setUploading] = useState(false);
@@ -101,7 +126,7 @@ export default function MarketplaceListingForm({
         fetchFilters();
     }, []);
 
-    const handleImageUpload = async (e) => {
+    const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         if (files.length === 0) return;
 
@@ -119,7 +144,7 @@ export default function MarketplaceListingForm({
         }
     };
 
-    const removeImage = (url) => {
+    const removeImage = (url: string) => {
         setFormData((prev) => ({ ...prev, images: prev.images.filter((img) => img !== url) }));
     };
 
@@ -130,14 +155,14 @@ export default function MarketplaceListingForm({
         }));
     };
 
-    const handleRemoveLink = (index) => {
+    const handleRemoveLink = (index: number) => {
         setFormData((prev) => ({
             ...prev,
             customLinks: prev.customLinks.filter((_, i) => i !== index),
         }));
     };
 
-    const handleLinkChange = (index, field, value) => {
+    const handleLinkChange = (index: number, field: keyof CustomLink, value: string) => {
         setFormData((prev) => ({
             ...prev,
             customLinks: prev.customLinks.map((link, i) =>
@@ -146,10 +171,10 @@ export default function MarketplaceListingForm({
         }));
     };
 
-    const setPromotion = (patch) =>
+    const setPromotion = (patch: Partial<Promotion>) =>
         setFormData((prev) => ({ ...prev, promotion: { ...prev.promotion, ...patch } }));
 
-    const setPlacement = (placement, patch) =>
+    const setPlacement = <P extends Placement>(placement: P, patch: Partial<Promotion[P]>) =>
         setFormData((prev) => ({
             ...prev,
             promotion: {
@@ -160,7 +185,7 @@ export default function MarketplaceListingForm({
 
     const { inFeed, popup, targetCampuses } = formData.promotion;
 
-    const toggleInList = (list, value) =>
+    const toggleInList = (list: string[], value: string) =>
         list.includes(value) ? list.filter((v) => v !== value) : [...list, value];
 
     const handleSave = async () => {
@@ -180,7 +205,7 @@ export default function MarketplaceListingForm({
             }
         }
         const customLinks = (formData.customLinks || []).filter((l) => l.type && l.link.trim());
-        const formattedData = {
+        const formattedData: ListingFormState = {
             ...formData,
             filter,
             itemName: (formData.itemName || "").trim(),

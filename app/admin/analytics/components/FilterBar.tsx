@@ -8,7 +8,24 @@ const PRESETS = [
     { id: "90days", label: "Last 90 Days" },
 ];
 
-export default function FilterBar({ preset, customRange, onPresetChange, onCustomRangeChange }) {
+export interface DateRange {
+    start: Date | null;
+    end: Date | null;
+}
+
+interface FilterBarProps {
+    preset: string | null;
+    customRange: DateRange;
+    onPresetChange: (preset: string) => void;
+    onCustomRangeChange: (start: Date, end: Date) => void;
+}
+
+export default function FilterBar({
+    preset,
+    customRange,
+    onPresetChange,
+    onCustomRangeChange,
+}: FilterBarProps) {
     const [showCustom, setShowCustom] = useState(false);
     const [customStart, setCustomStart] = useState("");
     const [customEnd, setCustomEnd] = useState("");

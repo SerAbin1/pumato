@@ -11,6 +11,7 @@ import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useCart } from "@/app/context/CartContext";
 import { useFavourites } from "@/app/context/FavouritesContext";
 import { resolveFavourites } from "@/lib/favourites";
+import type { ResolvedFavourite } from "@/lib/favourites";
 
 export default function FavouritesPage() {
     const router = useRouter();
@@ -29,22 +30,24 @@ export default function FavouritesPage() {
         [favourites, restaurants]
     );
 
-    const add = (entry) => {
+    // Only called for `available` entries, which always have a live item.
+    const add = (entry: ResolvedFavourite) => {
+        const item = entry.item!;
         addToCart(
             {
-                id: entry.item.id,
-                name: entry.item.name,
-                price: Number(entry.item.price),
-                unitPrice: Number(entry.item.price),
+                id: item.id,
+                name: item.name,
+                price: Number(item.price),
+                unitPrice: Number(item.price),
                 restaurantId: entry.restaurantId,
                 restaurantName: entry.restaurantName,
-                category: entry.item.category,
-                isVeg: entry.item.isVeg ?? false,
+                category: item.category,
+                isVeg: item.isVeg ?? false,
             },
             1
         );
         setIsCartOpen(true);
-        toast.success(`${entry.item.name} added to cart`);
+        toast.success(`${item.name} added to cart`);
     };
 
     if (authLoading || !loaded || !restaurantsLoaded) {

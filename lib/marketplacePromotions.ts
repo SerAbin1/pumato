@@ -88,7 +88,7 @@ export function deriveTier(
 }
 
 /** Fills defaults, and reads listings saved with the earlier single-tier shape. */
-export function normalizePromotion(promotion: StoredPromotion | null | undefined): Promotion {
+export function normalizePromotion(promotion?: StoredPromotion | null): Promotion {
     const p: StoredPromotion = promotion || {};
     if (!p.inFeed && !p.popup && p.tier) {
         return {

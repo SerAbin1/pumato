@@ -2,7 +2,7 @@
 
 import { Package, XCircle, CheckCircle, DollarSign, Zap } from "lucide-react";
 
-function formatCurrency(amount) {
+function formatCurrency(amount: number) {
     return new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
@@ -11,15 +11,26 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-function formatHour(hour) {
+function formatHour(hour: string | number | null | undefined) {
     if (hour === undefined || hour === null) return "N/A";
-    const h = parseInt(hour);
+    const h = parseInt(String(hour));
     const ampm = h >= 12 ? "PM" : "AM";
     const h12 = h % 12 || 12;
     return `${h12}:00 ${ampm} - ${(h12 + 1) % 12 || 12}:00 ${ampm}`;
 }
 
-export default function OtherMetrics({ metrics }) {
+export default function OtherMetrics({
+    metrics,
+}: {
+    metrics: {
+        totalOrders: number;
+        completedOrders: number;
+        cancelledOrders: number;
+        deliveryChargeEarned: number;
+        itemAmount: number;
+        peakHour?: string;
+    };
+}) {
     const completionRate =
         metrics.totalOrders > 0
             ? ((metrics.completedOrders / metrics.totalOrders) * 100).toFixed(1)

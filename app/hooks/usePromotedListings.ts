@@ -5,21 +5,23 @@ import { collection, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
 import { selectPromotions } from "@/lib/marketplacePromotions";
+import type { Placement } from "@/lib/marketplacePromotions";
+import type { MarketplaceListing } from "@/lib/types";
 import { useCart } from "@/app/context/CartContext";
 
 const VISITOR_ID_KEY = "pumato_visitor_id";
 
 // Shared across every surface on the page so the popup and in-feed cards cost one read
-let promotedListingsPromise = null;
+let promotedListingsPromise: Promise<MarketplaceListing[]> | null = null;
 
-function fetchPromotedListings() {
+function fetchPromotedListings(): Promise<MarketplaceListing[]> {
     if (!promotedListingsPromise) {
         const q = query(
             collection(db, COLLECTIONS.MARKETPLACE_LISTINGS),
             where("promotion.tier", "in", ["L2", "L3"])
         );
         promotedListingsPromise = getDocs(q)
-            .then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+            .then((snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }) as MarketplaceListing))
             .catch((err) => {
                 console.error("Error fetching promoted listings:", err);
                 promotedListingsPromise = null;
@@ -29,7 +31,7 @@ function fetchPromotedListings() {
     return promotedListingsPromise;
 }
 
-function getVisitorId() {
+function getVisitorId(): string | null {
     try {
         let id = localStorage.getItem(VISITOR_ID_KEY);
         if (!id) {
@@ -44,13 +46,15 @@ function getVisitorId() {
 
 /**
  * Promoted marketplace listings this visitor should see in one placement.
- * @param {"inFeed"|"popup"} placement
- * @param {string} [surface] - required for inFeed, see PROMOTION_SURFACES
+ * @param surface - required for inFeed, see PROMOTION_SURFACES
  */
-export default function usePromotedListings(placement, surface) {
+export default function usePromotedListings(
+    placement: Placement,
+    surface?: string
+): MarketplaceListing[] {
     const { userDetails, isLoaded } = useCart();
-    const [listings, setListings] = useState([]);
-    const [visitorId, setVisitorId] = useState(null);
+    const [listings, setListings] = useState<MarketplaceListing[]>([]);
+    const [visitorId, setVisitorId] = useState<string | null>(null);
 
     useEffect(() => {
         let cancelled = false;

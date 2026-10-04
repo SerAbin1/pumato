@@ -6,6 +6,16 @@ import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight, X } from "lucide-react";
 import { nextIndex, prevIndex, hasMultipleImages } from "@/lib/imageGallery";
+import type { TouchEvent } from "react";
+
+interface ImageLightboxProps {
+    isOpen: boolean;
+    onClose: () => void;
+    images?: string[];
+    index?: number;
+    onIndexChange: (index: number) => void;
+    alt?: string;
+}
 
 const SWIPE_THRESHOLD_PX = 50;
 
@@ -20,10 +30,10 @@ export default function ImageLightbox({
     index = 0,
     onIndexChange,
     alt = "",
-}) {
+}: ImageLightboxProps) {
     const [mounted, setMounted] = useState(false);
-    const touchStartX = useRef(null);
-    const closeButtonRef = useRef(null);
+    const touchStartX = useRef<number | null>(null);
+    const closeButtonRef = useRef<HTMLButtonElement>(null);
 
     const count = images.length;
     const multiple = hasMultipleImages(images);
@@ -44,7 +54,7 @@ export default function ImageLightbox({
         document.body.style.overflow = "hidden";
         closeButtonRef.current?.focus();
 
-        const onKeyDown = (e) => {
+        const onKeyDown = (e: KeyboardEvent) => {
             if (e.key === "Escape") {
                 onClose();
             } else if (e.key === "ArrowRight" && multiple) {
@@ -74,7 +84,7 @@ export default function ImageLightbox({
     }, [isOpen, multiple, activeIndex, count, images]);
 
     const go = useCallback(
-        (delta) => {
+        (delta: number) => {
             onIndexChange?.(
                 delta > 0 ? nextIndex(activeIndex, count) : prevIndex(activeIndex, count)
             );
@@ -82,11 +92,11 @@ export default function ImageLightbox({
         [onIndexChange, activeIndex, count]
     );
 
-    const onTouchStart = (e) => {
+    const onTouchStart = (e: TouchEvent) => {
         touchStartX.current = e.touches[0]?.clientX ?? null;
     };
 
-    const onTouchEnd = (e) => {
+    const onTouchEnd = (e: TouchEvent) => {
         const startX = touchStartX.current;
         touchStartX.current = null;
         if (startX == null || !multiple) return;

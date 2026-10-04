@@ -1,7 +1,7 @@
 "use strict";
 
 import { describe, it, expect } from "vitest";
-import { searchItemOptions } from "../../../../lib/restaurants/menuItem";
+import { searchItemOptions, plainCartLine } from "../../../../lib/restaurants/menuItem";
 
 const pizza = {
     id: "pz1",
@@ -50,5 +50,24 @@ describe("searchItemOptions", () => {
             addons: [],
             empty: true,
         });
+    });
+});
+
+describe("plainCartLine", () => {
+    it("drops the menu's option lists and keeps everything else", () => {
+        const line = plainCartLine({
+            id: "c1",
+            name: "Chai",
+            price: "20",
+            variants: [],
+            addons: [],
+        });
+        expect(line).toEqual({ id: "c1", name: "Chai", price: "20" });
+    });
+
+    it("does not mutate the menu item", () => {
+        const item = { id: "c1", name: "Chai", price: "20", addons: [] };
+        plainCartLine(item);
+        expect(item.addons).toEqual([]);
     });
 });

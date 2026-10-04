@@ -1,9 +1,10 @@
 "use client";
 
+import type { ReactNode } from "react";
 import { AdminAuthProvider } from "@/app/context/AdminAuthContext";
 import { Toaster } from "react-hot-toast";
 
-export default function PartnerLayoutClient({ children }) {
+export default function PartnerLayoutClient({ children }: { children: ReactNode }) {
     return (
         <AdminAuthProvider>
             <div className="min-h-screen bg-black text-white font-sans selection:bg-orange-500/30">

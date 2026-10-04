@@ -1,3 +1,14 @@
+import type { ChangeEventHandler, HTMLInputTypeAttribute, ReactNode } from "react";
+
+interface FormInputProps {
+    label: ReactNode;
+    value: string | number;
+    onChange: ChangeEventHandler<HTMLInputElement>;
+    placeholder?: string;
+    type?: HTMLInputTypeAttribute;
+    disabled?: boolean;
+}
+
 export default function FormInput({
     label,
     value,
@@ -5,7 +16,7 @@ export default function FormInput({
     placeholder,
     type = "text",
     disabled = false,
-}) {
+}: FormInputProps) {
     return (
         <div className="space-y-3">
             <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">

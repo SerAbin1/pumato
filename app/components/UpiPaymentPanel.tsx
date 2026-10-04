@@ -12,6 +12,16 @@ import {
 } from "@/lib/upi";
 import { createPayment } from "@/lib/repositories";
 import { serverTimestamp } from "firebase/firestore";
+import type { FirebaseError } from "firebase/app";
+import type { Payment } from "@/lib/types";
+
+interface UpiPaymentPanelProps {
+    order: { id: string; orderNumber?: string; finalTotal: number | string };
+    user: { uid: string } | null;
+    upiId: string;
+    upiPayeeName: string;
+    existingPayment?: Payment | null;
+}
 
 /**
  * Pay-by-UPI for one order.
@@ -22,12 +32,18 @@ import { serverTimestamp } from "firebase/firestore";
  * actually been invoked — otherwise every incidental tab focus would pop a
  * payment form at people who never started paying.
  */
-export default function UpiPaymentPanel({ order, user, upiId, upiPayeeName, existingPayment }) {
-    const [payment, setPayment] = useState(existingPayment || null);
+export default function UpiPaymentPanel({
+    order,
+    user,
+    upiId,
+    upiPayeeName,
+    existingPayment,
+}: UpiPaymentPanelProps) {
+    const [payment, setPayment] = useState<Payment | null>(existingPayment || null);
     const [awaitingPayment, setAwaitingPayment] = useState(false);
     const [transactionId, setTransactionId] = useState("");
     const [submitting, setSubmitting] = useState(false);
-    const inputRef = useRef(null);
+    const inputRef = useRef<HTMLInputElement>(null);
 
     const link = buildUpiLink({
         vpa: upiId,
@@ -76,9 +92,9 @@ export default function UpiPaymentPanel({ order, user, upiId, upiPayeeName, exis
 
         setSubmitting(true);
         try {
-            const record = {
+            const record: Payment = {
                 orderId: order.id,
-                userId: user.uid,
+                userId: user!.uid,
                 orderNumber: order.orderNumber,
                 amount: Number(order.finalTotal),
                 reference: paymentReference(order.orderNumber),
@@ -94,7 +110,7 @@ export default function UpiPaymentPanel({ order, user, upiId, upiPayeeName, exis
             // A create-only rule means a second submission lands here rather
             // than overwriting the first.
             toast.error(
-                error?.code === "permission-denied"
+                (error as FirebaseError)?.code === "permission-denied"
                     ? "A payment is already recorded for this order."
                     : "Couldn't record that. Try again."
             );

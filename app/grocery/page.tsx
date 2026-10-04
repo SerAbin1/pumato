@@ -1,6 +1,15 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
+import type { FormEvent } from "react";
+import type { SlotOccurrence } from "@/lib/preOrderSlots";
+import type { CampusConfig } from "@/lib/types";
+
+interface GroceryItemDraft {
+    id: number;
+    name: string;
+    quantity: string;
+}
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { useCart } from "../context/CartContext";
@@ -35,9 +44,9 @@ import ConfirmModal from "../components/ConfirmModal";
 export default function GroceryPage() {
     const { grocerySettings, groceryNumber } = useCart();
     const [isLive, setIsLive] = useState(true);
-    const [selectedSlot, setSelectedSlot] = useState(null);
-    const [pendingSlot, setPendingSlot] = useState(null);
-    const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
+    const [selectedSlot, setSelectedSlot] = useState<SlotOccurrence | null>(null);
+    const [pendingSlot, setPendingSlot] = useState<SlotOccurrence | null>(null);
+    const [campusConfig, setCampusConfig] = useState<CampusConfig[]>(DEFAULT_CAMPUS_CONFIG);
 
     const serviceHours = useMemo(() => grocerySettings?.service_hours ?? [], [grocerySettings]);
 
@@ -138,19 +147,19 @@ export default function GroceryPage() {
         }
     }, [formData]);
 
-    const [items, setItems] = useState([{ id: 1, name: "", quantity: "" }]);
+    const [items, setItems] = useState<GroceryItemDraft[]>([{ id: 1, name: "", quantity: "" }]);
 
     const handleAddItem = () => {
         setItems([...items, { id: Date.now(), name: "", quantity: "" }]);
     };
 
-    const handleRemoveItem = (id) => {
+    const handleRemoveItem = (id: number) => {
         if (items.length > 1) {
             setItems(items.filter((item) => item.id !== id));
         }
     };
 
-    const handleItemChange = (id, field, value) => {
+    const handleItemChange = (id: number, field: "name" | "quantity", value: string) => {
         if (field === "quantity" && value !== "" && Number(value) < 1) return;
         const newItems = items.map((item) => (item.id === id ? { ...item, [field]: value } : item));
         setItems(newItems);
@@ -172,7 +181,7 @@ export default function GroceryPage() {
         fetchSettings();
     }, []);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: FormEvent) => {
         e.preventDefault();
 
         const trimmedName = formData.name.trim();

@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useEffect, useReducer, useMemo, useState } from "react";
+import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { manageCoupons } from "@/lib/functions";
 import {
     useRestaurants,
@@ -11,10 +12,74 @@ import {
 } from "@/app/hooks/useCartData";
 import { cartReducer, initialState } from "./cartReducer";
 import * as Pricing from "@/lib/cartPricing";
+import type { CampusPreOrderConfig, MinOrderShortfall } from "@/lib/cartPricing";
+import type {
+    CartItem,
+    CartItemInput,
+    Coupon,
+    DeliveryCampusConfig,
+    GrocerySettings,
+    OrderSettings,
+    Restaurant,
+    UserDetails,
+} from "@/lib/types";
 
-const CartContext = createContext();
+export interface CartContextValue {
+    // State
+    cartItems: CartItem[];
+    isCartOpen: boolean;
+    userDetails: UserDetails;
+    couponCode: string | null;
+    activeCoupon: Coupon | null;
+    isLoaded: boolean;
 
-export function CartProvider({ children }) {
+    // Data
+    restaurants: Restaurant[];
+    restaurantsLoaded: boolean;
+    availableCoupons: Coupon[];
+    orderSettings: OrderSettings;
+    grocerySettings: GrocerySettings;
+    laundrySettings: { slots: string[] };
+    campusConfig: DeliveryCampusConfig[];
+
+    // Metrics
+    itemTotal: number;
+    totalItems: number;
+    deliveryCharge: number;
+    largeOrderSurcharge: number;
+    campusDeliveryCharge: number;
+    hasHeavyItems: boolean;
+    isMultiRestaurant: boolean;
+    discount: number;
+    finalTotal: number;
+    minOrderShortfalls: MinOrderShortfall[];
+
+    // Actions
+    setIsCartOpen: (isOpen: boolean) => void;
+    setUserDetails: Dispatch<SetStateAction<UserDetails>>;
+    addToCart: (item: CartItemInput, quantityDelta?: number) => void;
+    removeFromCart: (key: string) => void;
+    updateQuantity: (key: string, delta: number) => void;
+    clearCart: () => void;
+    applyCoupon: (code: string) => Promise<{ success: boolean; message: string }>;
+    removeCoupon: () => void;
+    getCampusSlots: (campusId: string) => { start: string; end: string }[];
+    getCampusPreOrderConfig: (campusId: string) => CampusPreOrderConfig;
+
+    // Constants/Config (Passthrough)
+    paymentQR?: string;
+    foodDeliveryNumber: string;
+    laundryNumber: string;
+    groceryNumber: string;
+    upiId: string;
+    upiPayeeName: string;
+    googleSheetUrl: string;
+    whatsappGroups: { name: string; link: string }[];
+}
+
+const CartContext = createContext<CartContextValue>(null as unknown as CartContextValue);
+
+export function CartProvider({ children }: { children: ReactNode }) {
     const [state, dispatch] = useReducer(cartReducer, initialState);
     const [isLoaded, setIsLoaded] = useState(false);
 
@@ -27,7 +92,7 @@ export function CartProvider({ children }) {
 
     // --- Persistence ---
     useEffect(() => {
-        let loadTimer;
+        let loadTimer: number | undefined;
         if (typeof window !== "undefined") {
             const saved = localStorage.getItem("pumato_user_details");
             if (saved) {
@@ -88,24 +153,24 @@ export function CartProvider({ children }) {
 
     // --- Actions ---
 
-    const addToCart = (item, quantityDelta = 1) => {
+    const addToCart = (item: CartItemInput, quantityDelta = 1) => {
         dispatch({ type: "ADD_ITEM", payload: { item, quantityDelta } });
     };
-    const removeFromCart = (key) => dispatch({ type: "REMOVE_ITEM", payload: key });
-    const updateQuantity = (key, delta) =>
+    const removeFromCart = (key: string) => dispatch({ type: "REMOVE_ITEM", payload: key });
+    const updateQuantity = (key: string, delta: number) =>
         dispatch({ type: "UPDATE_QUANTITY", payload: { id: key, delta } });
     const clearCart = () => dispatch({ type: "CLEAR_CART" });
-    const setIsCartOpen = (isOpen) => dispatch({ type: "SET_CART_OPEN", payload: isOpen });
-    const setUserDetails = (details) => {
+    const setIsCartOpen = (isOpen: boolean) => dispatch({ type: "SET_CART_OPEN", payload: isOpen });
+    const setUserDetails: Dispatch<SetStateAction<UserDetails>> = (details) => {
         // Handle both functional updates and direct values to match useState API
         const newDetails = typeof details === "function" ? details(state.userDetails) : details;
         dispatch({ type: "UPDATE_USER_DETAILS", payload: newDetails });
     };
 
-    const applyCoupon = async (code) => {
+    const applyCoupon = async (code: string) => {
         const uppercaseCode = code.trim().toUpperCase();
         try {
-            const { data: coupon } = await manageCoupons({
+            const { data: coupon } = await manageCoupons<Coupon | null>({
                 action: "FETCH_BY_CODE",
                 payload: { code: uppercaseCode },
             });
@@ -139,8 +204,8 @@ export function CartProvider({ children }) {
     };
 
     const removeCoupon = () => dispatch({ type: "REMOVE_COUPON" });
-    const getCampusSlots = (campusId) => Pricing.getCampusSlots(orderSettings, campusId);
-    const getCampusPreOrderConfig = (campusId) =>
+    const getCampusSlots = (campusId: string) => Pricing.getCampusSlots(orderSettings, campusId);
+    const getCampusPreOrderConfig = (campusId: string) =>
         Pricing.getCampusPreOrderConfig(orderSettings, campusId);
 
     return (

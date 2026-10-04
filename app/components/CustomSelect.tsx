@@ -3,23 +3,38 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronDown, Check } from "lucide-react";
+import type { ReactNode } from "react";
 
-export default function CustomSelect({
+export interface SelectOption<V extends string | number = string> {
+    value: V;
+    label: ReactNode;
+}
+
+interface CustomSelectProps<V extends string | number> {
+    options: SelectOption<V>[];
+    value: V | null | undefined;
+    onChange: (value: V) => void;
+    placeholder?: string;
+    className?: string;
+    optionClassName?: string;
+}
+
+export default function CustomSelect<V extends string | number = string>({
     options,
     value,
     onChange,
     placeholder = "Select...",
     className = "",
     optionClassName = "",
-}) {
+}: CustomSelectProps<V>) {
     const [isOpen, setIsOpen] = useState(false);
-    const containerRef = useRef(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const selectedOption = options.find((opt) => opt.value === value);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (containerRef.current && !containerRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };

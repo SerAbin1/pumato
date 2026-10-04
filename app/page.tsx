@@ -12,6 +12,8 @@ import {
 } from "framer-motion";
 import { Instagram, Mail, MessageCircle, ArrowRight, Zap, Wallet, ShieldCheck } from "lucide-react";
 import { useRef, useEffect, useState } from "react";
+import type { MouseEvent, ReactNode } from "react";
+import type { GrocerySettings, OrderSettings } from "@/lib/types";
 import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
@@ -21,20 +23,20 @@ import { isServiceLive } from "@/lib/serviceStatus";
 // --- COMPONENTS ---
 
 // --- HELPER FUNCTION ---
-const checkIsLive = (settings, isGrocery = false) => {
+const checkIsLive = (settings: OrderSettings | GrocerySettings, isGrocery = false) => {
     const { timeInMinutes } = getISTTime();
     if (isGrocery) {
-        const slots = settings?.service_hours ?? [];
+        const slots = (settings as GrocerySettings)?.service_hours ?? [];
         return isServiceLive(settings?.manualOverride?.status, slots, timeInMinutes);
     }
-    const campusConfig = settings?.deliveryCampusConfig || [];
+    const campusConfig = (settings as OrderSettings)?.deliveryCampusConfig || [];
     const allSlots = campusConfig.flatMap((campus) => campus.slots || []);
     return isServiceLive(settings?.manualOverride?.status, allSlots, timeInMinutes);
 };
 
 // 1. 3D Tilt Card Component
-function TiltCard({ children, className }) {
-    const ref = useRef(null);
+function TiltCard({ children, className }: { children: ReactNode; className?: string }) {
+    const ref = useRef<HTMLDivElement>(null);
     const x = useMotionValue(0);
     const y = useMotionValue(0);
 
@@ -50,7 +52,7 @@ function TiltCard({ children, className }) {
         setIsMobile(window.matchMedia("(hover: none) or (max-width: 768px)").matches);
     }, []);
 
-    const handleMouseMove = (e) => {
+    const handleMouseMove = (e: MouseEvent) => {
         if (isMobile || !ref.current) return;
 
         const rect = ref.current.getBoundingClientRect();
@@ -88,8 +90,8 @@ function TiltCard({ children, className }) {
 }
 
 // 2. Animated Counter
-function Counter({ value, label }) {
-    const ref = useRef(null);
+function Counter({ value, label }: { value: string; label: ReactNode }) {
+    const ref = useRef<HTMLDivElement>(null);
     const isInView = useInView(ref, { once: true, margin: "-50px" });
     const [count, setCount] = useState(0);
 
@@ -254,7 +256,7 @@ export default function GatewayPage() {
                         <motion.button
                             onClick={() =>
                                 document
-                                    .getElementById("services")
+                                    .getElementById("services")!
                                     .scrollIntoView({ behavior: "smooth" })
                             }
                             className="bg-white text-black px-10 py-4 rounded-full font-bold text-lg hover:scale-105 hover:bg-orange-50 transition-all flex items-center gap-2 mx-auto"

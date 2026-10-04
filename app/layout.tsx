@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { CartProvider } from "./context/CartContext";
@@ -11,7 +13,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 import { Toaster } from "react-hot-toast";
 
-export const metadata = {
+export const metadata: Metadata = {
     title: "Pumato - Food Delivery",
     description: "Delicious food delivered to your hostel.",
     alternates: {
@@ -31,7 +33,7 @@ export const metadata = {
     manifest: "/site.webmanifest",
 };
 
-export default function RootLayout({ children }) {
+export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="en">
             <body className={inter.className}>

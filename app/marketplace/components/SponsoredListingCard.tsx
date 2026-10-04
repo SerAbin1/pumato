@@ -4,6 +4,10 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Package } from "lucide-react";
+import type { MarketplaceListing } from "@/lib/types";
+
+type SponsoredListing = Pick<MarketplaceListing, "id"> &
+    Partial<Pick<MarketplaceListing, "images" | "itemName" | "askingPrice" | "description">>;
 
 function SponsoredBadge() {
     return (
@@ -13,7 +17,15 @@ function SponsoredBadge() {
     );
 }
 
-function ListingImage({ listing, sizes, iconSize }) {
+function ListingImage({
+    listing,
+    sizes,
+    iconSize,
+}: {
+    listing: SponsoredListing;
+    sizes: string;
+    iconSize: number;
+}) {
     return listing.images?.[0] ? (
         <Image
             src={listing.images[0]}
@@ -31,9 +43,14 @@ function ListingImage({ listing, sizes, iconSize }) {
 
 /**
  * An in-feed promoted marketplace listing rendered in-between regular items.
- * @param {{ listing: object, variant?: "menu" | "grid" }} props
  */
-export default function SponsoredListingCard({ listing, variant = "menu" }) {
+export default function SponsoredListingCard({
+    listing,
+    variant = "menu",
+}: {
+    listing: SponsoredListing;
+    variant?: "menu" | "grid";
+}) {
     const href = `/marketplace?id=${listing.id}`;
 
     if (variant === "grid") {

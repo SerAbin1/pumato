@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { CANONICAL_URLS } from "@/lib/seo";
 
-export const metadata = {
+export const metadata: Metadata = {
     title: "My Orders | Pumato",
     description: "View your order history and track deliveries.",
     alternates: {
@@ -8,6 +10,6 @@ export const metadata = {
     },
 };
 
-export default function OrdersLayout({ children }) {
+export default function OrdersLayout({ children }: { children: ReactNode }) {
     return children;
 }

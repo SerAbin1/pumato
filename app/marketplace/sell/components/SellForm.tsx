@@ -1,9 +1,34 @@
 import { User, Phone, Tag, IndianRupee, FileText, Send, Link, Plus, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
+import type {
+    ChangeEventHandler,
+    Dispatch,
+    FormEventHandler,
+    ReactNode,
+    SetStateAction,
+} from "react";
+import type { CustomLink } from "@/lib/types";
+import type { MarketplaceField, SellFormData } from "../types";
 
-const DEFAULT_FIELDS = ["itemName", "description", "askingPrice", "campus"];
-const DEFAULT_OPTIONAL_FIELDS = ["customLinks"];
+const DEFAULT_FIELDS: MarketplaceField[] = ["itemName", "description", "askingPrice", "campus"];
+const DEFAULT_OPTIONAL_FIELDS: MarketplaceField[] = ["customLinks"];
+
+interface SellFormProps {
+    formData: SellFormData;
+    handleChange: ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+    setFormData: Dispatch<SetStateAction<SellFormData>>;
+    campusConfig: { id: string; name: string }[];
+    handleSubmit: FormEventHandler<HTMLFormElement>;
+    formTitle: ReactNode;
+    categoryFields?: MarketplaceField[];
+    categoryOptionalFields?: MarketplaceField[];
+    customLinks?: CustomLink[];
+    redirectLabel?: string;
+    onAddLink: () => void;
+    onRemoveLink: (index: number) => void;
+    onLinkChange: (index: number, field: "type" | "link", value: string) => void;
+}
 
 export default function SellForm({
     formData,
@@ -19,10 +44,10 @@ export default function SellForm({
     onAddLink,
     onRemoveLink,
     onLinkChange,
-}) {
-    const showField = (field) =>
+}: SellFormProps) {
+    const showField = (field: MarketplaceField) =>
         categoryFields.includes(field) || categoryOptionalFields.includes(field);
-    const isRequired = (field) => categoryFields.includes(field);
+    const isRequired = (field: MarketplaceField) => categoryFields.includes(field);
 
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl w-full max-w-full overflow-hidden">

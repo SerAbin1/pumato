@@ -16,21 +16,24 @@ import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { seededShuffle } from "@/lib/shuffle";
 import { isListingLive } from "@/lib/marketplacePromotions";
+import type { MarketplaceListing } from "@/lib/types";
 
 function MarketplaceContent() {
     const searchParams = useSearchParams();
     const id = searchParams.get("id");
 
     const { getCollection, loading } = useFirestore();
-    const [listings, setListings] = useState([]);
-    const [filters, setFilters] = useState([]);
+    const [listings, setListings] = useState<MarketplaceListing[]>([]);
+    const [filters, setFilters] = useState<{ label: string }[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [filter, setFilter] = useState("all");
 
     useEffect(() => {
         const fetchListings = async () => {
             try {
-                const data = await getCollection(COLLECTIONS.MARKETPLACE_LISTINGS);
+                const data = await getCollection<MarketplaceListing>(
+                    COLLECTIONS.MARKETPLACE_LISTINGS
+                );
                 setListings(data.filter((listing) => isListingLive(listing)));
             } catch (err) {
                 console.error("Error fetching marketplace listings:", err);

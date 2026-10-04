@@ -4,6 +4,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import type { ReactNode } from "react";
+
+interface ConfirmModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+    title?: ReactNode;
+    message?: ReactNode;
+    confirmLabel?: ReactNode;
+    cancelLabel?: ReactNode;
+    isDanger?: boolean;
+}
 
 export default function ConfirmModal({
     isOpen,
@@ -14,7 +26,7 @@ export default function ConfirmModal({
     confirmLabel = "Confirm",
     cancelLabel = "Cancel",
     isDanger = true,
-}) {
+}: ConfirmModalProps) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {

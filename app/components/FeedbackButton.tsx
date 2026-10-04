@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useState } from "react";
 import { usePathname } from "next/navigation";
 import { MessageSquare, X } from "lucide-react";
@@ -20,7 +21,7 @@ export default function FeedbackButton() {
 
     if (HIDDEN_PREFIXES.some((prefix) => pathname?.startsWith(prefix))) return null;
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         if (!message.trim()) return;
         setIsSending(true);

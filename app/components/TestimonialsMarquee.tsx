@@ -3,7 +3,19 @@
 import { motion } from "framer-motion";
 import { Sparkles } from "lucide-react";
 
-function MarqueeRow({ items, direction = "left", speed = 40, dark }) {
+export interface Review {
+    name: string;
+    text: string;
+}
+
+interface MarqueeRowProps {
+    items: Review[];
+    direction?: "left" | "right";
+    speed?: number;
+    dark?: boolean;
+}
+
+function MarqueeRow({ items, direction = "left", speed = 40, dark }: MarqueeRowProps) {
     const duplicatedItems = [...items, ...items, ...items];
 
     return (
@@ -65,7 +77,13 @@ function MarqueeRow({ items, direction = "left", speed = 40, dark }) {
     );
 }
 
-export default function TestimonialsMarquee({ reviews, dark = true }) {
+export default function TestimonialsMarquee({
+    reviews,
+    dark = true,
+}: {
+    reviews: Review[];
+    dark?: boolean;
+}) {
     const row1 = reviews.slice(0, Math.ceil(reviews.length / 2));
     const row2 = reviews.slice(Math.ceil(reviews.length / 2));
 

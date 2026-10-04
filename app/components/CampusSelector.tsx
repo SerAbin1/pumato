@@ -5,7 +5,12 @@ import { MapPin, ArrowRight, GraduationCap } from "lucide-react";
 import { useState, useEffect } from "react";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 
-export default function CampusSelector({ onSelect, currentCampus }) {
+interface CampusSelectorProps {
+    onSelect: (campusId: string) => void;
+    currentCampus?: string | null;
+}
+
+export default function CampusSelector({ onSelect, currentCampus }: CampusSelectorProps) {
     const [isOpen, setIsOpen] = useState(false);
 
     useEffect(() => {
@@ -15,7 +20,7 @@ export default function CampusSelector({ onSelect, currentCampus }) {
         }
     }, [currentCampus]);
 
-    const handleSelect = (campusId) => {
+    const handleSelect = (campusId: string) => {
         onSelect(campusId);
         setIsOpen(false);
     };

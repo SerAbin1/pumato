@@ -63,6 +63,8 @@ export function toggleFavourite(favourites: Favourite[] = [], fav: FavouriteRef)
  *
  * @returns entries with `item` (or null when it's gone) and `available`
  */
+export type ResolvedFavourite = ReturnType<typeof resolveFavourites>[number];
+
 export function resolveFavourites(favourites: Favourite[] = [], restaurants: MenuSource[] = []) {
     const byId = new Map(restaurants.map((r) => [r.id, r]));
 

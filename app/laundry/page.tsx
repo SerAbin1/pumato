@@ -1,6 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import type { CampusConfig, LaundryPricing } from "@/lib/types";
+import type { LaundryFormData, LaundryItemDraft } from "./types";
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
@@ -19,9 +22,9 @@ import {
 import TermsFooter from "../components/TermsFooter";
 
 export default function LaundryPage() {
-    const newItemRef = useRef(null);
-    const [formData, setFormData] = useState(() => {
-        const defaultState = {
+    const newItemRef = useRef<HTMLInputElement>(null);
+    const [formData, setFormData] = useState<LaundryFormData>(() => {
+        const defaultState: LaundryFormData = {
             name: "",
             phone: "",
             campus: "",
@@ -71,8 +74,10 @@ export default function LaundryPage() {
         }
     }, [formData.name, formData.phone, formData.location]);
 
-    const [items, setItems] = useState(() => {
-        const fallbackItems = [{ id: Date.now(), name: "", quantity: "", steamIron: false }];
+    const [items, setItems] = useState<LaundryItemDraft[]>(() => {
+        const fallbackItems: LaundryItemDraft[] = [
+            { id: Date.now(), name: "", quantity: "", steamIron: false },
+        ];
 
         if (typeof window === "undefined") return fallbackItems;
 
@@ -95,13 +100,16 @@ export default function LaundryPage() {
         }
     }, [items]);
 
-    const [availableSlots, setAvailableSlots] = useState([]);
+    const [availableSlots, setAvailableSlots] = useState<string[]>([]);
     const [loadingSlots, setLoadingSlots] = useState(false);
     const [laundryNumber, setLaundryNumber] = useState(LAUNDRY_NUMBER);
-    const [campusConfig, setCampusConfig] = useState(DEFAULT_CAMPUS_CONFIG);
+    const [campusConfig, setCampusConfig] = useState<CampusConfig[]>(DEFAULT_CAMPUS_CONFIG);
 
     // Laundry Pricing State
-    const [pricing, setPricing] = useState({ pricePerKg: "79", steamIronPrice: "15" });
+    const [pricing, setPricing] = useState<LaundryPricing>({
+        pricePerKg: "79",
+        steamIronPrice: "15",
+    });
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -130,7 +138,7 @@ export default function LaundryPage() {
                     doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.PRICING)
                 );
                 if (pricingSnap.exists()) {
-                    setPricing(pricingSnap.data());
+                    setPricing(pricingSnap.data() as LaundryPricing);
                 }
             } catch (error) {
                 console.error("Error fetching settings in laundry page:", error);
@@ -196,26 +204,32 @@ export default function LaundryPage() {
         setTimeout(() => newItemRef.current?.focus(), 0);
     };
 
-    const handleRemoveItem = (id) => {
+    const handleRemoveItem = (id: number) => {
         if (items.length > 1) {
             setItems(items.filter((item) => item.id !== id));
         }
     };
 
-    const handleItemChange = (id, field, value) => {
+    const handleItemChange = <F extends "name" | "quantity" | "steamIron">(
+        id: number,
+        field: F,
+        value: LaundryItemDraft[F]
+    ) => {
         if (field === "quantity" && value !== "" && Number(value) < 1) return;
         const newItems = items.map((item) => (item.id === id ? { ...item, [field]: value } : item));
         setItems(newItems);
     };
 
-    const handleChange = (e) => {
+    const handleChange = (
+        e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
+    ) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
         });
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
         const trimmedName = formData.name.trim();

@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
@@ -22,7 +23,7 @@ export default function AdminLoginPage() {
         }
     }, [loading, isAdmin, router]);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError("");
         setIsLoading(true);
@@ -32,7 +33,7 @@ export default function AdminLoginPage() {
         if (result.success) {
             router.push("/admin");
         } else {
-            setError(result.error);
+            setError(result.error ?? "");
         }
 
         setIsLoading(false);

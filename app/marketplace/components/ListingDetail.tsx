@@ -8,9 +8,10 @@ import { ArrowLeft, Package, MessageCircle, Link as LinkIcon, Maximize2 } from "
 import { formatMarketplaceOfferMessage } from "@/lib/whatsapp";
 import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
 import ImageLightbox from "./ImageLightbox";
+import type { MarketplaceListing } from "@/lib/types";
 
-export default function ListingDetail({ listing }) {
-    const [willingPrice, setWillingPrice] = useState(listing.askingPrice);
+export default function ListingDetail({ listing }: { listing: MarketplaceListing }) {
+    const [willingPrice, setWillingPrice] = useState<number | string>(listing.askingPrice);
     const [activeImage, setActiveImage] = useState(0);
     const [lightboxOpen, setLightboxOpen] = useState(false);
 
@@ -137,12 +138,12 @@ export default function ListingDetail({ listing }) {
                         </div>
                     )}
 
-                    {listing.customLinks?.length > 0 && (
+                    {(listing.customLinks?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap items-center gap-3 pt-2">
                             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                                 For more info
                             </span>
-                            {listing.customLinks.map((link, i) => {
+                            {listing.customLinks!.map((link, i) => {
                                 const typeDef = CUSTOM_LINK_TYPES.find((t) => t.id === link.type);
                                 const Icon = typeDef?.icon || LinkIcon;
                                 return (

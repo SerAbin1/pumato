@@ -22,8 +22,14 @@ import {
 } from "@/lib/orderHistory";
 import useFirestore from "@/app/hooks/useFirestore";
 import { COLLECTIONS } from "@/lib/constants";
+import { plainCartLine } from "@/lib/restaurants/menuItem";
+import type { User } from "firebase/auth";
+import type { Payment, Restaurant } from "@/lib/types";
 
-const STATUS_STYLES = {
+type UserOrder = Awaited<ReturnType<typeof fetchUserOrders>>[number];
+type ReorderItem = ReturnType<typeof resolveReorderItems>[number];
+
+const STATUS_STYLES: Record<string, string> = {
     placed: "text-blue-400 bg-blue-500/10 border-blue-500/20",
     confirmed: "text-blue-400 bg-blue-500/10 border-blue-500/20",
     viewed: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
@@ -35,14 +41,22 @@ const STATUS_STYLES = {
     cancelled: "text-gray-400 bg-gray-500/10 border-gray-500/20",
 };
 
-const formatDate = (date) =>
+const formatDate = (date: Date | null) =>
     date
         ? date.toLocaleDateString([], { day: "numeric", month: "short" }) +
           " · " +
           date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
         : "";
 
-function OrderCard({ order, user, upiId, upiPayeeName, payment }) {
+interface OrderCardProps {
+    order: UserOrder;
+    user: User | null;
+    upiId: string;
+    upiPayeeName: string;
+    payment?: Payment;
+}
+
+function OrderCard({ order, user, upiId, upiPayeeName, payment }: OrderCardProps) {
     const style = STATUS_STYLES[order.status] || STATUS_STYLES.placed;
     // Nothing to pay on an order that's been cancelled.
     const payable = order.status !== "cancelled";
@@ -121,11 +135,11 @@ export default function OrdersPage() {
     const { user, loading: authLoading } = useUserAuth();
     const { addToCart, setIsCartOpen, upiId, upiPayeeName } = useCart();
 
-    const [orders, setOrders] = useState([]);
-    const [payments, setPayments] = useState({});
+    const [orders, setOrders] = useState<UserOrder[]>([]);
+    const [payments, setPayments] = useState<Record<string, Payment>>({});
     const [loading, setLoading] = useState(true);
     const [failed, setFailed] = useState(false);
-    const [restaurants, setRestaurants] = useState(null);
+    const [restaurants, setRestaurants] = useState<Restaurant[] | null>(null);
     const { getDocument } = useFirestore();
 
     const load = useCallback(async () => {
@@ -141,7 +155,9 @@ export default function OrdersPage() {
             const filed = await Promise.all(
                 history.map((o) => fetchPayment(o.id).catch(() => null))
             );
-            setPayments(Object.fromEntries(filed.filter(Boolean).map((p) => [p.orderId, p])));
+            setPayments(
+                Object.fromEntries(filed.filter((p) => p !== null).map((p) => [p.orderId, p]))
+            );
         } catch (error) {
             console.error("Failed to load order history:", error);
             setFailed(true);
@@ -167,13 +183,17 @@ export default function OrdersPage() {
     // Reorder must price and stock-check against the live menu, not the
     // snapshot stored on the order — fetch just the restaurants involved.
     useEffect(() => {
-        const ids = [...new Set(recentItems.map((i) => i.restaurantId).filter(Boolean))];
+        const ids = [
+            ...new Set(
+                recentItems.map((i) => i.restaurantId).filter((id): id is string => Boolean(id))
+            ),
+        ];
         if (ids.length === 0) return;
         let cancelled = false;
         Promise.all(
-            ids.map((id) => getDocument(COLLECTIONS.RESTAURANTS, id).catch(() => null))
+            ids.map((id) => getDocument<Restaurant>(COLLECTIONS.RESTAURANTS, id).catch(() => null))
         ).then((docs) => {
-            if (!cancelled) setRestaurants(docs.filter(Boolean));
+            if (!cancelled) setRestaurants(docs.filter((d) => d !== null));
         });
         return () => {
             cancelled = true;
@@ -185,9 +205,14 @@ export default function OrdersPage() {
         [recentItems, restaurants]
     );
 
-    const reorder = (item) => {
+    // Only offered for `available` items, which always have a live menu item.
+    const reorder = (item: ReorderItem) => {
         addToCart(
-            { ...item.live, restaurantId: item.restaurantId, restaurantName: item.restaurantName },
+            {
+                ...plainCartLine(item.live!),
+                restaurantId: item.restaurantId,
+                restaurantName: item.restaurantName,
+            },
             1
         );
         setIsCartOpen(true);
@@ -285,7 +310,7 @@ export default function OrdersPage() {
                                             </span>
                                         ) : item.needsChoice ? (
                                             <Link
-                                                href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
+                                                href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(String(item.name))}`}
                                                 className="flex items-center gap-1.5 text-xs font-bold bg-white/10 hover:bg-white/20 text-white px-3 py-1.5 rounded-lg transition-colors"
                                             >
                                                 Customize

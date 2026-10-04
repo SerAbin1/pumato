@@ -59,16 +59,16 @@ export interface SelectedOption {
 }
 
 /**
- * A line in the cart: a menu item (or grocery item) plus what the customer
+ * What gets added to the cart: a menu item (or grocery item) plus what the customer
  * picked. `price` stays as stored on the menu (string); `unitPrice` is the
  * computed price including variant and addons when present.
  */
-export interface CartItem {
+export interface CartItemInput {
     id: string;
     name: string;
     price: string | number;
     unitPrice?: number;
-    quantity: number;
+    quantity?: number;
     cartKey?: string;
     restaurantId?: string;
     restaurantName?: string;
@@ -79,6 +79,11 @@ export interface CartItem {
     variant?: SelectedOption;
     addons?: SelectedOption[];
     [key: string]: any;
+}
+
+/** A line in the cart: what was added, plus how many. */
+export interface CartItem extends CartItemInput {
+    quantity: number;
 }
 
 /** Anything priced like a cart line: has a quantity and a price. */
@@ -128,7 +133,7 @@ export type OrderStatus = (typeof ORDER_STATUSES)[number];
 export type OrderItem = z.infer<typeof OrderItemSchema>;
 export type DeliverySlot = z.infer<typeof DeliverySlotSchema>;
 export type OrderInput = z.input<typeof OrderSchema>;
-export type Order = z.infer<typeof OrderSchema> & { id: string; [key: string]: any };
+export type Order = z.infer<typeof OrderSchema> & { id: string };
 
 // --- Laundry ---
 
@@ -152,7 +157,17 @@ export type MarketplaceRedirectLinks = z.infer<typeof MarketplaceRedirectLinksSc
 
 // --- Marketplace ---
 
-export type MarketplaceListing = z.infer<typeof MarketplaceListingSchema> & { [key: string]: any };
+/** A seller link. `label` only exists on links saved before the schema dropped it. */
+export interface CustomLink {
+    type: string;
+    link: string;
+    label?: string;
+}
+
+export type MarketplaceListing = Omit<z.infer<typeof MarketplaceListingSchema>, "customLinks"> & {
+    customLinks?: CustomLink[];
+    [key: string]: any;
+};
 export type MarketplaceRequest = z.infer<typeof MarketplaceRequestSchema> & {
     id: string;
     [key: string]: any;

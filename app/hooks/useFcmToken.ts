@@ -5,6 +5,7 @@ import { getToken } from "firebase/messaging";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { db, getFirebaseMessaging, VAPID_KEY } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
+import type { AdminUser } from "@/app/context/AdminAuthContext";
 
 /**
  * Requests notification permission, obtains an FCM token, and persists it to
@@ -12,12 +13,14 @@ import { COLLECTIONS } from "@/lib/constants";
  *
  * Only runs client-side (guarded by `getFirebaseMessaging`).
  *
- * @param {object|null} user - Firebase Auth user object (must have a `.uid`)
- * @returns {{ permission: NotificationPermission, token: string|null }}
+ * @param user - Firebase Auth user object (must have a `.uid`)
  */
-export function useFcmToken(user) {
-    const [permission, setPermission] = useState("default");
-    const [token, setToken] = useState(null);
+export function useFcmToken(user: Pick<AdminUser, "uid" | "restaurantId"> | null | undefined): {
+    permission: NotificationPermission;
+    token: string | null;
+} {
+    const [permission, setPermission] = useState<NotificationPermission>("default");
+    const [token, setToken] = useState<string | null>(null);
 
     // eslint-disable-next-line react-hooks/preserve-manual-memoization
     const requestAndSaveToken = useCallback(async () => {
@@ -33,7 +36,7 @@ export function useFcmToken(user) {
         if (perm !== "granted") return;
 
         // 3. Get the FCM token
-        let fcmToken;
+        let fcmToken: string;
         try {
             fcmToken = await getToken(messaging, { vapidKey: VAPID_KEY });
         } catch (err) {

@@ -1,6 +1,8 @@
 import { Shirt } from "lucide-react";
 
-export default function LaundryHero({ pricing }) {
+import type { LaundryPricing } from "@/lib/types";
+
+export default function LaundryHero({ pricing }: { pricing: LaundryPricing }) {
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-5 md:p-8 border border-white/10 relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-500"></div>

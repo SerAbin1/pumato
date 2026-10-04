@@ -1,6 +1,38 @@
 import { User, Phone, MapPin, Plus, X, Send } from "lucide-react";
 import { motion } from "framer-motion";
 import SlotSelector from "./SlotSelector";
+import type {
+    ChangeEventHandler,
+    Dispatch,
+    FormEventHandler,
+    RefObject,
+    SetStateAction,
+} from "react";
+import type { CampusConfig, LaundryPricing } from "@/lib/types";
+import type { LaundryFormData, LaundryItemDraft } from "../types";
+
+interface LaundryFormProps {
+    formData: LaundryFormData;
+    handleChange: ChangeEventHandler<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>;
+    setFormData: Dispatch<SetStateAction<LaundryFormData>>;
+    campusConfig: CampusConfig[];
+    availableSlots: string[];
+    loadingSlots: boolean;
+    today: string;
+    items: LaundryItemDraft[];
+    handleAddItem: () => void;
+    handleRemoveItem: (id: number) => void;
+    handleItemChange: <F extends "name" | "quantity" | "steamIron">(
+        id: number,
+        field: F,
+        value: LaundryItemDraft[F]
+    ) => void;
+    handleSubmit: FormEventHandler<HTMLFormElement>;
+    newItemRef: RefObject<HTMLInputElement | null>;
+    estimatedWeight: number;
+    setEstimatedWeight: Dispatch<SetStateAction<number>>;
+    pricing: LaundryPricing;
+}
 
 export default function LaundryForm({
     formData,
@@ -19,7 +51,7 @@ export default function LaundryForm({
     estimatedWeight,
     setEstimatedWeight,
     pricing,
-}) {
+}: LaundryFormProps) {
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl w-full max-w-full overflow-hidden">
             <h2 className="text-2xl font-bold mb-8 text-white">Request Pickup</h2>
@@ -119,7 +151,6 @@ export default function LaundryForm({
                     setFormData={setFormData}
                     availableSlots={availableSlots}
                     loadingSlots={loadingSlots}
-                    today={today}
                 />
 
                 <div className="space-y-2">

@@ -1,5 +1,8 @@
 "use client";
 
+import type { ChangeEvent, FormEvent } from "react";
+import type { MarketplaceCategory, MarketplaceRedirectLinks } from "@/lib/types";
+import type { SellFormData } from "./types";
 import { useState, useEffect } from "react";
 import toast from "react-hot-toast";
 import Navbar from "../../components/Navbar";
@@ -12,14 +15,16 @@ import { createMarketplaceRequest } from "@/lib/repositories";
 import { formatMarketplaceRequestMessage } from "@/lib/whatsapp";
 import { ArrowLeft, Loader2 } from "lucide-react";
 
-export default function MarketplaceSellPage() {
-    const [categories, setCategories] = useState([]);
-    const [categoriesLoading, setCategoriesLoading] = useState(true);
-    const [selectedCategory, setSelectedCategory] = useState(null);
-    const [redirectLinks, setRedirectLinks] = useState([]);
+type RedirectLink = MarketplaceRedirectLinks["redirectLinks"][number];
 
-    const [formData, setFormData] = useState(() => {
-        const defaultState = {
+export default function MarketplaceSellPage() {
+    const [categories, setCategories] = useState<MarketplaceCategory[]>([]);
+    const [categoriesLoading, setCategoriesLoading] = useState(true);
+    const [selectedCategory, setSelectedCategory] = useState<MarketplaceCategory | null>(null);
+    const [redirectLinks, setRedirectLinks] = useState<RedirectLink[]>([]);
+
+    const [formData, setFormData] = useState<SellFormData>(() => {
+        const defaultState: SellFormData = {
             itemName: "",
             description: "",
             askingPrice: "",
@@ -79,7 +84,7 @@ export default function MarketplaceSellPage() {
         fetchRedirectLinks();
     }, []);
 
-    const handleSelectCategory = (category) => {
+    const handleSelectCategory = (category: MarketplaceCategory) => {
         setSelectedCategory(category);
     };
 
@@ -89,7 +94,7 @@ export default function MarketplaceSellPage() {
 
     const activeLink = redirectLinks.find((l) => l.active);
 
-    const handleChange = (e) => {
+    const handleChange = (e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         setFormData({
             ...formData,
             [e.target.name]: e.target.value,
@@ -103,14 +108,14 @@ export default function MarketplaceSellPage() {
         }));
     };
 
-    const handleRemoveLink = (index) => {
+    const handleRemoveLink = (index: number) => {
         setFormData((prev) => ({
             ...prev,
             customLinks: prev.customLinks.filter((_, i) => i !== index),
         }));
     };
 
-    const handleLinkChange = (index, field, value) => {
+    const handleLinkChange = (index: number, field: "type" | "link", value: string) => {
         setFormData((prev) => ({
             ...prev,
             customLinks: prev.customLinks.map((link, i) =>
@@ -119,7 +124,7 @@ export default function MarketplaceSellPage() {
         }));
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
         const trimmedItemName = formData.itemName.trim();
@@ -132,7 +137,7 @@ export default function MarketplaceSellPage() {
             "askingPrice",
             "campus",
         ];
-        const missingFields = [];
+        const missingFields: string[] = [];
         if (requiredFields.includes("itemName") && !trimmedItemName) {
             missingFields.push("Item Name");
         }

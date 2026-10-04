@@ -5,8 +5,15 @@ import Image from "next/image";
 import { Fragment } from "react";
 import { planInsertions } from "@/lib/marketplacePromotions";
 import SponsoredListingCard from "@/app/marketplace/components/SponsoredListingCard";
+import type { MarketplaceListing, Restaurant } from "@/lib/types";
 
-export default function RestaurantList({ restaurants, promos = [] }) {
+export default function RestaurantList({
+    restaurants,
+    promos = [],
+}: {
+    restaurants: Restaurant[];
+    promos?: MarketplaceListing[];
+}) {
     if (!restaurants || restaurants.length === 0) {
         return (
             <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 border-dashed">
@@ -110,7 +117,7 @@ export default function RestaurantList({ restaurants, promos = [] }) {
                         </motion.div>
                         {sponsoredAfter.has(restaurant.id) && (
                             <SponsoredListingCard
-                                listing={sponsoredAfter.get(restaurant.id)}
+                                listing={sponsoredAfter.get(restaurant.id)!}
                                 variant="grid"
                             />
                         )}

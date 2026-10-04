@@ -1,6 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import type { FirebaseError } from "firebase/app";
+import type { User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import {
     signInWithEmailAndPassword,
@@ -15,10 +18,24 @@ import {
 
 const googleProvider = new GoogleAuthProvider();
 
-const UserAuthContext = createContext(null);
+export interface AuthResult {
+    success: boolean;
+    error?: string;
+}
 
-export function UserAuthProvider({ children }) {
-    const [user, setUser] = useState(null);
+export interface UserAuthContextValue {
+    user: User | null;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<AuthResult>;
+    register: (email: string, password: string) => Promise<AuthResult>;
+    loginWithGoogle: () => Promise<AuthResult>;
+    logout: () => Promise<void>;
+}
+
+const UserAuthContext = createContext<UserAuthContextValue | null>(null);
+
+export function UserAuthProvider({ children }: { children: ReactNode }) {
+    const [user, setUser] = useState<User | null>(null);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
@@ -30,12 +47,13 @@ export function UserAuthProvider({ children }) {
         return () => unsubscribe();
     }, []);
 
-    const login = async (email, password) => {
+    const login = async (email: string, password: string): Promise<AuthResult> => {
         try {
             await setPersistence(auth, browserLocalPersistence);
             await signInWithEmailAndPassword(auth, email, password);
             return { success: true };
-        } catch (error) {
+        } catch (err) {
+            const error = err as FirebaseError;
             let message = "Login failed. Please try again.";
 
             if (
@@ -54,12 +72,13 @@ export function UserAuthProvider({ children }) {
         }
     };
 
-    const register = async (email, password) => {
+    const register = async (email: string, password: string): Promise<AuthResult> => {
         try {
             await setPersistence(auth, browserLocalPersistence);
             await createUserWithEmailAndPassword(auth, email, password);
             return { success: true };
-        } catch (error) {
+        } catch (err) {
+            const error = err as FirebaseError;
             let message = "Registration failed. Please try again.";
 
             if (error.code === "auth/email-already-in-use") {
@@ -74,12 +93,13 @@ export function UserAuthProvider({ children }) {
         }
     };
 
-    const loginWithGoogle = async () => {
+    const loginWithGoogle = async (): Promise<AuthResult> => {
         try {
             await setPersistence(auth, browserLocalPersistence);
             await signInWithPopup(auth, googleProvider);
             return { success: true };
-        } catch (error) {
+        } catch (err) {
+            const error = err as FirebaseError;
             if (
                 error.code === "auth/popup-closed-by-user" ||
                 error.code === "auth/cancelled-popup-request"

@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import Navbar from "../../components/Navbar";
 import { motion } from "framer-motion";
 import { ArrowLeft, ShoppingBasket } from "lucide-react";
@@ -248,7 +250,7 @@ export default function GroceryTermsPage() {
     );
 }
 
-function TermBlock({ title, children }) {
+function TermBlock({ title, children }: { title: ReactNode; children: ReactNode }) {
     return (
         <div className="space-y-3">
             <h3 className="text-xl font-bold text-green-400">{title}</h3>

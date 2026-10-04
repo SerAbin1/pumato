@@ -57,3 +57,16 @@ export function searchItemOptions<V extends { name: string }, A extends { name: 
         Boolean(item?.variants?.length) && fuzzyByName([{ name: item?.name || "" }], q).length > 0;
     return { base, variants, addons, empty: !base && !variants.length && !addons.length };
 }
+
+/**
+ * A menu item added to the cart as-is (no customisation). Its `variants` and
+ * `addons` are the menu's option lists, not selections, and only items without
+ * options are added this way, so they're dropped rather than carried into the
+ * cart line where `addons` means "chosen addons".
+ */
+export function plainCartLine<T extends { variants?: unknown; addons?: unknown }>(
+    item: T
+): Omit<T, "variants" | "addons"> {
+    const { variants: _variants, addons: _addons, ...line } = item;
+    return line;
+}

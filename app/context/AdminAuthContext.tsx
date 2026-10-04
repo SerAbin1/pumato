@@ -1,6 +1,9 @@
 "use client";
 
 import { createContext, useContext, useState, useEffect } from "react";
+import type { ReactNode } from "react";
+import type { FirebaseError } from "firebase/app";
+import type { User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 import {
     signInWithEmailAndPassword,
@@ -10,10 +13,21 @@ import {
     browserLocalPersistence,
 } from "firebase/auth";
 
-const AdminAuthContext = createContext(null);
+/** A Firebase user with the partner `restaurantId` custom claim attached. */
+export type AdminUser = User & { restaurantId?: string | null };
 
-export function AdminAuthProvider({ children }) {
-    const [user, setUser] = useState(null);
+export interface AdminAuthContextValue {
+    user: AdminUser | null;
+    isAdmin: boolean;
+    loading: boolean;
+    login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+    logout: () => Promise<void>;
+}
+
+const AdminAuthContext = createContext<AdminAuthContextValue | null>(null);
+
+export function AdminAuthProvider({ children }: { children: ReactNode }) {
+    const [user, setUser] = useState<AdminUser | null>(null);
     const [isAdmin, setIsAdmin] = useState(false);
     const [loading, setLoading] = useState(true);
 
@@ -23,14 +37,15 @@ export function AdminAuthProvider({ children }) {
                 // Get the ID token result to check custom claims
                 const tokenResult = await firebaseUser.getIdTokenResult();
                 const adminClaim = tokenResult.claims.admin === true;
-                const restaurantIdClaim = tokenResult.claims.restaurantId || null;
+                const restaurantIdClaim =
+                    (tokenResult.claims.restaurantId as string | undefined) || null;
 
                 setUser(firebaseUser);
                 setIsAdmin(adminClaim);
                 // We'll attach the restaurantId to the user object or a separate state if preferred.
                 // For simplicity, let's attach to the user object wrapper or just state.
                 // Actually, let's expose it as a separate state.
-                firebaseUser.restaurantId = restaurantIdClaim;
+                (firebaseUser as AdminUser).restaurantId = restaurantIdClaim;
             } else {
                 setUser(null);
                 setIsAdmin(false);
@@ -41,7 +56,7 @@ export function AdminAuthProvider({ children }) {
         return () => unsubscribe();
     }, []);
 
-    const login = async (email, password) => {
+    const login = async (email: string, password: string) => {
         try {
             await setPersistence(auth, browserLocalPersistence);
             const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -57,7 +72,8 @@ export function AdminAuthProvider({ children }) {
             }
 
             return { success: true };
-        } catch (error) {
+        } catch (err) {
+            const error = err as FirebaseError;
             let message = "Login failed. Please try again.";
 
             if (error.message === "You are not authorized to access this panel.") {

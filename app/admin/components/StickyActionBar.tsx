@@ -2,6 +2,18 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { Save, Loader2, ChevronUp, ChevronDown, Sparkles } from "lucide-react";
+import type { ReactNode } from "react";
+
+interface StickyActionBarProps {
+    onSave: () => void;
+    onCancel?: () => void;
+    isSaving?: boolean;
+    disabled?: boolean;
+    saveLabel?: ReactNode;
+    cancelLabel?: ReactNode;
+    title?: ReactNode;
+    children?: ReactNode;
+}
 
 export default function StickyActionBar({
     onSave,
@@ -12,7 +24,7 @@ export default function StickyActionBar({
     cancelLabel = "Cancel",
     title,
     children,
-}) {
+}: StickyActionBarProps) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {

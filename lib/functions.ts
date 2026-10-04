@@ -1,10 +1,21 @@
 import { getFunctions, httpsCallable } from "firebase/functions";
+import type { HttpsCallableResult } from "firebase/functions";
 import { app } from "@/lib/firebase";
 
 const functions = getFunctions(app);
 
-export const manageCoupons = httpsCallable(functions, "manageCoupons");
-export const checkoutCoupon = httpsCallable(functions, "checkoutCoupon");
-export const manageUsers = httpsCallable(functions, "manageUsers");
-export const sendFcmNotification = httpsCallable(functions, "sendFcmNotification");
-export const refreshTrending = httpsCallable(functions, "refreshTrending");
+/**
+ * Every callable takes `{ action?, payload? }`-style data and returns whatever
+ * that action produces; call sites narrow the result with a type argument,
+ * e.g. `manageCoupons<Coupon[]>({ action: "FETCH_VISIBLE" })`.
+ */
+const callable = (name: string) => {
+    const fn = httpsCallable(functions, name);
+    return <Res = any>(data?: unknown) => fn(data) as Promise<HttpsCallableResult<Res>>;
+};
+
+export const manageCoupons = callable("manageCoupons");
+export const checkoutCoupon = callable("checkoutCoupon");
+export const manageUsers = callable("manageUsers");
+export const sendFcmNotification = callable("sendFcmNotification");
+export const refreshTrending = callable("refreshTrending");

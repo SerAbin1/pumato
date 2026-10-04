@@ -2,8 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { Clock } from "lucide-react";
+import type { DateLike } from "@/lib/dateUtils";
 
-export default function CountdownTimer({ readyAt, className = "" }) {
+export default function CountdownTimer({
+    readyAt,
+    className = "",
+}: {
+    readyAt: DateLike | null | undefined;
+    className?: string;
+}) {
     const [timeDisplay, setTimeDisplay] = useState("");
     const [isOverdue, setIsOverdue] = useState(false);
     const [isWarning, setIsWarning] = useState(false);
@@ -12,10 +19,13 @@ export default function CountdownTimer({ readyAt, className = "" }) {
         if (!readyAt) return;
 
         const calculateTime = () => {
-            const readyTime = readyAt.toDate ? readyAt.toDate() : new Date(readyAt);
+            const readyTime =
+                typeof readyAt === "object" && "toDate" in readyAt
+                    ? readyAt.toDate()
+                    : new Date(readyAt as Date);
             const deadline = new Date(readyTime.getTime() + 35 * 60 * 1000); // 35 minutes
             const now = new Date();
-            const diff = deadline - now; // Can be negative
+            const diff = deadline.getTime() - now.getTime(); // Can be negative
 
             const totalSeconds = Math.floor(diff / 1000);
             const isNegative = totalSeconds < 0;

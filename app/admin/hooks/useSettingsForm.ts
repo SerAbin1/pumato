@@ -2,6 +2,22 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import toast from "react-hot-toast";
 import { computeDiff } from "@/lib/diff";
 
+export interface SettingsFormOptions<T extends Record<string, any>> {
+    /** async () => data. Errors are caught and surfaced. */
+    load: () => Promise<T | null | undefined>;
+    /**
+     * async ({ diff, data }) => void. Pick `diff` for documents written with
+     * `{merge: true}`, `data` for full-document overwrites.
+     */
+    save: (args: { diff: Partial<T>; data: T }) => Promise<void>;
+    /** Human name used in toasts ("Delivery settings"). */
+    label: string;
+    /** State to show before the first load resolves. */
+    initial?: T;
+    /** Route the save through a confirmation step. */
+    confirm?: boolean;
+}
+
 /**
  * Owns one settings tab's fetch → baseline → diff → save cycle.
  *
@@ -11,22 +27,20 @@ import { computeDiff } from "@/lib/diff";
  *
  * A form whose own load failed reports `canSave: false` and refuses to save,
  * since without a trustworthy baseline every field looks changed.
- *
- * @param {Object} options
- * @param {Function} options.load - async () => data. Errors are caught and surfaced.
- * @param {Function} options.save - async ({ diff, data }) => void. Pick `diff` for
- *   documents written with `{merge: true}`, `data` for full-document overwrites.
- * @param {string} options.label - Human name used in toasts ("Delivery settings").
- * @param {Object} [options.initial] - State to show before the first load resolves.
- * @param {boolean} [options.confirm] - Route the save through a confirmation step.
  */
-export function useSettingsForm({ load, save, label, initial = {}, confirm = false }) {
-    const [data, setData] = useState(initial);
-    const [baseline, setBaseline] = useState(null);
+export function useSettingsForm<T extends Record<string, any>>({
+    load,
+    save,
+    label,
+    initial = {} as T,
+    confirm = false,
+}: SettingsFormOptions<T>) {
+    const [data, setData] = useState<T>(initial);
+    const [baseline, setBaseline] = useState<T | null>(null);
     const [loaded, setLoaded] = useState(false);
     const [failed, setFailed] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
-    const [pending, setPending] = useState(null);
+    const [pending, setPending] = useState<Partial<T> | null>(null);
 
     // Callers pass `initial` as a literal, so pin the first one rather than
     // letting a fresh object each render invalidate `reload`.

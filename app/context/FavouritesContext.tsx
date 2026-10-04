@@ -9,12 +9,24 @@ import {
     useMemo,
     useRef,
 } from "react";
+import type { ReactNode } from "react";
 import toast from "react-hot-toast";
 import { fetchFavourites, saveFavourites } from "@/lib/repositories";
 import { toggleFavourite, favouriteKey } from "@/lib/favourites";
+import type { Favourite } from "@/lib/favourites";
 import { useUserAuth } from "./UserAuthContext";
 
-const FavouritesContext = createContext(null);
+type FavouriteRef = Partial<Favourite> & Pick<Favourite, "restaurantId" | "itemId">;
+
+export interface FavouritesContextValue {
+    favourites: Favourite[];
+    loaded: boolean;
+    toggle: (fav: FavouriteRef) => void;
+    isFavourite: (fav: Partial<Favourite>) => boolean;
+    signedIn: boolean;
+}
+
+const FavouritesContext = createContext<FavouritesContextValue | null>(null);
 
 /**
  * The signed-in user's favourited menu items, loaded once and shared by every
@@ -25,14 +37,14 @@ const FavouritesContext = createContext(null);
  * send the latest list, so a slow earlier save can't land after (and undo) a
  * later one. Favourites aren't critical, so a failed write is just logged.
  */
-export function FavouritesProvider({ children }) {
+export function FavouritesProvider({ children }: { children: ReactNode }) {
     const { user } = useUserAuth();
-    const [favourites, setFavourites] = useState([]);
+    const [favourites, setFavourites] = useState<Favourite[]>([]);
     const [loaded, setLoaded] = useState(false);
 
     // Latest list, readable from async save callbacks without stale closures.
     const latest = useRef(favourites);
-    const saveQueue = useRef(Promise.resolve());
+    const saveQueue = useRef<Promise<void>>(Promise.resolve());
 
     useEffect(() => {
         let cancelled = false;
@@ -63,7 +75,7 @@ export function FavouritesProvider({ children }) {
     }, [user]);
 
     const toggle = useCallback(
-        (fav) => {
+        (fav: FavouriteRef) => {
             if (!user) {
                 toast.error("Sign in to save favourites");
                 return;
@@ -85,9 +97,12 @@ export function FavouritesProvider({ children }) {
     );
 
     const keys = useMemo(() => new Set(favourites.map(favouriteKey)), [favourites]);
-    const isFavourite = useCallback((fav) => keys.has(favouriteKey(fav)), [keys]);
+    const isFavourite = useCallback(
+        (fav: Partial<Favourite>) => keys.has(favouriteKey(fav)),
+        [keys]
+    );
 
-    const value = useMemo(
+    const value = useMemo<FavouritesContextValue>(
         () => ({ favourites, loaded, toggle, isFavourite, signedIn: Boolean(user) }),
         [favourites, loaded, toggle, isFavourite, user]
     );

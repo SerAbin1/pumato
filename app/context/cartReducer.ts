@@ -1,4 +1,26 @@
-export const initialState = {
+import type { CartItem, CartItemInput, Coupon, UserDetails } from "@/lib/types";
+
+export interface CartState {
+    cartItems: CartItem[];
+    isCartOpen: boolean;
+    couponCode: string | null;
+    activeCoupon: Coupon | null;
+    userDetails: UserDetails;
+}
+
+export type CartAction =
+    | { type: "LOAD_USER_DETAILS"; payload: Partial<UserDetails> }
+    | { type: "UPDATE_USER_DETAILS"; payload: UserDetails }
+    | { type: "SET_CART_OPEN"; payload: boolean }
+    | { type: "ADD_ITEM"; payload: { item: CartItemInput; quantityDelta?: number } }
+    | { type: "REMOVE_ITEM"; payload: string }
+    | { type: "UPDATE_QUANTITY"; payload: { id: string; delta: number } }
+    | { type: "CLEAR_CART" }
+    | { type: "APPLY_COUPON"; payload: { code: string; coupon: Coupon } }
+    | { type: "REMOVE_COUPON" }
+    | { type: "RESTORE_CART"; payload: CartItem[] };
+
+export const initialState: CartState = {
     cartItems: [],
     isCartOpen: false,
     couponCode: null,
@@ -12,7 +34,7 @@ export const initialState = {
     },
 };
 
-export function cartReducer(state, action) {
+export function cartReducer(state: CartState, action: CartAction): CartState {
     switch (action.type) {
         case "LOAD_USER_DETAILS":
             return {
@@ -36,7 +58,7 @@ export function cartReducer(state, action) {
             const { item, quantityDelta = 1 } = action.payload;
             const key = item.cartKey || item.id;
             const existing = state.cartItems.find((i) => (i.cartKey || i.id) === key);
-            let newItems;
+            let newItems: CartItem[];
 
             if (existing) {
                 newItems = state.cartItems

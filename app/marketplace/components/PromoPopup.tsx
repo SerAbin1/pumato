@@ -9,6 +9,7 @@ import { X, Package } from "lucide-react";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { useCart } from "@/app/context/CartContext";
 import { isInCooldown, normalizePromotion } from "@/lib/marketplacePromotions";
+import type { MarketplaceListing } from "@/lib/types";
 
 const DISMISSALS_KEY = "pumato_promo_dismissals";
 // At most one popup per browser session, however many popup listings are live
@@ -16,7 +17,7 @@ const SESSION_SHOWN_KEY = "pumato_promo_shown";
 const SHOW_DELAY_MS = 1500;
 const EXCLUDED_PATH_PREFIXES = ["/admin", "/partner", "/delivery-partner", "/login"];
 
-function readDismissals() {
+function readDismissals(): Record<string, number> {
     try {
         return JSON.parse(localStorage.getItem(DISMISSALS_KEY) || "{}");
     } catch {
@@ -24,7 +25,7 @@ function readDismissals() {
     }
 }
 
-function recordDismissal(listingId) {
+function recordDismissal(listingId: string) {
     try {
         const dismissals = readDismissals();
         dismissals[listingId] = Date.now();
@@ -55,7 +56,7 @@ export default function PromoPopup() {
     const pathname = usePathname();
     const { userDetails } = useCart();
     const promos = usePromotedListings("popup");
-    const [listing, setListing] = useState(null);
+    const [listing, setListing] = useState<MarketplaceListing | null>(null);
 
     const excluded = EXCLUDED_PATH_PREFIXES.some((p) => pathname?.startsWith(p));
     // Wait for a campus so we never stack on top of the campus selector
@@ -78,13 +79,13 @@ export default function PromoPopup() {
     }, [ready, promos, listing]);
 
     const close = () => {
-        recordDismissal(listing.id);
+        recordDismissal(listing!.id);
         setListing(null);
     };
 
     useEffect(() => {
         if (!listing) return;
-        const onKey = (e) => {
+        const onKey = (e: KeyboardEvent) => {
             if (e.key === "Escape") close();
         };
         window.addEventListener("keydown", onKey);

@@ -11,7 +11,7 @@ import {
     Cell,
 } from "recharts";
 
-function formatMinutes(minutes) {
+function formatMinutes(minutes: number) {
     if (!minutes || minutes < 0) return "0 min";
     if (minutes < 60) return `${Math.round(minutes)} min`;
     const hours = Math.floor(minutes / 60);
@@ -21,7 +21,23 @@ function formatMinutes(minutes) {
 
 const STAGE_COLORS = ["#f97316", "#eab308", "#22c55e", "#3b82f6", "#a855f7"];
 
-export default function DelayBreakdown({ breakdown }) {
+interface StageDelay {
+    avg: number;
+    count: number;
+}
+
+export type DelayStage =
+    | "placedToConfirmed"
+    | "confirmedToViewed"
+    | "viewedToReady"
+    | "readyToPickedUp"
+    | "pickedUpToDelivered";
+
+export default function DelayBreakdown({
+    breakdown,
+}: {
+    breakdown: Partial<Record<DelayStage, StageDelay>>;
+}) {
     const stages = [
         {
             key: "placedToConfirmed",
@@ -122,7 +138,7 @@ export default function DelayBreakdown({ breakdown }) {
                                 border: "1px solid #333",
                                 borderRadius: "8px",
                             }}
-                            formatter={(value) => [formatMinutes(value), "Avg Time"]}
+                            formatter={(value) => [formatMinutes(Number(value)), "Avg Time"]}
                         />
                         <Bar dataKey="avg" radius={[0, 4, 4, 0]}>
                             {data.map((entry, index) => (

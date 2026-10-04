@@ -11,14 +11,40 @@ import MetricsCards from "./components/MetricsCards";
 import RevenueChart from "./components/RevenueChart";
 import DelayBreakdown from "./components/DelayBreakdown";
 import OtherMetrics from "./components/OtherMetrics";
+import type { DateRange } from "./components/FilterBar";
+import type { DelayStage } from "./components/DelayBreakdown";
 
-const DATE_PRESETS = {
+/** A Firestore Timestamp, a Date, or a raw value `new Date()` can parse. */
+type TimeValue = { toDate?: () => Date } | Date | string | number | null | undefined;
+
+const toDate = (value: TimeValue): Date =>
+    (value as { toDate?: () => Date } | null | undefined)?.toDate?.() ||
+    new Date(value as string | number | Date);
+
+interface AnalyticsOrder {
+    id: string;
+    status?: string;
+    finalTotal?: number;
+    total?: number;
+    deliveryCharge?: number;
+    items?: { price?: number; quantity: number }[];
+    createdAt?: TimeValue;
+    adminProcessedAt?: TimeValue;
+    partnerViewedAt?: TimeValue;
+    readyAt?: TimeValue;
+    pickedUpAt?: TimeValue;
+    deliveredAt?: TimeValue;
+}
+
+type Preset = "7days" | "30days" | "90days";
+
+const DATE_PRESETS: Record<Preset, { label: string; days: number }> = {
     "7days": { label: "Last 7 Days", days: 7 },
     "30days": { label: "Last 30 Days", days: 30 },
     "90days": { label: "Last 90 Days", days: 90 },
 };
 
-function getDateRange(preset) {
+function getDateRange(preset: Preset) {
     const end = new Date();
     const start = new Date();
     start.setDate(end.getDate() - DATE_PRESETS[preset].days);
@@ -27,7 +53,7 @@ function getDateRange(preset) {
     return { start, end };
 }
 
-function computeMetrics(orders) {
+function computeMetrics(orders: AnalyticsOrder[]) {
     const completedOrders = orders.filter((o) => o.status === "delivered");
     const totalOrders = orders.length;
     const cancelledOrders = orders.filter(
@@ -50,9 +76,9 @@ function computeMetrics(orders) {
 
     const deliveryTimes = completedOrders
         .map((o) => {
-            const created = o.createdAt?.toDate?.() || new Date(o.createdAt);
-            const delivered = o.deliveredAt?.toDate?.() || new Date(o.deliveredAt);
-            return delivered - created;
+            const created = toDate(o.createdAt);
+            const delivered = toDate(o.deliveredAt);
+            return delivered.getTime() - created.getTime();
         })
         .filter((t) => t > 0);
 
@@ -61,12 +87,15 @@ function computeMetrics(orders) {
             ? deliveryTimes.reduce((a, b) => a + b, 0) / deliveryTimes.length / 60000
             : 0;
 
-    const getStageDelay = (getFrom, getTo) => {
+    const getStageDelay = (
+        getFrom: (o: AnalyticsOrder) => TimeValue,
+        getTo: (o: AnalyticsOrder) => TimeValue
+    ) => {
         const delays = completedOrders
             .map((o) => {
-                const from = getFrom(o)?.toDate?.() || new Date(getFrom(o));
-                const to = getTo(o)?.toDate?.() || new Date(getTo(o));
-                return to - from;
+                const from = toDate(getFrom(o));
+                const to = toDate(getTo(o));
+                return to.getTime() - from.getTime();
             })
             .filter((t) => t > 0);
         const avg =
@@ -74,7 +103,7 @@ function computeMetrics(orders) {
         return { avg, count: delays.length };
     };
 
-    const breakdown = {
+    const breakdown: Record<DelayStage, { avg: number; count: number }> = {
         placedToConfirmed: getStageDelay(
             (o) => o.createdAt,
             (o) => o.adminProcessedAt
@@ -97,25 +126,31 @@ function computeMetrics(orders) {
         ),
     };
 
-    const hourCounts = {};
+    const hourCounts: Record<number, number> = {};
     completedOrders.forEach((o) => {
-        const hour = o.createdAt?.toDate?.()?.getHours();
+        const hour = (o.createdAt as { toDate?: () => Date } | undefined)?.toDate?.()?.getHours();
         if (hour !== undefined) hourCounts[hour] = (hourCounts[hour] || 0) + 1;
     });
     const sortedHours = Object.entries(hourCounts).sort((a, b) => b[1] - a[1]);
     const peakHour = sortedHours[0]?.[0];
 
-    const revenueByDate = {};
+    const revenueByDate: Record<string, number> = {};
     completedOrders.forEach((o) => {
-        const date = o.createdAt?.toDate?.()?.toISOString().split("T")[0];
+        const date = (o.createdAt as { toDate?: () => Date } | undefined)
+            ?.toDate?.()
+            ?.toISOString()
+            .split("T")[0];
         if (date) {
             revenueByDate[date] = (revenueByDate[date] || 0) + (o.finalTotal || o.total || 0);
         }
     });
 
-    const profitByDate = {};
+    const profitByDate: Record<string, number> = {};
     completedOrders.forEach((o) => {
-        const date = o.createdAt?.toDate?.()?.toISOString().split("T")[0];
+        const date = (o.createdAt as { toDate?: () => Date } | undefined)
+            ?.toDate?.()
+            ?.toISOString()
+            .split("T")[0];
         if (date) {
             const orderItemAmount =
                 o.items?.reduce((s, i) => s + (i.price || 0) * i.quantity, 0) || 0;
@@ -152,9 +187,9 @@ export default function AnalyticsPage() {
     const router = useRouter();
     const [loading, setLoading] = useState(true);
     const [refreshing, setRefreshing] = useState(false);
-    const [orders, setOrders] = useState([]);
-    const [preset, setPreset] = useState("30days");
-    const [customRange, setCustomRange] = useState({ start: null, end: null });
+    const [orders, setOrders] = useState<AnalyticsOrder[]>([]);
+    const [preset, setPreset] = useState<Preset | null>("30days");
+    const [customRange, setCustomRange] = useState<DateRange>({ start: null, end: null });
 
     const fetchOrders = useCallback(
         async (isRefresh = false) => {
@@ -162,13 +197,13 @@ export default function AnalyticsPage() {
             else setLoading(true);
 
             try {
-                let startDate, endDate;
+                let startDate: Date, endDate: Date;
 
                 if (customRange.start && customRange.end) {
                     startDate = customRange.start;
                     endDate = customRange.end;
                 } else {
-                    const range = getDateRange(preset);
+                    const range = getDateRange(preset as Preset);
                     startDate = range.start;
                     endDate = range.end;
                 }
@@ -181,7 +216,7 @@ export default function AnalyticsPage() {
                 );
 
                 const snapshot = await getDocs(q);
-                const ordersData = snapshot.docs.map((doc) => ({
+                const ordersData = snapshot.docs.map((doc): AnalyticsOrder => ({
                     id: doc.id,
                     ...doc.data(),
                     createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt,
@@ -210,13 +245,13 @@ export default function AnalyticsPage() {
         fetchOrders();
     }, [fetchOrders]);
 
-    const handlePresetChange = (newPreset) => {
-        setPreset(newPreset);
+    const handlePresetChange = (newPreset: string) => {
+        setPreset(newPreset as Preset);
         setCustomRange({ start: null, end: null });
         setTimeout(() => fetchOrders(true), 0);
     };
 
-    const handleCustomRangeChange = (start, end) => {
+    const handleCustomRangeChange = (start: Date, end: Date) => {
         setCustomRange({ start, end });
         setPreset(null);
         setTimeout(() => fetchOrders(true), 0);

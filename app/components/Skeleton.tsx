@@ -1,4 +1,6 @@
-export default function Skeleton({ className, ...props }) {
+import type { HTMLAttributes } from "react";
+
+export default function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
     return <div className={`animate-pulse bg-white/5 rounded-2xl ${className}`} {...props} />;
 }
 

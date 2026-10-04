@@ -1,29 +1,45 @@
 import { useState } from "react";
 import { Lock, Unlock, Zap } from "lucide-react";
 
+type OverrideChoice = "open" | "closed" | "auto";
+
+export interface ManualOverride {
+    status: "open" | "closed";
+    updatedAt?: string;
+}
+
+interface ServiceOverrideControlProps {
+    /** Settings document holding the `manualOverride` object */
+    settings: { manualOverride?: { status?: string } | null } | null | undefined;
+    /** Callback to update settings */
+    onUpdate: (patch: { manualOverride: ManualOverride | null }) => Promise<void> | void;
+    /** Display name of the service */
+    serviceName: string;
+}
+
 /**
  * Component to manually override service status (force open/close).
- * @param {Object} props
- * @param {Object} props.settings - Ensure it contains manualOverride object
- * @param {Function} props.onUpdate - Callback to update settings
- * @param {string} props.serviceName - Display name of the service
  */
-export default function ServiceOverrideControl({ settings, onUpdate, serviceName }) {
+export default function ServiceOverrideControl({
+    settings,
+    onUpdate,
+    serviceName,
+}: ServiceOverrideControlProps) {
     const [updating, setUpdating] = useState(false);
 
-    const getCurrentStatus = () => {
+    const getCurrentStatus = (): OverrideChoice => {
         const status = settings?.manualOverride?.status;
 
-        return ["open", "closed"].includes(status) ? status : "auto";
+        return status === "open" || status === "closed" ? status : "auto";
     };
 
     const currentStatus = getCurrentStatus();
 
-    const handleOverride = async (status) => {
+    const handleOverride = async (status: OverrideChoice) => {
         setUpdating(true);
         try {
             // "auto" means no override — set to null to let slots decide
-            const overrideData =
+            const overrideData: ManualOverride | null =
                 status === "auto"
                     ? null
                     : {

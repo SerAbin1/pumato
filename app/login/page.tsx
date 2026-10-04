@@ -1,5 +1,6 @@
 "use client";
 
+import type { FormEvent } from "react";
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useUserAuth } from "@/app/context/UserAuthContext";
@@ -26,7 +27,7 @@ export default function LoginPage() {
         }
     }, [loading, user, router]);
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         setError("");
         setIsLoading(true);
@@ -36,7 +37,7 @@ export default function LoginPage() {
         if (result.success) {
             router.push("/");
         } else {
-            setError(result.error);
+            setError(result.error ?? "");
         }
 
         setIsLoading(false);

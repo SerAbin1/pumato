@@ -3,7 +3,12 @@
 import { ShieldCheck, ArrowRight } from "lucide-react";
 import Link from "next/link";
 
-const TYPE_CONFIG = {
+type TermsColor = "orange" | "green" | "blue" | "purple";
+
+const TYPE_CONFIG: Record<
+    string,
+    { color: TermsColor; termsLink: string; terms: string[]; [key: string]: unknown }
+> = {
     delivery: {
         color: "orange",
         termsLink: "/terms/delivery",
@@ -52,7 +57,7 @@ const TYPE_CONFIG = {
     },
 };
 
-const COLOR_CLASSES = {
+const COLOR_CLASSES: Record<TermsColor, { icon: string; dot: string; link: string }> = {
     orange: {
         icon: "text-orange-500/50",
         dot: "bg-orange-500/30",
@@ -75,7 +80,7 @@ const COLOR_CLASSES = {
     },
 };
 
-export default function TermsFooter({ type = "delivery" }) {
+export default function TermsFooter({ type = "delivery" }: { type?: string }) {
     const config = TYPE_CONFIG[type] ?? TYPE_CONFIG.delivery;
     const colors = COLOR_CLASSES[config.color];
 

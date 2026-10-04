@@ -1,8 +1,17 @@
 "use client";
 
 import { DollarSign, TrendingUp, ShoppingBag, Clock } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 
-function MetricCard({ title, value, subValue, icon: Icon, colorClass }) {
+interface MetricCardProps {
+    title: string;
+    value: string;
+    subValue?: string;
+    icon: LucideIcon;
+    colorClass: string;
+}
+
+function MetricCard({ title, value, subValue, icon: Icon, colorClass }: MetricCardProps) {
     return (
         <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
             <div className="flex items-start justify-between mb-3">
@@ -19,7 +28,7 @@ function MetricCard({ title, value, subValue, icon: Icon, colorClass }) {
     );
 }
 
-function formatCurrency(amount) {
+function formatCurrency(amount: number) {
     return new Intl.NumberFormat("en-IN", {
         style: "currency",
         currency: "INR",
@@ -28,7 +37,7 @@ function formatCurrency(amount) {
     }).format(amount);
 }
 
-function formatMinutes(minutes) {
+function formatMinutes(minutes: number) {
     if (!minutes || minutes < 0) return "0 min";
     if (minutes < 60) return `${Math.round(minutes)} min`;
     const hours = Math.floor(minutes / 60);
@@ -36,7 +45,17 @@ function formatMinutes(minutes) {
     return `${hours}h ${mins}m`;
 }
 
-export default function MetricsCards({ metrics }) {
+export default function MetricsCards({
+    metrics,
+}: {
+    metrics: {
+        revenue: number;
+        profit: number;
+        completedOrders: number;
+        avgOrderAmount: number;
+        avgDeliveryTime: number;
+    };
+}) {
     return (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             <MetricCard

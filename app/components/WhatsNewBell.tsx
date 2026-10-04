@@ -9,11 +9,11 @@ import { useWhatsNew } from "../hooks/useWhatsNew";
 export default function WhatsNewBell() {
     const { announcement, hasUnseen, markSeen } = useWhatsNew();
     const [isOpen, setIsOpen] = useState(false);
-    const popoverRef = useRef(null);
+    const popoverRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
                 setIsOpen(false);
             }
         };

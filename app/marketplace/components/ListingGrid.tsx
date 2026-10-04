@@ -1,6 +1,7 @@
 import ListingCard from "./ListingCard";
+import type { MarketplaceListing } from "@/lib/types";
 
-export default function ListingGrid({ listings }) {
+export default function ListingGrid({ listings }: { listings: MarketplaceListing[] }) {
     if (!listings || listings.length === 0) {
         return (
             <div className="text-center py-20 bg-white/5 rounded-3xl border border-white/10 border-dashed">

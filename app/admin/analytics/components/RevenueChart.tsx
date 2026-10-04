@@ -11,19 +11,25 @@ import {
     ResponsiveContainer,
 } from "recharts";
 
-function formatCurrency(value) {
+function formatCurrency(value: number) {
     if (value >= 1000) {
         return `₹${(value / 1000).toFixed(1)}k`;
     }
     return `₹${value}`;
 }
 
-function formatDate(dateStr) {
+function formatDate(dateStr: string) {
     const date = new Date(dateStr);
     return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
 }
 
-export default function RevenueChart({ data }) {
+export interface RevenuePoint {
+    date: string;
+    revenue: number;
+    profit: number;
+}
+
+export default function RevenueChart({ data }: { data: RevenuePoint[] }) {
     if (!data || data.length === 0) {
         return (
             <div className="bg-white/5 border border-white/10 rounded-2xl p-6 mb-6">
@@ -60,8 +66,8 @@ export default function RevenueChart({ data }) {
                                 borderRadius: "8px",
                             }}
                             labelStyle={{ color: "#fff" }}
-                            formatter={(value) => formatCurrency(value)}
-                            labelFormatter={(label) => formatDate(label)}
+                            formatter={(value) => formatCurrency(Number(value))}
+                            labelFormatter={(label) => formatDate(String(label))}
                         />
                         <Legend />
                         <Line

@@ -1,5 +1,7 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import { ArrowLeft, ScrollText, Utensils, ShoppingBasket, Shirt, ArrowRight } from "lucide-react";
@@ -101,7 +103,19 @@ export default function TermsHubPage() {
     );
 }
 
-function TermsLink({ href, title, icon, description, color }) {
+function TermsLink({
+    href,
+    title,
+    icon,
+    description,
+    color,
+}: {
+    href: string;
+    title: ReactNode;
+    icon: ReactNode;
+    description: ReactNode;
+    color: "orange" | "green" | "blue";
+}) {
     const colorClasses = {
         orange: "text-orange-500 border-orange-500/10 hover:border-orange-500/50 bg-orange-500/5",
         green: "text-green-500 border-green-500/10 hover:border-green-500/50 bg-green-500/5",

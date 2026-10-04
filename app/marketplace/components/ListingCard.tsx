@@ -8,9 +8,17 @@ import { Maximize2, Package, MessageCircle, Link as LinkIcon } from "lucide-reac
 import { formatMarketplaceOfferMessage } from "@/lib/whatsapp";
 import { CUSTOM_LINK_TYPES } from "@/lib/customLinks";
 import ImageLightbox from "./ImageLightbox";
+import type { MouseEvent } from "react";
+import type { MarketplaceListing } from "@/lib/types";
 
-export default function ListingCard({ listing, index = 0 }) {
-    const [willingPrice, setWillingPrice] = useState(listing.askingPrice);
+export default function ListingCard({
+    listing,
+    index = 0,
+}: {
+    listing: MarketplaceListing;
+    index?: number;
+}) {
+    const [willingPrice, setWillingPrice] = useState<number | string>(listing.askingPrice);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [lightboxIndex, setLightboxIndex] = useState(0);
 
@@ -18,7 +26,7 @@ export default function ListingCard({ listing, index = 0 }) {
     const hasWhatsApp = Boolean(listing.sellerWhatsApp || whatsappLink);
     const isBuyable = Boolean(listing.askingPrice && hasWhatsApp);
 
-    const handleBuy = (e) => {
+    const handleBuy = (e: MouseEvent) => {
         e.preventDefault();
         e.stopPropagation();
         const message = formatMarketplaceOfferMessage(listing, willingPrice);
@@ -125,13 +133,13 @@ export default function ListingCard({ listing, index = 0 }) {
                             </button>
                         </>
                     )}
-                    {listing.customLinks?.length > 0 && (
+                    {(listing.customLinks?.length ?? 0) > 0 && (
                         <div className="flex items-center gap-3 pt-1">
                             <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">
                                 For more info
                             </span>
                             <div className="flex flex-wrap gap-2">
-                                {listing.customLinks.map((link, i) => {
+                                {listing.customLinks!.map((link, i) => {
                                     const typeDef = CUSTOM_LINK_TYPES.find(
                                         (t) => t.id === link.type
                                     );

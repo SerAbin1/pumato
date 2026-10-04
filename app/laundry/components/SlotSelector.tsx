@@ -3,8 +3,23 @@ import { motion } from "framer-motion";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp";
 import { getISTDate } from "@/lib/dateUtils";
 
-export default function SlotSelector({ formData, setFormData, availableSlots, loadingSlots }) {
-    const scrollRef = useRef(null);
+import type { Dispatch, SetStateAction } from "react";
+import type { LaundryFormData } from "../types";
+
+interface SlotSelectorProps {
+    formData: LaundryFormData;
+    setFormData: Dispatch<SetStateAction<LaundryFormData>>;
+    availableSlots: string[];
+    loadingSlots: boolean;
+}
+
+export default function SlotSelector({
+    formData,
+    setFormData,
+    availableSlots,
+    loadingSlots,
+}: SlotSelectorProps) {
+    const scrollRef = useRef<HTMLDivElement>(null);
 
     const handleWaitlist = () => {
         const message = `Hi, I'd like a laundry pickup on ${formData.date} but no slots were shown. Please let me know if any slots open up.`;

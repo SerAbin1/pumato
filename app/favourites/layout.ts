@@ -1,6 +1,8 @@
+import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import { CANONICAL_URLS } from "@/lib/seo";
 
-export const metadata = {
+export const metadata: Metadata = {
     title: "Favourites | Pumato",
     description: "Your saved favourite dishes for quick reordering.",
     alternates: {
@@ -8,6 +10,6 @@ export const metadata = {
     },
 };
 
-export default function FavouritesLayout({ children }) {
+export default function FavouritesLayout({ children }: { children: ReactNode }) {
     return children;
 }

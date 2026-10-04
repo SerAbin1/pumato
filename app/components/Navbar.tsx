@@ -479,7 +479,12 @@ export default function Navbar() {
     const isLaundryPage = pathname?.startsWith("/laundry");
     const isAdminPage = pathname?.startsWith("/admin");
 
-    let currentSettings = orderSettings;
+    // Laundry's settings are just its slot list; the indicator is hidden there anyway.
+    type ServiceSettings = (OrderSettings | GrocerySettings | { slots: string[] }) & {
+        manualOverride?: { status?: "open" | "closed" } | null;
+        service_hours?: { start: string; end: string }[];
+    };
+    let currentSettings: ServiceSettings = orderSettings;
     let settingsLabel = "Food Ordering Hours";
 
     if (isGroceryPage) {
@@ -561,7 +566,7 @@ export default function Navbar() {
                             {shouldShowLiveIndicator && (
                                 <LiveIndicator
                                     isLive={isLive}
-                                    settings={currentSettings}
+                                    settings={currentSettings as OrderSettings | GrocerySettings}
                                     mode={isGroceryPage ? "grocery" : "food"}
                                     label={settingsLabel}
                                     hasPreOrder={hasPreOrder}
@@ -604,7 +609,7 @@ export default function Navbar() {
                         {shouldShowLiveIndicator && (
                             <LiveIndicator
                                 isLive={isLive}
-                                settings={currentSettings}
+                                settings={currentSettings as OrderSettings | GrocerySettings}
                                 mode={isGroceryPage ? "grocery" : "food"}
                                 label={settingsLabel}
                                 hasPreOrder={hasPreOrder}

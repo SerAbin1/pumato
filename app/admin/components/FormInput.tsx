@@ -2,7 +2,7 @@ import type { ChangeEventHandler, HTMLInputTypeAttribute, ReactNode } from "reac
 
 interface FormInputProps {
     label: ReactNode;
-    value: string | number;
+    value: string | number | undefined;
     onChange: ChangeEventHandler<HTMLInputElement>;
     placeholder?: string;
     type?: HTMLInputTypeAttribute;

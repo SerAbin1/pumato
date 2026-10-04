@@ -6,21 +6,41 @@ import PreOrderSlotEditor from "./PreOrderSlotEditor";
 import { useState } from "react";
 import ConfirmModal from "../../components/ConfirmModal";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
+import type { ReactNode } from "react";
+import type { GroceryCampusPreOrderDraft, GrocerySettingsDraft, SetDraft } from "../types";
 
-function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }) {
-    const [confirmModal, setConfirmModal] = useState({
+interface ServiceSlot {
+    start: string;
+    end: string;
+}
+
+interface SlotEditorProps {
+    slots: ServiceSlot[] | undefined;
+    onSlotsChange: (slots: ServiceSlot[]) => void;
+    label: ReactNode;
+    emptyText: ReactNode;
+    accent?: string;
+}
+
+function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }: SlotEditorProps) {
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        slotIdx: number | null;
+        slotName: string;
+    }>({
         isOpen: false,
         slotIdx: null,
         slotName: "",
     });
 
     const addSlot = () => onSlotsChange([...(slots || []), { start: "", end: "" }]);
-    const updateSlot = (index, field, value) => {
+    const updateSlot = (index: number, field: keyof ServiceSlot, value: string) => {
         const newSlots = [...(slots || [])];
         newSlots[index] = { ...newSlots[index], [field]: value };
         onSlotsChange(newSlots);
     };
-    const removeSlot = (index) => onSlotsChange((slots || []).filter((_, i) => i !== index));
+    const removeSlot = (index: number | null) =>
+        onSlotsChange((slots || []).filter((_, i) => i !== index));
 
     return (
         <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">
@@ -119,7 +139,13 @@ function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }
     );
 }
 
-export default function GrocerySettings({ grocerySettings, setGrocerySettings }) {
+export default function GrocerySettings({
+    grocerySettings,
+    setGrocerySettings,
+}: {
+    grocerySettings: GrocerySettingsDraft;
+    setGrocerySettings: SetDraft<GrocerySettingsDraft>;
+}) {
     return (
         <div className="space-y-8">
             <ServiceOverrideControl
@@ -156,7 +182,7 @@ export default function GrocerySettings({ grocerySettings, setGrocerySettings })
                         {DEFAULT_CAMPUS_CONFIG.map((campusMeta) => {
                             const campusPreOrder = grocerySettings.campusPreOrder || [];
                             const idx = campusPreOrder.findIndex((c) => c.id === campusMeta.id);
-                            const cfg =
+                            const cfg: GroceryCampusPreOrderDraft =
                                 idx >= 0
                                     ? campusPreOrder[idx]
                                     : {
@@ -164,7 +190,7 @@ export default function GrocerySettings({ grocerySettings, setGrocerySettings })
                                           isPreOrderEnabled: false,
                                           preOrderSlots: [],
                                       };
-                            const updateCampus = (patch) => {
+                            const updateCampus = (patch: Partial<GroceryCampusPreOrderDraft>) => {
                                 const next = [...campusPreOrder];
                                 if (idx >= 0) {
                                     next[idx] = { ...next[idx], ...patch };

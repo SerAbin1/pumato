@@ -5,17 +5,25 @@ import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
 import { toast } from "react-hot-toast";
 import ConfirmModal from "../../components/ConfirmModal";
+import type { Restaurant } from "@/lib/types";
 
-export default function UsersTab({ restaurants, user }) {
-    const [activeTab, setActiveTab] = useState("partners"); // "partners" | "deliveryPartners"
-    const [viewState, setViewState] = useState("list"); // "list" | "form"
-    const [partners, setPartners] = useState([]);
-    const [deliveryPartners, setDeliveryPartners] = useState([]);
+interface ManagedUser {
+    uid: string;
+    email?: string;
+    restaurantId?: string;
+    lastSignInTime?: string;
+}
+
+export default function UsersTab({ restaurants }: { restaurants: Restaurant[] }) {
+    const [activeTab, setActiveTab] = useState<"partners" | "deliveryPartners">("partners");
+    const [viewState, setViewState] = useState<"list" | "form">("list");
+    const [partners, setPartners] = useState<ManagedUser[]>([]);
+    const [deliveryPartners, setDeliveryPartners] = useState<ManagedUser[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
 
     // Modal state
-    const [confirmDelete, setConfirmDelete] = useState({
+    const [confirmDelete, setConfirmDelete] = useState<{ isOpen: boolean; uid: string | null }>({
         isOpen: false,
         uid: null,
     });
@@ -29,11 +37,11 @@ export default function UsersTab({ restaurants, user }) {
     const fetchUsers = async () => {
         setIsLoading(true);
         try {
-            const idToken = await user.getIdToken();
-            const { data } = await manageUsers(
-                { action: "LIST_USERS" },
-                { authorization: `Bearer ${idToken}` }
-            );
+            // The callable SDK sends the signed-in admin's ID token itself.
+            const { data } = await manageUsers<{
+                partners?: ManagedUser[];
+                deliveryPartners?: ManagedUser[];
+            }>({ action: "LIST_USERS" });
             setPartners(data.partners || []);
             setDeliveryPartners(data.deliveryPartners || []);
         } catch (error) {
@@ -60,17 +68,13 @@ export default function UsersTab({ restaurants, user }) {
 
         const loadingToast = toast.loading("Deleting user...");
         try {
-            const idToken = await user.getIdToken();
-            await manageUsers(
-                { action: "DELETE_USER", uid },
-                { authorization: `Bearer ${idToken}` }
-            );
+            await manageUsers({ action: "DELETE_USER", uid });
 
             toast.success("User deleted successfully", { id: loadingToast });
             await fetchUsers();
         } catch (error) {
             console.error(error);
-            toast.error(`Error: ${error.message}`, { id: loadingToast });
+            toast.error(`Error: ${(error as Error).message}`, { id: loadingToast });
         }
     };
 
@@ -100,8 +104,7 @@ export default function UsersTab({ restaurants, user }) {
         };
 
         try {
-            const idToken = await user.getIdToken();
-            const { data } = await manageUsers(payload, { authorization: `Bearer ${idToken}` });
+            const { data } = await manageUsers<{ error?: string }>(payload);
 
             if (data?.error) {
                 throw new Error(data.error);
@@ -115,7 +118,7 @@ export default function UsersTab({ restaurants, user }) {
             setViewState("list");
         } catch (error) {
             console.error(error);
-            toast.error(`Error: ${error.message}`, { id: loadingToast });
+            toast.error(`Error: ${(error as Error).message}`, { id: loadingToast });
         } finally {
             setIsSaving(false);
         }

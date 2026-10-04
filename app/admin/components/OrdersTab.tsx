@@ -20,21 +20,27 @@ import { formatTime } from "@/lib/dateUtils";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import { displayOrderNumber } from "@/lib/formatters";
 import ConfirmModal from "@/app/components/ConfirmModal";
+import type { User as FirebaseUser } from "firebase/auth";
+import type { DateLike } from "@/lib/dateUtils";
+import type { Order } from "@/lib/types";
 
 const SUB_TABS = [
     { id: "pending", label: "Pending" },
     { id: "inprogress", label: "In Progress" },
     { id: "past", label: "Picked Up / Done" },
     { id: "preorders", label: "Pre-orders" },
-];
+] as const;
 
-const isPreOrder = (order) => !!order.deliverySlot;
+const isPreOrder = (order: Order) => !!order.deliverySlot;
 
 // Sorts by actual delivery time where we have one (campus-level slots carry a real
 // date+start); legacy restaurant-level slots only carry a time-of-day label with no
 // date, so they sort by that time-of-day, after every dated campus slot.
-const preOrderSortKey = (order) => {
-    const slot = order.deliverySlot;
+const preOrderSortKey = (order: Order) => {
+    // Legacy orders stored plain strings or label-only restaurant slots.
+    const slot = order.deliverySlot as
+        | { source?: string; date?: string; start?: string; label?: string }
+        | undefined;
     if (slot?.source === "campus" && slot.date && slot.start) {
         return `0_${slot.date}T${slot.start}`;
     }
@@ -52,7 +58,7 @@ const preOrderSortKey = (order) => {
     return "2_unknown";
 };
 
-const STATUS_INFO = {
+const STATUS_INFO: Record<string, { label: string; color: string }> = {
     confirmed: { label: "Confirmed", color: "text-blue-400 bg-blue-500/10 border-blue-500/20" },
     viewed: {
         label: "Viewed by Partner",
@@ -70,7 +76,7 @@ const STATUS_INFO = {
     delivered: { label: "Delivered", color: "text-gray-400 bg-gray-500/10 border-gray-500/20" },
 };
 
-function TimeAgo({ date }) {
+function TimeAgo({ date }: { date: DateLike | null | undefined }) {
     if (!date) return null;
     return (
         <span className="text-xs text-gray-500 flex items-center gap-1">
@@ -86,8 +92,14 @@ function OrderCard({
     user,
     isDuplicate = false,
     duplicateLocation = null,
+}: {
+    order: Order;
+    showActions?: boolean;
+    user: FirebaseUser | null;
+    isDuplicate?: boolean;
+    duplicateLocation?: "same" | "in_progress" | null;
 }) {
-    const [processingId, setProcessingId] = useState(null);
+    const [processingId, setProcessingId] = useState<string | null>(null);
     const [showAckModal, setShowAckModal] = useState(false);
     const statusInfo = STATUS_INFO[order.status] || {
         label: order.status,
@@ -110,7 +122,7 @@ function OrderCard({
         }
     };
 
-    const handleAction = async (orderId, action) => {
+    const handleAction = async (orderId: string, action: "confirm" | "cancel") => {
         setProcessingId(orderId);
         try {
             const newStatus = action === "confirm" ? "confirmed" : "cancelled";
@@ -121,18 +133,12 @@ function OrderCard({
             toast.success(`Order ${action === "confirm" ? "Confirmed" : "Cancelled"}`);
 
             if (action === "confirm" && user && order?.restaurantIds?.length > 0) {
-                user.getIdToken()
-                    .then((idToken) => {
-                        sendFcmNotification(
-                            {
-                                role: "partner",
-                                restaurantIds: order.restaurantIds,
-                                orderId,
-                            },
-                            { authorization: `Bearer ${idToken}` }
-                        ).catch((err) => console.warn("Partner FCM error:", err));
-                    })
-                    .catch((err) => console.error("Error getting ID token:", err));
+                // The callable SDK sends the signed-in admin's ID token itself.
+                sendFcmNotification({
+                    role: "partner",
+                    restaurantIds: order.restaurantIds,
+                    orderId,
+                }).catch((err) => console.warn("Partner FCM error:", err));
             }
         } catch {
             toast.error("Failed to update order");
@@ -175,9 +181,9 @@ function OrderCard({
                         <span className="text-xs font-black text-red-400 uppercase tracking-widest">
                             Out of Stock
                         </span>
-                        {order.outOfStockItems?.length > 0 && (
+                        {(order.outOfStockItems?.length ?? 0) > 0 && (
                             <span className="text-xs text-red-300/70">
-                                — {order.outOfStockItems.join(", ")}
+                                — {order.outOfStockItems!.join(", ")}
                             </span>
                         )}
                     </div>
@@ -293,14 +299,16 @@ function OrderCard({
                             {/* Background track (drawn manually to connect dots) */}
                             <div className="absolute top-2.5 left-[8%] right-[8%] h-[2px] bg-white/5 z-0"></div>
 
-                            {[
-                                { key: "createdAt", label: "Placed" },
-                                { key: "adminProcessedAt", label: "Confirmed" },
-                                { key: "partnerViewedAt", label: "Viewed" },
-                                { key: "readyAt", label: "Ready" },
-                                { key: "pickedUpAt", label: "Picked" },
-                                { key: "deliveredAt", label: "Delivered" },
-                            ].map((step, idx, arr) => {
+                            {(
+                                [
+                                    { key: "createdAt", label: "Placed" },
+                                    { key: "adminProcessedAt", label: "Confirmed" },
+                                    { key: "partnerViewedAt", label: "Viewed" },
+                                    { key: "readyAt", label: "Ready" },
+                                    { key: "pickedUpAt", label: "Picked" },
+                                    { key: "deliveredAt", label: "Delivered" },
+                                ] as const
+                            ).map((step, idx, arr) => {
                                 // For Firestore timestamps or dates
                                 const timeObj = order[step.key];
                                 const isCompleted = !!timeObj;
@@ -384,7 +392,7 @@ function OrderCard({
     );
 }
 
-function EmptyState({ message }) {
+function EmptyState({ message }: { message: string }) {
     return (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-16 text-center">
             <div className="w-16 h-16 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-5 text-gray-600">
@@ -402,6 +410,12 @@ export default function OrdersTab({
     pastOrders = [],
     loading,
     user,
+}: {
+    orders: Order[];
+    inProgressOrders?: Order[];
+    pastOrders?: Order[];
+    loading: boolean;
+    user: FirebaseUser | null;
 }) {
     const [subTab, setSubTab] = useState("pending");
 
@@ -429,8 +443,8 @@ export default function OrdersTab({
 
     // Calculate duplicate phones across ALL active (non-pre-order) orders
     const duplicatePhones = useMemo(() => {
-        const phoneCounts = {};
-        const duplicated = new Set();
+        const phoneCounts: Record<string, number> = {};
+        const duplicated = new Set<string>();
         const activeOrders = [...liveOrders, ...liveInProgressOrders];
 
         activeOrders.forEach((o) => {
@@ -447,8 +461,8 @@ export default function OrdersTab({
     // Group duplicate pending orders side-by-side while preserving original time order
     // Passes through Firestore's createdAt order, but reorders duplicates to sit directly below their first occurrence
     const sortedPending = useMemo(() => {
-        const result = [];
-        const seen = new Set();
+        const result: Order[] = [];
+        const seen = new Set<string>();
 
         liveOrders.forEach((order) => {
             if (seen.has(order.phone)) {
@@ -465,7 +479,7 @@ export default function OrdersTab({
 
     // Calculate duplicate location for each order: "same" = duplicate in pending (both in pending), "in_progress" = duplicate in in-progress tab
     const duplicateLocationMap = useMemo(() => {
-        const map = {};
+        const map: Record<string, "same" | "in_progress"> = {};
         const inProgressPhones = new Set(liveInProgressOrders.map((o) => o.phone).filter(Boolean));
 
         liveOrders.forEach((order) => {

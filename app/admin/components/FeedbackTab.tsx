@@ -5,9 +5,10 @@ import { collection, getDocs, query, orderBy } from "firebase/firestore";
 import { updateFeedback } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import { Check } from "lucide-react";
+import type { Feedback } from "@/lib/types";
 
 export default function FeedbackTab() {
-    const [items, setItems] = useState([]);
+    const [items, setItems] = useState<Feedback[]>([]);
     const [loading, setLoading] = useState(true);
 
     const fetchData = useCallback(async () => {
@@ -16,7 +17,7 @@ export default function FeedbackTab() {
             const snap = await getDocs(
                 query(collection(db, COLLECTIONS.FEEDBACK), orderBy("createdAt", "desc"))
             );
-            setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() })));
+            setItems(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as Feedback));
         } catch (error) {
             console.error("Failed to load feedback:", error);
             toast.error("Failed to load feedback");
@@ -30,10 +31,12 @@ export default function FeedbackTab() {
         fetchData();
     }, [fetchData]);
 
-    const markHandled = async (id) => {
+    const markHandled = async (id: string) => {
         try {
             await updateFeedback(id, { status: "handled" });
-            setItems((prev) => prev.map((i) => (i.id === id ? { ...i, status: "handled" } : i)));
+            setItems((prev) =>
+                prev.map((i) => (i.id === id ? { ...i, status: "handled" as const } : i))
+            );
         } catch (error) {
             console.error("Failed to update feedback:", error);
             toast.error("Failed to update");

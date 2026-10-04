@@ -21,6 +21,21 @@ import StickyActionBar from "./StickyActionBar";
 import PreOrderSlotEditor from "./PreOrderSlotEditor";
 import CustomSelect from "../../components/CustomSelect";
 import ConfirmModal from "../../components/ConfirmModal";
+import type { AddonDraft, MenuItemDraft, RestaurantDraft, VariantDraft } from "../types";
+import type { PriceChangeMode } from "@/lib/restaurants/priceAdjustments";
+
+interface RestaurantFormProps {
+    initialData: Partial<RestaurantDraft> | null;
+    onSave: (data: RestaurantDraft) => void;
+    onCancel: () => void;
+    isSaving?: boolean;
+    isPartnerPage?: boolean;
+}
+
+type ConfirmTarget =
+    | { isOpen: boolean; type: null; targetId: null; targetName: string }
+    | { isOpen: boolean; type: "category"; targetId: string; targetName: string }
+    | { isOpen: boolean; type: "menuItem"; targetId: number; targetName: string };
 
 const handleFileUpload = createFileUploadHandler("restaurants");
 
@@ -30,8 +45,8 @@ export default function RestaurantForm({
     onCancel,
     isSaving = false,
     isPartnerPage = false,
-}) {
-    const [formData, setFormData] = useState({
+}: RestaurantFormProps) {
+    const [formData, setFormData] = useState<RestaurantDraft>({
         name: "",
         image: "",
         cuisine: "",
@@ -65,16 +80,17 @@ export default function RestaurantForm({
 
     const [menuSearchQuery, setMenuSearchQuery] = useState("");
     const [selectedCategory, setSelectedCategory] = useState("all");
-    const [confirmModal, setConfirmModal] = useState({
+    const [confirmModal, setConfirmModal] = useState<ConfirmTarget>({
         isOpen: false,
         type: null,
         targetId: null,
         targetName: "",
     });
-    const [priceIncreaseAmount, setPriceIncreaseAmount] = useState("");
-    const [priceChangeMode, setPriceChangeMode] = useState(PRICE_CHANGE_FIXED);
-    const [excludedCategories, setExcludedCategories] = useState([]);
-    const [excludedItemIds, setExcludedItemIds] = useState([]);
+    // Reset to the number 0 after a reversal, so the input shows "0".
+    const [priceIncreaseAmount, setPriceIncreaseAmount] = useState<string | number>("");
+    const [priceChangeMode, setPriceChangeMode] = useState<PriceChangeMode>(PRICE_CHANGE_FIXED);
+    const [excludedCategories, setExcludedCategories] = useState<string[]>([]);
+    const [excludedItemIds, setExcludedItemIds] = useState<string[]>([]);
     const [itemSearchQuery, setItemSearchQuery] = useState("");
     const [priceIncreaseApplied, setPriceIncreaseApplied] = useState(false);
     const [priceIncreaseModal, setPriceIncreaseModal] = useState({
@@ -106,7 +122,11 @@ export default function RestaurantForm({
         });
     };
 
-    const updateMenuItem = (index, field, value) => {
+    const updateMenuItem = <K extends keyof MenuItemDraft>(
+        index: number,
+        field: K,
+        value: MenuItemDraft[K]
+    ) => {
         const newMenu = [...formData.menu];
         if (field === "isVisible" && value === false) {
             newMenu[index].hiddenAt = new Date().toISOString();
@@ -117,12 +137,12 @@ export default function RestaurantForm({
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const removeMenuItem = (index) => {
+    const removeMenuItem = (index: number) => {
         const newMenu = formData.menu.filter((_, i) => i !== index);
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const addVariant = (index) => {
+    const addVariant = (index: number) => {
         const newMenu = [...formData.menu];
         const variants = [...(newMenu[index].variants || [])];
         variants.push({ id: `${Date.now()}-${variants.length}`, name: "", price: "" });
@@ -130,7 +150,12 @@ export default function RestaurantForm({
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const updateVariant = (index, variantIdx, field, value) => {
+    const updateVariant = <K extends keyof VariantDraft>(
+        index: number,
+        variantIdx: number,
+        field: K,
+        value: VariantDraft[K]
+    ) => {
         const newMenu = [...formData.menu];
         const variants = [...(newMenu[index].variants || [])];
         variants[variantIdx] = { ...variants[variantIdx], [field]: value };
@@ -138,7 +163,7 @@ export default function RestaurantForm({
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const removeVariant = (index, variantIdx) => {
+    const removeVariant = (index: number, variantIdx: number) => {
         const newMenu = [...formData.menu];
         newMenu[index].variants = (newMenu[index].variants || []).filter(
             (_, i) => i !== variantIdx
@@ -146,7 +171,7 @@ export default function RestaurantForm({
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const addAddon = (index) => {
+    const addAddon = (index: number) => {
         const newMenu = [...formData.menu];
         const addons = [...(newMenu[index].addons || [])];
         addons.push({ id: `${Date.now()}-${addons.length}`, name: "", price: "" });
@@ -154,7 +179,12 @@ export default function RestaurantForm({
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const updateAddon = (index, addonIdx, field, value) => {
+    const updateAddon = <K extends keyof AddonDraft>(
+        index: number,
+        addonIdx: number,
+        field: K,
+        value: AddonDraft[K]
+    ) => {
         const newMenu = [...formData.menu];
         const addons = [...(newMenu[index].addons || [])];
         addons[addonIdx] = { ...addons[addonIdx], [field]: value };
@@ -162,7 +192,7 @@ export default function RestaurantForm({
         setFormData({ ...formData, menu: newMenu });
     };
 
-    const removeAddon = (index, addonIdx) => {
+    const removeAddon = (index: number, addonIdx: number) => {
         const newMenu = [...formData.menu];
         newMenu[index].addons = (newMenu[index].addons || []).filter((_, i) => i !== addonIdx);
         setFormData({ ...formData, menu: newMenu });
@@ -181,14 +211,14 @@ export default function RestaurantForm({
     });
 
     const getAffectedItemsCount = () => {
-        const amount = parseFloat(priceIncreaseAmount) || 0;
+        const amount = parseFloat(String(priceIncreaseAmount)) || 0;
         if (amount === 0) return 0;
 
         return countAffectedItems(formData.menu || [], getPriceChangeOptions());
     };
 
     const applyPriceIncrease = () => {
-        const amount = parseFloat(priceIncreaseAmount) || 0;
+        const amount = parseFloat(String(priceIncreaseAmount)) || 0;
         if (amount === 0) {
             alert("Please enter a valid price change amount");
             return;
@@ -227,7 +257,7 @@ export default function RestaurantForm({
     };
 
     const resetPrices = () => {
-        const amount = parseFloat(priceIncreaseAmount) || 0;
+        const amount = parseFloat(String(priceIncreaseAmount)) || 0;
         if (amount === 0) return;
 
         const updatedMenu = reversePriceChange(formData.menu || [], {
@@ -244,13 +274,13 @@ export default function RestaurantForm({
         setPriceIncreaseApplied(false);
     };
 
-    const toggleCategory = (category) => {
+    const toggleCategory = (category: string) => {
         setExcludedCategories((prev) =>
             prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category]
         );
     };
 
-    const toggleItemExclusion = (itemId) => {
+    const toggleItemExclusion = (itemId: string) => {
         setExcludedItemIds((prev) =>
             prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]
         );
@@ -258,7 +288,7 @@ export default function RestaurantForm({
 
     const handleSave = () => {
         // Prepare data for saving
-        const formattedData = {
+        const formattedData: RestaurantDraft = {
             ...formData,
             name: (formData.name || "").trim().toUpperCase(),
             cuisine: toTitleCase((formData.cuisine || "").trim()),
@@ -562,7 +592,9 @@ export default function RestaurantForm({
                     />
                     <button
                         onClick={() => {
-                            const input = document.getElementById("local-cat-input");
+                            const input = document.getElementById(
+                                "local-cat-input"
+                            ) as HTMLInputElement | null;
                             if (input && input.value.trim()) {
                                 const newCat = input.value.trim().toUpperCase();
                                 if (!formData.categories.includes(newCat)) {
@@ -835,7 +867,7 @@ export default function RestaurantForm({
                             <button
                                 onClick={applyPriceIncrease}
                                 disabled={
-                                    (parseFloat(priceIncreaseAmount) || 0) === 0 ||
+                                    (parseFloat(String(priceIncreaseAmount)) || 0) === 0 ||
                                     priceIncreaseApplied
                                 }
                                 className="bg-orange-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
@@ -960,7 +992,8 @@ export default function RestaurantForm({
 
                         const scoredResults = results.map((result) => {
                             const itemName = result.item.name.toLowerCase();
-                            let adjustedScore = result.score;
+                            // Always set: the index is built with includeScore.
+                            let adjustedScore = result.score!;
                             if (itemName === query) adjustedScore -= 0.5;
                             else if (itemName.startsWith(query)) adjustedScore -= 0.3;
                             else if (itemName.includes(query)) adjustedScore -= 0.2;
@@ -1345,9 +1378,9 @@ export default function RestaurantForm({
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
                 onConfirm={() => {
                     if (confirmModal.type === "menuItem") {
-                        removeMenuItem(confirmModal.targetId);
+                        removeMenuItem(confirmModal.targetId as number);
                     } else if (confirmModal.type === "category") {
-                        const cat = confirmModal.targetId;
+                        const cat = confirmModal.targetId as string;
                         setFormData((prev) => ({
                             ...prev,
                             categories: (prev.categories || []).filter((c) => c !== cat),

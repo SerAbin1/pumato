@@ -145,9 +145,9 @@ export type CampusConfig = z.infer<typeof CampusConfigSchema>;
 
 // --- Site content ---
 
-export type OrderSettings = z.infer<typeof OrderSettingsSchema> & { [key: string]: any };
+export type OrderSettings = z.infer<typeof OrderSettingsSchema>;
 export type DeliveryCampusConfig = NonNullable<OrderSettings["deliveryCampusConfig"]>[number];
-export type GrocerySettings = z.infer<typeof GrocerySettingsSchema> & { [key: string]: any };
+export type GrocerySettings = z.infer<typeof GrocerySettingsSchema>;
 export type PromoBanners = z.infer<typeof PromoBannersSchema>;
 export type Banner = PromoBanners["banner1"];
 export type MarketplaceCategories = z.infer<typeof MarketplaceCategoriesSchema>;

@@ -4,20 +4,28 @@ import { motion, AnimatePresence } from "framer-motion";
 import { AlertCircle, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
+import type { ReactNode } from "react";
+import type { AnyRecord } from "@/lib/types";
 
-const formatValue = (key, value) => {
+interface SlotLike {
+    start?: string;
+    end?: string;
+    cutoffMinutes?: number | string;
+}
+
+const formatValue = (key: string, value: any): string => {
     if (value === null || value === undefined) return "(not set)";
     if (key === "deliveryCampusConfig" && Array.isArray(value)) {
         if (value.length === 0) return "(empty)";
         return value
-            .map((c) => {
-                const slots = (c.slots || [])
+            .map((c: AnyRecord) => {
+                const slots = ((c.slots || []) as SlotLike[])
                     .filter((s) => s.start && s.end)
                     .map((s) => `${s.start}–${s.end}`)
                     .join(", ");
                 const preOrder = c.isPreOrderEnabled
                     ? ` | Pre-order ON [${
-                          (c.preOrderSlots || [])
+                          ((c.preOrderSlots || []) as SlotLike[])
                               .filter((s) => s.start && s.end)
                               .map(
                                   (s) =>
@@ -33,9 +41,9 @@ const formatValue = (key, value) => {
     if (key === "campusPreOrder" && Array.isArray(value)) {
         if (value.length === 0) return "(empty)";
         return value
-            .map((c) => {
+            .map((c: AnyRecord) => {
                 if (!c.isPreOrderEnabled) return `${c.id}: OFF`;
-                const slots = (c.preOrderSlots || [])
+                const slots = ((c.preOrderSlots || []) as SlotLike[])
                     .filter((s) => s.start && s.end)
                     .map(
                         (s) =>
@@ -58,7 +66,7 @@ const formatValue = (key, value) => {
     return String(value);
 };
 
-const FIELD_LABELS = {
+const FIELD_LABELS: Record<string, string> = {
     baseDeliveryCharge: "Base Delivery Charge",
     extraItemThreshold: "Extra Item Threshold",
     extraItemCharge: "Extra Item Charge",
@@ -75,7 +83,22 @@ const FIELD_LABELS = {
     whatsappGroups: "Community Groups",
 };
 
-export default function SaveConfirmationModal({ isOpen, onClose, onConfirm, title, data }) {
+interface SaveConfirmationModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    onConfirm: () => void;
+    title: ReactNode;
+    /** The pending diff: changed settings keys and their new values. */
+    data: AnyRecord;
+}
+
+export default function SaveConfirmationModal({
+    isOpen,
+    onClose,
+    onConfirm,
+    title,
+    data,
+}: SaveConfirmationModalProps) {
     const [mounted, setMounted] = useState(false);
 
     useEffect(() => {

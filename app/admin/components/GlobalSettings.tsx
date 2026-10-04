@@ -4,6 +4,22 @@ import { Sparkles, Phone, Plus, Trash, Upload } from "lucide-react";
 import Image from "next/image";
 import FormInput from "./FormInput";
 import ConfirmModal from "../../components/ConfirmModal";
+import type { createFileUploadHandler } from "@/lib/uploadImage";
+import type { GrocerySettingsDraft, OrderSettingsDraft, SetDraft } from "../types";
+
+/** GLOBAL_DEFAULTS on the admin page guarantees whatsappGroups is an array. */
+type GlobalOrderSettings = OrderSettingsDraft & {
+    whatsappGroups: NonNullable<OrderSettingsDraft["whatsappGroups"]>;
+};
+
+interface GlobalSettingsProps {
+    orderSettings: GlobalOrderSettings;
+    setOrderSettings: SetDraft<GlobalOrderSettings>;
+    grocerySettings: GrocerySettingsDraft;
+    setGrocerySettings: SetDraft<GrocerySettingsDraft>;
+    handleFileUpload: ReturnType<typeof createFileUploadHandler>;
+    settingsLoaded: boolean;
+}
 
 export default function GlobalSettings({
     orderSettings,
@@ -12,8 +28,12 @@ export default function GlobalSettings({
     setGrocerySettings,
     handleFileUpload,
     settingsLoaded,
-}) {
-    const [confirmModal, setConfirmModal] = useState({
+}: GlobalSettingsProps) {
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        groupIdx: number | null;
+        groupName: string;
+    }>({
         isOpen: false,
         groupIdx: null,
         groupName: "",

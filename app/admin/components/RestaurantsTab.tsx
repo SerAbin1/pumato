@@ -8,13 +8,27 @@ import { refreshTrending } from "@/lib/functions";
 import { TRENDING_CACHE_KEY } from "@/lib/trending";
 import RestaurantForm from "./RestaurantForm";
 import ConfirmModal from "../../components/ConfirmModal";
+import type { Restaurant } from "@/lib/types";
+import type { RestaurantDraft } from "../types";
 
-export default function RestaurantsTab({ restaurants, fetchData }) {
-    const [activeTab, setActiveTab] = useState("list");
-    const [editingId, setEditingId] = useState(null);
-    const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+export default function RestaurantsTab({
+    restaurants,
+    fetchData,
+}: {
+    restaurants: Restaurant[];
+    fetchData: () => Promise<void>;
+}) {
+    const [activeTab, setActiveTab] = useState<"list" | "form">("list");
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [selectedRestaurant, setSelectedRestaurant] = useState<Partial<RestaurantDraft> | null>(
+        null
+    );
     const [isRefreshingTrending, setIsRefreshingTrending] = useState(false);
-    const [confirmModal, setConfirmModal] = useState({
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        restaurantId: string | null;
+        restaurantName: string;
+    }>({
         isOpen: false,
         restaurantId: null,
         restaurantName: "",
@@ -41,7 +55,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
         setActiveTab("form");
     };
 
-    const handleEdit = (restaurant) => {
+    const handleEdit = (restaurant: Restaurant) => {
         setEditingId(restaurant.id);
         setSelectedRestaurant({
             ...restaurant,
@@ -54,7 +68,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
         setActiveTab("form");
     };
 
-    const handleDelete = async (id) => {
+    const handleDelete = async (id: string) => {
         try {
             await deleteRestaurant(id);
             await fetchData();
@@ -69,7 +83,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
     const handleRefreshTrending = async () => {
         setIsRefreshingTrending(true);
         try {
-            const { data } = await refreshTrending();
+            const { data } = await refreshTrending<{ count: number }>();
             // Customers pick the new ranking up when their day-long cache
             // expires; drop this browser's copy so the admin sees it now.
             try {
@@ -86,7 +100,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
         }
     };
 
-    const handleSaveRestaurant = async (data) => {
+    const handleSaveRestaurant = async (data: RestaurantDraft) => {
         const id = editingId || Date.now().toString();
         // data is already formatted by RestaurantForm, but we might want to ensure ID is set.
         const formattedData = {
@@ -95,7 +109,8 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
         };
 
         try {
-            await saveRestaurant(id, formattedData);
+            // The form edits loose drafts; RestaurantSchema validates the result.
+            await saveRestaurant(id, formattedData as Parameters<typeof saveRestaurant>[1]);
             await fetchData();
             setActiveTab("list");
         } catch (error) {
@@ -255,7 +270,7 @@ export default function RestaurantsTab({ restaurants, fetchData }) {
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                onConfirm={() => handleDelete(confirmModal.restaurantId)}
+                onConfirm={() => handleDelete(confirmModal.restaurantId!)}
                 title="Delete Restaurant?"
                 message={`Are you sure you want to delete "${confirmModal.restaurantName}"? This will permanently remove it from the database.`}
                 confirmLabel="Delete Restaurant"

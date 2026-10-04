@@ -1,7 +1,16 @@
 import { Sparkles, Eye, EyeOff, Upload, X } from "lucide-react";
 import FormInput from "./FormInput";
 
-export default function BannersTab({ banners, setBanners, handleFileUpload }) {
+import type { Banner, PromoBanners } from "@/lib/types";
+import type { createFileUploadHandler } from "@/lib/uploadImage";
+
+interface BannersTabProps {
+    banners: Partial<PromoBanners>;
+    setBanners: (banners: Partial<PromoBanners>) => void;
+    handleFileUpload: ReturnType<typeof createFileUploadHandler>;
+}
+
+export default function BannersTab({ banners, setBanners, handleFileUpload }: BannersTabProps) {
     return (
         <div className="bg-white/5 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] border border-white/10 max-w-4xl mx-auto shadow-2xl">
             <h2 className="text-3xl font-black mb-8 text-white border-b border-white/10 pb-6 flex items-center gap-3">
@@ -10,8 +19,8 @@ export default function BannersTab({ banners, setBanners, handleFileUpload }) {
 
             <div className="grid gap-8">
                 {[1, 2, 3].map((num) => {
-                    const bannerKey = `banner${num}`;
-                    const banner = banners[bannerKey] || {};
+                    const bannerKey = `banner${num}` as keyof PromoBanners;
+                    const banner: Partial<Banner> = banners[bannerKey] || {};
 
                     return (
                         <div

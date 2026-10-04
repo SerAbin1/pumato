@@ -393,11 +393,7 @@ export default function AdminPage() {
                 getDocs(collection(db, COLLECTIONS.RESTAURANTS)),
                 (async () => {
                     try {
-                        const idToken = await user.getIdToken();
-                        return await manageCoupons(
-                            { action: "FETCH_ALL" },
-                            { authorization: `Bearer ${idToken}` }
-                        );
+                        return await manageCoupons({ action: "FETCH_ALL" });
                     } catch (err) {
                         console.error("Failed to fetch coupons", err);
                         return { data: [] };
@@ -599,7 +595,6 @@ export default function AdminPage() {
                             coupons={coupons}
                             restaurants={restaurants}
                             fetchData={fetchData}
-                            user={user}
                         />
                     )}
 
@@ -615,7 +610,6 @@ export default function AdminPage() {
                         <GrocerySettings
                             grocerySettings={groceryForm.data}
                             setGrocerySettings={groceryForm.setData}
-                            format12h={format12h}
                         />
                     )}
 
@@ -665,9 +659,7 @@ export default function AdminPage() {
                         />
                     )}
 
-                    {activeSection === "users" && (
-                        <UsersTab restaurants={restaurants} user={user} />
-                    )}
+                    {activeSection === "users" && <UsersTab restaurants={restaurants} />}
 
                     {activeSection === "marketplace" && <MarketplaceTab />}
 

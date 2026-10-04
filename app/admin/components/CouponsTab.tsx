@@ -5,20 +5,47 @@ import Fuse from "fuse.js";
 import FormInput from "./FormInput";
 import StickyActionBar from "./StickyActionBar";
 import ConfirmModal from "../../components/ConfirmModal";
+import type { MouseEvent } from "react";
+import type { Coupon, Restaurant } from "@/lib/types";
 
-export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
-    const [activeTab, setActiveTab] = useState("list");
-    const [editingId, setEditingId] = useState(null); // Keep editingId as per original logic, instruction might have been a partial change
+/** The promo-code editor's state; numbers stay strings while being typed. */
+interface CouponForm {
+    code: string;
+    type: string;
+    value: string | number;
+    minOrder: string | number;
+    description: string;
+    isVisible: boolean;
+    isActive: boolean;
+    usageLimit: string | number;
+    usedCount?: number;
+    restaurantId: string | null;
+    itemId: string | null;
+}
+
+interface CouponsTabProps {
+    coupons: Coupon[];
+    restaurants: Restaurant[];
+    fetchData: () => Promise<void>;
+}
+
+export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsTabProps) {
+    const [activeTab, setActiveTab] = useState<"list" | "form">("list");
+    const [editingId, setEditingId] = useState<string | null>(null); // Keep editingId as per original logic, instruction might have been a partial change
     const [itemSearchQuery, setItemSearchQuery] = useState("");
-    const [couponTargetType, setCouponTargetType] = useState("item"); // "item" or "category"
+    const [couponTargetType, setCouponTargetType] = useState<"item" | "category">("item");
     const [isSaving, setIsSaving] = useState(false);
-    const [confirmModal, setConfirmModal] = useState({
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        couponId: string | null;
+        couponCode: string;
+    }>({
         isOpen: false,
         couponId: null,
         couponCode: "",
     });
 
-    const [couponForm, setCouponForm] = useState({
+    const [couponForm, setCouponForm] = useState<CouponForm>({
         code: "",
         type: "FLAT",
         value: "",
@@ -33,7 +60,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
 
     // --- HANDLERS ---
 
-    const handleToggleActive = async (e, coupon) => {
+    const handleToggleActive = async (e: MouseEvent, coupon: Coupon) => {
         e.stopPropagation();
         const newStatus = !(coupon.isActive !== false); // Toggle
 
@@ -62,11 +89,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
         };
 
         try {
-            const idToken = await user.getIdToken();
-            await manageCoupons(
-                { action: "UPDATE", payload },
-                { authorization: `Bearer ${idToken}` }
-            );
+            await manageCoupons({ action: "UPDATE", payload });
             await fetchData();
         } catch (error) {
             console.error(error);
@@ -93,8 +116,8 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
         setActiveTab("form");
     };
 
-    const handleEditCoupon = (coupon) => {
-        setEditingId(coupon.id);
+    const handleEditCoupon = (coupon: Coupon) => {
+        setEditingId(coupon.id ?? null);
         const targetId = coupon.itemId || coupon.item_id;
         const isCategory = String(targetId).startsWith("CATEGORY:");
         setCouponTargetType(isCategory ? "category" : "item");
@@ -124,13 +147,9 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
         setActiveTab("form");
     };
 
-    const handleDeleteCoupon = async (id) => {
+    const handleDeleteCoupon = async (id: string) => {
         try {
-            const idToken = await user.getIdToken();
-            await manageCoupons(
-                { action: "DELETE", payload: { id } },
-                { authorization: `Bearer ${idToken}` }
-            );
+            await manageCoupons({ action: "DELETE", payload: { id } });
             await fetchData();
             setConfirmModal({ isOpen: false, couponId: null, couponCode: "" }); // Close modal on success
         } catch (error) {
@@ -141,7 +160,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
 
     const handleSubmitCoupon = async () => {
         setIsSaving(true);
-        const limit = parseInt(couponForm.usageLimit);
+        const limit = parseInt(String(couponForm.usageLimit));
         if (!limit || limit < 1) {
             alert("Usage limit is required and must be at least 1.");
             setIsSaving(false);
@@ -179,11 +198,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
 
         try {
             console.log("Submitting coupon payload:", payload);
-            const idToken = await user.getIdToken();
-            await manageCoupons(
-                { action: editingId ? "UPDATE" : "CREATE", payload },
-                { authorization: `Bearer ${idToken}` }
-            );
+            await manageCoupons({ action: editingId ? "UPDATE" : "CREATE", payload });
             await fetchData();
             setActiveTab("list");
         } catch (error) {
@@ -232,7 +247,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                         e.stopPropagation(); // Prevent opening edit form
                                         setConfirmModal({
                                             isOpen: true,
-                                            couponId: c.id,
+                                            couponId: c.id ?? null,
                                             couponCode: c.code,
                                         });
                                     }}
@@ -259,9 +274,9 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                     Value: {c.type === "FLAT" ? `₹${c.value}` : `${c.value}%`}
                                 </span>
                                 <span>Min: ₹{c.minOrder}</span>
-                                {c.usageLimit > 0 && (
+                                {Number(c.usageLimit) > 0 && (
                                     <span
-                                        className={`${(c.usedCount || 0) >= c.usageLimit ? "text-red-400" : "text-cyan-400"}`}
+                                        className={`${(c.usedCount || 0) >= Number(c.usageLimit) ? "text-red-400" : "text-cyan-400"}`}
                                     >
                                         Used: {c.usedCount || 0}/{c.usageLimit}
                                     </span>
@@ -451,7 +466,8 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
                                                             (result) => {
                                                                 const itemName =
                                                                     result.item.name.toLowerCase();
-                                                                let adjustedScore = result.score;
+                                                                // Set: built with includeScore.
+                                                                let adjustedScore = result.score!;
                                                                 if (itemName === query)
                                                                     adjustedScore -= 0.5;
                                                                 else if (itemName.startsWith(query))
@@ -657,7 +673,7 @@ export default function CouponsTab({ coupons, restaurants, fetchData, user }) {
             <ConfirmModal
                 isOpen={confirmModal.isOpen}
                 onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
-                onConfirm={() => handleDeleteCoupon(confirmModal.couponId)}
+                onConfirm={() => handleDeleteCoupon(confirmModal.couponId!)}
                 title="Delete Coupon?"
                 message={`Are you sure you want to delete the coupon "${confirmModal.couponCode}"? This action cannot be undone.`}
                 confirmLabel="Delete Coupon"

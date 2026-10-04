@@ -2,6 +2,18 @@ import { Timer, Plus, Trash } from "lucide-react";
 import { useState } from "react";
 import { format12h } from "@/lib/formatters";
 import ConfirmModal from "../../components/ConfirmModal";
+import type { ReactNode } from "react";
+import type { SlotDef } from "@/lib/preOrderSlots";
+
+interface PreOrderSlotEditorProps {
+    isEnabled: boolean;
+    onToggleEnabled: (next: boolean) => void;
+    slots: SlotDef[] | undefined;
+    onSlotsChange: (slots: SlotDef[]) => void;
+    label: ReactNode;
+    emptyText?: string;
+    accent?: string;
+}
 
 export default function PreOrderSlotEditor({
     isEnabled,
@@ -11,8 +23,12 @@ export default function PreOrderSlotEditor({
     label,
     emptyText = "No pre-order slots defined.",
     accent = "cyan",
-}) {
-    const [confirmModal, setConfirmModal] = useState({
+}: PreOrderSlotEditorProps) {
+    const [confirmModal, setConfirmModal] = useState<{
+        isOpen: boolean;
+        slotIdx: number | null;
+        slotName: string;
+    }>({
         isOpen: false,
         slotIdx: null,
         slotName: "",
@@ -23,12 +39,13 @@ export default function PreOrderSlotEditor({
             ...(slots || []),
             { start: "", end: "", cutoffMinutes: "", processingStart: "", processingEnd: "" },
         ]);
-    const updateSlot = (index, field, value) => {
+    const updateSlot = <K extends keyof SlotDef>(index: number, field: K, value: SlotDef[K]) => {
         const newSlots = [...(slots || [])];
         newSlots[index] = { ...newSlots[index], [field]: value };
         onSlotsChange(newSlots);
     };
-    const removeSlot = (index) => onSlotsChange((slots || []).filter((_, i) => i !== index));
+    const removeSlot = (index: number | null) =>
+        onSlotsChange((slots || []).filter((_, i) => i !== index));
 
     return (
         <div className="p-6 bg-white/5 border border-white/10 rounded-3xl space-y-6">

@@ -75,7 +75,7 @@ export function CartProvider({ children }) {
     );
 
     const discount = useMemo(
-        () => Pricing.calculateDiscount(state.activeCoupon, state.cartItems, itemTotal),
+        () => Pricing.calculateDiscount(state.activeCoupon, itemTotal, state.cartItems),
         [state.activeCoupon, state.cartItems, itemTotal]
     );
 

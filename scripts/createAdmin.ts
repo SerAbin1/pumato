@@ -1,26 +1,28 @@
 import admin from "firebase-admin";
+import type { UserRecord } from "firebase-admin/auth";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
 
 const serviceAccount = JSON.parse(
     fs.readFileSync(
-        path.resolve(process.cwd(), "test-pumato-firebase-adminsdk-fbsvc-c9312153a9.json"),
+        path.resolve(
+            process.cwd(),
+            "../../Downloads/test-pumato-firebase-adminsdk-fbsvc-0921cd2be0.json"
+        ),
         "utf-8"
     )
 );
 
-admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount),
-});
+admin.initializeApp({ credential: admin.credential.cert(serviceAccount) });
 
 const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
 });
 
-const askQuestion = (query) => {
-    return new Promise((resolve) => rl.question(query, resolve));
+const askQuestion = (query: string) => {
+    return new Promise<string>((resolve) => rl.question(query, resolve));
 };
 
 (async () => {
@@ -34,12 +36,12 @@ const askQuestion = (query) => {
             process.exit(1);
         }
 
-        let user;
+        let user: UserRecord;
         try {
             user = await admin.auth().getUserByEmail(email);
             console.log(`\nUser ${email} already exists. Updating claims...`);
         } catch (error) {
-            if (error.code === "auth/user-not-found") {
+            if ((error as { code?: string }).code === "auth/user-not-found") {
                 console.log(`\nCreating new user ${email}...`);
                 user = await admin.auth().createUser({
                     email,
@@ -51,15 +53,15 @@ const askQuestion = (query) => {
         }
 
         await admin.auth().setCustomUserClaims(user.uid, {
-            deliveryPartner: true,
+            admin: true,
         });
 
-        console.log("\n✅ Success! Delivery Partner account configured.");
+        console.log("\n✅ Success! Admin account configured.");
         console.log(`User: ${email}`);
-        console.log("Custom claims set: { deliveryPartner: true }");
-        console.log("They can now login at /delivery-partner");
+        console.log("Custom claims set: { admin: true }");
+        console.log("You can now login at /admin/login");
     } catch (error) {
-        console.error("Error:", error.message);
+        console.error("Error:", (error as Error).message);
     } finally {
         rl.close();
         process.exit(0);

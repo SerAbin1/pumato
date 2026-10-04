@@ -20,7 +20,7 @@
     "test:debug": "dotenv -e .env.test -- playwright test --debug",
     "test:create": "dotenv -e .env.test -- playwright codegen http://localhost:3000",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit && tsc --noEmit -p functions"
   },
   "dependencies": {
     "@opentelemetry/api": "^1.9.0",

@@ -1,4 +1,5 @@
 import admin from "firebase-admin";
+import type { UserRecord } from "firebase-admin/auth";
 const serviceAccount = JSON.parse(
     fs.readFileSync(
         path.resolve(
@@ -22,8 +23,8 @@ const rl = readline.createInterface({
     output: process.stdout,
 });
 
-const askQuestion = (query) => {
-    return new Promise((resolve) => rl.question(query, resolve));
+const askQuestion = (query: string) => {
+    return new Promise<string>((resolve) => rl.question(query, resolve));
 };
 
 (async () => {
@@ -35,7 +36,7 @@ const askQuestion = (query) => {
             process.exit(0);
         }
 
-        const restaurants = [];
+        const restaurants: { id: string; name?: string }[] = [];
         snapshot.forEach((doc) => {
             restaurants.push({ id: doc.id, ...doc.data() });
         });
@@ -64,12 +65,12 @@ const askQuestion = (query) => {
             process.exit(1);
         }
 
-        let user;
+        let user: UserRecord;
         try {
             user = await admin.auth().getUserByEmail(email);
             console.log(`\nUser ${email} already exists. Updating claims...`);
         } catch (error) {
-            if (error.code === "auth/user-not-found") {
+            if ((error as { code?: string }).code === "auth/user-not-found") {
                 console.log(`\nCreating new user ${email}...`);
                 user = await admin.auth().createUser({
                     email,
@@ -90,7 +91,7 @@ const askQuestion = (query) => {
         console.log(`Assigned Restaurant: ${selectedRestaurant.name}`);
         console.log("You can now login at /partner/login");
     } catch (error) {
-        console.error("Error:", error.message);
+        console.error("Error:", (error as Error).message);
     } finally {
         rl.close();
         process.exit(0);

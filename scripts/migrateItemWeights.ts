@@ -9,13 +9,30 @@
 // Dry run by default. Pass --apply to write.
 //
 // Phase 1 (now, additive — the deployed app keeps working off the old lists):
-//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.js --apply
+//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.ts --apply
 //
 // Phase 2 (only after the new code is deployed, since the old code reads the lists):
-//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.js --apply --drop-old-lists
+//   FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.ts --apply --drop-old-lists
 
 import fs from "fs";
 import admin from "firebase-admin";
+import type { DocumentReference } from "firebase-admin/firestore";
+
+interface FirebaseRc {
+    projects?: Record<string, string>;
+    targets?: { default?: string };
+}
+
+interface ServiceAccount {
+    project_id?: string;
+    [key: string]: unknown;
+}
+
+interface MenuItemDoc {
+    id: string;
+    name?: string;
+    weight?: number | string | null;
+}
 
 const LIGHT_WEIGHT = -1;
 const HEAVY_WEIGHT = 3;
@@ -28,7 +45,7 @@ const ORDER_SETTINGS_PATH = "site_content/order_settings";
 // don't, and `firebase use` picks one of the .firebaserc projects implicitly —
 // so in that case the script has to be told which one.
 function resolveProjectId() {
-    let rc = {};
+    let rc: FirebaseRc = {};
     try {
         rc = JSON.parse(fs.readFileSync(".firebaserc", "utf-8"));
     } catch {
@@ -36,7 +53,7 @@ function resolveProjectId() {
     }
     const projects = Object.entries(rc.projects || {});
     if (projects.length === 1) return projects[0][1];
-    if (rc.targets?.default) return projects.find(([alias]) => alias === rc.targets.default)?.[1];
+    if (rc.targets?.default) return projects.find(([alias]) => alias === rc.targets!.default)?.[1];
 
     const candidates = projects.map(([alias, id]) => `  ${alias}: ${id}`).join("\n");
     console.error("Set FIREBASE_PROJECT_ID to the project you want to migrate.");
@@ -44,22 +61,22 @@ function resolveProjectId() {
     process.exit(1);
 }
 
-function loadServiceAccount() {
+function loadServiceAccount(): ServiceAccount | null {
     const path = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
     if (!path) return null;
     try {
         return JSON.parse(fs.readFileSync(path, "utf-8"));
     } catch (error) {
-        console.error(`Could not read ${path}: ${error.message}`);
+        console.error(`Could not read ${path}: ${(error as Error).message}`);
         process.exit(1);
     }
 }
 
-function initAdmin(projectId, serviceAccount) {
+function initAdmin(projectId: string | undefined, serviceAccount: ServiceAccount | null) {
     try {
         if (serviceAccount) {
             return admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
+                credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
                 projectId,
             });
         }
@@ -71,7 +88,7 @@ function initAdmin(projectId, serviceAccount) {
         const source = serviceAccount
             ? process.env.FIREBASE_SERVICE_ACCOUNT_PATH
             : "GOOGLE_APPLICATION_CREDENTIALS";
-        console.error(`Could not authenticate with ${source}: ${error.message}`);
+        console.error(`Could not authenticate with ${source}: ${(error as Error).message}`);
         process.exit(1);
     }
 }
@@ -83,10 +100,10 @@ const serviceAccount = loadServiceAccount();
 if (!serviceAccount && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     console.error("No credentials found. Either of these will work:\n");
     console.error(
-        "  FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.js"
+        "  FIREBASE_SERVICE_ACCOUNT_PATH=/path/to/adminsdk.json node scripts/migrateItemWeights.ts"
     );
     console.error(
-        "  FIREBASE_PROJECT_ID=pumato-84497 GOOGLE_APPLICATION_CREDENTIALS=/path/to/adminsdk.json node scripts/migrateItemWeights.js"
+        "  FIREBASE_PROJECT_ID=pumato-84497 GOOGLE_APPLICATION_CREDENTIALS=/path/to/adminsdk.json node scripts/migrateItemWeights.ts"
     );
     console.error("\nDownload a service account key from:");
     console.error("  https://console.firebase.google.com/project/");
@@ -108,7 +125,7 @@ initAdmin(PROJECT_ID, serviceAccount);
 const db = admin.firestore();
 console.log(`\nTarget project: ${PROJECT_ID}`);
 
-const plan = {
+const plan: Record<"light" | "heavy" | "alreadyWeighted" | "missing", string[]> = {
     light: [],
     heavy: [],
     alreadyWeighted: [],
@@ -123,19 +140,27 @@ const plan = {
         process.exit(1);
     }
 
-    const { lightItems = [], heavyItems = [], heavyItemCharge } = settingsDoc.data();
+    const {
+        lightItems = [],
+        heavyItems = [],
+        heavyItemCharge,
+    } = settingsDoc.data() as {
+        lightItems?: string[];
+        heavyItems?: string[];
+        heavyItemCharge?: unknown;
+    };
     const light = new Set(lightItems);
     const heavy = new Set(heavyItems);
 
     console.log(`\nFound ${light.size} light item(s) and ${heavy.size} heavy item(s).`);
 
     const restaurants = await db.collection("restaurants").get();
-    const writes = [];
-    const seen = new Set();
+    const writes: { ref: DocumentReference; menu: MenuItemDoc[] }[] = [];
+    const seen = new Set<string>();
 
     restaurants.forEach((restDoc) => {
         const data = restDoc.data();
-        const menu = data.menu || [];
+        const menu: MenuItemDoc[] = data.menu || [];
         let touched = 0;
 
         const nextMenu = menu.map((item) => {
@@ -165,7 +190,7 @@ const plan = {
 
     plan.missing = [...light, ...heavy].filter((id) => !seen.has(id));
 
-    const show = (title, entries) => {
+    const show = (title: string, entries: string[]) => {
         if (entries.length === 0) return;
         console.log(`\n${title} (${entries.length}):`);
         entries.forEach((entry) => console.log(`  - ${entry}`));
@@ -214,13 +239,13 @@ const plan = {
     } else {
         console.log(`\n✅ Updated ${writes.length} restaurant(s). Old lists left in place.`);
         console.log("\nNow deploy the new code, then finish with:\n");
-        console.log("  node scripts/migrateItemWeights.js --apply --drop-old-lists\n");
+        console.log("  node scripts/migrateItemWeights.ts --apply --drop-old-lists\n");
         console.log("Until then, a partner editing a menu on the old admin will strip the");
         console.log("new weight field, since the old zod schema drops unknown keys.\n");
     }
     console.log("Tune each item's Delivery Weight in the admin menu editor.\n");
     process.exit(0);
 })().catch((error) => {
-    console.error("Migration failed:", error.message);
+    console.error("Migration failed:", (error as Error).message);
     process.exit(1);
 });

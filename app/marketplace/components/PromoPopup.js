@@ -9,7 +9,6 @@ import { X, Package } from "lucide-react";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { useCart } from "@/app/context/CartContext";
 import { isInCooldown, normalizePromotion } from "@/lib/marketplacePromotions";
-import { trackEvent } from "@/lib/analytics";
 
 const DISMISSALS_KEY = "pumato_promo_dismissals";
 // At most one popup per browser session, however many popup listings are live
@@ -74,21 +73,19 @@ export default function PromoPopup() {
         const timer = setTimeout(() => {
             markShownThisSession();
             setListing(pick);
-            trackEvent("promo_impression", { listing_id: pick.id, placement: "popup" });
         }, SHOW_DELAY_MS);
         return () => clearTimeout(timer);
     }, [ready, promos, listing]);
 
-    const close = (event) => {
+    const close = () => {
         recordDismissal(listing.id);
-        trackEvent(event, { listing_id: listing.id, placement: "popup" });
         setListing(null);
     };
 
     useEffect(() => {
         if (!listing) return;
         const onKey = (e) => {
-            if (e.key === "Escape") close("promo_dismiss");
+            if (e.key === "Escape") close();
         };
         window.addEventListener("keydown", onKey);
         return () => window.removeEventListener("keydown", onKey);
@@ -103,7 +100,7 @@ export default function PromoPopup() {
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        onClick={() => close("promo_dismiss")}
+                        onClick={() => close()}
                         className="absolute inset-0 bg-black/80 backdrop-blur-md"
                     />
                     <motion.div
@@ -133,7 +130,7 @@ export default function PromoPopup() {
                                 Sponsored
                             </span>
                             <button
-                                onClick={() => close("promo_dismiss")}
+                                onClick={() => close()}
                                 aria-label="Close"
                                 className="absolute top-3 right-3 bg-black/60 hover:bg-black/80 text-white p-2 rounded-full border border-white/10 transition-colors"
                             >
@@ -156,14 +153,14 @@ export default function PromoPopup() {
                             )}
                             <div className="flex gap-3 pt-2">
                                 <button
-                                    onClick={() => close("promo_dismiss")}
+                                    onClick={() => close()}
                                     className="flex-1 py-3 rounded-xl border border-white/10 text-gray-300 font-bold hover:bg-white/10 transition-colors"
                                 >
                                     Not now
                                 </button>
                                 <Link
                                     href={`/marketplace?id=${listing.id}`}
-                                    onClick={() => close("promo_click")}
+                                    onClick={() => close()}
                                     className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-center transition-colors"
                                 >
                                     View

@@ -111,7 +111,6 @@ export default function RestaurantList({ restaurants, promos = [] }) {
                         {sponsoredAfter.has(restaurant.id) && (
                             <SponsoredListingCard
                                 listing={sponsoredAfter.get(restaurant.id)}
-                                surface="restaurant_list"
                                 variant="grid"
                             />
                         )}

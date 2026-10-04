@@ -15,7 +15,6 @@ import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import Fuse from "fuse.js";
 import { where } from "firebase/firestore";
-import { useTrackSearch } from "../hooks/useTrackSearch";
 import { shuffleRestaurants } from "@/lib/shuffle";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { resolveTrending, loadTrendingEntries, TRENDING_MIN_ITEMS } from "@/lib/trending";
@@ -208,8 +207,6 @@ export default function DeliveryPage() {
 
         return { filteredRestaurants: allMatchedRestaurants, filteredFoods: matchedFoods };
     }, [restaurants, searchIndex, activeQuery]);
-
-    useTrackSearch(activeQuery, filteredRestaurants.length + filteredFoods.length, "delivery");
 
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden">

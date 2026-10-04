@@ -11,7 +11,6 @@ import {
 } from "@/app/hooks/useCartData";
 import { cartReducer, initialState } from "./cartReducer";
 import * as Pricing from "@/lib/cartPricing";
-import { trackAddToCart } from "@/lib/analytics";
 
 const CartContext = createContext();
 
@@ -91,7 +90,6 @@ export function CartProvider({ children }) {
 
     const addToCart = (item, quantityDelta = 1) => {
         dispatch({ type: "ADD_ITEM", payload: { item, quantityDelta } });
-        trackAddToCart(item, quantityDelta);
     };
     const removeFromCart = (key) => dispatch({ type: "REMOVE_ITEM", payload: key });
     const updateQuantity = (key, delta) =>

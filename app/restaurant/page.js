@@ -22,12 +22,14 @@ import Skeleton, { MenuSkeleton } from "../components/Skeleton";
 import CustomSelect from "../components/CustomSelect";
 import ItemCustomizationModal from "../components/ItemCustomizationModal";
 import Fuse from "fuse.js";
-import { useTrackSearch } from "../hooks/useTrackSearch";
 import { seededShuffle } from "@/lib/shuffle";
 import { useFavourites } from "@/app/context/FavouritesContext";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { planInsertions } from "@/lib/marketplacePromotions";
 import SponsoredListingCard from "@/app/marketplace/components/SponsoredListingCard";
+
+const SEARCH_DEBOUNCE_MS = 200;
+const SEARCH_MIN_CHARS = 2;
 
 function RestaurantContent() {
     const searchParams = useSearchParams();
@@ -83,6 +85,31 @@ function RestaurantContent() {
         fetchRestaurant();
     }, [id, getDocument]);
 
+    // Wait for a pause in typing before searching, and skip 1-character queries.
+    // Clearing the box takes effect immediately because the term is derived
+    // from searchQuery.
+    const [debouncedQuery, setDebouncedQuery] = useState("");
+    useEffect(() => {
+        const handle = setTimeout(() => setDebouncedQuery(searchQuery.trim()), SEARCH_DEBOUNCE_MS);
+        return () => clearTimeout(handle);
+    }, [searchQuery]);
+    const searchTerm =
+        searchQuery.trim() && debouncedQuery.length >= SEARCH_MIN_CHARS ? debouncedQuery : "";
+
+    // Menu items passing the veg filter, and the Fuse index over them. Built
+    // once per restaurant/filter, not per keystroke.
+    const filteredMenu = useMemo(() => {
+        if (!restaurant || !restaurant.menu) return [];
+        return restaurant.menu.filter((item) =>
+            filter === "all" ? true : filter === "veg" ? item.isVeg === true : item.isVeg === false
+        );
+    }, [restaurant, filter]);
+
+    const menuFuse = useMemo(
+        () => new Fuse(filteredMenu, { keys: ["name"], threshold: 0.3, includeScore: true }),
+        [filteredMenu]
+    );
+
     // Derived state for filtering
     const processedMenu = useMemo(() => {
         if (!restaurant || !restaurant.menu) return {};
@@ -90,25 +117,12 @@ function RestaurantContent() {
         const seedString = new Date().toDateString();
         const seed = seedString.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
 
-        let items = restaurant.menu.filter((item) => {
-            const matchesFilter =
-                filter === "all"
-                    ? true
-                    : filter === "veg"
-                      ? item.isVeg === true
-                      : item.isVeg === false;
-            return matchesFilter;
-        });
+        let items = filteredMenu;
 
         // Apply fuzzy search if query exists
-        if (searchQuery) {
-            const query = searchQuery.toLowerCase().trim();
-            const fuse = new Fuse(items, {
-                keys: ["name"],
-                threshold: 0.3,
-                includeScore: true,
-            });
-            const results = fuse.search(searchQuery);
+        if (searchTerm) {
+            const query = searchTerm.toLowerCase();
+            const results = menuFuse.search(searchTerm);
 
             // Boost scores for exact matches
             const scoredResults = results.map((result) => {
@@ -138,7 +152,7 @@ function RestaurantContent() {
         }
 
         // 1. Shuffle items if default sorting
-        if (sortOrder === "default" && !searchQuery) {
+        if (sortOrder === "default" && !searchTerm) {
             items = seededShuffle(items, seed + 1); // Different seed for items
         } else if (sortOrder !== "default") {
             items.sort((a, b) => {
@@ -166,21 +180,15 @@ function RestaurantContent() {
         });
 
         return finalMenu;
-    }, [restaurant, searchQuery, filter, sortOrder]);
+    }, [restaurant, filteredMenu, menuFuse, searchTerm, sortOrder]);
 
     const promos = usePromotedListings("inFeed", "restaurant_menu");
     // Item id -> sponsored listing shown right after it. Skipped while searching.
     const sponsoredAfter = useMemo(() => {
-        if (searchQuery) return new Map();
+        if (searchTerm) return new Map();
         const itemIds = Object.values(processedMenu).flatMap((items) => items.map((i) => i.id));
         return planInsertions(itemIds, promos);
-    }, [processedMenu, promos, searchQuery]);
-
-    useTrackSearch(
-        searchQuery,
-        Object.values(processedMenu).reduce((n, items) => n + items.length, 0),
-        "restaurant"
-    );
+    }, [processedMenu, promos, searchTerm]);
 
     const toggleSection = (category) => {
         setCollapsedSections((prev) => ({
@@ -703,7 +711,6 @@ function RestaurantContent() {
                                                                     listing={sponsoredAfter.get(
                                                                         item.id
                                                                     )}
-                                                                    surface="restaurant_menu"
                                                                 />
                                                             )}
                                                         </Fragment>

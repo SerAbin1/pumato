@@ -3,7 +3,6 @@ import "./globals.css";
 import { CartProvider } from "./context/CartContext";
 import { UserAuthProvider } from "./context/UserAuthContext";
 import { FavouritesProvider } from "./context/FavouritesContext";
-import AnalyticsInit from "./components/AnalyticsInit";
 import FeedbackButton from "./components/FeedbackButton";
 import PromoPopup from "./marketplace/components/PromoPopup";
 import { CANONICAL_URLS } from "@/lib/seo";
@@ -36,7 +35,6 @@ export default function RootLayout({ children }) {
     return (
         <html lang="en">
             <body className={inter.className}>
-                <AnalyticsInit />
                 <UserAuthProvider>
                     <CartProvider>
                         <FavouritesProvider>{children}</FavouritesProvider>

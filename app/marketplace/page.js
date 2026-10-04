@@ -14,7 +14,6 @@ import { Search, Plus } from "lucide-react";
 import CustomSelect from "../components/CustomSelect";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import { useTrackSearch } from "../hooks/useTrackSearch";
 import { seededShuffle } from "@/lib/shuffle";
 import { isListingLive } from "@/lib/marketplacePromotions";
 
@@ -65,8 +64,6 @@ function MarketplaceContent() {
         const seed = new Date().getDate();
         return seededShuffle(items, seed);
     }, [listings, filter, searchQuery]);
-
-    useTrackSearch(searchQuery, filteredListings.length, "marketplace");
 
     if (id) {
         const listing = listings.find((l) => l.id === id);

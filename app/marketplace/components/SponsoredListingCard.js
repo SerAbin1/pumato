@@ -4,7 +4,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { motion } from "framer-motion";
 import { Package } from "lucide-react";
-import { trackEvent } from "@/lib/analytics";
 
 function SponsoredBadge() {
     return (
@@ -32,10 +31,9 @@ function ListingImage({ listing, sizes, iconSize }) {
 
 /**
  * An in-feed promoted marketplace listing rendered in-between regular items.
- * @param {{ listing: object, surface: string, variant?: "menu" | "grid" }} props
+ * @param {{ listing: object, variant?: "menu" | "grid" }} props
  */
-export default function SponsoredListingCard({ listing, surface, variant = "menu" }) {
-    const params = { listing_id: listing.id, placement: "inFeed", surface };
+export default function SponsoredListingCard({ listing, variant = "menu" }) {
     const href = `/marketplace?id=${listing.id}`;
 
     if (variant === "grid") {
@@ -44,11 +42,10 @@ export default function SponsoredListingCard({ listing, surface, variant = "menu
                 initial={{ opacity: 0, scale: 0.9 }}
                 whileInView={{ opacity: 1, scale: 1 }}
                 viewport={{ once: true }}
-                onViewportEnter={() => trackEvent("promo_impression", params)}
                 whileHover={{ y: -5 }}
                 className="group"
             >
-                <Link href={href} onClick={() => trackEvent("promo_click", params)}>
+                <Link href={href}>
                     <div className="relative bg-white/5 backdrop-blur-md rounded-[2rem] overflow-hidden border border-purple-500/30 transition-all shadow-lg hover:border-purple-500/60 hover:bg-white/10 hover:shadow-purple-900/20">
                         <div className="relative h-60 overflow-hidden">
                             <ListingImage
@@ -89,11 +86,9 @@ export default function SponsoredListingCard({ listing, surface, variant = "menu
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-50px" }}
-            onViewportEnter={() => trackEvent("promo_impression", params)}
         >
             <Link
                 href={href}
-                onClick={() => trackEvent("promo_click", params)}
                 className="bg-purple-500/5 p-4 md:p-6 rounded-[2rem] border border-purple-500/20 flex items-center gap-4 md:gap-8 group transition-all hover:bg-purple-500/10 hover:border-purple-500/40 hover:shadow-2xl"
             >
                 <div className="flex-1 min-w-0">

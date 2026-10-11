@@ -1,6 +1,6 @@
 export { saveRestaurant, updateRestaurant, deleteRestaurant } from "./restaurant";
 
-export { createOrder, updateOrder, fetchUserOrders } from "./order";
+export { createOrder, updateOrder, fetchUserOrders, subscribeUserOrders } from "./order";
 
 export { createLaundryOrder, updateLaundryOrder, deleteLaundryOrder } from "./laundry";
 

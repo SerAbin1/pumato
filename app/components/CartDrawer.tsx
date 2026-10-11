@@ -21,6 +21,8 @@ import { useUserAuth } from "../context/UserAuthContext";
 import { useRestaurants } from "../hooks/useCartData";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useState, useMemo, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { chooseOrderFlow, flowErrorMessage, submitDirectOrder } from "@/lib/directOrders";
 
 import { serverTimestamp } from "firebase/firestore";
 import { createOrder } from "@/lib/repositories";
@@ -78,11 +80,24 @@ export default function CartDrawer() {
         campusConfig,
         hasHeavyItems,
         getCampusPreOrderConfig,
+        clearCart,
     } = useCart();
+    const router = useRouter();
     const { user: authUser } = useUserAuth();
     const { restaurants } = useRestaurants();
 
     const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
+
+    // Carts made up entirely of Payment Partner restaurants are confirmed and paid
+    // in the app; anything else keeps the WhatsApp flow.
+    const isDirectFlow = useMemo(() => {
+        const ids = [
+            ...new Set(
+                cartItems.map((item) => item.restaurantId).filter((id): id is string => !!id)
+            ),
+        ];
+        return ids.length > 0 && chooseOrderFlow(ids, restaurants) === "direct";
+    }, [cartItems, restaurants]);
 
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [inputCode, setInputCode] = useState("");
@@ -253,13 +268,21 @@ export default function CartDrawer() {
                   isCampusPreOrderMode ? selectedCampusPreOrder.id || userDetails.campus : undefined
               );
 
+        if (isDirectFlow && !authUser) {
+            // The customer confirms and pays in the app, which needs an account.
+            setIsCartOpen(false);
+            toast("Sign in to place your order", { icon: "🔐" });
+            router.push("/login");
+            return;
+        }
+
         setIsCheckingOut(true);
         setCheckoutError(null);
 
-        // --- DUPLICATE ORDER GUARD ---
+        // --- DUPLICATE ORDER GUARD --- (WhatsApp only; in-app orders are tracked on /orders)
         try {
             const lastOrder = JSON.parse(localStorage.getItem("pumato_last_order") || "null");
-            if (lastOrder && lastOrder.phone === userDetails.phone) {
+            if (!isDirectFlow && lastOrder && lastOrder.phone === userDetails.phone) {
                 const elapsed = Date.now() - lastOrder.timestamp;
                 if (elapsed < 60 * 1000) {
                     // within 1 minute
@@ -273,8 +296,9 @@ export default function CartDrawer() {
         }
 
         try {
-            // If coupon is applied, validate with cloud function first
-            if (couponCode) {
+            // If coupon is applied, validate with cloud function first. In-app orders
+            // count the coupon's use server-side, when the order is placed.
+            if (couponCode && !isDirectFlow) {
                 try {
                     await checkoutCoupon({ couponCode });
                 } catch (err) {
@@ -316,6 +340,24 @@ export default function CartDrawer() {
                     console.error("Sheet log error:", err);
                     toast.error("Failed to log order to Google Sheet.");
                 });
+            }
+
+            if (isDirectFlow) {
+                const { orderNumber } = await submitDirectOrder({
+                    cartItems,
+                    customer: { ...userDetails, name: trimmedName, address: trimmedAddress },
+                    couponCode,
+                    deliverySlot: deliverySlotRecord,
+                });
+                clearCart();
+                setIsCartOpen(false);
+                resetCheckoutState();
+                toast.success(
+                    `Order ${orderNumber} sent! We'll let you know once the restaurant confirms.`,
+                    { duration: 5000 }
+                );
+                router.push("/orders");
+                return;
             }
 
             // this code works in IOS
@@ -448,10 +490,15 @@ export default function CartDrawer() {
         } catch (err) {
             const error = err as { code?: string; message?: string };
             console.error("Checkout error:", error);
-            if (error.code === "resource-exhausted" || error.message?.includes("limit reached")) {
+            if (isDirectFlow && !/coupon/i.test(error.message || "")) {
+                setCheckoutError(flowErrorMessage(error));
+            } else if (
+                error.code?.endsWith("resource-exhausted") ||
+                error.message?.includes("limit reached")
+            ) {
                 setCheckoutError("Coupon usage limit reached. Please remove it to proceed.");
                 removeCoupon();
-            } else if (error.code === "not-found" || error.message?.includes("Invalid")) {
+            } else if (error.code?.endsWith("not-found") || error.message?.includes("Invalid")) {
                 setCheckoutError("Invalid coupon. Please remove it to proceed.");
                 removeCoupon();
             } else {
@@ -1129,7 +1176,13 @@ export default function CartDrawer() {
                                             </>
                                         ) : (
                                             <>
-                                                <span>Place Order via WhatsApp</span>
+                                                <span>
+                                                    {!isDirectFlow
+                                                        ? "Place Order via WhatsApp"
+                                                        : authUser
+                                                          ? "Place Order"
+                                                          : "Sign in to Order"}
+                                                </span>
                                                 <Send
                                                     size={20}
                                                     className={

@@ -19,3 +19,5 @@ export const checkoutCoupon = callable("checkoutCoupon");
 export const manageUsers = callable("manageUsers");
 export const sendFcmNotification = callable("sendFcmNotification");
 export const refreshTrending = callable("refreshTrending");
+export const placeDirectOrder = callable("placeDirectOrder");
+export const updateDirectOrder = callable("updateDirectOrder");

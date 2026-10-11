@@ -59,6 +59,12 @@ export const CUSTOMER_STATUS_LABELS: Record<string, string> = {
     picked_up: "On the way",
     delivered: "Delivered",
     cancelled: "Cancelled",
+    // In-app orders
+    awaiting_restaurants: "Waiting for restaurant",
+    awaiting_customer: "Action needed",
+    awaiting_payment: "Ready to pay",
+    payment_submitted: "Verifying payment",
+    paid: "Being prepared",
 };
 
 export const customerStatusLabel = (status: string | undefined): string =>

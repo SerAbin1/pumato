@@ -11,7 +11,10 @@ import Navbar from "../components/Navbar";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useCart } from "@/app/context/CartContext";
 import UpiPaymentPanel from "../components/UpiPaymentPanel";
-import { fetchUserOrders, fetchPayment } from "@/lib/repositories";
+import DirectOrderPanel from "./components/DirectOrderPanel";
+import { fetchPayment, subscribeUserOrders } from "@/lib/repositories";
+import type { fetchUserOrders } from "@/lib/repositories";
+import { isDirectOrder } from "@/lib/directOrders";
 import { displayOrderNumber } from "@/lib/formatters";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import {
@@ -40,6 +43,11 @@ const STATUS_STYLES: Record<string, string> = {
     picked_up: "text-purple-400 bg-purple-500/10 border-purple-500/20",
     delivered: "text-green-400 bg-green-500/10 border-green-500/20",
     cancelled: "text-gray-400 bg-gray-500/10 border-gray-500/20",
+    awaiting_restaurants: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    awaiting_customer: "text-red-400 bg-red-500/10 border-red-500/20",
+    awaiting_payment: "text-orange-400 bg-orange-500/10 border-orange-500/20",
+    payment_submitted: "text-green-400 bg-green-500/10 border-green-500/20",
+    paid: "text-yellow-400 bg-yellow-500/10 border-yellow-500/20",
 };
 
 const formatDate = (date: Date | null) =>
@@ -55,12 +63,24 @@ interface OrderCardProps {
     upiId: string;
     upiPayeeName: string;
     payment?: Payment;
+    restaurants: Restaurant[];
+    supportNumber: string;
 }
 
-function OrderCard({ order, user, upiId, upiPayeeName, payment }: OrderCardProps) {
+function OrderCard({
+    order,
+    user,
+    upiId,
+    upiPayeeName,
+    payment,
+    restaurants,
+    supportNumber,
+}: OrderCardProps) {
     const style = STATUS_STYLES[order.status] || STATUS_STYLES.placed;
-    // Nothing to pay on an order that's been cancelled.
-    const payable = order.status !== "cancelled";
+    const direct = isDirectOrder(order);
+    // Nothing to pay on an order that's been cancelled. In-app orders are paid
+    // only once every restaurant has confirmed, through their own panel.
+    const payable = order.status !== "cancelled" && !direct;
 
     return (
         <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden">
@@ -117,6 +137,16 @@ function OrderCard({ order, user, upiId, upiPayeeName, payment }: OrderCardProps
                     <span className="font-black text-white">₹{order.finalTotal}</span>
                 </div>
 
+                {direct && order.status !== "cancelled" && order.status !== "delivered" && (
+                    <DirectOrderPanel
+                        order={order}
+                        restaurants={restaurants}
+                        pumatoUpiId={upiId}
+                        pumatoPayeeName={upiPayeeName}
+                        supportNumber={supportNumber}
+                    />
+                )}
+
                 {payable && (
                     <UpiPaymentPanel
                         order={order}
@@ -134,7 +164,14 @@ function OrderCard({ order, user, upiId, upiPayeeName, payment }: OrderCardProps
 export default function OrdersPage() {
     const router = useRouter();
     const { user, loading: authLoading } = useUserAuth();
-    const { addToCart, setIsCartOpen, upiId, upiPayeeName } = useCart();
+    const {
+        addToCart,
+        setIsCartOpen,
+        upiId,
+        upiPayeeName,
+        restaurants: allRestaurants,
+        foodDeliveryNumber,
+    } = useCart();
 
     const [orders, setOrders] = useState<UserOrder[]>([]);
     const [payments, setPayments] = useState<Record<string, Payment>>({});
@@ -143,34 +180,52 @@ export default function OrdersPage() {
     const [restaurants, setRestaurants] = useState<Restaurant[] | null>(null);
     const { getDocument } = useFirestore();
 
-    const load = useCallback(async () => {
-        if (!user) return;
-        setLoading(true);
-        try {
-            const history = await fetchUserOrders(user.uid);
-            setOrders(history);
-            setFailed(false);
+    // Live, so in-app orders move as restaurants confirm and payments are verified.
+    const [attempt, setAttempt] = useState(0);
+    const load = useCallback(() => setAttempt((n) => n + 1), []);
 
-            // Payments are keyed by order id, so this is a direct get each —
-            // no query, no index, and it doubles as the duplicate guard.
-            const filed = await Promise.all(
-                history.map((o) => fetchPayment(o.id).catch(() => null))
-            );
+    useEffect(() => {
+        if (!user) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setLoading(true);
+        return subscribeUserOrders(
+            user.uid,
+            (history) => {
+                setOrders(history);
+                setFailed(false);
+                setLoading(false);
+            },
+            (error) => {
+                console.error("Failed to load order history:", error);
+                setFailed(true);
+                setLoading(false);
+            }
+        );
+    }, [user, attempt]);
+
+    // WhatsApp-flow payments are keyed by order id, so this is a direct get each —
+    // no query, no index, and it doubles as the duplicate guard.
+    const whatsappOrderIds = useMemo(
+        () =>
+            orders
+                .filter((o) => !isDirectOrder(o))
+                .map((o) => o.id)
+                .join(","),
+        [orders]
+    );
+    useEffect(() => {
+        const ids = whatsappOrderIds ? whatsappOrderIds.split(",") : [];
+        let cancelled = false;
+        Promise.all(ids.map((id) => fetchPayment(id).catch(() => null))).then((filed) => {
+            if (cancelled) return;
             setPayments(
                 Object.fromEntries(filed.filter((p) => p !== null).map((p) => [p.orderId, p]))
             );
-        } catch (error) {
-            console.error("Failed to load order history:", error);
-            setFailed(true);
-        } finally {
-            setLoading(false);
-        }
-    }, [user]);
-
-    useEffect(() => {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        load();
-    }, [load]);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [whatsappOrderIds]);
 
     // Signed-out visitors have no history to show — orders are readable only by
     // the account that placed them.
@@ -350,6 +405,8 @@ export default function OrdersPage() {
                                     upiId={upiId}
                                     upiPayeeName={upiPayeeName}
                                     payment={payments[order.id]}
+                                    restaurants={allRestaurants}
+                                    supportNumber={foodDeliveryNumber}
                                 />
                             ))}
                         </div>
@@ -370,6 +427,8 @@ export default function OrdersPage() {
                                     upiId={upiId}
                                     upiPayeeName={upiPayeeName}
                                     payment={payments[order.id]}
+                                    restaurants={allRestaurants}
+                                    supportNumber={foodDeliveryNumber}
                                 />
                             ))}
                         </div>

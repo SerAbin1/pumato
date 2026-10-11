@@ -11,7 +11,9 @@ import {
     orderBy,
     limit as limitTo,
     getDocs,
+    onSnapshot,
 } from "firebase/firestore";
+import type { Unsubscribe } from "firebase/firestore";
 import { OrderSchema } from "@/lib/schemas/order";
 import { parsePatch } from "@/lib/schemas/patch";
 import { formatOrderNumber } from "@/lib/formatters";
@@ -58,20 +60,50 @@ export async function updateOrder(id: string, data: object): Promise<void> {
  *
  * @returns orders with `id` and `createdAt` as a Date
  */
+type UserOrderRecord = Omit<Order, "createdAt"> & { createdAt: Date | null };
+
+const userOrdersQuery = (userId: string, max: number) =>
+    query(
+        collection(db, COLLECTIONS.ORDERS),
+        where("userId", "==", userId),
+        orderBy("createdAt", "desc"),
+        limitTo(max)
+    );
+
+/**
+ * Live version of fetchUserOrders, so in-app orders update as restaurants and
+ * payment verifiers act on them.
+ */
+export function subscribeUserOrders(
+    userId: string,
+    onChange: (orders: UserOrderRecord[]) => void,
+    onError: (error: Error) => void,
+    max = 50
+): Unsubscribe {
+    return onSnapshot(
+        userOrdersQuery(userId, max),
+        (snap) =>
+            onChange(
+                snap.docs.map(
+                    (d) =>
+                        ({
+                            id: d.id,
+                            ...d.data(),
+                            createdAt: d.data().createdAt?.toDate?.() ?? null,
+                        }) as UserOrderRecord
+                )
+            ),
+        onError
+    );
+}
+
 export async function fetchUserOrders(
     userId: string | null | undefined,
     max = 50
-): Promise<(Omit<Order, "createdAt"> & { createdAt: Date | null })[]> {
+): Promise<UserOrderRecord[]> {
     if (!userId) return [];
 
-    const snap = await getDocs(
-        query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("userId", "==", userId),
-            orderBy("createdAt", "desc"),
-            limitTo(max)
-        )
-    );
+    const snap = await getDocs(userOrdersQuery(userId, max));
 
     return snap.docs.map(
         (d) =>
@@ -79,6 +111,6 @@ export async function fetchUserOrders(
                 id: d.id,
                 ...d.data(),
                 createdAt: d.data().createdAt?.toDate?.() ?? null,
-            }) as Omit<Order, "createdAt"> & { createdAt: Date | null }
+            }) as UserOrderRecord
     );
 }

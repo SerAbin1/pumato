@@ -1,39 +1,13 @@
 import Fuse from "fuse.js";
 
-// Every menu item carries a signed delivery weight. The sign says how the item
-// counts towards the extra delivery charge, the magnitude says by how much:
-//
-//    1 — normal, one unit per qty
-//    2 — heavy, one qty is two units
-//   -2 — light, two qty count as one unit
-//
-// Items that predate the field, or carry a zero/unparseable value, are normal.
-//
-// A variant may carry its own weight (a large pizza at 2 while the item is 1).
-// It overrides the item's weight; a variant without one inherits it.
-type WeightValue = string | number | null | undefined;
-
-/** Anything that can carry a delivery weight: a menu item, a variant, or a cart line. */
-export interface Weighted {
-    weight?: WeightValue;
-    variant?: { weight?: WeightValue } | null;
-}
-
-const parseWeight = (value: WeightValue): number | null => {
-    const weight = parseInt(value as string);
-    return Number.isFinite(weight) && weight !== 0 ? weight : null;
-};
-
-// The variant's own weight, or null when it inherits the item's.
-export const getVariantWeight = (variant: { weight?: WeightValue } | null | undefined) =>
-    parseWeight(variant?.weight);
-
-// Accepts a menu item or a cart line; a cart line's selected variant wins.
-export const getItemWeight = (item: Weighted | null | undefined): number =>
-    getVariantWeight(item?.variant) ?? parseWeight(item?.weight) ?? 1;
-
-export const isLightItem = (item: Weighted | null | undefined): boolean => getItemWeight(item) < 0;
-export const isHeavyItem = (item: Weighted | null | undefined): boolean => getItemWeight(item) > 1;
+// Delivery weights are shared with server-side pricing, so they live with it.
+export {
+    getVariantWeight,
+    getItemWeight,
+    isLightItem,
+    isHeavyItem,
+} from "@/functions/src/order-flow/pricing";
+export type { Weighted } from "@/functions/src/order-flow/pricing";
 
 // Below this many variants + addons a search box in the customize modal is clutter.
 export const OPTION_SEARCH_MIN = 6;

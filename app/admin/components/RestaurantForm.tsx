@@ -145,6 +145,9 @@ export default function RestaurantForm({
         } else if (field === "isVisible" && value === true) {
             newMenu[index].hiddenAt = null;
         }
+        // Switching visibility by hand overrides an out-of-stock-for-the-day hide,
+        // so midnight's restock won't undo the choice.
+        if (field === "isVisible") newMenu[index].outOfStockUntil = null;
         newMenu[index][field] = value;
         setFormData({ ...formData, menu: newMenu });
     };

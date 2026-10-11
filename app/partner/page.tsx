@@ -22,6 +22,7 @@ import { displayOrderNumber } from "@/lib/formatters";
 import { updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
 import DirectOrderCard, { needsPartnerAction } from "./components/DirectOrderCard";
+import { markOutOfStockForDay } from "@/functions/src/order-flow";
 import {
     LogOut,
     Loader2,
@@ -461,17 +462,11 @@ export default function PartnerDashboard() {
                     );
                     if (restSnap.exists()) {
                         const rData = restSnap.data();
-                        const updatedMenu = ((rData.menu || []) as Restaurant["menu"] & {}).map(
-                            (item) => {
-                                if (oosItemIds.includes(item.id)) {
-                                    return {
-                                        ...item,
-                                        isVisible: false,
-                                        hiddenAt: new Date().toISOString(),
-                                    };
-                                }
-                                return item;
-                            }
+                        // Off the menu until midnight IST, then restored automatically.
+                        const updatedMenu = markOutOfStockForDay(
+                            (rData.menu || []) as NonNullable<Restaurant["menu"]>,
+                            oosItemIds,
+                            new Date()
                         );
                         await updateRestaurant(user!.restaurantId, { menu: updatedMenu });
                     }

@@ -3,7 +3,7 @@ import type { CallableRequest } from "firebase-functions/v2/https";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import type { DocumentReference, Transaction } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
-import { applyEvent, OrderFlowError, placeOrder } from "./order-flow";
+import { applyEvent, markOutOfStockForDay, OrderFlowError, placeOrder } from "./order-flow";
 import type {
     Actor,
     DirectOrder,
@@ -359,17 +359,12 @@ export const updateDirectOrder = onCall<{ orderId?: unknown; event?: unknown }>(
             toHttpsError(error);
         }
 
-        // Items a restaurant ran out of come off its menu, as on the WhatsApp flow.
+        // Items a restaurant ran out of are off its menu until midnight.
         if (event.type === "mark_unavailable" && actor.role === "partner") {
             const restaurant = ctx.restaurants.find((r) => r.id === actor.restaurantId);
             if (restaurant?.menu) {
-                const hiddenAt = new Date().toISOString();
                 tx.update(db.collection("restaurants").doc(restaurant.id), {
-                    menu: restaurant.menu.map((item) =>
-                        event.itemIds.includes(item.id)
-                            ? { ...item, isVisible: false, hiddenAt }
-                            : item
-                    ),
+                    menu: markOutOfStockForDay(restaurant.menu, event.itemIds, new Date()),
                 });
             }
         }

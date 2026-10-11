@@ -26,6 +26,9 @@ export const MenuItemSchema = z.object({
     isBestSeller: z.boolean().optional(),
     extraInfo: z.string().optional(),
     hiddenAt: z.string().nullable().optional(),
+    // Set when a restaurant runs out mid-order: the item is hidden until this time
+    // (the next midnight IST), then restored by the restockMenus schedule.
+    outOfStockUntil: z.string().nullable().optional(),
     // Signed delivery weight: 1 normal, 2 heavy (one qty is two units),
     // -2 light (two qty count as one unit). See lib/restaurants/menuItem.js.
     weight: z.coerce.number().int().optional(),

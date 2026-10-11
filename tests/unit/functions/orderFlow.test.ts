@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { applyEvent, chooseOrderFlow, placeOrder } from "../../../functions/src/order-flow";
+import {
+    applyEvent,
+    chooseOrderFlow,
+    markOutOfStockForDay,
+    placeOrder,
+    restoreExpiredStock,
+} from "../../../functions/src/order-flow";
 import type {
     Actor,
     DirectOrder,
@@ -551,5 +557,64 @@ describe("admin handling stuck orders", () => {
         expect(errorCode(() => apply(submitted(), { type: "cancel" }, restaurantOf("r1")))).toBe(
             "not_allowed"
         );
+    });
+});
+
+describe("out of stock for the day", () => {
+    const menu = [
+        { id: "biryani", isVisible: true },
+        { id: "lime", isVisible: true },
+    ];
+
+    it("hides the items until midnight IST", () => {
+        // 15:30 IST on 11 Oct; midnight IST is 18:30 UTC.
+        const marked = markOutOfStockForDay(menu, ["lime"], new Date("2026-10-11T10:00:00Z"));
+
+        expect(marked).toEqual([
+            { id: "biryani", isVisible: true },
+            {
+                id: "lime",
+                isVisible: false,
+                hiddenAt: "2026-10-11T10:00:00.000Z",
+                outOfStockUntil: "2026-10-11T18:30:00.000Z",
+            },
+        ]);
+    });
+
+    it("counts the day in IST, so just after midnight IST lasts until the next one", () => {
+        // 00:30 IST on 12 Oct is still 11 Oct in UTC.
+        const [, lime] = markOutOfStockForDay(menu, ["lime"], new Date("2026-10-11T19:00:00Z"));
+
+        expect(lime).toMatchObject({ outOfStockUntil: "2026-10-12T18:30:00.000Z" });
+    });
+
+    it("brings back items whose day is over, and only those", () => {
+        const stocked = [
+            {
+                id: "yesterday",
+                isVisible: false,
+                hiddenAt: "x",
+                outOfStockUntil: "2026-10-11T18:30:00.000Z",
+            },
+            {
+                id: "today",
+                isVisible: false,
+                hiddenAt: "x",
+                outOfStockUntil: "2026-10-12T18:30:00.000Z",
+            },
+            { id: "hidden-by-hand", isVisible: false, hiddenAt: "x" },
+        ];
+
+        const { menu: restored, restoredIds } = restoreExpiredStock(
+            stocked,
+            new Date("2026-10-11T18:35:00Z")
+        );
+
+        expect(restoredIds).toEqual(["yesterday"]);
+        expect(restored).toEqual([
+            { id: "yesterday", isVisible: true, hiddenAt: null, outOfStockUntil: null },
+            stocked[1],
+            stocked[2],
+        ]);
     });
 });

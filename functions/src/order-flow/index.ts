@@ -13,6 +13,8 @@ import {
 } from "./pricing";
 import type { PricingCoupon, PricingRestaurant, PricingSettings } from "./pricing";
 
+export { markOutOfStockForDay, restoreExpiredStock } from "./stock";
+
 // --- Shapes ---
 
 export interface FlowMenuItem {

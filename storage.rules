@@ -22,6 +22,25 @@ service firebase.storage {
                     && request.resource.contentType.matches('image/.*');
     }
 
+    // Payment screenshots for in-app orders. The customer uploads once per file
+    // (a resubmission after a rejection is a new file); the restaurant collecting
+    // the payment and admins can view them.
+    match /payment-proofs/{orderId}/{fileName} {
+      function order() {
+        return firestore.get(/databases/(default)/documents/orders/$(orderId)).data;
+      }
+      allow create: if request.auth != null
+                    && order().userId == request.auth.uid
+                    && order().status == 'awaiting_payment'
+                    && request.resource.size < 5 * 1024 * 1024
+                    && request.resource.contentType.matches('image/.*');
+      allow read: if request.auth != null
+                  && (request.auth.token.admin == true
+                      || order().userId == request.auth.uid
+                      || (order().get('paymentCollector', {}).get('restaurantId', null)
+                            == request.auth.token.get('restaurantId', 'none')));
+    }
+
     match /{allPaths=**} {
       allow read, write: if false;
     }

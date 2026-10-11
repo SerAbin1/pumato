@@ -14,9 +14,13 @@ import type {
 } from "@/lib/schemas/restaurant";
 import type {
     DeliverySlotSchema,
+    LEG_STATUSES,
     ORDER_STATUSES,
     OrderItemSchema,
+    OrderLegSchema,
     OrderSchema,
+    PaymentCollectorSchema,
+    PaymentProofSchema,
 } from "@/lib/schemas/order";
 import type {
     LAUNDRY_ORDER_STATUSES,
@@ -131,6 +135,10 @@ export type OrderItem = z.infer<typeof OrderItemSchema>;
 export type DeliverySlot = z.infer<typeof DeliverySlotSchema>;
 export type OrderInput = z.input<typeof OrderSchema>;
 export type Order = z.infer<typeof OrderSchema> & { id: string };
+export type LegStatus = (typeof LEG_STATUSES)[number];
+export type OrderLeg = z.infer<typeof OrderLegSchema>;
+export type PaymentCollector = z.infer<typeof PaymentCollectorSchema>;
+export type PaymentProof = z.infer<typeof PaymentProofSchema>;
 
 // --- Laundry ---
 

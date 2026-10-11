@@ -49,6 +49,11 @@ export const RestaurantSchema = z.object({
     isAvailable: z.boolean().optional(),
     // Admin-only. Featured restaurants lead the daily shuffle on /delivery.
     isFeatured: z.boolean().optional(),
+    // Admin-only. Payment Partners take in-app orders and are paid on their own UPI
+    // for single-restaurant orders; an admin confirms the UPI details before enabling.
+    isPaymentPartner: z.boolean().optional(),
+    upiId: z.string().optional(),
+    upiPayeeName: z.string().optional(),
     categories: z.array(z.string()),
     outOfStockCategories: z.array(z.string()).optional(),
     menu: z.array(MenuItemSchema).optional(),

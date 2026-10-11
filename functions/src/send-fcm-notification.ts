@@ -1,10 +1,9 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getAuth } from "firebase-admin/auth";
-import { getFirestore } from "firebase-admin/firestore";
 import { getMessaging } from "firebase-admin/messaging";
+import { getFcmTokensByRestaurantIds, getFcmTokensByUids } from "./fcm-tokens";
 
 const auth = getAuth();
-const db = getFirestore();
 const messaging = getMessaging();
 
 interface SendFcmRequest {
@@ -20,38 +19,6 @@ async function verifyCaller(token: string) {
     } catch {
         return null;
     }
-}
-
-async function getFcmTokensByUids(uids: string[]) {
-    const tokens: string[] = [];
-    const docs = await Promise.all(uids.map((uid) => db.collection("fcm_tokens").doc(uid).get()));
-
-    for (const doc of docs) {
-        if (doc.exists) {
-            const token = doc.data()?.token;
-            if (token) tokens.push(token);
-        }
-    }
-
-    return tokens;
-}
-
-async function getFcmTokensByRestaurantIds(restaurantIds: string[]) {
-    const tokens: string[] = [];
-    const snapshots = await Promise.all(
-        restaurantIds.map((restaurantId) =>
-            db.collection("fcm_tokens").where("restaurantId", "==", restaurantId).get()
-        )
-    );
-
-    for (const snapshot of snapshots) {
-        for (const doc of snapshot.docs) {
-            const token = doc.data().token;
-            if (token) tokens.push(token);
-        }
-    }
-
-    return tokens;
 }
 
 export const sendFcmNotification = onCall<SendFcmRequest>(async (request) => {

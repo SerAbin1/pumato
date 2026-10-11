@@ -23,10 +23,12 @@ service cloud.firestore {
     // --- Restaurants: public read, partners update own, admins full ---
     match /restaurants/{restaurantId} {
       allow read: if true;
-      // Partners can edit their own restaurant, but not its featured status.
+      // Partners can edit their own restaurant, but not its featured status or the
+      // Payment Partner setup, which an admin enables after checking the UPI details.
       allow update: if isAdmin()
         || (isPartner(restaurantId)
-            && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['isFeatured']));
+            && !request.resource.data.diff(resource.data).affectedKeys()
+                .hasAny(['isFeatured', 'isPaymentPartner', 'upiId', 'upiPayeeName']));
       allow create, delete: if isAdmin();
     }
 
@@ -56,16 +58,26 @@ service cloud.firestore {
 
     // --- Orders: NO public read ---
     // Admins: full access
-    // Partners: read + update orders containing their restaurantId
+    // Partners: read orders containing their restaurantId; update only WhatsApp ones
     // Delivery partners: read ready_for_delivery orders; claim by updating to picked_up
     // Users: read own orders (by userId)
-    // Public: create only
+    // Public: create only, and only WhatsApp orders
+    // In-app ("direct") orders are created and changed by the placeDirectOrder /
+    // updateDirectOrder Cloud Functions, which price them and check who may act.
+    function isDirect(data) {
+      return data.get('flow', 'whatsapp') == 'direct';
+    }
+
     match /orders/{orderId} {
-      allow create: if true;
+      allow create: if !isDirect(request.resource.data);
       allow read: if request.auth != null && resource.data.userId == request.auth.uid;
       allow read, update, delete: if isAdmin();
-      allow read, update: if isAnyPartner()
+      allow read: if isAnyPartner()
         && request.auth.token.restaurantId in resource.data.restaurantIds;
+      allow update: if isAnyPartner()
+        && request.auth.token.restaurantId in resource.data.restaurantIds
+        && !isDirect(resource.data)
+        && !isDirect(request.resource.data);
       allow read: if isDeliveryPartner()
         && resource.data.status in ["ready_for_delivery", "picked_up"];
       allow update: if isDeliveryPartner()

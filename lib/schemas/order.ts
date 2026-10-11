@@ -10,7 +10,42 @@ export const ORDER_STATUSES = [
     "picked_up",
     "delivered",
     "cancelled",
+    // In-app ("direct") orders for Payment Partner restaurants; see functions/src/order-flow.
+    "awaiting_restaurants",
+    "awaiting_customer",
+    "awaiting_payment",
+    "payment_submitted",
+    "paid",
 ] as const;
+
+export const ORDER_FLOWS = ["whatsapp", "direct"] as const;
+
+export const LEG_STATUSES = [
+    "pending",
+    "confirmed",
+    "unavailable",
+    "dropped",
+    "paid",
+    "ready",
+] as const;
+
+/** One restaurant's share of a direct order. */
+export const OrderLegSchema = z.object({
+    status: z.enum(LEG_STATUSES),
+    outOfStockItems: z.array(z.string()).optional(),
+});
+
+export const PaymentCollectorSchema = z.discriminatedUnion("type", [
+    z.object({ type: z.literal("restaurant"), restaurantId: z.string() }),
+    z.object({ type: z.literal("pumato") }),
+]);
+
+/** A direct order's payment claim, held on the order until verified. */
+export const PaymentProofSchema = z.object({
+    status: z.enum(["pending_verification", "verified", "rejected"]),
+    transactionId: z.string(),
+    screenshotPath: z.string(),
+});
 
 export const OrderItemSchema = z.object({
     id: z.string(),
@@ -23,11 +58,14 @@ export const OrderItemSchema = z.object({
     isVeg: z.boolean().default(false),
     category: z.string(),
     image: z.string().optional(),
+    // Delivery weight snapshot, so a direct order can be repriced without the menu.
+    weight: z.number().optional(),
     variant: z
         .object({
             id: z.string(),
             name: z.string(),
             price: z.coerce.number(),
+            weight: z.number().nullable().optional(),
         })
         .optional(),
     addons: z
@@ -66,6 +104,11 @@ export const RestaurantDeliverySlotSchema = z.object({
 export const DeliverySlotSchema = z.union([CampusDeliverySlotSchema, RestaurantDeliverySlotSchema]);
 
 export const OrderSchema = z.object({
+    // Absent on orders placed before the in-app flow existed: those are WhatsApp orders.
+    flow: z.enum(ORDER_FLOWS).optional(),
+    legs: z.record(z.string(), OrderLegSchema).optional(),
+    paymentCollector: PaymentCollectorSchema.optional(),
+    payment: PaymentProofSchema.optional(),
     userId: z.string().optional(),
     // Assigned by createOrder inside the counter transaction, never by the caller.
     orderNumber: z.string().optional(),

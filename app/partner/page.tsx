@@ -21,6 +21,7 @@ import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import { displayOrderNumber } from "@/lib/formatters";
 import { updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/admin/components/RestaurantForm";
+import DirectOrderCard, { needsPartnerAction } from "./components/DirectOrderCard";
 import {
     LogOut,
     Loader2,
@@ -256,6 +257,8 @@ export default function PartnerDashboard() {
     const [isSaving, setIsSaving] = useState(false);
     const [liveOrders, setLiveOrders] = useState<Order[]>([]);
     const [pastOrders, setPastOrders] = useState<Order[]>([]);
+    const [directOrders, setDirectOrders] = useState<Order[]>([]);
+    const awaitingConfirm = useRef<Set<string> | null>(null);
     const [processing, setProcessing] = useState<string | null>(null);
     const isInitialLoad = useRef(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -319,7 +322,8 @@ export default function PartnerDashboard() {
                 playNotificationSound();
                 toast("New Order!", { icon: "🔔" });
             }
-            setLiveOrders(docs);
+            // In-app orders never take these statuses, but keep the lists apart regardless.
+            setLiveOrders(docs.filter((o) => o.flow !== "direct"));
         });
         return () => unsub();
     }, [user, playNotificationSound]);
@@ -341,7 +345,39 @@ export default function PartnerDashboard() {
 
         const unsub = onSnapshot(q, (snap) => {
             setPastOrders(
-                snap.docs.map(
+                snap.docs
+                    .map(
+                        (d) =>
+                            ({
+                                id: d.id,
+                                ...d.data(),
+                                createdAt: d.data().createdAt?.toDate(),
+                            }) as Order
+                    )
+                    .filter((o) => o.flow !== "direct")
+            );
+        });
+        return () => unsub();
+    }, [user]);
+
+    // In-app orders from the last day, newest first. Filtered client-side so the
+    // existing (restaurantIds, createdAt) index serves the query.
+    useEffect(() => {
+        const restaurantId = user?.restaurantId;
+        if (!restaurantId) return;
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+        const q = query(
+            collection(db, COLLECTIONS.ORDERS),
+            where("restaurantIds", "array-contains", restaurantId),
+            where("createdAt", ">=", Timestamp.fromDate(since)),
+            orderBy("createdAt", "desc"),
+            limit(200)
+        );
+
+        const unsub = onSnapshot(q, (snap) => {
+            const docs = snap.docs
+                .map(
                     (d) =>
                         ({
                             id: d.id,
@@ -349,10 +385,23 @@ export default function PartnerDashboard() {
                             createdAt: d.data().createdAt?.toDate(),
                         }) as Order
                 )
+                .filter((o) => o.flow === "direct");
+
+            // Chime when something new lands on this restaurant to confirm.
+            const pending = new Set(
+                docs.filter((o) => o.legs?.[restaurantId]?.status === "pending").map((o) => o.id)
             );
+            const previous = awaitingConfirm.current;
+            if (previous && [...pending].some((id) => !previous.has(id))) {
+                playNotificationSound();
+                toast("New in-app order to confirm!", { icon: "🔔" });
+            }
+            awaitingConfirm.current = pending;
+
+            setDirectOrders(docs);
         });
         return () => unsub();
-    }, [user]);
+    }, [user, playNotificationSound]);
 
     // Auth redirect + restaurant fetch
     useEffect(() => {
@@ -452,17 +501,34 @@ export default function PartnerDashboard() {
 
     if (!user) return null;
 
+    // An in-app order is live for this restaurant until it leaves for delivery,
+    // unless the customer removed this restaurant from it.
+    const myDirectOrders = directOrders.filter(
+        (o) => o.legs?.[user.restaurantId!] && o.legs[user.restaurantId!].status !== "dropped"
+    );
+    const DONE = ["picked_up", "delivered", "cancelled"];
+    const liveDirect = myDirectOrders
+        .filter((o) => !DONE.includes(o.status))
+        .sort(
+            (a, b) =>
+                Number(needsPartnerAction(b, user.restaurantId!)) -
+                Number(needsPartnerAction(a, user.restaurantId!))
+        );
+    const pastDirect = directOrders.filter((o) => !liveDirect.includes(o));
+    const liveCount = liveOrders.length + liveDirect.length;
+    const pastCount = pastOrders.length + pastDirect.length;
+
     const tabConfig = [
         {
             id: "orders",
             label: "Live Orders",
-            badge: liveOrders.length > 0 ? liveOrders.length : null,
+            badge: liveCount > 0 ? liveCount : null,
             badgeColor: "bg-orange-500",
         },
         {
             id: "past",
             label: "Past Orders",
-            badge: pastOrders.length > 0 ? pastOrders.length : null,
+            badge: pastCount > 0 ? pastCount : null,
             badgeColor: "bg-gray-500",
         },
         { id: "menu", label: "Menu & Settings" },
@@ -517,7 +583,21 @@ export default function PartnerDashboard() {
                 {/* LIVE ORDERS TAB */}
                 {activeTab === "orders" && (
                     <div>
-                        {liveOrders.length === 0 ? (
+                        {liveDirect.length > 0 && (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4">
+                                <AnimatePresence>
+                                    {liveDirect.map((order) => (
+                                        <DirectOrderCard
+                                            key={order.id}
+                                            order={order}
+                                            restaurantId={user.restaurantId!}
+                                        />
+                                    ))}
+                                </AnimatePresence>
+                            </div>
+                        )}
+                        {liveOrders.length === 0 &&
+                        liveDirect.length > 0 ? null : liveOrders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-24 text-center">
                                 <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-5 text-gray-600">
                                     <Bell size={36} />
@@ -554,7 +634,19 @@ export default function PartnerDashboard() {
                 {/* PAST ORDERS TAB */}
                 {activeTab === "past" && (
                     <div>
-                        {pastOrders.length === 0 ? (
+                        {pastDirect.length > 0 && (
+                            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 mb-4 opacity-70">
+                                {pastDirect.map((order) => (
+                                    <DirectOrderCard
+                                        key={order.id}
+                                        order={order}
+                                        restaurantId={user.restaurantId!}
+                                    />
+                                ))}
+                            </div>
+                        )}
+                        {pastOrders.length === 0 &&
+                        pastDirect.length > 0 ? null : pastOrders.length === 0 ? (
                             <div className="flex flex-col items-center justify-center py-24 text-center">
                                 <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-5 text-gray-600">
                                     <Check size={36} />

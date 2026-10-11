@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
@@ -22,7 +22,9 @@ import {
     getRecentlyOrderedItems,
     resolveReorderItems,
     customerStatusLabel,
+    isActiveOrder,
 } from "@/lib/orderHistory";
+import { useFcmToken } from "@/app/hooks/useFcmToken";
 import useFirestore from "@/app/hooks/useFirestore";
 import { COLLECTIONS } from "@/lib/constants";
 import { plainCartLine } from "@/lib/restaurants/menuItem";
@@ -182,6 +184,7 @@ export default function OrdersPage() {
 
     // Live, so in-app orders move as restaurants confirm and payments are verified.
     const [attempt, setAttempt] = useState(0);
+    const seenStatuses = useRef<Map<string, string> | null>(null);
     const load = useCallback(() => setAttempt((n) => n + 1), []);
 
     useEffect(() => {
@@ -191,6 +194,21 @@ export default function OrdersPage() {
         return subscribeUserOrders(
             user.uid,
             (history) => {
+                // Every change to an in-app order is announced in-app; the ones that
+                // need the customer (out of stock, ready to pay) are also pushed.
+                const previous = seenStatuses.current;
+                if (previous) {
+                    for (const order of history) {
+                        const before = previous.get(order.id);
+                        if (isDirectOrder(order) && before && before !== order.status) {
+                            toast(
+                                `${displayOrderNumber(order)}: ${customerStatusLabel(order.status)}`,
+                                { icon: order.status === "awaiting_customer" ? "⚠️" : "🔔" }
+                            );
+                        }
+                    }
+                }
+                seenStatuses.current = new Map(history.map((o) => [o.id, o.status]));
                 setOrders(history);
                 setFailed(false);
                 setLoading(false);
@@ -232,6 +250,11 @@ export default function OrdersPage() {
     useEffect(() => {
         if (!authLoading && !user) router.push("/login");
     }, [authLoading, user, router]);
+
+    // Ask for notification permission only once there's an in-app order to hear
+    // about, so the prompt arrives with a reason.
+    const awaitingUpdates = orders.some((o) => isDirectOrder(o) && isActiveOrder(o));
+    useFcmToken(user && awaitingUpdates ? user : null);
 
     const { active, past } = partitionOrders(orders);
     const recentItems = useMemo(() => getRecentlyOrderedItems(orders), [orders]);

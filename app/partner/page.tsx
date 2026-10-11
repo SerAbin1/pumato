@@ -258,7 +258,7 @@ export default function PartnerDashboard() {
     const [liveOrders, setLiveOrders] = useState<Order[]>([]);
     const [pastOrders, setPastOrders] = useState<Order[]>([]);
     const [directOrders, setDirectOrders] = useState<Order[]>([]);
-    const awaitingConfirm = useRef<Set<string> | null>(null);
+    const awaitingAction = useRef<{ pending: Set<string>; verifying: Set<string> } | null>(null);
     const [processing, setProcessing] = useState<string | null>(null);
     const isInitialLoad = useRef(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -387,16 +387,33 @@ export default function PartnerDashboard() {
                 )
                 .filter((o) => o.flow === "direct");
 
-            // Chime when something new lands on this restaurant to confirm.
+            // Chime when something new lands on this restaurant: a share to confirm,
+            // or a payment it collects waiting to be verified.
             const pending = new Set(
                 docs.filter((o) => o.legs?.[restaurantId]?.status === "pending").map((o) => o.id)
             );
-            const previous = awaitingConfirm.current;
-            if (previous && [...pending].some((id) => !previous.has(id))) {
-                playNotificationSound();
-                toast("New in-app order to confirm!", { icon: "🔔" });
+            const verifying = new Set(
+                docs
+                    .filter(
+                        (o) =>
+                            o.status === "payment_submitted" &&
+                            o.paymentCollector?.type === "restaurant" &&
+                            o.paymentCollector.restaurantId === restaurantId
+                    )
+                    .map((o) => o.id)
+            );
+            const previous = awaitingAction.current;
+            if (previous) {
+                if ([...pending].some((id) => !previous.pending.has(id))) {
+                    playNotificationSound();
+                    toast("New in-app order to confirm!", { icon: "🔔" });
+                }
+                if ([...verifying].some((id) => !previous.verifying.has(id))) {
+                    playNotificationSound();
+                    toast("A customer paid. Verify the payment.", { icon: "💸" });
+                }
             }
-            awaitingConfirm.current = pending;
+            awaitingAction.current = { pending, verifying };
 
             setDirectOrders(docs);
         });

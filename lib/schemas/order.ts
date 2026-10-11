@@ -130,6 +130,7 @@ export const OrderSchema = z.object({
     deliverySlot: DeliverySlotSchema.optional(),
     outOfStockItems: z.array(z.string()).optional(),
     createdAt: z.any(),
+    updatedAt: z.any().optional(),
     adminProcessedAt: z.any().optional(),
     partnerViewedAt: z.any().optional(),
     readyAt: z.any().optional(),

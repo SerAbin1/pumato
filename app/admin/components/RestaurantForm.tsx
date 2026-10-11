@@ -1,8 +1,20 @@
 import { useState, useEffect } from "react";
-import { Trash, Eye, EyeOff, Upload, Plus, X, Search, Clock, Star } from "lucide-react";
+import {
+    Trash,
+    Eye,
+    EyeOff,
+    Upload,
+    Plus,
+    X,
+    Search,
+    Clock,
+    Star,
+    IndianRupee,
+} from "lucide-react";
 import Fuse from "fuse.js";
 import { toTitleCase } from "@/lib/formatters";
 import { createFileUploadHandler } from "@/lib/uploadImage";
+import { isValidVpa } from "@/lib/upi";
 import {
     getItemWeight,
     getVariantWeight,
@@ -562,6 +574,62 @@ export default function RestaurantForm({
                     )}
                 </div>
             </div>
+
+            {/* Payment Partner (admin only) */}
+            {!isPartnerPage && (
+                <div className="border-t border-white/10 pt-10 mb-10 space-y-6">
+                    <div className="flex items-start gap-4 bg-white/5 p-5 rounded-2xl border border-green-500/10">
+                        <input
+                            type="checkbox"
+                            id="restaurant-payment-partner"
+                            checked={formData.isPaymentPartner === true}
+                            onChange={(e) =>
+                                setFormData({ ...formData, isPaymentPartner: e.target.checked })
+                            }
+                            className="w-5 h-5 mt-0.5 accent-green-500 cursor-pointer"
+                        />
+                        <div>
+                            <label
+                                htmlFor="restaurant-payment-partner"
+                                className="text-sm font-bold text-white flex items-center gap-2 cursor-pointer"
+                            >
+                                <IndianRupee size={18} className="text-green-400" />
+                                Payment Partner
+                            </label>
+                            <p className="text-xs text-gray-500 mt-1">
+                                Orders come through the app: the restaurant confirms items first,
+                                then the customer pays. Single-restaurant orders are paid to the UPI
+                                below and verified by the restaurant. Check the UPI details before
+                                enabling.
+                            </p>
+                        </div>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <FormInput
+                            label="Restaurant UPI ID"
+                            value={formData.upiId || ""}
+                            onChange={(e) =>
+                                setFormData({ ...formData, upiId: e.target.value.trim() })
+                            }
+                            placeholder="restaurant@okbank"
+                        />
+                        <FormInput
+                            label="UPI Payee Name"
+                            value={formData.upiPayeeName || ""}
+                            onChange={(e) =>
+                                setFormData({ ...formData, upiPayeeName: e.target.value })
+                            }
+                            placeholder="As shown in the UPI app"
+                        />
+                    </div>
+                    {formData.isPaymentPartner === true && !isValidVpa(formData.upiId) && (
+                        <p className="text-xs text-red-400 font-bold">
+                            Add a valid UPI ID (name@bank): customers can&apos;t pay this restaurant
+                            without one.
+                        </p>
+                    )}
+                </div>
+            )}
 
             {/* Delivery Slots Management */}
             {!isPartnerPage && (

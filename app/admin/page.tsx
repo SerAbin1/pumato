@@ -158,6 +158,7 @@ export default function AdminPage() {
     const [orders, setOrders] = useState<Order[]>([]); // placed (pending admin action)
     const [inProgressOrders, setInProgressOrders] = useState<Order[]>([]); // confirmed → ready_for_delivery + out_of_stock
     const [pastOrders, setPastOrders] = useState<Order[]>([]); // picked_up / delivered
+    const [directOrders, setDirectOrders] = useState<Order[]>([]); // in-app orders, any status
     const [loadingOrders, setLoadingOrders] = useState(true);
     const isInitialLoad = useRef(true);
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -363,16 +364,48 @@ export default function AdminPage() {
         );
         const unsub = onSnapshot(q, (snap) => {
             setInProgressOrders(
-                snap.docs.map(
-                    (d) =>
-                        ({
-                            id: d.id,
-                            ...d.data(),
-                            createdAt: d.data().createdAt?.toDate(),
-                        }) as Order
-                )
+                snap.docs
+                    .map(
+                        (d) =>
+                            ({
+                                id: d.id,
+                                ...d.data(),
+                                createdAt: d.data().createdAt?.toDate(),
+                            }) as Order
+                    )
+                    // In-app orders have their own sub-tab.
+                    .filter((o) => o.flow !== "direct")
             );
         });
+        return () => unsub();
+    }, [user, isAdmin]);
+
+    // In-app orders from the last day, any status, newest first
+    useEffect(() => {
+        if (!user || !isAdmin) return;
+        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const q = query(
+            collection(db, COLLECTIONS.ORDERS),
+            where("flow", "==", "direct"),
+            where("createdAt", ">=", Timestamp.fromDate(since)),
+            orderBy("createdAt", "desc")
+        );
+        const unsub = onSnapshot(
+            q,
+            (snap) => {
+                setDirectOrders(
+                    snap.docs.map(
+                        (d) =>
+                            ({
+                                id: d.id,
+                                ...d.data(),
+                                createdAt: d.data().createdAt?.toDate(),
+                            }) as Order
+                    )
+                );
+            },
+            (error) => console.error("In-app orders listener error:", error)
+        );
         return () => unsub();
     }, [user, isAdmin]);
 
@@ -426,14 +459,16 @@ export default function AdminPage() {
         );
         const unsub = onSnapshot(q, (snap) => {
             setPastOrders(
-                snap.docs.map(
-                    (d) =>
-                        ({
-                            id: d.id,
-                            ...d.data(),
-                            createdAt: d.data().createdAt?.toDate(),
-                        }) as Order
-                )
+                snap.docs
+                    .map(
+                        (d) =>
+                            ({
+                                id: d.id,
+                                ...d.data(),
+                                createdAt: d.data().createdAt?.toDate(),
+                            }) as Order
+                    )
+                    .filter((o) => o.flow !== "direct")
             );
         });
         return () => unsub();
@@ -645,6 +680,7 @@ export default function AdminPage() {
                             orders={orders}
                             inProgressOrders={inProgressOrders}
                             pastOrders={pastOrders}
+                            directOrders={directOrders}
                             loading={loadingOrders}
                             user={user}
                         />

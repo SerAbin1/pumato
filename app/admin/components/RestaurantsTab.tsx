@@ -64,6 +64,7 @@ export default function RestaurantsTab({
             isVisible: restaurant.isVisible !== false,
             isAvailable: restaurant.isAvailable !== false,
             isFeatured: restaurant.isFeatured === true,
+            isPaymentPartner: restaurant.isPaymentPartner === true,
         });
         setActiveTab("form");
     };
@@ -176,6 +177,11 @@ export default function RestaurantsTab({
                                         {r.isFeatured === true && r.isVisible !== false && (
                                             <div className="absolute top-3 left-3 bg-amber-500/90 backdrop-blur-md text-black px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg flex items-center gap-1">
                                                 <Star size={12} /> Featured
+                                            </div>
+                                        )}
+                                        {r.isPaymentPartner === true && (
+                                            <div className="absolute top-12 left-3 bg-green-500/90 backdrop-blur-md text-black px-3 py-1 text-xs font-bold uppercase tracking-wider rounded-lg shadow-lg">
+                                                Payment Partner
                                             </div>
                                         )}
                                         {r.isVisible === false && (

@@ -110,6 +110,14 @@
                 { "fieldPath": "userId", "order": "ASCENDING" },
                 { "fieldPath": "createdAt", "order": "DESCENDING" }
             ]
+        },
+        {
+            "collectionGroup": "orders",
+            "queryScope": "COLLECTION",
+            "fields": [
+                { "fieldPath": "flow", "order": "ASCENDING" },
+                { "fieldPath": "createdAt", "order": "DESCENDING" }
+            ]
         }
     ],
     "fieldOverrides": []

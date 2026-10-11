@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { serverTimestamp } from "firebase/firestore";
 import { updateOrder } from "@/lib/repositories";
+import DirectOrdersList from "./DirectOrdersList";
 import { motion, AnimatePresence } from "framer-motion";
 import {
     Check,
@@ -29,6 +30,7 @@ const SUB_TABS = [
     { id: "inprogress", label: "In Progress" },
     { id: "past", label: "Picked Up / Done" },
     { id: "preorders", label: "Pre-orders" },
+    { id: "inapp", label: "In-app" },
 ] as const;
 
 const isPreOrder = (order: Order) => !!order.deliverySlot;
@@ -408,12 +410,15 @@ export default function OrdersTab({
     orders,
     inProgressOrders = [],
     pastOrders = [],
+    directOrders = [],
     loading,
     user,
 }: {
     orders: Order[];
     inProgressOrders?: Order[];
     pastOrders?: Order[];
+    /** In-app orders, which move through their own statuses and actions. */
+    directOrders?: Order[];
     loading: boolean;
     user: FirebaseUser | null;
 }) {
@@ -499,6 +504,9 @@ export default function OrdersTab({
         inprogress: liveInProgressOrders.length,
         past: livePastOrders.length,
         preorders: preOrders.length,
+        inapp: directOrders.filter(
+            (o) => !["picked_up", "delivered", "cancelled"].includes(o.status)
+        ).length,
     };
 
     if (loading) {
@@ -538,7 +546,9 @@ export default function OrdersTab({
                                           ? "bg-blue-500/20 text-blue-400"
                                           : tab.id === "preorders"
                                             ? "bg-cyan-500/20 text-cyan-400"
-                                            : "bg-gray-500/20 text-gray-400"
+                                            : tab.id === "inapp"
+                                              ? "bg-orange-500/20 text-orange-300"
+                                              : "bg-gray-500/20 text-gray-400"
                                 }`}
                             >
                                 {tabCounts[tab.id]}
@@ -604,6 +614,8 @@ export default function OrdersTab({
                     </AnimatePresence>
                 </div>
             )}
+
+            {subTab === "inapp" && <DirectOrdersList orders={directOrders} />}
 
             {/* Pre-orders sub-tab — flat list across all statuses, soonest slot first */}
             {subTab === "preorders" && (

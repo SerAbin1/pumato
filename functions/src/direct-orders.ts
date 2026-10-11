@@ -109,7 +109,7 @@ function parseEvent(value: unknown, orderId: string): FlowEvent {
             const choice = event.choice;
             if (
                 !isString(event.restaurantId) ||
-                (choice !== "remove" && choice !== "cancel_restaurant" && choice !== "replace")
+                (choice !== "remove" && choice !== "cancel_restaurant")
             ) {
                 break;
             }
@@ -117,7 +117,6 @@ function parseEvent(value: unknown, orderId: string): FlowEvent {
                 type: "resolve",
                 restaurantId: event.restaurantId,
                 choice,
-                ...(choice === "replace" ? { replacements: parseLines(event.replacements) } : {}),
             };
         }
     }
@@ -351,13 +350,7 @@ export const updateDirectOrder = onCall<{ orderId?: unknown; event?: unknown }>(
             throw new HttpsError("not-found", "Order not found.");
         }
 
-        const replacementIds =
-            event.type === "resolve" ? (event.replacements || []).map((l) => l.restaurantId) : [];
-        const { ctx } = await loadContext(
-            tx,
-            [...current.restaurantIds, ...replacementIds],
-            current.couponCode
-        );
+        const { ctx } = await loadContext(tx, current.restaurantIds, current.couponCode);
 
         let result;
         try {

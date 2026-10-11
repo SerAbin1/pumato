@@ -287,9 +287,11 @@ export type FlowEvent =
     | {
           type: "resolve";
           restaurantId: string;
-          choice: "remove" | "cancel_restaurant" | "replace";
-          /** With "replace": what to add instead, from any Payment Partner. */
-          replacements?: OrderLine[];
+          /**
+           * There is no replacing: a customer who wants something else places a
+           * new order.
+           */
+          choice: "remove" | "cancel_restaurant";
       };
 
 /** The order's status follows from its legs and payment: it is never set directly. */
@@ -331,14 +333,6 @@ function settle(order: DirectOrder, legs: Record<string, Leg>): DirectOrder {
 /** Push notifications follow from what the change did to the order's status. */
 function notificationsFor(before: DirectOrder, after: DirectOrder): FlowNotification[] {
     const notifications: FlowNotification[] = [];
-
-    // A restaurant with something new to confirm hears about it like a new order.
-    const toConfirm = Object.keys(after.legs).filter(
-        (id) => after.legs[id].status === "pending" && before.legs[id]?.status !== "pending"
-    );
-    if (toConfirm.length > 0) {
-        notifications.push({ kind: "new_order", to: { restaurantIds: toConfirm } });
-    }
 
     if (after.status !== before.status) {
         if (after.status === "awaiting_payment") {
@@ -454,23 +448,6 @@ export function applyEvent(
             items = items.filter((i) => !goes(i));
             const left = items.some((i) => i.restaurantId === event.restaurantId);
             legs[event.restaurantId] = { status: left ? "confirmed" : "dropped" };
-
-            // Anything added must be confirmed by its restaurant, even one that
-            // had already confirmed the rest of its share.
-            const added =
-                event.choice === "replace"
-                    ? (event.replacements || []).map((line) => priceLine(line, ctx.restaurants))
-                    : [];
-            if (
-                chooseOrderFlow(uniq(added.map((i) => i.restaurantId)), ctx.restaurants) !==
-                "direct"
-            ) {
-                throw new OrderFlowError("not_payment_partner");
-            }
-            items = [...items, ...added];
-            for (const id of uniq(added.map((i) => i.restaurantId))) {
-                legs[id] = { status: "pending" };
-            }
             break;
         }
     }
@@ -478,15 +455,7 @@ export function applyEvent(
     const repriced =
         items === order.items
             ? order
-            : {
-                  ...order,
-                  items,
-                  restaurantIds: uniq([
-                      ...order.restaurantIds,
-                      ...items.map((i) => i.restaurantId),
-                  ]),
-                  ...priceItems(items, order.campus, ctx),
-              };
+            : { ...order, items, ...priceItems(items, order.campus, ctx) };
     const next = settle({ ...repriced, ...(payment ? { payment } : {}) }, legs);
     return { order: next, notifications: notificationsFor(order, next) };
 }

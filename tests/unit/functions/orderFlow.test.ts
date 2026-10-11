@@ -50,7 +50,6 @@ const restaurant = (
 const R1 = restaurant("r1", [
     { id: "biryani", name: "Biryani", price: "120" },
     { id: "lime", name: "Lime Soda", price: "40" },
-    { id: "raita", name: "Raita", price: "30" },
 ]);
 const R2 = restaurant("r2", [
     {
@@ -348,79 +347,6 @@ describe("customer resolving unavailable items", () => {
         expect(order.legs.r1.status).toBe("dropped");
         expect(order.paymentCollector).toEqual({ type: "restaurant", restaurantId: "r2" });
         expect(order).toMatchObject({ total: 90, deliveryCharge: 30, finalTotal: 120 });
-    });
-
-    it("sends the restaurant a replacement from its own menu to confirm", () => {
-        const { order } = apply(
-            limeOutOfStock(),
-            {
-                type: "resolve",
-                restaurantId: "r1",
-                choice: "replace",
-                replacements: [{ itemId: "raita", restaurantId: "r1", quantity: 1 }],
-            },
-            customer
-        );
-
-        expect(order.items.map((i) => i.id)).toEqual(["biryani", "shawarma", "raita"]);
-        expect(order.legs.r1.status).toBe("pending");
-        expect(order.status).toBe("awaiting_restaurants");
-    });
-
-    it("sends a restaurant that had already confirmed back to confirm the added items", () => {
-        const { order } = apply(
-            limeOutOfStock(),
-            {
-                type: "resolve",
-                restaurantId: "r1",
-                choice: "replace",
-                replacements: [{ itemId: "shawarma", restaurantId: "r2", quantity: 1 }],
-            },
-            customer
-        );
-
-        expect(order.legs).toEqual({ r1: { status: "confirmed" }, r2: { status: "pending" } });
-    });
-
-    it("brings a new restaurant into the order and pushes it the order", () => {
-        const biryaniOut = run(placed(BIRYANI), [
-            { type: "mark_unavailable", itemIds: ["biryani"] },
-            restaurantOf("r1"),
-        ]);
-        const { order, notifications } = apply(
-            biryaniOut,
-            {
-                type: "resolve",
-                restaurantId: "r1",
-                choice: "replace",
-                replacements: [{ itemId: "shawarma", restaurantId: "r2", quantity: 2 }],
-            },
-            customer
-        );
-
-        expect(order.restaurantIds).toEqual(["r1", "r2"]);
-        expect(order.legs).toEqual({ r1: { status: "dropped" }, r2: { status: "pending" } });
-        expect(notifications).toEqual([{ kind: "new_order", to: { restaurantIds: ["r2"] } }]);
-    });
-
-    it("refuses a replacement from a restaurant that is not a Payment Partner", () => {
-        const r3 = restaurant("r3", [{ id: "dosa", name: "Dosa", price: "60" }], {
-            isPaymentPartner: false,
-        });
-        const call = () =>
-            apply(
-                limeOutOfStock(),
-                {
-                    type: "resolve",
-                    restaurantId: "r1",
-                    choice: "replace",
-                    replacements: [{ itemId: "dosa", restaurantId: "r3", quantity: 1 }],
-                },
-                customer,
-                { restaurants: [R1, R2, r3] }
-            );
-
-        expect(errorCode(call)).toBe("not_payment_partner");
     });
 
     it("refuses a change that leaves a restaurant below its minimum order", () => {

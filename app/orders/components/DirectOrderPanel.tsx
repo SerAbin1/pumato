@@ -1,13 +1,13 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, ImageUp, IndianRupee, Loader2, X } from "lucide-react";
+import { useState } from "react";
+import Link from "next/link";
+import { AlertTriangle, CheckCircle2, ImageUp, IndianRupee, Loader2 } from "lucide-react";
 import toast from "react-hot-toast";
 
 import { buildUpiLink, isValidTransactionId, normalizeTransactionId } from "@/lib/upi";
 import { flowErrorMessage, sendOrderEvent, uploadPaymentProof } from "@/lib/directOrders";
 import { displayOrderNumber } from "@/lib/formatters";
-import type { OrderLine } from "@/functions/src/order-flow";
 import type { LegStatus, Order, Restaurant } from "@/lib/types";
 
 type DirectOrder = Omit<Order, "createdAt"> & { createdAt: Date | null };
@@ -67,7 +67,6 @@ export default function DirectOrderPanel({
                         restaurantId={id}
                         restaurantName={restaurantName(id)}
                         missing={leg.outOfStockItems || []}
-                        restaurants={restaurants}
                     />
                 ))}
 
@@ -101,33 +100,21 @@ function ResolveLeg({
     restaurantId,
     restaurantName,
     missing,
-    restaurants,
 }: {
     order: DirectOrder;
     restaurantId: string;
     restaurantName: string;
     missing: string[];
-    restaurants: Restaurant[];
 }) {
     const [busy, setBusy] = useState(false);
-    const [picking, setPicking] = useState(false);
     const missingNames = order.items
         .filter((i) => i.restaurantId === restaurantId && missing.includes(i.id))
         .map((i) => i.name);
 
-    const resolve = async (
-        choice: "remove" | "cancel_restaurant" | "replace",
-        replacements?: OrderLine[]
-    ) => {
+    const resolve = async (choice: "remove" | "cancel_restaurant") => {
         setBusy(true);
         try {
-            await sendOrderEvent(order.id, {
-                type: "resolve",
-                restaurantId,
-                choice,
-                ...(replacements ? { replacements } : {}),
-            });
-            setPicking(false);
+            await sendOrderEvent(order.id, { type: "resolve", restaurantId, choice });
         } catch (error) {
             toast.error(flowErrorMessage(error));
         } finally {
@@ -144,20 +131,13 @@ function ResolveLeg({
                     {missingNames.join(", ") || "some items"}. What should we do?
                 </p>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                 <button
                     disabled={busy}
                     onClick={() => resolve("remove")}
                     className="bg-white/10 hover:bg-white/20 disabled:opacity-40 text-white text-xs font-bold py-2.5 rounded-lg transition-colors"
                 >
                     Remove missing items
-                </button>
-                <button
-                    disabled={busy}
-                    onClick={() => setPicking(true)}
-                    className="bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white text-xs font-bold py-2.5 rounded-lg transition-colors"
-                >
-                    Replace them
                 </button>
                 <button
                     disabled={busy}
@@ -168,167 +148,12 @@ function ResolveLeg({
                 </button>
             </div>
             <p className="text-[10px] text-gray-500">
-                Your total is recalculated after any change. Replacements go back to the restaurant
-                to confirm.
+                Your total is recalculated after any change. Want something else instead?{" "}
+                <Link href="/delivery" className="text-orange-400 hover:text-orange-300 font-bold">
+                    Place a new order
+                </Link>
+                .
             </p>
-            {picking && (
-                <ReplacementPicker
-                    restaurants={restaurants}
-                    busy={busy}
-                    onCancel={() => setPicking(false)}
-                    onConfirm={(lines) => resolve("replace", lines)}
-                />
-            )}
-        </div>
-    );
-}
-
-/** One orderable choice: a plain item, or one variant of an item. */
-interface Choice {
-    key: string;
-    restaurantId: string;
-    restaurantName: string;
-    itemId: string;
-    variantId?: string;
-    name: string;
-    price: number;
-}
-
-function ReplacementPicker({
-    restaurants,
-    busy,
-    onCancel,
-    onConfirm,
-}: {
-    restaurants: Restaurant[];
-    busy: boolean;
-    onCancel: () => void;
-    onConfirm: (lines: OrderLine[]) => void;
-}) {
-    const [query, setQuery] = useState("");
-    const [quantities, setQuantities] = useState<Record<string, number>>({});
-
-    // Only Payment Partners can take part in an in-app order. Add-ons aren't
-    // offered here; variants are listed as separate choices.
-    const choices = useMemo<Choice[]>(
-        () =>
-            restaurants
-                .filter((r) => r.isPaymentPartner && r.isVisible !== false)
-                .flatMap((r) =>
-                    (r.menu || [])
-                        .filter((item) => item.isVisible)
-                        .flatMap((item) =>
-                            item.variants?.length
-                                ? item.variants.map((v) => ({
-                                      key: `${r.id}:${item.id}:${v.id}`,
-                                      restaurantId: r.id,
-                                      restaurantName: r.name,
-                                      itemId: item.id,
-                                      variantId: v.id,
-                                      name: `${item.name} (${v.name})`,
-                                      price: Number(v.price) || 0,
-                                  }))
-                                : [
-                                      {
-                                          key: `${r.id}:${item.id}`,
-                                          restaurantId: r.id,
-                                          restaurantName: r.name,
-                                          itemId: item.id,
-                                          name: item.name,
-                                          price: Number(item.price) || 0,
-                                      },
-                                  ]
-                        )
-                ),
-        [restaurants]
-    );
-
-    const q = query.trim().toLowerCase();
-    const shown = (
-        q
-            ? choices.filter(
-                  (c) =>
-                      c.name.toLowerCase().includes(q) || c.restaurantName.toLowerCase().includes(q)
-              )
-            : choices
-    ).slice(0, 60);
-
-    const step = (key: string, delta: number) =>
-        setQuantities((prev) => ({ ...prev, [key]: Math.max(0, (prev[key] || 0) + delta) }));
-
-    const lines: OrderLine[] = choices
-        .filter((c) => (quantities[c.key] || 0) > 0)
-        .map((c) => ({
-            itemId: c.itemId,
-            restaurantId: c.restaurantId,
-            quantity: quantities[c.key],
-            ...(c.variantId ? { variantId: c.variantId } : {}),
-        }));
-
-    return (
-        <div className="bg-black/40 border border-white/10 rounded-xl p-3 space-y-3">
-            <div className="flex items-center gap-2">
-                <input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Search dishes or restaurants"
-                    aria-label="Search replacements"
-                    className="flex-1 bg-black/40 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-gray-600 focus:outline-none focus:border-orange-500/50"
-                />
-                <button
-                    onClick={onCancel}
-                    aria-label="Close"
-                    className="p-2 text-gray-400 hover:text-white"
-                >
-                    <X size={16} />
-                </button>
-            </div>
-            <div className="max-h-72 overflow-y-auto space-y-1">
-                {shown.map((c) => (
-                    <div key={c.key} className="flex items-center justify-between gap-2 py-1.5">
-                        <div className="min-w-0">
-                            <p className="text-sm text-gray-200 truncate">{c.name}</p>
-                            <p className="text-[10px] text-gray-500 truncate">
-                                {c.restaurantName} · ₹{c.price}
-                            </p>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                            {(quantities[c.key] || 0) > 0 && (
-                                <>
-                                    <button
-                                        onClick={() => step(c.key, -1)}
-                                        aria-label={`Fewer ${c.name}`}
-                                        className="w-7 h-7 rounded-lg bg-white/10 text-white font-bold"
-                                    >
-                                        −
-                                    </button>
-                                    <span className="text-sm font-bold text-white w-4 text-center">
-                                        {quantities[c.key]}
-                                    </span>
-                                </>
-                            )}
-                            <button
-                                onClick={() => step(c.key, 1)}
-                                aria-label={`Add ${c.name}`}
-                                className="w-7 h-7 rounded-lg bg-orange-600 text-white font-bold"
-                            >
-                                +
-                            </button>
-                        </div>
-                    </div>
-                ))}
-                {shown.length === 0 && (
-                    <p className="text-xs text-gray-500 text-center py-4">Nothing matches.</p>
-                )}
-            </div>
-            <button
-                disabled={busy || lines.length === 0}
-                onClick={() => onConfirm(lines)}
-                className="w-full flex items-center justify-center gap-2 bg-orange-600 hover:bg-orange-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold py-2.5 rounded-lg text-sm transition-colors"
-            >
-                {busy && <Loader2 size={14} className="animate-spin" />}
-                Send replacements to restaurant
-            </button>
         </div>
     );
 }

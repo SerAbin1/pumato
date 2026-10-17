@@ -90,7 +90,7 @@ export default function DeliveryPage() {
                 });
             }
         };
-        fetchBanners();
+        void fetchBanners();
     }, [getDocument]);
 
     // Trending is ranked server-side; resolve it against the open restaurants
@@ -126,7 +126,7 @@ export default function DeliveryPage() {
                 console.error("Error fetching restaurants:", err);
             }
         };
-        fetchRestaurants();
+        void fetchRestaurants();
     }, [getCollection]);
 
     // Wait for a pause in typing before searching, and skip 1-character

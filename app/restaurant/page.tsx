@@ -84,7 +84,7 @@ function RestaurantContent() {
             }
             setLoading(false);
         };
-        fetchRestaurant();
+        void fetchRestaurant();
     }, [id, getDocument]);
 
     // Wait for a pause in typing before searching, and skip 1-character queries.

@@ -28,7 +28,7 @@ export default function FeedbackTab() {
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        fetchData();
+        void fetchData();
     }, [fetchData]);
 
     const markHandled = async (id: string) => {

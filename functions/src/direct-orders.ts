@@ -90,7 +90,9 @@ function parseEvent(value: unknown, orderId: string): FlowEvent {
             if (!isStringList(event.itemIds) || event.itemIds.length === 0) break;
             return { type: "mark_unavailable", itemIds: event.itemIds };
         case "submit_payment": {
-            const transactionId = String(event.transactionId ?? "")
+            const transactionId = (
+                typeof event.transactionId === "string" ? event.transactionId : ""
+            )
                 .trim()
                 .toUpperCase();
             const path = event.screenshotPath;

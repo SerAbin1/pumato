@@ -1,6 +1,6 @@
 "use strict";
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import { RestaurantSchema } from "../../../../lib/schemas/restaurant";
 
 const restaurant = (menu: unknown[] = []) => ({

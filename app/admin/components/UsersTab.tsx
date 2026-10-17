@@ -54,7 +54,7 @@ export default function UsersTab({ restaurants }: { restaurants: Restaurant[] })
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        fetchUsers();
+        void fetchUsers();
     }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
     const handleCreateUser = () => {

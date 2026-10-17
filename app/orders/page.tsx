@@ -234,7 +234,7 @@ export default function OrdersPage() {
     useEffect(() => {
         const ids = whatsappOrderIds ? whatsappOrderIds.split(",") : [];
         let cancelled = false;
-        Promise.all(ids.map((id) => fetchPayment(id).catch(() => null))).then((filed) => {
+        void Promise.all(ids.map((id) => fetchPayment(id).catch(() => null))).then((filed) => {
             if (cancelled) return;
             setPayments(
                 Object.fromEntries(filed.filter((p) => p !== null).map((p) => [p.orderId, p]))
@@ -269,7 +269,7 @@ export default function OrdersPage() {
         ];
         if (ids.length === 0) return;
         let cancelled = false;
-        Promise.all(
+        void Promise.all(
             ids.map((id) => getDocument<Restaurant>(COLLECTIONS.RESTAURANTS, id).catch(() => null))
         ).then((docs) => {
             if (!cancelled) setRestaurants(docs.filter((d) => d !== null));

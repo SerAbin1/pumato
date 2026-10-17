@@ -754,7 +754,7 @@ export default function PartnerDashboard() {
                                 initialData={restaurantData}
                                 onSave={handleSave}
                                 onCancel={() => {
-                                    getDoc(
+                                    void getDoc(
                                         doc(db, COLLECTIONS.RESTAURANTS, user.restaurantId!)
                                     ).then((snap) => {
                                         if (snap.exists())

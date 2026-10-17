@@ -51,8 +51,8 @@ function MarketplaceContent() {
                 console.error("Error fetching marketplace filters:", err);
             }
         };
-        fetchListings();
-        fetchFilters();
+        void fetchListings();
+        void fetchFilters();
     }, [getCollection]);
 
     const filteredListings = useMemo(() => {

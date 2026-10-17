@@ -25,7 +25,7 @@ const askQuestion = (query: string) => {
     return new Promise<string>((resolve) => rl.question(query, resolve));
 };
 
-(async () => {
+void (async () => {
     try {
         const email = process.argv[2] || (await askQuestion("Enter User Email: "));
         const password =

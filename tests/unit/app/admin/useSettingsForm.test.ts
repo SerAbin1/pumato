@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 "use strict";
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vite-plus/test";
 import { renderHook, act, waitFor, cleanup } from "@testing-library/react";
 import type { SettingsFormOptions } from "@/app/admin/hooks/useSettingsForm";
 

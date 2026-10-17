@@ -123,7 +123,7 @@ export default function MarketplaceListingForm({
                 console.error("Error fetching marketplace filters:", err);
             }
         };
-        fetchFilters();
+        void fetchFilters();
     }, []);
 
     const handleImageUpload = async (e: ChangeEvent<HTMLInputElement>) => {

@@ -815,7 +815,7 @@ export default function CartDrawer() {
                                                                     key={c.code}
                                                                     onClick={() => {
                                                                         setInputCode(c.code);
-                                                                        handleApplyCoupon();
+                                                                        void handleApplyCoupon();
                                                                     }}
                                                                     className="text-[10px] border border-white/10 bg-white/5 text-gray-400 px-2 py-1 rounded-md font-bold whitespace-nowrap hover:bg-white/10 hover:text-white uppercase transition-colors"
                                                                 >

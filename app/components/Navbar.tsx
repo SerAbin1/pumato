@@ -436,7 +436,7 @@ const UserMenu = ({ user, logout }: { user: User; logout: () => Promise<void> })
                         <button
                             onClick={() => {
                                 setIsOpen(false);
-                                logout();
+                                void logout();
                             }}
                             className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-red-400 hover:bg-red-500/10 transition-colors text-sm font-medium"
                         >

@@ -58,7 +58,7 @@ export default function usePromotedListings(
 
     useEffect(() => {
         let cancelled = false;
-        fetchPromotedListings().then((data) => {
+        void fetchPromotedListings().then((data) => {
             if (cancelled) return;
             setListings(data);
             setVisitorId(getVisitorId());

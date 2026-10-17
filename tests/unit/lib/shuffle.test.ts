@@ -1,6 +1,6 @@
 "use strict";
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import { seededShuffle, shuffleRestaurants } from "../../../lib/shuffle";
 
 describe("seededShuffle", () => {
@@ -12,7 +12,8 @@ describe("seededShuffle", () => {
     it("contains all original elements", () => {
         const arr = [1, 2, 3, 4, 5];
         const result = seededShuffle(arr, 42);
-        expect(result.sort()).toEqual(arr.sort());
+        const ascending = (a: number, b: number) => a - b;
+        expect(result.sort(ascending)).toEqual(arr.sort(ascending));
     });
 
     it("does not mutate the original array", () => {

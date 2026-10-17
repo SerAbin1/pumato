@@ -223,7 +223,7 @@ function DirectOrderAdminCard({ order }: { order: Order }) {
                 onClose={() => setConfirmCancel(false)}
                 onConfirm={() => {
                     setConfirmCancel(false);
-                    act({ type: "cancel" }, "Order cancelled");
+                    void act({ type: "cancel" }, "Order cancelled");
                 }}
                 title="Cancel this order?"
                 message={`${displayOrderNumber(order)} will be cancelled for the customer and every restaurant. ${order.payment?.status === "verified" ? "The payment was already verified, so refund the customer separately." : ""}`}

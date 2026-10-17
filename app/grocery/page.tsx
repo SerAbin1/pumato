@@ -178,7 +178,7 @@ export default function GroceryPage() {
                 console.error("Error fetching campus config:", error);
             }
         };
-        fetchSettings();
+        void fetchSettings();
     }, []);
 
     const handleSubmit = (e: FormEvent) => {

@@ -83,7 +83,7 @@ export function useSettingsForm<T extends Record<string, any>>({
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        reload();
+        void reload();
     }, [reload]);
 
     const diff = useMemo(() => computeDiff(baseline, data), [baseline, data]);
@@ -112,7 +112,7 @@ export function useSettingsForm<T extends Record<string, any>>({
             setPending(diff);
             return;
         }
-        commit();
+        void commit();
     }, [canSave, hasChanges, confirm, diff, commit]);
 
     return {

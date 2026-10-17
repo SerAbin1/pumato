@@ -1,6 +1,6 @@
 "use strict";
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
 
 // Fake Firestore. `doc(db, col, id)` returns a path-tagged ref.
 const mocks = vi.hoisted(() => ({

@@ -13,7 +13,7 @@ export interface PriceChangeScope {
 }
 
 export interface PriceChange {
-    mode: PriceChangeMode | string;
+    mode: PriceChangeMode | (string & {});
     value: number;
 }
 

@@ -71,7 +71,7 @@ export function useFcmToken(user: Pick<AdminUser, "uid" | "restaurantId"> | null
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        requestAndSaveToken();
+        void requestAndSaveToken();
     }, [requestAndSaveToken]);
 
     return { permission, token };

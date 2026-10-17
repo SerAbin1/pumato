@@ -526,7 +526,7 @@ export default function AdminPage() {
     useEffect(() => {
         if (user && isAdmin) {
             // eslint-disable-next-line react-hooks/set-state-in-effect
-            fetchData();
+            void fetchData();
         }
     }, [user, isAdmin, fetchData]);
 

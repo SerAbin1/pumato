@@ -27,7 +27,7 @@ const askQuestion = (query: string) => {
     return new Promise<string>((resolve) => rl.question(query, resolve));
 };
 
-(async () => {
+void (async () => {
     try {
         console.log("Fetching restaurants...");
         const snapshot = await db.collection("restaurants").get();

@@ -107,7 +107,7 @@ export type CouponType = "FLAT" | "PERCENTAGE" | "BOGO" | "B2G1";
 export interface Coupon {
     id?: string;
     code: string;
-    type: CouponType | string;
+    type: CouponType | (string & {});
     value: string | number;
     description?: string;
     // snake_case as stored

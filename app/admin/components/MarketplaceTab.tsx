@@ -130,7 +130,7 @@ export default function MarketplaceTab() {
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
-        fetchData();
+        void fetchData();
     }, [fetchData]);
 
     const pendingRequests = requests

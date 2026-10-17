@@ -204,7 +204,9 @@ const plan: Record<"light" | "heavy" | "alreadyWeighted" | "missing", string[]> 
         plan.missing.forEach((id) => console.log(`  - ${id}`));
     }
     if (heavyItemCharge) {
-        console.log(`\nNote: heavyItemCharge (${heavyItemCharge}) was never read by the`);
+        console.log(
+            `\nNote: heavyItemCharge (${JSON.stringify(heavyItemCharge)}) was never read by the`
+        );
         console.log(
             DROP_OLD_LISTS
                 ? "calculator, so dropping it changes nothing."

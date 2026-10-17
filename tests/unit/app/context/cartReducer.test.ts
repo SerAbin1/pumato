@@ -1,6 +1,6 @@
 "use strict";
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect } from "vite-plus/test";
 import { cartReducer, initialState } from "@/app/context/cartReducer";
 import type { CartAction, CartState } from "@/app/context/cartReducer";
 import type { CartItem, CartItemInput } from "@/lib/types";

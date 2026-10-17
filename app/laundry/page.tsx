@@ -144,7 +144,7 @@ export default function LaundryPage() {
                 console.error("Error fetching settings in laundry page:", error);
             }
         };
-        fetchSettings();
+        void fetchSettings();
     }, []);
 
     // Fetch slots when date changes
@@ -193,7 +193,7 @@ export default function LaundryPage() {
             setLoadingSlots(false);
         };
 
-        fetchSlots();
+        void fetchSlots();
     }, [formData.date]);
 
     const handleAddItem = () => {

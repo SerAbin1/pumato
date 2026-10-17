@@ -80,8 +80,8 @@ export default function MarketplaceSellPage() {
             } finally {
             }
         };
-        fetchCategories();
-        fetchRedirectLinks();
+        void fetchCategories();
+        void fetchRedirectLinks();
     }, []);
 
     const handleSelectCategory = (category: MarketplaceCategory) => {

@@ -24,7 +24,7 @@ export function useRestaurants() {
                 setLoaded(true);
             }
         };
-        fetchRestaurants();
+        void fetchRestaurants();
     }, []);
 
     return { restaurants, loaded };
@@ -57,7 +57,7 @@ export function useCoupons(): {
             }
         };
 
-        fetchCoupons();
+        void fetchCoupons();
     }, []);
 
     return { availableCoupons, setAvailableCoupons };

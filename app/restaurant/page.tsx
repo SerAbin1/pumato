@@ -13,6 +13,7 @@ import {
     Utensils,
     ArrowUpDown,
     Heart,
+    X,
 } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
@@ -342,8 +343,19 @@ function RestaurantContent() {
                             placeholder="Search for dishes..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium placeholder-gray-500"
+                            className="w-full bg-white/5 border border-white/10 pl-12 pr-12 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-orange-500/50 focus:bg-white/10 transition-all font-medium placeholder-gray-500"
                         />
+                        {searchQuery && (
+                            <button
+                                type="button"
+                                aria-label="Clear search"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => setSearchQuery("")}
+                                className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                            >
+                                <X size={18} />
+                            </button>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2 w-full md:w-auto pb-2 md:pb-0 overflow-visible">

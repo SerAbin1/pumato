@@ -4,7 +4,7 @@ import Navbar from "../components/Navbar";
 import RestaurantList from "../components/RestaurantList";
 import TermsFooter from "../components/TermsFooter";
 import Link from "next/link";
-import { Search, Sparkles, ShoppingBag, Clock, Flame } from "lucide-react";
+import { Search, Sparkles, ShoppingBag, Clock, Flame, X } from "lucide-react";
 import { useCart } from "@/app/context/CartContext";
 import { motion, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useMemo } from "react";
@@ -310,6 +310,18 @@ export default function DeliveryPage() {
                                         }
                                     }}
                                 />
+                                {searchQuery && (
+                                    <button
+                                        type="button"
+                                        aria-label="Clear search"
+                                        // Keep focus in the input so the user can type a new query right away
+                                        onMouseDown={(e) => e.preventDefault()}
+                                        onClick={() => setSearchQuery("")}
+                                        className="ml-3 text-gray-400 hover:text-white transition-colors"
+                                    >
+                                        <X size={20} />
+                                    </button>
+                                )}
                             </div>
 
                             {/* Recent Searches Dropdown */}

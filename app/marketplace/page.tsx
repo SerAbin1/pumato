@@ -10,7 +10,7 @@ import ListingDetail from "./components/ListingDetail";
 import { RestaurantSkeleton } from "../components/Skeleton";
 import useFirestore from "@/app/hooks/useFirestore";
 import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
-import { Search, Plus } from "lucide-react";
+import { Search, Plus, X } from "lucide-react";
 import CustomSelect from "../components/CustomSelect";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -122,8 +122,19 @@ function MarketplaceContent() {
                         placeholder="Search items..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 pl-12 pr-4 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all font-medium placeholder-gray-500"
+                        className="w-full bg-white/5 border border-white/10 pl-12 pr-12 py-3 rounded-xl text-sm text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/10 transition-all font-medium placeholder-gray-500"
                     />
+                    {searchQuery && (
+                        <button
+                            type="button"
+                            aria-label="Clear search"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => setSearchQuery("")}
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+                        >
+                            <X size={18} />
+                        </button>
+                    )}
                 </div>
                 <CustomSelect
                     options={[

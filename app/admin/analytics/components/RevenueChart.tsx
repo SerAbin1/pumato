@@ -67,7 +67,9 @@ export default function RevenueChart({ data }: { data: RevenuePoint[] }) {
                             }}
                             labelStyle={{ color: "#fff" }}
                             formatter={(value) => formatCurrency(Number(value))}
-                            labelFormatter={(label) => formatDate(String(label))}
+                            labelFormatter={(label) =>
+                                typeof label === "string" ? formatDate(label) : label
+                            }
                         />
                         <Legend />
                         <Line

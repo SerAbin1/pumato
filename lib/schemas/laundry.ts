@@ -15,6 +15,10 @@ export const LaundryItemSchema = z.object({
     name: z.string(),
     quantity: z.number(),
     steamIron: z.boolean(),
+    // Snapshot of the wash type at order time, so later price edits don't rewrite old orders.
+    categoryId: z.string(),
+    categoryName: z.string(),
+    pricePerKg: z.number(),
 });
 
 export const LaundryOrderSchema = z.object({

@@ -33,7 +33,7 @@ export async function saveLaundrySlots(
 
 // --- Reads ---
 
-const DEFAULT_LAUNDRY_PRICING = { pricePerKg: "79", steamIronPrice: "15" };
+const DEFAULT_LAUNDRY_PRICING = { steamIronPrice: "", categories: [] };
 
 /**
  * Campus config + pricing, which the laundry tab edits and saves as one unit.
@@ -51,7 +51,7 @@ export async function fetchLaundryConfig(): Promise<{
     return {
         campuses: campusSnap.data()?.campuses || DEFAULT_CAMPUS_CONFIG,
         pricing: pricingSnap.exists()
-            ? (pricingSnap.data() as LaundryPricing)
+            ? LaundryPricingSchema.parse(pricingSnap.data())
             : DEFAULT_LAUNDRY_PRICING,
     };
 }

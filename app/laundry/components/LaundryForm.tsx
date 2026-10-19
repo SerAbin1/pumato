@@ -8,8 +8,9 @@ import type {
     RefObject,
     SetStateAction,
 } from "react";
-import type { CampusConfig, LaundryPricing } from "@/lib/types";
+import type { CampusConfig, LaundryCategory, LaundryPricing } from "@/lib/types";
 import type { LaundryFormData, LaundryItemDraft } from "../types";
+import { allowsSteamIron, estimateLaundry } from "../estimate";
 
 interface LaundryFormProps {
     formData: LaundryFormData;
@@ -21,15 +22,16 @@ interface LaundryFormProps {
     items: LaundryItemDraft[];
     handleAddItem: () => void;
     handleRemoveItem: (id: number) => void;
-    handleItemChange: <F extends "name" | "quantity" | "steamIron">(
+    handleItemChange: <F extends "name" | "quantity" | "categoryId" | "steamIron">(
         id: number,
         field: F,
         value: LaundryItemDraft[F]
     ) => void;
     handleSubmit: FormEventHandler<HTMLFormElement>;
     newItemRef: RefObject<HTMLInputElement | null>;
-    estimatedWeight: number;
-    setEstimatedWeight: Dispatch<SetStateAction<number>>;
+    categories: LaundryCategory[];
+    estimatedWeights: Record<string, number>;
+    setEstimatedWeights: Dispatch<SetStateAction<Record<string, number>>>;
     pricing: LaundryPricing;
 }
 
@@ -46,10 +48,13 @@ export default function LaundryForm({
     handleItemChange,
     handleSubmit,
     newItemRef,
-    estimatedWeight,
-    setEstimatedWeight,
+    categories,
+    estimatedWeights,
+    setEstimatedWeights,
     pricing,
 }: LaundryFormProps) {
+    const estimate = estimateLaundry(items, pricing, estimatedWeights);
+
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl w-full max-w-full overflow-hidden">
             <h2 className="text-2xl font-bold mb-8 text-white">Request Pickup</h2>
@@ -178,7 +183,7 @@ export default function LaundryForm({
                                 key={item.id}
                                 className="flex flex-wrap gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
                             >
-                                <div className="bg-black/20 border border-white/10 rounded-lg flex-1 flex items-center px-3 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
+                                <div className="bg-black/20 border border-white/10 rounded-lg flex-1 min-w-[9rem] flex items-center px-3 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
                                     <span className="text-gray-500 font-bold mr-2 text-xs">
                                         {index + 1}.
                                     </span>
@@ -193,6 +198,27 @@ export default function LaundryForm({
                                         placeholder="Item (e.g. Shirt)"
                                     />
                                 </div>
+                                <select
+                                    value={item.categoryId}
+                                    onChange={(e) =>
+                                        handleItemChange(item.id, "categoryId", e.target.value)
+                                    }
+                                    aria-label="Wash type"
+                                    className={`bg-black/20 border border-white/10 rounded-lg py-2.5 px-2 text-sm font-medium outline-none focus:border-blue-500/50 transition-all flex-shrink-0 max-w-[10rem] ${item.categoryId ? "text-white" : "text-gray-500"}`}
+                                >
+                                    <option value="" disabled className="bg-gray-900">
+                                        Wash type
+                                    </option>
+                                    {categories.map((category) => (
+                                        <option
+                                            key={category.id}
+                                            value={category.id}
+                                            className="bg-gray-900 text-white"
+                                        >
+                                            {category.name} (₹{category.pricePerKg}/kg)
+                                        </option>
+                                    ))}
+                                </select>
                                 <div className="w-14 bg-black/20 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all flex-shrink-0">
                                     <input
                                         type="number"
@@ -205,20 +231,26 @@ export default function LaundryForm({
                                         placeholder="Qty"
                                     />
                                 </div>
-                                <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer select-none hover:text-white transition-colors border border-white/10 px-2 py-2 rounded-lg bg-black/20 hover:bg-black/30 flex-shrink-0 leading-tight">
-                                    <input
-                                        type="checkbox"
-                                        checked={item.steamIron}
-                                        onChange={(e) =>
-                                            handleItemChange(item.id, "steamIron", e.target.checked)
-                                        }
-                                        className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700/50 accent-blue-500"
-                                    />
-                                    <span className="flex flex-col">
-                                        <span>Steam</span>
-                                        <span>Iron</span>
-                                    </span>
-                                </label>
+                                {allowsSteamIron(categories, item.categoryId) && (
+                                    <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer select-none hover:text-white transition-colors border border-white/10 px-2 py-2 rounded-lg bg-black/20 hover:bg-black/30 flex-shrink-0 leading-tight">
+                                        <input
+                                            type="checkbox"
+                                            checked={item.steamIron}
+                                            onChange={(e) =>
+                                                handleItemChange(
+                                                    item.id,
+                                                    "steamIron",
+                                                    e.target.checked
+                                                )
+                                            }
+                                            className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700/50 accent-blue-500"
+                                        />
+                                        <span className="flex flex-col">
+                                            <span>Steam</span>
+                                            <span>Iron</span>
+                                        </span>
+                                    </label>
+                                )}
                                 {items.length > 1 && (
                                     <button
                                         type="button"
@@ -248,69 +280,60 @@ export default function LaundryForm({
                     </h3>
 
                     <div className="space-y-6">
-                        <div>
-                            <div className="flex justify-between text-sm font-bold text-gray-400 mb-2">
-                                <span>Estimated Weight</span>
-                                <span className="text-white">{estimatedWeight} Kg</span>
+                        {estimate.lines.length === 0 && (
+                            <p className="text-sm text-gray-500">
+                                Pick a wash type for your items to see the estimate.
+                            </p>
+                        )}
+                        {estimate.lines.map((line) => (
+                            <div key={line.key}>
+                                <div className="flex justify-between text-sm font-bold text-gray-400 mb-2">
+                                    <span>{line.label} Weight</span>
+                                    <span className="text-white">{line.weight} Kg</span>
+                                </div>
+                                <input
+                                    type="range"
+                                    min="1"
+                                    max="20"
+                                    step="0.5"
+                                    value={line.weight}
+                                    onChange={(e) =>
+                                        setEstimatedWeights((prev) => ({
+                                            ...prev,
+                                            [line.key]: parseFloat(e.target.value),
+                                        }))
+                                    }
+                                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-green-500"
+                                />
+                                <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-wider">
+                                    <span>1 Kg</span>
+                                    <span>10 Kg</span>
+                                    <span>20 Kg</span>
+                                </div>
                             </div>
-                            <input
-                                type="range"
-                                min="1"
-                                max="20"
-                                step="0.5"
-                                value={estimatedWeight}
-                                onChange={(e) => setEstimatedWeight(parseFloat(e.target.value))}
-                                className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-green-500"
-                            />
-                            <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-wider">
-                                <span>1 Kg</span>
-                                <span>10 Kg</span>
-                                <span>20 Kg</span>
-                            </div>
-                        </div>
+                        ))}
 
                         <div className="space-y-2 pt-4 border-t border-white/5">
-                            <div className="flex justify-between text-sm text-gray-400">
-                                <span>
-                                    Laundry ({estimatedWeight}kg x ₹{pricing.pricePerKg})
-                                </span>
-                                <span>
-                                    ₹{Math.round(estimatedWeight * Number(pricing.pricePerKg))}
-                                </span>
-                            </div>
-                            {items.some((i) => i.steamIron) && (
+                            {estimate.lines.map((line) => (
+                                <div
+                                    key={line.key}
+                                    className="flex justify-between text-sm text-gray-400"
+                                >
+                                    <span>
+                                        {line.label} ({line.weight}kg x ₹{line.pricePerKg})
+                                    </span>
+                                    <span>₹{line.amount}</span>
+                                </div>
+                            ))}
+                            {estimate.steamIronCount > 0 && (
                                 <div className="flex justify-between text-sm text-gray-400">
-                                    <span>
-                                        Steam Ironing (
-                                        {items.reduce(
-                                            (acc, i) =>
-                                                i.steamIron ? acc + (Number(i.quantity) || 1) : acc,
-                                            0
-                                        )}{" "}
-                                        items)
-                                    </span>
-                                    <span>
-                                        ₹
-                                        {items.reduce(
-                                            (acc, i) =>
-                                                i.steamIron ? acc + (Number(i.quantity) || 1) : acc,
-                                            0
-                                        ) * Number(pricing.steamIronPrice)}
-                                    </span>
+                                    <span>Steam Ironing ({estimate.steamIronCount} items)</span>
+                                    <span>₹{estimate.steamIronAmount}</span>
                                 </div>
                             )}
                             <div className="flex justify-between text-xl font-black text-white pt-2 border-t border-white/10">
                                 <span>Estimated Total</span>
-                                <span className="text-green-400">
-                                    ₹
-                                    {Math.round(estimatedWeight * Number(pricing.pricePerKg)) +
-                                        items.reduce(
-                                            (acc, i) =>
-                                                i.steamIron ? acc + (Number(i.quantity) || 1) : acc,
-                                            0
-                                        ) *
-                                            Number(pricing.steamIronPrice)}
-                                </span>
+                                <span className="text-green-400">₹{estimate.total}</span>
                             </div>
                             <p className="text-[10px] text-gray-500 italic">
                                 *Delivery charges (if applicable) are extra.

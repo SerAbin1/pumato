@@ -39,7 +39,11 @@ import type {
 import type { MarketplaceListingSchema, MarketplaceRequestSchema } from "@/lib/schemas/marketplace";
 import type { FeedbackSchema } from "@/lib/schemas/feedback";
 import type { PAYMENT_STATUSES, PaymentSchema } from "@/lib/schemas/payment";
-import type { CampusConfigSchema, LaundryPricingSchema } from "@/lib/schemas/settings";
+import type {
+    CampusConfigSchema,
+    LaundryCategorySchema,
+    LaundryPricingSchema,
+} from "@/lib/schemas/settings";
 
 /** A plain object whose shape isn't known yet (e.g. raw Firestore data). */
 export type AnyRecord = Record<string, any>;
@@ -146,6 +150,7 @@ export type LaundryOrderStatus = (typeof LAUNDRY_ORDER_STATUSES)[number];
 export type LaundryItem = z.infer<typeof LaundryItemSchema>;
 export type LaundryOrder = z.infer<typeof LaundryOrderSchema>;
 export type LaundryPricing = z.infer<typeof LaundryPricingSchema>;
+export type LaundryCategory = z.infer<typeof LaundryCategorySchema>;
 export type CampusConfig = z.infer<typeof CampusConfigSchema>;
 
 // --- Site content ---

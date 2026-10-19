@@ -1,8 +1,10 @@
 import { Shirt } from "lucide-react";
 
 import type { LaundryPricing } from "@/lib/types";
+import { selectableCategories } from "../estimate";
 
 export default function LaundryHero({ pricing }: { pricing: LaundryPricing }) {
+    const categories = selectableCategories(pricing);
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-5 md:p-8 border border-white/10 relative overflow-hidden group">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 to-cyan-500"></div>
@@ -11,12 +13,19 @@ export default function LaundryHero({ pricing }: { pricing: LaundryPricing }) {
                 Laundry Service
             </h1>
             <div className="flex flex-col gap-3 mb-8">
-                <div className="bg-blue-600/20 text-blue-400 px-4 py-2 rounded-lg text-lg md:text-xl font-bold w-fit max-w-full border border-blue-500/30 shadow-lg shadow-blue-500/10 whitespace-normal break-words">
-                    Per KG ₹{pricing.pricePerKg}
-                </div>
-                <div className="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-lg text-base md:text-lg font-bold w-fit max-w-full border border-purple-500/30 shadow-lg shadow-purple-500/10 flex items-center gap-2 whitespace-normal break-words">
-                    <span className="text-xl">💨</span> Steam Iron ₹{pricing.steamIronPrice}
-                </div>
+                {categories.map((category) => (
+                    <div
+                        key={category.id}
+                        className="bg-blue-600/20 text-blue-400 px-4 py-2 rounded-lg text-lg md:text-xl font-bold w-fit max-w-full border border-blue-500/30 shadow-lg shadow-blue-500/10 whitespace-normal break-words"
+                    >
+                        {category.name} ₹{category.pricePerKg}/kg
+                    </div>
+                ))}
+                {categories.some((c) => c.steamIronEnabled) && (
+                    <div className="bg-purple-500/20 text-purple-300 px-4 py-2 rounded-lg text-base md:text-lg font-bold w-fit max-w-full border border-purple-500/30 shadow-lg shadow-purple-500/10 flex items-center gap-2 whitespace-normal break-words">
+                        <span className="text-xl">💨</span> Steam Iron ₹{pricing.steamIronPrice}
+                    </div>
+                )}
             </div>
             <p className="text-gray-400 mb-8 text-lg font-light leading-relaxed">
                 Professional care for your clothes. Schedule a pickup from your hostel and get

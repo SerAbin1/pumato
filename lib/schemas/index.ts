@@ -11,6 +11,7 @@ export { FeedbackSchema, FEEDBACK_MAX_LENGTH } from "./feedback";
 export { MarketplaceListingSchema, MarketplaceRequestSchema } from "./marketplace";
 export {
     CampusConfigSchema,
+    LaundryCategorySchema,
     LaundryPricingSchema,
     LaundryCampusSettingsSchema,
     LaundrySlotsSchema,

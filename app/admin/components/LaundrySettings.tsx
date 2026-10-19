@@ -23,7 +23,7 @@ import toast from "react-hot-toast";
 import ConfirmModal from "../../components/ConfirmModal";
 import type { Dispatch, HTMLInputTypeAttribute, ReactNode, SetStateAction } from "react";
 import type { LucideIcon } from "lucide-react";
-import type { LaundryOrder, LaundryPricing } from "@/lib/types";
+import type { LaundryCategory, LaundryOrder, LaundryPricing } from "@/lib/types";
 
 /** A laundry order as the admin listener delivers it: with its id and createdAt as a Date. */
 export type AdminLaundryOrder = LaundryOrder & { id: string };
@@ -444,6 +444,9 @@ function PipelineOrderCard({
                                                             className="text-gray-500"
                                                         />
                                                         <span>{item.name}</span>
+                                                        <span className="rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-300">
+                                                            {`${item.categoryName} · ₹${item.pricePerKg}/kg`}
+                                                        </span>
                                                         {item.steamIron && (
                                                             <span className="rounded-full border border-blue-500/20 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-300">
                                                                 Steam Iron
@@ -555,6 +558,12 @@ export default function LaundrySettings({
     laundryOrders?: AdminLaundryOrder[];
     loadingLaundryOrders?: boolean;
 }) {
+    const updateCategory = (id: string, patch: Partial<LaundryCategory>) =>
+        setLaundryPricing((prev) => ({
+            ...prev,
+            categories: prev.categories.map((c) => (c.id === id ? { ...c, ...patch } : c)),
+        }));
+
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         slotIdx: number | null;
@@ -851,23 +860,6 @@ export default function LaundrySettings({
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="space-y-1">
                                     <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
-                                        Price Per Kg (₹)
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        value={laundryPricing.pricePerKg}
-                                        onChange={(e) =>
-                                            setLaundryPricing({
-                                                pricePerKg: e.target.value,
-                                                steamIronPrice: laundryPricing.steamIronPrice,
-                                            })
-                                        }
-                                        className="w-full rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50"
-                                    />
-                                </div>
-                                <div className="space-y-1">
-                                    <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
                                         Steam Iron Price (₹)
                                     </label>
                                     <input
@@ -876,13 +868,103 @@ export default function LaundrySettings({
                                         value={laundryPricing.steamIronPrice}
                                         onChange={(e) =>
                                             setLaundryPricing({
-                                                pricePerKg: laundryPricing.pricePerKg,
+                                                ...laundryPricing,
                                                 steamIronPrice: e.target.value,
                                             })
                                         }
                                         className="w-full rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50"
                                     />
                                 </div>
+                            </div>
+                            <div className="mt-6 space-y-3">
+                                <p className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                    Wash Types (priced per kg)
+                                </p>
+                                {laundryPricing.categories.length === 0 && (
+                                    <p className="text-sm text-gray-500">
+                                        No wash types yet. Customers can&apos;t place a laundry
+                                        order until you add one.
+                                    </p>
+                                )}
+                                {laundryPricing.categories.map((category) => (
+                                    <div
+                                        key={category.id}
+                                        className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-black/20 p-3"
+                                    >
+                                        <input
+                                            type="text"
+                                            value={category.name}
+                                            placeholder="Name (e.g. Dry Clean)"
+                                            onChange={(e) =>
+                                                updateCategory(category.id, {
+                                                    name: e.target.value,
+                                                })
+                                            }
+                                            className="min-w-[10rem] flex-1 rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50"
+                                        />
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            value={category.pricePerKg}
+                                            placeholder="₹ / kg"
+                                            aria-label="Price per kg"
+                                            onChange={(e) =>
+                                                updateCategory(category.id, {
+                                                    pricePerKg: e.target.value,
+                                                })
+                                            }
+                                            className="w-28 rounded-xl border border-white/10 bg-black/20 p-3 font-bold text-white outline-none focus:border-cyan-500/50"
+                                        />
+                                        <label className="flex cursor-pointer select-none items-center gap-2 text-xs font-bold text-gray-300">
+                                            <input
+                                                type="checkbox"
+                                                checked={category.steamIronEnabled}
+                                                onChange={(e) =>
+                                                    updateCategory(category.id, {
+                                                        steamIronEnabled: e.target.checked,
+                                                    })
+                                                }
+                                                className="h-4 w-4 accent-cyan-500"
+                                            />
+                                            Steam Iron
+                                        </label>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setLaundryPricing((prev) => ({
+                                                    ...prev,
+                                                    categories: prev.categories.filter(
+                                                        (c) => c.id !== category.id
+                                                    ),
+                                                }))
+                                            }
+                                            className="rounded-xl border border-white/10 bg-white/5 p-3 text-gray-400 transition-colors hover:bg-red-500/10 hover:text-red-400"
+                                            aria-label="Remove wash type"
+                                        >
+                                            <Trash size={16} />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button
+                                    type="button"
+                                    onClick={() =>
+                                        setLaundryPricing((prev) => ({
+                                            ...prev,
+                                            categories: [
+                                                ...prev.categories,
+                                                {
+                                                    id: Date.now().toString(36),
+                                                    name: "",
+                                                    pricePerKg: "",
+                                                    steamIronEnabled: false,
+                                                },
+                                            ],
+                                        }))
+                                    }
+                                    className="inline-flex items-center gap-1 text-xs font-bold text-cyan-300 transition-colors hover:text-white"
+                                >
+                                    <Plus size={14} /> Add Wash Type
+                                </button>
                             </div>
                             <button
                                 onClick={onSavePricing}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import type { ChangeEvent, FormEvent } from "react";
-import type { CampusConfig, LaundryPricing } from "@/lib/types";
+import type { CampusConfig, LaundryItem, LaundryPricing } from "@/lib/types";
 import type { LaundryFormData, LaundryItemDraft } from "./types";
 import toast from "react-hot-toast";
 import Navbar from "../components/Navbar";
@@ -13,6 +13,8 @@ import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { createLaundryOrder } from "@/lib/repositories";
+import { LaundryPricingSchema } from "@/lib/schemas";
+import { allowsSteamIron, selectableCategories } from "./estimate";
 import {
     DEFAULT_CAMPUS_CONFIG,
     COLLECTIONS,
@@ -76,7 +78,7 @@ export default function LaundryPage() {
 
     const [items, setItems] = useState<LaundryItemDraft[]>(() => {
         const fallbackItems: LaundryItemDraft[] = [
-            { id: Date.now(), name: "", quantity: "", steamIron: false },
+            { id: Date.now(), name: "", quantity: "", categoryId: "", steamIron: false },
         ];
 
         if (typeof window === "undefined") return fallbackItems;
@@ -91,7 +93,8 @@ export default function LaundryPage() {
             return fallbackItems;
         }
     });
-    const [estimatedWeight, setEstimatedWeight] = useState(5);
+    // Estimated kg per wash type, keyed by category id.
+    const [estimatedWeights, setEstimatedWeights] = useState<Record<string, number>>({});
 
     // Save items to localStorage whenever they change
     useEffect(() => {
@@ -107,8 +110,8 @@ export default function LaundryPage() {
 
     // Laundry Pricing State
     const [pricing, setPricing] = useState<LaundryPricing>({
-        pricePerKg: "79",
-        steamIronPrice: "15",
+        steamIronPrice: "",
+        categories: [],
     });
 
     useEffect(() => {
@@ -138,7 +141,7 @@ export default function LaundryPage() {
                     doc(db, COLLECTIONS.LAUNDRY_SETTINGS, LAUNDRY_SETTINGS_DOCS.PRICING)
                 );
                 if (pricingSnap.exists()) {
-                    setPricing(pricingSnap.data() as LaundryPricing);
+                    setPricing(LaundryPricingSchema.parse(pricingSnap.data()));
                 }
             } catch (error) {
                 console.error("Error fetching settings in laundry page:", error);
@@ -197,7 +200,10 @@ export default function LaundryPage() {
     }, [formData.date]);
 
     const handleAddItem = () => {
-        setItems([...items, { id: Date.now(), name: "", quantity: "", steamIron: false }]);
+        setItems([
+            ...items,
+            { id: Date.now(), name: "", quantity: "", categoryId: "", steamIron: false },
+        ]);
         setTimeout(() => newItemRef.current?.focus(), 0);
     };
 
@@ -207,13 +213,21 @@ export default function LaundryPage() {
         }
     };
 
-    const handleItemChange = <F extends "name" | "quantity" | "steamIron">(
+    const categories = selectableCategories(pricing);
+
+    const handleItemChange = <F extends "name" | "quantity" | "categoryId" | "steamIron">(
         id: number,
         field: F,
         value: LaundryItemDraft[F]
     ) => {
         if (field === "quantity" && value !== "" && Number(value) < 1) return;
-        const newItems = items.map((item) => (item.id === id ? { ...item, [field]: value } : item));
+        const newItems = items.map((item) => {
+            if (item.id !== id) return item;
+            const updated = { ...item, [field]: value };
+            // Switching to a wash type without steam ironing drops the add-on.
+            if (!allowsSteamIron(categories, updated.categoryId)) updated.steamIron = false;
+            return updated;
+        });
         setItems(newItems);
     };
 
@@ -255,12 +269,24 @@ export default function LaundryPage() {
             return;
         }
 
+        const validLaundryItems: LaundryItem[] = [];
+        for (const item of validItems) {
+            const category = categories.find((c) => c.id === item.categoryId);
+            if (!category) {
+                toast.error("Please select a wash type for every clothing item.");
+                return;
+            }
+            validLaundryItems.push({
+                name: item.name.trim(),
+                quantity: Number(item.quantity) || 1,
+                steamIron: item.steamIron && category.steamIronEnabled,
+                categoryId: category.id,
+                categoryName: category.name,
+                pricePerKg: Number(category.pricePerKg) || 0,
+            });
+        }
+
         const selectedCampus = campusConfig.find((c) => c.id === formData.campus);
-        const validLaundryItems = validItems.map((item) => ({
-            name: item.name.trim(),
-            quantity: Number(item.quantity) || 1,
-            steamIron: !!item.steamIron,
-        }));
 
         // --- SAVE TO DB FIRST, THEN OPEN WHATSAPP ---
         try {
@@ -285,7 +311,7 @@ export default function LaundryPage() {
 
         // Clear only the laundry items, keeping user details
         localStorage.removeItem("pumato_laundry_items");
-        setItems([{ id: Date.now(), name: "", quantity: "", steamIron: false }]);
+        setItems([{ id: Date.now(), name: "", quantity: "", categoryId: "", steamIron: false }]);
 
         let message = `*New Laundry Pickup Request* 🧺\n\n`;
         message += `*Customer Details:*\n`;
@@ -307,10 +333,10 @@ export default function LaundryPage() {
         message += `Date: ${formData.date}\n`;
         message += `Time: ${formData.time}\n\n`;
 
-        if (validItems.length > 0) {
+        if (validLaundryItems.length > 0) {
             message += `*Clothing Items:*\n`;
-            validItems.forEach((item, index) => {
-                message += `${index + 1}. ${item.name} ${item.quantity ? `(Qty: ${item.quantity})` : ""} ${item.steamIron ? "(Steam Iron)" : ""}\n`;
+            validLaundryItems.forEach((item, index) => {
+                message += `${index + 1}. ${item.name} (Qty: ${item.quantity}) - ${item.categoryName} ${item.steamIron ? "(Steam Iron)" : ""}\n`;
             });
         }
 
@@ -362,8 +388,9 @@ export default function LaundryPage() {
                             handleItemChange={handleItemChange}
                             handleSubmit={handleSubmit}
                             newItemRef={newItemRef}
-                            estimatedWeight={estimatedWeight}
-                            setEstimatedWeight={setEstimatedWeight}
+                            categories={categories}
+                            estimatedWeights={estimatedWeights}
+                            setEstimatedWeights={setEstimatedWeights}
                             pricing={pricing}
                         />
                     </motion.div>

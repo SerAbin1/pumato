@@ -233,7 +233,7 @@ export default function AdminPage() {
 
     const laundryForm = useSettingsForm<LaundryConfigDraft>({
         label: "Laundry config",
-        initial: { campuses: [], pricing: { pricePerKg: "", steamIronPrice: "" } },
+        initial: { campuses: [], pricing: { steamIronPrice: "", categories: [] } },
         load: useCallback(() => fetchLaundryConfig(), []),
         // Campus config and pricing live in separate full-overwrite documents —
         // write only the ones whose key actually changed, so a pricing edit can't

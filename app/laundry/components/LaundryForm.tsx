@@ -1,16 +1,18 @@
-import { User, Phone, MapPin, Plus, X, Send } from "lucide-react";
+import { User, Phone, MapPin, Plus, Minus, X, Send } from "lucide-react";
 import { motion } from "framer-motion";
 import SlotSelector from "./SlotSelector";
+import CustomSelect from "../../components/CustomSelect";
 import type {
     ChangeEventHandler,
     Dispatch,
     FormEventHandler,
+    ReactNode,
     RefObject,
     SetStateAction,
 } from "react";
 import type { CampusConfig, LaundryCategory, LaundryPricing } from "@/lib/types";
 import type { LaundryFormData, LaundryItemDraft } from "../types";
-import { allowsSteamIron, estimateLaundry } from "../estimate";
+import { allowsSteamIron } from "../estimate";
 
 interface LaundryFormProps {
     formData: LaundryFormData;
@@ -30,9 +32,9 @@ interface LaundryFormProps {
     handleSubmit: FormEventHandler<HTMLFormElement>;
     newItemRef: RefObject<HTMLInputElement | null>;
     categories: LaundryCategory[];
-    estimatedWeights: Record<string, number>;
-    setEstimatedWeights: Dispatch<SetStateAction<Record<string, number>>>;
     pricing: LaundryPricing;
+    /** The price estimate, shown above the submit button on smaller screens. */
+    estimate: ReactNode;
 }
 
 export default function LaundryForm({
@@ -49,12 +51,9 @@ export default function LaundryForm({
     handleSubmit,
     newItemRef,
     categories,
-    estimatedWeights,
-    setEstimatedWeights,
     pricing,
+    estimate,
 }: LaundryFormProps) {
-    const estimate = estimateLaundry(items, pricing, estimatedWeights);
-
     return (
         <div className="bg-white/5 backdrop-blur-xl rounded-[2rem] p-4 md:p-10 border border-white/10 relative shadow-2xl w-full max-w-full overflow-hidden">
             <h2 className="text-2xl font-bold mb-8 text-white">Request Pickup</h2>
@@ -181,11 +180,11 @@ export default function LaundryForm({
                         {items.map((item, index) => (
                             <div
                                 key={item.id}
-                                className="flex flex-wrap gap-2 items-center bg-white/5 p-3 rounded-xl border border-white/5 hover:border-white/10 transition-colors"
+                                className="bg-white/5 p-4 rounded-2xl border border-white/5 hover:border-white/10 transition-colors space-y-3"
                             >
-                                <div className="bg-black/20 border border-white/10 rounded-lg flex-1 min-w-[9rem] flex items-center px-3 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all">
-                                    <span className="text-gray-500 font-bold mr-2 text-xs">
-                                        {index + 1}.
+                                <div className="flex items-center gap-3">
+                                    <span className="w-7 h-7 rounded-full bg-white/10 text-gray-400 text-xs font-bold flex items-center justify-center flex-shrink-0">
+                                        {index + 1}
                                     </span>
                                     <input
                                         ref={index === items.length - 1 ? newItemRef : null}
@@ -194,73 +193,85 @@ export default function LaundryForm({
                                         onChange={(e) =>
                                             handleItemChange(item.id, "name", e.target.value)
                                         }
-                                        className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-sm"
+                                        aria-label="Item name"
+                                        className="flex-1 min-w-0 h-11 px-3 bg-black/20 border border-white/10 rounded-xl outline-none focus:border-blue-500/50 focus:bg-black/40 transition-all text-white placeholder-gray-600 font-medium text-sm"
                                         placeholder="Item (e.g. Shirt)"
                                     />
-                                </div>
-                                <select
-                                    value={item.categoryId}
-                                    onChange={(e) =>
-                                        handleItemChange(item.id, "categoryId", e.target.value)
-                                    }
-                                    aria-label="Wash type"
-                                    className={`bg-black/20 border border-white/10 rounded-lg py-2.5 px-2 text-sm font-medium outline-none focus:border-blue-500/50 transition-all flex-shrink-0 max-w-[10rem] ${item.categoryId ? "text-white" : "text-gray-500"}`}
-                                >
-                                    <option value="" disabled className="bg-gray-900">
-                                        Wash type
-                                    </option>
-                                    {categories.map((category) => (
-                                        <option
-                                            key={category.id}
-                                            value={category.id}
-                                            className="bg-gray-900 text-white"
+                                    {items.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => handleRemoveItem(item.id)}
+                                            className="w-11 h-11 rounded-xl border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center flex-shrink-0"
+                                            aria-label="Remove item"
                                         >
-                                            {category.name} (₹{category.pricePerKg}/kg)
-                                        </option>
-                                    ))}
-                                </select>
-                                <div className="w-14 bg-black/20 border border-white/10 rounded-lg flex items-center px-2 focus-within:border-blue-500/50 focus-within:bg-black/40 transition-all flex-shrink-0">
-                                    <input
-                                        type="number"
-                                        min="1"
-                                        value={item.quantity}
-                                        onChange={(e) =>
-                                            handleItemChange(item.id, "quantity", e.target.value)
-                                        }
-                                        className="bg-transparent border-none outline-none w-full py-2.5 text-white placeholder-gray-600 font-medium text-center text-sm"
-                                        placeholder="Qty"
-                                    />
+                                            <X size={18} />
+                                        </button>
+                                    )}
                                 </div>
-                                {allowsSteamIron(categories, item.categoryId) && (
-                                    <label className="flex items-center gap-1.5 text-[10px] text-gray-400 cursor-pointer select-none hover:text-white transition-colors border border-white/10 px-2 py-2 rounded-lg bg-black/20 hover:bg-black/30 flex-shrink-0 leading-tight">
-                                        <input
-                                            type="checkbox"
-                                            checked={item.steamIron}
-                                            onChange={(e) =>
+                                <div className="grid grid-cols-2 gap-2 sm:grid-cols-[1fr_auto_auto] sm:pl-10">
+                                    <CustomSelect
+                                        options={categories.map((category) => ({
+                                            value: category.id,
+                                            label: `${category.name} · ₹${category.pricePerKg}/kg`,
+                                        }))}
+                                        value={item.categoryId}
+                                        onChange={(categoryId) =>
+                                            handleItemChange(item.id, "categoryId", categoryId)
+                                        }
+                                        placeholder="Wash type"
+                                        className="col-span-2 sm:col-span-1 min-w-0 [&>button]:h-11"
+                                    />
+                                    <div className="h-11 flex items-center justify-between bg-black/20 border border-white/10 rounded-xl overflow-hidden">
+                                        <button
+                                            type="button"
+                                            onClick={() =>
                                                 handleItemChange(
                                                     item.id,
-                                                    "steamIron",
-                                                    e.target.checked
+                                                    "quantity",
+                                                    item.quantity - 1
                                                 )
                                             }
-                                            className="w-3.5 h-3.5 rounded border-gray-600 text-blue-600 focus:ring-blue-500 bg-gray-700/50 accent-blue-500"
-                                        />
-                                        <span className="flex flex-col">
-                                            <span>Steam</span>
-                                            <span>Iron</span>
+                                            disabled={item.quantity <= 1}
+                                            className="w-11 h-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+                                            aria-label="Decrease quantity"
+                                        >
+                                            <Minus size={16} />
+                                        </button>
+                                        <span className="min-w-[2rem] text-center text-sm font-bold text-white tabular-nums">
+                                            {item.quantity}
                                         </span>
-                                    </label>
-                                )}
-                                {items.length > 1 && (
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                handleItemChange(
+                                                    item.id,
+                                                    "quantity",
+                                                    item.quantity + 1
+                                                )
+                                            }
+                                            className="w-11 h-full flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/5 transition-colors"
+                                            aria-label="Increase quantity"
+                                        >
+                                            <Plus size={16} />
+                                        </button>
+                                    </div>
                                     <button
                                         type="button"
-                                        onClick={() => handleRemoveItem(item.id)}
-                                        className="w-10 h-10 rounded-lg border border-white/10 bg-white/5 text-gray-400 hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center justify-center flex-shrink-0"
-                                        aria-label="Remove item"
+                                        onClick={() =>
+                                            handleItemChange(item.id, "steamIron", !item.steamIron)
+                                        }
+                                        disabled={!allowsSteamIron(categories, item.categoryId)}
+                                        aria-pressed={item.steamIron}
+                                        title={
+                                            allowsSteamIron(categories, item.categoryId)
+                                                ? undefined
+                                                : "Not available for this wash type"
+                                        }
+                                        className={`h-11 px-3 rounded-xl border text-xs font-bold whitespace-nowrap transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${item.steamIron ? "bg-blue-600/30 border-blue-500/60 text-blue-200" : "bg-black/20 border-white/10 text-gray-400 enabled:hover:text-white enabled:hover:bg-black/30"}`}
                                     >
-                                        <X size={18} />
+                                        💨 Steam +₹{pricing.steamIronPrice}
                                     </button>
-                                )}
+                                </div>
                             </div>
                         ))}
                     </div>
@@ -273,74 +284,8 @@ export default function LaundryForm({
                     </button>
                 </div>
 
-                {/* Price Estimator */}
-                <div className="bg-white/5 p-6 rounded-2xl border border-white/10 space-y-4">
-                    <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                        <span className="text-yellow-400">⚡</span>Quick Price Estimator
-                    </h3>
-
-                    <div className="space-y-6">
-                        {estimate.lines.length === 0 && (
-                            <p className="text-sm text-gray-500">
-                                Pick a wash type for your items to see the estimate.
-                            </p>
-                        )}
-                        {estimate.lines.map((line) => (
-                            <div key={line.key}>
-                                <div className="flex justify-between text-sm font-bold text-gray-400 mb-2">
-                                    <span>{line.label} Weight</span>
-                                    <span className="text-white">{line.weight} Kg</span>
-                                </div>
-                                <input
-                                    type="range"
-                                    min="1"
-                                    max="20"
-                                    step="0.5"
-                                    value={line.weight}
-                                    onChange={(e) =>
-                                        setEstimatedWeights((prev) => ({
-                                            ...prev,
-                                            [line.key]: parseFloat(e.target.value),
-                                        }))
-                                    }
-                                    className="w-full h-2 bg-white/10 rounded-lg appearance-none cursor-pointer accent-green-500"
-                                />
-                                <div className="flex justify-between text-[10px] text-gray-500 mt-1 font-mono uppercase tracking-wider">
-                                    <span>1 Kg</span>
-                                    <span>10 Kg</span>
-                                    <span>20 Kg</span>
-                                </div>
-                            </div>
-                        ))}
-
-                        <div className="space-y-2 pt-4 border-t border-white/5">
-                            {estimate.lines.map((line) => (
-                                <div
-                                    key={line.key}
-                                    className="flex justify-between text-sm text-gray-400"
-                                >
-                                    <span>
-                                        {line.label} ({line.weight}kg x ₹{line.pricePerKg})
-                                    </span>
-                                    <span>₹{line.amount}</span>
-                                </div>
-                            ))}
-                            {estimate.steamIronCount > 0 && (
-                                <div className="flex justify-between text-sm text-gray-400">
-                                    <span>Steam Ironing ({estimate.steamIronCount} items)</span>
-                                    <span>₹{estimate.steamIronAmount}</span>
-                                </div>
-                            )}
-                            <div className="flex justify-between text-xl font-black text-white pt-2 border-t border-white/10">
-                                <span>Estimated Total</span>
-                                <span className="text-green-400">₹{estimate.total}</span>
-                            </div>
-                            <p className="text-[10px] text-gray-500 italic">
-                                *Delivery charges (if applicable) are extra.
-                            </p>
-                        </div>
-                    </div>
-                </div>
+                {/* On desktop the estimate sits in the page's sticky sidebar instead. */}
+                <div className="lg:hidden">{estimate}</div>
 
                 <motion.button
                     whileTap={{ scale: 0.98 }}

@@ -13,7 +13,7 @@ export interface LaundryFormData {
 export interface LaundryItemDraft {
     id: number;
     name: string;
-    quantity: string;
+    quantity: number;
     /** Selected wash type; empty until chosen, and unused while no categories exist. */
     categoryId: string;
     steamIron: boolean;

@@ -56,9 +56,7 @@ export function estimateLaundry(
 
     const steamIronCount = items.reduce(
         (acc, i) =>
-            i.steamIron && allowsSteamIron(categories, i.categoryId)
-                ? acc + (Number(i.quantity) || 1)
-                : acc,
+            i.steamIron && allowsSteamIron(categories, i.categoryId) ? acc + i.quantity : acc,
         0
     );
     const steamIronAmount = steamIronCount * (Number(pricing.steamIronPrice) || 0);

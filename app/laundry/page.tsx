@@ -9,6 +9,7 @@ import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
 import LaundryHero from "./components/LaundryHero";
 import LaundryForm from "./components/LaundryForm";
+import PriceEstimate from "./components/PriceEstimate";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp"; // Fallback
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -78,7 +79,7 @@ export default function LaundryPage() {
 
     const [items, setItems] = useState<LaundryItemDraft[]>(() => {
         const fallbackItems: LaundryItemDraft[] = [
-            { id: Date.now(), name: "", quantity: "", categoryId: "", steamIron: false },
+            { id: Date.now(), name: "", quantity: 1, categoryId: "", steamIron: false },
         ];
 
         if (typeof window === "undefined") return fallbackItems;
@@ -202,7 +203,7 @@ export default function LaundryPage() {
     const handleAddItem = () => {
         setItems([
             ...items,
-            { id: Date.now(), name: "", quantity: "", categoryId: "", steamIron: false },
+            { id: Date.now(), name: "", quantity: 1, categoryId: "", steamIron: false },
         ]);
         setTimeout(() => newItemRef.current?.focus(), 0);
     };
@@ -220,7 +221,7 @@ export default function LaundryPage() {
         field: F,
         value: LaundryItemDraft[F]
     ) => {
-        if (field === "quantity" && value !== "" && Number(value) < 1) return;
+        if (field === "quantity" && Number(value) < 1) return;
         const newItems = items.map((item) => {
             if (item.id !== id) return item;
             const updated = { ...item, [field]: value };
@@ -278,7 +279,7 @@ export default function LaundryPage() {
             }
             validLaundryItems.push({
                 name: item.name.trim(),
-                quantity: Number(item.quantity) || 1,
+                quantity: item.quantity,
                 steamIron: item.steamIron && category.steamIronEnabled,
                 categoryId: category.id,
                 categoryName: category.name,
@@ -311,7 +312,7 @@ export default function LaundryPage() {
 
         // Clear only the laundry items, keeping user details
         localStorage.removeItem("pumato_laundry_items");
-        setItems([{ id: Date.now(), name: "", quantity: "", categoryId: "", steamIron: false }]);
+        setItems([{ id: Date.now(), name: "", quantity: 1, categoryId: "", steamIron: false }]);
 
         let message = `*New Laundry Pickup Request* 🧺\n\n`;
         message += `*Customer Details:*\n`;
@@ -344,8 +345,18 @@ export default function LaundryPage() {
         window.location.href = whatsappUrl;
     };
 
+    const priceEstimate = (
+        <PriceEstimate
+            items={items}
+            pricing={pricing}
+            estimatedWeights={estimatedWeights}
+            setEstimatedWeights={setEstimatedWeights}
+        />
+    );
+
+    // overflow-x-clip, not hidden: hidden makes <main> a scroll container and breaks the sticky estimate.
     return (
-        <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
+        <main className="min-h-screen bg-black text-white relative overflow-x-clip">
             <div
                 className="fixed inset-0 pointer-events-none opacity-[0.03] z-[0] mix-blend-overlay"
                 style={{
@@ -357,21 +368,18 @@ export default function LaundryPage() {
             <div className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none" />
 
             <div className="max-w-7xl mx-auto px-4 py-12 pt-32 relative z-10">
-                <div className="grid md:grid-cols-2 gap-12 items-start">
-                    {/* Left Column */}
-                    <motion.div
-                        initial={{ opacity: 0, x: -30 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ duration: 0.6 }}
-                        className="space-y-6 min-w-0"
-                    >
-                        <LaundryHero pricing={pricing} />
-                    </motion.div>
+                <motion.div
+                    initial={{ opacity: 0, y: -20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6 }}
+                >
+                    <LaundryHero pricing={pricing} />
+                </motion.div>
 
-                    {/* Right Column: Form */}
+                <div className="mt-8 grid gap-8 items-start lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
                     <motion.div
-                        initial={{ opacity: 0, x: 30 }}
-                        animate={{ opacity: 1, x: 0 }}
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: 0.6, delay: 0.2 }}
                         className="min-w-0"
                     >
@@ -389,10 +397,19 @@ export default function LaundryPage() {
                             handleSubmit={handleSubmit}
                             newItemRef={newItemRef}
                             categories={categories}
-                            estimatedWeights={estimatedWeights}
-                            setEstimatedWeights={setEstimatedWeights}
                             pricing={pricing}
+                            estimate={priceEstimate}
                         />
+                    </motion.div>
+
+                    {/* Sticky so the total stays in view while items are added. */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 30 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.6, delay: 0.3 }}
+                        className="hidden lg:block min-w-0 sticky top-28"
+                    >
+                        {priceEstimate}
                     </motion.div>
                 </div>
             </div>

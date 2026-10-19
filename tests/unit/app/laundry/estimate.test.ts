@@ -8,7 +8,7 @@ import type { LaundryPricing } from "../../../../lib/types";
 const item = (overrides: Partial<LaundryItemDraft> = {}): LaundryItemDraft => ({
     id: 1,
     name: "Shirt",
-    quantity: "1",
+    quantity: 1,
     categoryId: "",
     steamIron: false,
     ...overrides,
@@ -57,8 +57,8 @@ describe("estimateLaundry", () => {
     it("only charges steam ironing on wash types that allow it", () => {
         const est = estimateLaundry(
             [
-                item({ categoryId: "wash", steamIron: true, quantity: "2" }),
-                item({ id: 2, categoryId: "dry", steamIron: true, quantity: "4" }),
+                item({ categoryId: "wash", steamIron: true, quantity: 2 }),
+                item({ id: 2, categoryId: "dry", steamIron: true, quantity: 4 }),
             ],
             pricing,
             { wash: 1, dry: 1 }

@@ -43,7 +43,8 @@ export default function CustomSelect<V extends string | number = string>({
     }, []);
 
     return (
-        <div className={`relative z-[60] ${className}`} ref={containerRef}>
+        // Raised while open so the list stays above sibling selects further down the page.
+        <div className={`relative ${isOpen ? "z-[70]" : "z-[60]"} ${className}`} ref={containerRef}>
             <button
                 type="button"
                 onClick={(e) => {

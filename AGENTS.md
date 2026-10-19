@@ -2,3 +2,4 @@
 - Commands: Prefer configured package scripts and local binaries (e.g. "pnpm run lint", "vp dev"). Avoid "npx" when a local alternative exists; use other commands when necessary.
 - Dev servers: Ask for approval before starting one.
 - Changes: Explain the proposed approach and wait for approval before editing files.
+- I will run the dev server and verify changes; you don't worry about it.

@@ -55,6 +55,5 @@ functions/node_modules/
 functions/lib/
 .aider*
 
-# VibeWise learning notes
-.vibe-wise/
-.vitest/
+# firestore
+firestore-debug.log

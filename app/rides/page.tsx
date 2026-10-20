@@ -9,13 +9,10 @@ import { createRideRequest, fetchRidesSettings } from "@/lib/repositories";
 import { PHONE_PATTERN } from "@/lib/schemas/rides";
 import { activePlaces } from "@/lib/rides";
 import CustomSelect from "@/app/components/CustomSelect";
+import { inputClass, labelClass } from "./styles";
 import type { RidePlace } from "@/lib/types";
 
 const GUEST_KEY = "pumato_rides_guest";
-
-const inputClass =
-    "w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-all";
-const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1";
 
 export default function RidesPage() {
     const [places, setPlaces] = useState<RidePlace[] | null>(null);

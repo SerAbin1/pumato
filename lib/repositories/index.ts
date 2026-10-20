@@ -41,6 +41,7 @@ export {
     saveRidesSettings,
     fetchRider,
     submitRiderApplication,
+    setRiderOnline,
     createRideRequest,
     EMPTY_RIDES_SETTINGS,
 } from "./rides";

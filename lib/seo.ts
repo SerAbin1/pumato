@@ -30,4 +30,5 @@ export const CANONICAL_URLS = {
     foodMarketing: getCanonicalUrl("/food-marketing"),
     rides: getCanonicalUrl("/rides"),
     ridesRegister: getCanonicalUrl("/rides/register"),
+    ridesRider: getCanonicalUrl("/rides/rider"),
 };

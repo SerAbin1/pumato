@@ -1,6 +1,14 @@
 import type { z } from "zod";
 import { db } from "@/lib/firebase";
-import { addDoc, collection, doc, getDoc, serverTimestamp, setDoc } from "firebase/firestore";
+import {
+    addDoc,
+    collection,
+    doc,
+    getDoc,
+    serverTimestamp,
+    setDoc,
+    updateDoc,
+} from "firebase/firestore";
 import { RideRequestSchema, RiderSchema, RidesSettingsSchema } from "@/lib/schemas/rides";
 import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import type { Rider, RidesSettings } from "@/lib/types";
@@ -57,6 +65,10 @@ export async function submitRiderApplication(
         const { createdAt: _createdAt, ...rest } = validated;
         await setDoc(ref, rest, { merge: true });
     }
+}
+
+export async function setRiderOnline(uid: string, online: boolean): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), { online, updatedAt: serverTimestamp() });
 }
 
 export async function createRideRequest(

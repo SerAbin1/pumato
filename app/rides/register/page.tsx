@@ -4,18 +4,7 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import {
-    ArrowLeft,
-    Bike,
-    CheckCircle2,
-    Clock,
-    Loader2,
-    LogIn,
-    LogOut,
-    Send,
-    UserPlus,
-    XCircle,
-} from "lucide-react";
+import { ArrowLeft, Bike, CheckCircle2, Clock, Loader2, LogOut, Send, XCircle } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { fetchRider, fetchRidesSettings, submitRiderApplication } from "@/lib/repositories";
 import type { RiderApplication } from "@/lib/repositories";
@@ -23,91 +12,8 @@ import { PHONE_PATTERN } from "@/lib/schemas/rides";
 import { riderRef, riderVerificationMessage, telegramUrl, whatsappUrl } from "@/lib/rides";
 import type { User } from "firebase/auth";
 import type { Rider, RidesSettings } from "@/lib/types";
-
-const inputClass =
-    "w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-all";
-const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1";
-const primaryButton =
-    "w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all";
-const cardClass = "bg-white/5 border border-white/10 rounded-3xl p-6 space-y-5";
-
-/** Sign in or sign up in place, so an existing Pumato account just signs in. */
-function AuthCard() {
-    const { login, register, loginWithGoogle } = useUserAuth();
-    const [isRegister, setIsRegister] = useState(false);
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
-    const [busy, setBusy] = useState(false);
-
-    const handleSubmit = async (e: FormEvent) => {
-        e.preventDefault();
-        setBusy(true);
-        const result = isRegister ? await register(email, password) : await login(email, password);
-        if (!result.success && result.error) toast.error(result.error);
-        setBusy(false);
-    };
-
-    const handleGoogle = async () => {
-        setBusy(true);
-        const result = await loginWithGoogle();
-        if (result.error === "google-failed") {
-            toast.error("Google sign-in isn't working right now. Please use email instead.");
-        }
-        setBusy(false);
-    };
-
-    return (
-        <form onSubmit={handleSubmit} className={cardClass}>
-            <p className="text-sm text-gray-400">
-                Already use Pumato? Sign in with the same account. Otherwise, create one.
-            </p>
-            <input
-                type="email"
-                aria-label="Email"
-                placeholder="Email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={inputClass}
-                required
-            />
-            <input
-                type="password"
-                aria-label="Password"
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className={inputClass}
-                minLength={6}
-                required
-            />
-            <button type="submit" disabled={busy} className={primaryButton}>
-                {busy ? (
-                    <Loader2 size={20} className="animate-spin" />
-                ) : isRegister ? (
-                    <UserPlus size={20} />
-                ) : (
-                    <LogIn size={20} />
-                )}
-                {isRegister ? "Create account" : "Sign in"}
-            </button>
-            <button
-                type="button"
-                onClick={handleGoogle}
-                disabled={busy}
-                className="w-full bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
-            >
-                Continue with Google
-            </button>
-            <button
-                type="button"
-                onClick={() => setIsRegister(!isRegister)}
-                className="w-full text-sm text-gray-400 hover:text-white"
-            >
-                {isRegister ? "Have an account? Sign in" : "New here? Create an account"}
-            </button>
-        </form>
-    );
-}
+import AuthCard from "../components/AuthCard";
+import { cardClass, inputClass, labelClass, primaryButton } from "../styles";
 
 function ApplicationForm({
     initial,
@@ -308,9 +214,10 @@ export default function RiderRegisterPage() {
             <div className={`${cardClass} text-center`}>
                 <CheckCircle2 size={48} className="text-green-400 mx-auto" />
                 <h2 className="text-xl font-black">You&apos;re a Pumato rider</h2>
-                <p className="text-sm text-gray-400">
-                    You&apos;re verified. The rider dashboard is coming soon.
-                </p>
+                <p className="text-sm text-gray-400">You&apos;re verified and ready to ride.</p>
+                <Link href="/rides/rider" className={primaryButton}>
+                    <Bike size={20} /> Go to rider dashboard
+                </Link>
             </div>
         );
     } else if (rider?.status === "revoked") {

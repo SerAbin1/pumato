@@ -31,6 +31,8 @@ export const RiderSchema = z.object({
     vehicleNumber: z.string().trim().min(1).max(20),
     collegeId: z.string().trim().min(1).max(40),
     status: z.enum(RIDER_STATUSES),
+    // Set by the approved rider from their dashboard; online riders get ride requests.
+    online: z.boolean().optional(),
     createdAt: z.any(),
     updatedAt: z.any(),
 });

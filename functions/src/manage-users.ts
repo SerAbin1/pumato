@@ -108,7 +108,12 @@ export const manageUsers = onCall<ManageUsersRequest>(async (request) => {
                 ? grantRole(user.customClaims, { role: "rider" })
                 : revokeRole(user.customClaims, "rider")
         );
-        await riderRef.update({ status: to, updatedAt: FieldValue.serverTimestamp() });
+        await riderRef.update({
+            status: to,
+            updatedAt: FieldValue.serverTimestamp(),
+            // A revoked rider must stop getting ride requests straight away.
+            ...(to === "revoked" && { online: false }),
+        });
         return { success: true };
     }
 

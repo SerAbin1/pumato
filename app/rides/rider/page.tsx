@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { collection, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { Check, Loader2, Phone, Power, Undo2 } from "lucide-react";
+import { BellOff, BellRing, Check, Loader2, Phone, Power, Undo2 } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { db } from "@/lib/firebase";
@@ -17,6 +17,7 @@ import {
     RIDE_TAKEN,
     setRiderOnline,
 } from "@/lib/repositories";
+import type { ReactNode } from "react";
 import type { FirebaseError } from "firebase/app";
 import type { Query } from "firebase/firestore";
 import type { User } from "firebase/auth";
@@ -219,10 +220,65 @@ function PendingRequests({ rider }: { rider: Rider }) {
     );
 }
 
+/** iPhones only allow web push for sites added to the home screen and opened from there. */
+const needsHomeScreen = () => {
+    const ios =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        // iPadOS reports itself as a Mac.
+        (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
+    return ios && !window.matchMedia("(display-mode: standalone)").matches;
+};
+
+/** Tells the rider when they won't get ride notifications, and how to fix it. */
+function NotificationNotice({
+    permission,
+    request,
+}: {
+    permission: NotificationPermission | "unsupported" | null;
+    request: () => Promise<void>;
+}) {
+    const [homeScreen] = useState(needsHomeScreen);
+
+    let message: ReactNode = null;
+    if (homeScreen) {
+        message = (
+            <>
+                To get ride notifications on iPhone, tap <b>Share</b> → <b>Add to Home Screen</b>,
+                then open Pumato from your home screen.
+            </>
+        );
+    } else if (permission === "unsupported") {
+        message = "This browser can't show notifications. Keep this page open to see new requests.";
+    } else if (permission === "denied") {
+        message =
+            "Notifications are blocked, so you'll miss new requests. Allow them for this site in your browser settings.";
+    } else if (permission === "default") {
+        message = (
+            <>
+                Turn on notifications to hear about new ride requests.
+                <button
+                    onClick={() => void request()}
+                    className="mt-3 w-full flex items-center justify-center gap-2 py-2 rounded-xl bg-orange-600 hover:bg-orange-500 text-white text-sm font-bold"
+                >
+                    <BellRing size={16} /> Turn on notifications
+                </button>
+            </>
+        );
+    }
+
+    if (!message) return null;
+    return (
+        <div className="flex gap-3 text-sm text-orange-200 bg-orange-500/10 border border-orange-500/30 rounded-2xl p-4">
+            <BellOff size={18} className="shrink-0 text-orange-400 mt-0.5" />
+            <div className="min-w-0 flex-1">{message}</div>
+        </div>
+    );
+}
+
 function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     const [online, setOnline] = useState(rider.online === true);
     const [busy, setBusy] = useState(false);
-    useFcmToken(user);
+    const { permission, request } = useFcmToken(user);
 
     const toggleOnline = async () => {
         setBusy(true);
@@ -240,6 +296,7 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     return (
         <>
             <div className={`${sideColumn} space-y-4`}>
+                <NotificationNotice permission={permission} request={request} />
                 <div className={cardClass}>
                     <div className="flex items-center gap-3">
                         <span

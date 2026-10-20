@@ -16,10 +16,15 @@ import type { AdminUser } from "@/app/context/AdminAuthContext";
  * @param user - Firebase Auth user object (must have a `.uid`)
  */
 export function useFcmToken(user: Pick<AdminUser, "uid" | "restaurantId"> | null | undefined): {
-    permission: NotificationPermission;
+    /** null until checked; "unsupported" when this browser can't receive web push */
+    permission: NotificationPermission | "unsupported" | null;
     token: string | null;
+    /** Asks again; some browsers (Safari, Firefox) only prompt from a tap */
+    request: () => Promise<void>;
 } {
-    const [permission, setPermission] = useState<NotificationPermission>("default");
+    const [permission, setPermission] = useState<NotificationPermission | "unsupported" | null>(
+        null
+    );
     const [token, setToken] = useState<string | null>(null);
 
     // eslint-disable-next-line react-hooks/preserve-manual-memoization
@@ -28,7 +33,10 @@ export function useFcmToken(user: Pick<AdminUser, "uid" | "restaurantId"> | null
 
         // 1. Ensure the browser supports FCM
         const messaging = await getFirebaseMessaging();
-        if (!messaging) return;
+        if (!messaging) {
+            setPermission("unsupported");
+            return;
+        }
 
         // 2. Ask for permission (no-op if already granted/denied)
         const perm = await Notification.requestPermission();
@@ -74,5 +82,5 @@ export function useFcmToken(user: Pick<AdminUser, "uid" | "restaurantId"> | null
         void requestAndSaveToken();
     }, [requestAndSaveToken]);
 
-    return { permission, token };
+    return { permission, token, request: requestAndSaveToken };
 }

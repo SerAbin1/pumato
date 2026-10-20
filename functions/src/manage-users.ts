@@ -1,9 +1,18 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getAuth } from "firebase-admin/auth";
 import type { UserRecord } from "firebase-admin/auth";
-import { grantRole } from "./claims";
+import { getFirestore, FieldValue } from "firebase-admin/firestore";
+import { grantRole, revokeRole } from "./claims";
 
 const auth = getAuth();
+const db = getFirestore();
+
+/** Which rider status each admin action moves from and to. */
+const RIDER_TRANSITIONS = {
+    APPROVE_RIDER: { from: "pending", to: "approved" },
+    REJECT_RIDER: { from: "pending", to: "rejected" },
+    REVOKE_RIDER: { from: "approved", to: "revoked" },
+} as const;
 
 interface ManageUsersRequest {
     action?: string;
@@ -79,6 +88,28 @@ export const manageUsers = onCall<ManageUsersRequest>(async (request) => {
             grantRole(userRecord.customClaims, { role: "deliveryPartner" })
         );
         return { success: true, uid: userRecord.uid };
+    }
+
+    if (action && action in RIDER_TRANSITIONS) {
+        if (!uid) {
+            throw new HttpsError("invalid-argument", "Missing rider uid.");
+        }
+        const { from, to } = RIDER_TRANSITIONS[action as keyof typeof RIDER_TRANSITIONS];
+        const riderRef = db.collection("riders").doc(uid);
+        const rider = await riderRef.get();
+        if (rider.get("status") !== from) {
+            throw new HttpsError("failed-precondition", `Rider is not ${from}.`);
+        }
+
+        const user = await auth.getUser(uid);
+        await auth.setCustomUserClaims(
+            uid,
+            to === "approved"
+                ? grantRole(user.customClaims, { role: "rider" })
+                : revokeRole(user.customClaims, "rider")
+        );
+        await riderRef.update({ status: to, updatedAt: FieldValue.serverTimestamp() });
+        return { success: true };
     }
 
     if (action === "DELETE_USER") {

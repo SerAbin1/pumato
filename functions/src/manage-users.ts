@@ -1,6 +1,7 @@
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getAuth } from "firebase-admin/auth";
 import type { UserRecord } from "firebase-admin/auth";
+import { grantRole } from "./claims";
 
 const auth = getAuth();
 
@@ -43,8 +44,8 @@ export const manageUsers = onCall<ManageUsersRequest>(async (request) => {
     const { action, email, password, restaurantId, uid } = request.data;
 
     if (action === "CREATE_PARTNER") {
-        if (!email || !password) {
-            throw new HttpsError("invalid-argument", "Email and password required.");
+        if (!email || !password || !restaurantId) {
+            throw new HttpsError("invalid-argument", "Email, password and restaurant required.");
         }
 
         let userRecord: UserRecord;
@@ -54,7 +55,10 @@ export const manageUsers = onCall<ManageUsersRequest>(async (request) => {
             userRecord = await auth.createUser({ email, password, emailVerified: true });
         }
 
-        await auth.setCustomUserClaims(userRecord.uid, { partner: true, restaurantId });
+        await auth.setCustomUserClaims(
+            userRecord.uid,
+            grantRole(userRecord.customClaims, { role: "partner", restaurantId })
+        );
         return { success: true, uid: userRecord.uid };
     }
 
@@ -70,7 +74,10 @@ export const manageUsers = onCall<ManageUsersRequest>(async (request) => {
             userRecord = await auth.createUser({ email, password, emailVerified: true });
         }
 
-        await auth.setCustomUserClaims(userRecord.uid, { deliveryPartner: true });
+        await auth.setCustomUserClaims(
+            userRecord.uid,
+            grantRole(userRecord.customClaims, { role: "deliveryPartner" })
+        );
         return { success: true, uid: userRecord.uid };
     }
 

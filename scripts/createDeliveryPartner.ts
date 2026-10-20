@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import type { UserRecord } from "firebase-admin/auth";
+import { grantRole } from "../functions/src/claims";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
@@ -51,13 +52,16 @@ void (async () => {
             }
         }
 
-        await admin.auth().setCustomUserClaims(user.uid, {
-            deliveryPartner: true,
-        });
+        await admin
+            .auth()
+            .setCustomUserClaims(
+                user.uid,
+                grantRole(user.customClaims, { role: "deliveryPartner" })
+            );
 
         console.log("\n✅ Success! Delivery Partner account configured.");
         console.log(`User: ${email}`);
-        console.log("Custom claims set: { deliveryPartner: true }");
+        console.log("Claim added: deliveryPartner (other roles kept)");
         console.log("They can now login at /delivery-partner");
     } catch (error) {
         console.error("Error:", (error as Error).message);

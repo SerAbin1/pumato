@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import type { UserRecord } from "firebase-admin/auth";
+import { grantRole } from "../functions/src/claims";
 import fs from "fs";
 import path from "path";
 import readline from "readline";
@@ -52,13 +53,13 @@ void (async () => {
             }
         }
 
-        await admin.auth().setCustomUserClaims(user.uid, {
-            admin: true,
-        });
+        await admin
+            .auth()
+            .setCustomUserClaims(user.uid, grantRole(user.customClaims, { role: "admin" }));
 
         console.log("\n✅ Success! Admin account configured.");
         console.log(`User: ${email}`);
-        console.log("Custom claims set: { admin: true }");
+        console.log("Claim added: admin (other roles kept)");
         console.log("You can now login at /admin/login");
     } catch (error) {
         console.error("Error:", (error as Error).message);

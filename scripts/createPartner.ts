@@ -1,5 +1,6 @@
 import admin from "firebase-admin";
 import type { UserRecord } from "firebase-admin/auth";
+import { grantRole } from "../functions/src/claims";
 const serviceAccount = JSON.parse(
     fs.readFileSync(
         path.resolve(
@@ -81,10 +82,13 @@ void (async () => {
             }
         }
 
-        await admin.auth().setCustomUserClaims(user.uid, {
-            restaurantId: selectedRestaurant.id,
-            partner: true,
-        });
+        await admin.auth().setCustomUserClaims(
+            user.uid,
+            grantRole(user.customClaims, {
+                role: "partner",
+                restaurantId: selectedRestaurant.id,
+            })
+        );
 
         console.log("\n✅ Success! Partner account configured.");
         console.log(`User: ${email}`);

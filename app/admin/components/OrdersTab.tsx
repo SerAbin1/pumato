@@ -519,10 +519,6 @@ export default function OrdersTab({
 
     return (
         <div className="max-w-5xl mx-auto">
-            <div className="flex items-center justify-between mb-6">
-                <h2 className="text-3xl font-black text-white">Orders</h2>
-            </div>
-
             {/* Sub-tabs */}
             <div className="flex gap-1 mb-8 border-b border-white/10">
                 {SUB_TABS.map((tab) => (

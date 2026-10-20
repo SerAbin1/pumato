@@ -20,14 +20,17 @@ const messaging = firebase.messaging();
 // Data messages don't auto-display a notification — we build one manually
 // so we can play the custom sound.
 messaging.onBackgroundMessage((payload) => {
-    const { title = "New Order Received", body = "A new order has been placed." } =
-        payload.data || {};
+    const {
+        title = "New Order Received",
+        body = "A new order has been placed.",
+        tag = "new-order",
+    } = payload.data || {};
 
     const notificationOptions = {
         body,
         icon: "/android-chrome-192x192.png",
         badge: "/favicon-32x32.png",
-        tag: "new-order", // Replaces previous notification instead of stacking
+        tag, // Replaces previous notification of the same kind instead of stacking
         renotify: true, // Still plays sound/vibration even if replacing
         vibrate: [200, 100, 200],
         data: payload.data,

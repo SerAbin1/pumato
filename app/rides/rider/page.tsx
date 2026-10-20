@@ -1,15 +1,24 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { collection, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { ArrowLeft, Bike, Loader2, LogOut, Power } from "lucide-react";
+import { ArrowLeft, Bike, Check, Loader2, LogOut, Phone, Power, Undo2 } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
-import { fetchRider, setRiderOnline } from "@/lib/repositories";
+import {
+    acceptRide,
+    completeRide,
+    fetchRider,
+    releaseRide,
+    RIDE_TAKEN,
+    setRiderOnline,
+} from "@/lib/repositories";
+import type { FirebaseError } from "firebase/app";
+import type { Query } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { RideRequest, Rider } from "@/lib/types";
 import AuthCard from "../components/AuthCard";
@@ -38,27 +47,134 @@ const NOT_A_RIDER: Record<string, { title: string; body: string; cta: string }> 
     },
 };
 
-/** Today's pending requests, oldest first, while the rider is online. */
-function PendingRequests() {
+const formatTime = (r: RideRequest) =>
+    r.createdAt?.toDate?.().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) ?? "";
+
+const rowClass = "bg-black/30 border border-white/5 rounded-xl p-4 space-y-3";
+const smallButton =
+    "flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-sm font-bold disabled:opacity-40 transition-all";
+
+/** Live ride requests for `q`; pass a memoised query so it subscribes once. */
+function useRideRequests(q: Query) {
     const [requests, setRequests] = useState<RideRequest[] | null>(null);
 
-    useEffect(() => {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        return onSnapshot(
-            query(
-                collection(db, COLLECTIONS.RIDE_REQUESTS),
-                where("status", "==", "pending"),
-                where("createdAt", ">=", Timestamp.fromDate(todayStart)),
-                orderBy("createdAt", "asc")
+    useEffect(
+        () =>
+            onSnapshot(
+                q,
+                (snap) =>
+                    setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest)),
+                (error) => {
+                    console.error("Failed to load ride requests:", error);
+                    toast.error("Couldn't load ride requests. Please refresh.");
+                }
             ),
-            (snap) => setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest)),
-            (error) => {
-                console.error("Failed to load ride requests:", error);
-                toast.error("Couldn't load ride requests. Please refresh.");
-            }
-        );
-    }, []);
+        [q]
+    );
+    return requests;
+}
+
+/** Rides this rider accepted and hasn't finished: shows the guest's contact. */
+function MyRides({ uid }: { uid: string }) {
+    const rides = useRideRequests(
+        useMemo(
+            () =>
+                query(
+                    collection(db, COLLECTIONS.RIDE_REQUESTS),
+                    where("riderUid", "==", uid),
+                    where("status", "==", "accepted")
+                ),
+            [uid]
+        )
+    );
+    const [busy, setBusy] = useState<string | null>(null);
+
+    const act = async (id: string, action: (id: string) => Promise<void>, failure: string) => {
+        setBusy(id);
+        try {
+            await action(id);
+        } catch (error) {
+            console.error(failure, error);
+            toast.error(`${failure} Please try again.`);
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    if (!rides?.length) return null;
+    return (
+        <div className={cardClass}>
+            <h2 className="font-black">Your rides</h2>
+            {rides.map((r) => (
+                <div key={r.id} className={rowClass}>
+                    <div>
+                        <p className="font-bold text-white">
+                            {r.pickupName} → {r.dropName}
+                        </p>
+                        <p className="text-sm text-gray-400">
+                            {r.name} · requested {formatTime(r)}
+                        </p>
+                    </div>
+                    <a href={`tel:${r.phone}`} className={primaryButton}>
+                        <Phone size={18} /> Call {r.phone}
+                    </a>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => act(r.id, completeRide, "Couldn't complete the ride.")}
+                            disabled={busy === r.id}
+                            className={`${smallButton} bg-green-600 hover:bg-green-500 text-white`}
+                        >
+                            <Check size={16} /> Complete
+                        </button>
+                        <button
+                            onClick={() => act(r.id, releaseRide, "Couldn't release the ride.")}
+                            disabled={busy === r.id}
+                            className={`${smallButton} bg-white/10 hover:bg-white/15 text-gray-300`}
+                        >
+                            <Undo2 size={16} /> Release
+                        </button>
+                    </div>
+                </div>
+            ))}
+        </div>
+    );
+}
+
+const pendingToday = () => {
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    return query(
+        collection(db, COLLECTIONS.RIDE_REQUESTS),
+        where("status", "==", "pending"),
+        where("createdAt", ">=", Timestamp.fromDate(todayStart)),
+        orderBy("createdAt", "asc")
+    );
+};
+
+/** Today's pending requests, oldest first, while the rider is online. */
+function PendingRequests({ rider }: { rider: Rider }) {
+    const [pendingQuery] = useState(pendingToday);
+    const requests = useRideRequests(pendingQuery);
+    const [accepting, setAccepting] = useState<string | null>(null);
+
+    const accept = async (id: string) => {
+        setAccepting(id);
+        try {
+            await acceptRide(id, { uid: rider.uid, name: rider.name });
+            toast.success("Ride accepted. Call the guest now.");
+        } catch (error) {
+            // Once another rider has it, the request is no longer readable to us.
+            const taken =
+                (error as Error).message === RIDE_TAKEN ||
+                (error as FirebaseError).code === "permission-denied";
+            if (!taken) console.error("Failed to accept ride:", error);
+            toast.error(
+                taken ? "Someone else just took this ride." : "Couldn't accept. Please try again."
+            );
+        } finally {
+            setAccepting(null);
+        }
+    };
 
     if (requests === null) {
         return (
@@ -77,16 +193,25 @@ function PendingRequests() {
     return (
         <div className="space-y-2">
             {requests.map((r) => (
-                <div key={r.id} className="bg-black/30 border border-white/5 rounded-xl p-4">
-                    <p className="font-bold text-white">
-                        {r.pickupName} → {r.dropName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                        {r.createdAt?.toDate?.().toLocaleTimeString([], {
-                            hour: "numeric",
-                            minute: "2-digit",
-                        }) ?? ""}
-                    </p>
+                <div key={r.id} className={rowClass}>
+                    <div>
+                        <p className="font-bold text-white">
+                            {r.pickupName} → {r.dropName}
+                        </p>
+                        <p className="text-xs text-gray-500">{formatTime(r)}</p>
+                    </div>
+                    <button
+                        onClick={() => accept(r.id)}
+                        disabled={accepting !== null}
+                        className={primaryButton}
+                    >
+                        {accepting === r.id ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                            <Check size={20} />
+                        )}
+                        Accept
+                    </button>
                 </div>
             ))}
         </div>
@@ -139,10 +264,12 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
                 </button>
             </div>
 
+            <MyRides uid={user.uid} />
+
             {online && (
                 <div className={cardClass}>
                     <h2 className="font-black">Ride requests</h2>
-                    <PendingRequests />
+                    <PendingRequests rider={rider} />
                 </div>
             )}
         </div>

@@ -168,6 +168,13 @@ service cloud.firestore {
         && d.updatedAt == request.time;
     }
 
+    // Read from riders/{uid}, so a revoked or offline rider is refused even
+    // while their token still carries the `rider` claim.
+    function isOnlineRider() {
+      let rider = get(/databases/$(database)/documents/riders/$(request.auth.uid)).data;
+      return rider.status == 'approved' && rider.get('online', false) == true;
+    }
+
     match /riders/{uid} {
       allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
       allow create: if request.auth != null && request.auth.uid == uid
@@ -199,7 +206,32 @@ service cloud.firestore {
         && request.resource.data.fare == null
         && request.resource.data.status == 'pending'
         && request.resource.data.createdAt == request.time;
-      allow read: if isRider() && resource.data.status == 'pending';
+      allow read: if isRider()
+        && (resource.data.status == 'pending' || resource.data.get('riderUid', null) == request.auth.uid);
+
+      // Accept: an approved, online rider takes a pending ride. The transaction in
+      // acceptRide plus the `pending` check here make the first rider win.
+      allow update: if isRider() && isOnlineRider()
+        && resource.data.status == 'pending'
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['status', 'riderUid', 'riderName', 'acceptedAt'])
+        && request.resource.data.status == 'accepted'
+        && request.resource.data.riderUid == request.auth.uid
+        && isText(request.resource.data.riderName, 80)
+        && request.resource.data.acceptedAt == request.time;
+
+      // Complete, or release back to pending: only the rider who accepted it.
+      allow update: if isRider()
+        && resource.data.status == 'accepted'
+        && resource.data.riderUid == request.auth.uid
+        && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedAt'])
+              && request.resource.data.status == 'completed'
+              && request.resource.data.completedAt == request.time)
+          || (request.resource.data.diff(resource.data).affectedKeys()
+                .hasOnly(['status', 'riderUid', 'riderName', 'acceptedAt'])
+              && request.resource.data.status == 'pending'
+              && !request.resource.data.keys().hasAny(['riderUid', 'riderName', 'acceptedAt'])));
+
       allow read, update, delete: if isAdmin();
     }
 

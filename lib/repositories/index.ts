@@ -42,6 +42,10 @@ export {
     fetchRider,
     submitRiderApplication,
     setRiderOnline,
+    acceptRide,
+    completeRide,
+    releaseRide,
+    RIDE_TAKEN,
     createRideRequest,
     EMPTY_RIDES_SETTINGS,
 } from "./rides";

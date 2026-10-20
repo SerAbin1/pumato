@@ -37,7 +37,8 @@ export const RiderSchema = z.object({
     updatedAt: z.any(),
 });
 
-export const RIDE_REQUEST_STATUSES = ["pending"] as const;
+/** pending → accepted → completed; the rider can release an accepted ride back to pending. */
+export const RIDE_REQUEST_STATUSES = ["pending", "accepted", "completed"] as const;
 
 export const RideRequestSchema = z
     .object({
@@ -51,5 +52,10 @@ export const RideRequestSchema = z
         fare: z.null(),
         status: z.enum(RIDE_REQUEST_STATUSES),
         createdAt: z.any(),
+        // Set when a rider accepts; cleared if they release the ride.
+        riderUid: z.string().optional(),
+        riderName: z.string().optional(),
+        acceptedAt: z.any().optional(),
+        completedAt: z.any().optional(),
     })
     .refine((r) => r.pickupId !== r.dropId, "Pickup and drop must differ");

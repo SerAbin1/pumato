@@ -3,8 +3,10 @@ import { db } from "@/lib/firebase";
 import {
     addDoc,
     collection,
+    deleteField,
     doc,
     getDoc,
+    runTransaction,
     serverTimestamp,
     setDoc,
     updateDoc,
@@ -82,4 +84,42 @@ export async function createRideRequest(
     });
     const ref = await addDoc(collection(db, COLLECTIONS.RIDE_REQUESTS), validated);
     return ref.id;
+}
+
+/** Thrown by acceptRide when another rider got there first. */
+export const RIDE_TAKEN = "ride-taken";
+
+/** First rider to accept gets the ride; the transaction retries if two race. */
+export async function acceptRide(
+    requestId: string,
+    rider: { uid: string; name: string }
+): Promise<void> {
+    const ref = doc(db, COLLECTIONS.RIDE_REQUESTS, requestId);
+    await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (snap.data()?.status !== "pending") throw new Error(RIDE_TAKEN);
+        tx.update(ref, {
+            status: "accepted",
+            riderUid: rider.uid,
+            riderName: rider.name,
+            acceptedAt: serverTimestamp(),
+        });
+    });
+}
+
+export async function completeRide(requestId: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
+        status: "completed",
+        completedAt: serverTimestamp(),
+    });
+}
+
+/** Hands an accepted ride back so another online rider can take it. */
+export async function releaseRide(requestId: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
+        status: "pending",
+        riderUid: deleteField(),
+        riderName: deleteField(),
+        acceptedAt: deleteField(),
+    });
 }

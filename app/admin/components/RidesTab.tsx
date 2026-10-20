@@ -183,7 +183,6 @@ function SettingsSection() {
 
     return (
         <section className={sectionClass}>
-            <h2 className="text-lg font-black">Settings</h2>
             <div className="grid sm:grid-cols-2 gap-3">
                 <label className="text-xs text-gray-400 space-y-1">
                     <span>Verification WhatsApp number</span>
@@ -308,7 +307,6 @@ function RidersSection() {
     return (
         <section className={sectionClass}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <h2 className="text-lg font-black">Riders</h2>
                 <div className="flex gap-1 bg-black/30 p-1 rounded-xl">
                     {(["pending", "approved", "rejected", "revoked"] as const).map((s) => (
                         <button
@@ -415,10 +413,7 @@ function RideRequestsSection() {
     return (
         <section className={sectionClass}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <div>
-                    <h2 className="text-lg font-black">Ride requests</h2>
-                    <p className="text-xs text-gray-500">Latest 50, live.</p>
-                </div>
+                <p className="text-xs text-gray-500">Latest 50, live.</p>
                 <div className="flex gap-1 bg-black/30 p-1 rounded-xl">
                     {(["all", ...RIDE_REQUEST_STATUSES] as const).map((s) => (
                         <button

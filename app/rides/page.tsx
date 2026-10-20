@@ -8,6 +8,7 @@ import { ArrowLeft, Bike, CheckCircle2, Loader2, MapPin, Navigation } from "luci
 import { createRideRequest, fetchRidesSettings } from "@/lib/repositories";
 import { PHONE_PATTERN } from "@/lib/schemas/rides";
 import { activePlaces } from "@/lib/rides";
+import CustomSelect from "@/app/components/CustomSelect";
 import type { RidePlace } from "@/lib/types";
 
 const GUEST_KEY = "pumato_rides_guest";
@@ -131,48 +132,32 @@ export default function RidesPage() {
                         className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-5"
                     >
                         <div>
-                            <label htmlFor="pickup" className={labelClass}>
+                            <p className={labelClass}>
                                 <MapPin size={12} className="inline mr-1" /> Pickup
-                            </label>
-                            <select
-                                id="pickup"
+                            </p>
+                            <CustomSelect
+                                options={places.map((p) => ({ value: p.id, label: p.name }))}
                                 value={pickupId}
-                                onChange={(e) => {
-                                    setPickupId(e.target.value);
+                                onChange={(id) => {
+                                    setPickupId(id);
                                     // The drop list hides the pickup, so a matching drop is gone.
-                                    if (e.target.value === dropId) setDropId("");
+                                    if (id === dropId) setDropId("");
                                 }}
-                                className={inputClass}
-                                required
-                            >
-                                <option value="">Where are you?</option>
-                                {places.map((p) => (
-                                    <option key={p.id} value={p.id}>
-                                        {p.name}
-                                    </option>
-                                ))}
-                            </select>
+                                placeholder="Where are you?"
+                            />
                         </div>
                         <div>
-                            <label htmlFor="drop" className={labelClass}>
+                            <p className={labelClass}>
                                 <Navigation size={12} className="inline mr-1" /> Drop
-                            </label>
-                            <select
-                                id="drop"
-                                value={dropId}
-                                onChange={(e) => setDropId(e.target.value)}
-                                className={inputClass}
-                                required
-                            >
-                                <option value="">Where to?</option>
-                                {places
+                            </p>
+                            <CustomSelect
+                                options={places
                                     .filter((p) => p.id !== pickupId)
-                                    .map((p) => (
-                                        <option key={p.id} value={p.id}>
-                                            {p.name}
-                                        </option>
-                                    ))}
-                            </select>
+                                    .map((p) => ({ value: p.id, label: p.name }))}
+                                value={dropId}
+                                onChange={setDropId}
+                                placeholder="Where to?"
+                            />
                         </div>
                         <div>
                             <label htmlFor="name" className={labelClass}>

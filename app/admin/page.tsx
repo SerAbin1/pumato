@@ -87,6 +87,7 @@ const NAV_TABS = [
     { id: "orders", label: "Live Orders", icon: Bell, accent: true },
     { id: "restaurants", label: "Restaurants", icon: Utensils },
     { id: "delivery", label: "Delivery", icon: Truck },
+    { id: "rides", label: "Rides", icon: Bike },
     { id: "grocery", label: "Grocery", icon: ShoppingCart },
     { id: "laundry", label: "Laundry", icon: Clock },
     { id: "settings", label: "Global", icon: Settings },
@@ -95,7 +96,6 @@ const NAV_TABS = [
     { id: "users", label: "Users", icon: Users },
     { id: "marketplace", label: "Marketplace", icon: Store },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
-    { id: "rides", label: "Rides", icon: Bike },
 ];
 
 // `site_content/order_settings` is written by two tabs. Each owns a disjoint set

@@ -4,12 +4,13 @@ import type { FormEvent } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { ArrowLeft, Bike, CheckCircle2, Loader2, MapPin, Navigation } from "lucide-react";
+import { Bike, CheckCircle2, Loader2, MapPin, Navigation } from "lucide-react";
 import { createRideRequest, fetchRidesSettings } from "@/lib/repositories";
 import { PHONE_PATTERN } from "@/lib/schemas/rides";
 import { activePlaces } from "@/lib/rides";
 import CustomSelect from "@/app/components/CustomSelect";
 import { inputClass, labelClass } from "./styles";
+import RidesShell, { mainColumn, Steps } from "./components/RidesShell";
 import type { RidePlace } from "@/lib/types";
 
 const GUEST_KEY = "pumato_rides_guest";
@@ -83,23 +84,8 @@ export default function RidesPage() {
     };
 
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 py-12">
-            <div className="w-full max-w-md">
-                <Link
-                    href="/"
-                    className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm font-medium mb-8 transition-colors"
-                >
-                    <ArrowLeft size={16} /> Back to Pumato
-                </Link>
-
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Bike size={32} className="text-orange-400" />
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight">Pumato Rides</h1>
-                    <p className="text-gray-500 text-sm mt-1">Anywhere on campus, fast.</p>
-                </div>
-
+        <RidesShell title="Pumato Rides" subtitle="Anywhere on campus, fast.">
+            <div className={mainColumn}>
                 {booked ? (
                     <div className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center space-y-4">
                         <CheckCircle2 size={48} className="text-green-400 mx-auto" />
@@ -201,14 +187,24 @@ export default function RidesPage() {
                         </button>
                     </form>
                 )}
-
-                <p className="text-center text-sm text-gray-500 mt-8">
-                    Got a bike?{" "}
-                    <Link href="/rides/register" className="text-orange-400 font-bold">
-                        Become a rider →
-                    </Link>
-                </p>
             </div>
-        </div>
+
+            <Steps
+                title="How it works"
+                steps={[
+                    "Pick where you are and where you're going.",
+                    "Book with your name and phone number.",
+                    "The first available rider accepts and calls you.",
+                ]}
+                footer={
+                    <p className="text-sm text-gray-500">
+                        Got a bike?{" "}
+                        <Link href="/rides/register" className="text-orange-400 font-bold">
+                            Become a rider →
+                        </Link>
+                    </p>
+                }
+            />
+        </RidesShell>
     );
 }

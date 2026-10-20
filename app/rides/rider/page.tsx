@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
 import { collection, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { ArrowLeft, Bike, Check, Loader2, LogOut, Phone, Power, Undo2 } from "lucide-react";
+import { Check, Loader2, Phone, Power, Undo2 } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { db } from "@/lib/firebase";
@@ -22,6 +22,7 @@ import type { Query } from "firebase/firestore";
 import type { User } from "firebase/auth";
 import type { RideRequest, Rider } from "@/lib/types";
 import AuthCard from "../components/AuthCard";
+import RidesShell, { mainColumn, sideColumn, Steps } from "../components/RidesShell";
 import { cardClass, primaryButton, secondaryButton } from "../styles";
 
 const NOT_A_RIDER: Record<string, { title: string; body: string; cta: string }> = {
@@ -237,47 +238,57 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     };
 
     return (
-        <div className="space-y-4">
-            <div className={cardClass}>
-                <div className="flex items-center gap-3">
-                    <span
-                        className={`w-3 h-3 rounded-full ${online ? "bg-green-400" : "bg-gray-600"}`}
-                    />
-                    <div>
-                        <h2 className="font-black">
-                            {online ? "You're online" : "You're offline"}
-                        </h2>
-                        <p className="text-xs text-gray-500">
-                            {online
-                                ? "You'll be notified of new ride requests."
-                                : "Go online to start getting ride requests."}
-                        </p>
+        <>
+            <div className={`${sideColumn} space-y-4`}>
+                <div className={cardClass}>
+                    <div className="flex items-center gap-3">
+                        <span
+                            className={`w-3 h-3 rounded-full ${online ? "bg-green-400" : "bg-gray-600"}`}
+                        />
+                        <div>
+                            <h2 className="font-black">
+                                {online ? "You're online" : "You're offline"}
+                            </h2>
+                            <p className="text-xs text-gray-500">
+                                {online
+                                    ? "You'll be notified of new ride requests."
+                                    : "Go online to start getting ride requests."}
+                            </p>
+                        </div>
                     </div>
+                    <button
+                        onClick={toggleOnline}
+                        disabled={busy}
+                        className={online ? secondaryButton : primaryButton}
+                    >
+                        {busy ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : (
+                            <Power size={20} />
+                        )}
+                        {online ? "Go offline" : "Go online"}
+                    </button>
                 </div>
-                <button
-                    onClick={toggleOnline}
-                    disabled={busy}
-                    className={online ? secondaryButton : primaryButton}
-                >
-                    {busy ? <Loader2 size={20} className="animate-spin" /> : <Power size={20} />}
-                    {online ? "Go offline" : "Go online"}
-                </button>
+
+                <MyRides uid={user.uid} />
             </div>
 
-            <MyRides uid={user.uid} />
-
-            {online && (
-                <div className={cardClass}>
-                    <h2 className="font-black">Ride requests</h2>
+            <div className={`${mainColumn} ${cardClass}`}>
+                <h2 className="font-black">Ride requests</h2>
+                {online ? (
                     <PendingRequests rider={rider} />
-                </div>
-            )}
-        </div>
+                ) : (
+                    <p className="text-center text-sm text-gray-500 py-8">
+                        Go online to see ride requests.
+                    </p>
+                )}
+            </div>
+        </>
     );
 }
 
 export default function RiderDashboardPage() {
-    const { user, loading, logout } = useUserAuth();
+    const { user, loading } = useUserAuth();
     // undefined = still loading; null = hasn't applied
     const [rider, setRider] = useState<Rider | null | undefined>(undefined);
     const [isRiderClaim, setIsRiderClaim] = useState(false);
@@ -304,21 +315,28 @@ export default function RiderDashboardPage() {
         if (user) void load(user);
     }, [user, load]);
 
+    const isLoading = loading || (user && rider === undefined);
+    const showDashboard = !isLoading && user && rider?.status === "approved" && isRiderClaim;
+
     let content;
-    if (loading || (user && rider === undefined)) {
+    if (isLoading) {
         content = (
-            <div className="flex justify-center py-12">
+            <div className={`${mainColumn} flex justify-center py-12`}>
                 <Loader2 size={28} className="animate-spin text-gray-500" />
             </div>
         );
     } else if (!user) {
-        content = <AuthCard />;
-    } else if (rider && rider.status === "approved" && isRiderClaim) {
+        content = (
+            <div className={mainColumn}>
+                <AuthCard />
+            </div>
+        );
+    } else if (showDashboard && rider) {
         content = <Dashboard user={user} rider={rider} />;
     } else {
         const copy = NOT_A_RIDER[rider?.status ?? "none"] ?? NOT_A_RIDER.none;
         content = (
-            <div className={`${cardClass} text-center`}>
+            <div className={`${mainColumn} ${cardClass} text-center`}>
                 <h2 className="text-xl font-black">{copy.title}</h2>
                 <p className="text-sm text-gray-400">{copy.body}</p>
                 <Link href="/rides/register" className={primaryButton}>
@@ -329,35 +347,20 @@ export default function RiderDashboardPage() {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 py-12">
-            <div className="w-full max-w-md">
-                <div className="flex items-center justify-between mb-8">
-                    <Link
-                        href="/rides"
-                        className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm font-medium transition-colors"
-                    >
-                        <ArrowLeft size={16} /> Pumato Rides
-                    </Link>
-                    {user && (
-                        <button
-                            onClick={logout}
-                            className="inline-flex items-center gap-1 text-gray-400 hover:text-red-400 text-sm font-medium transition-colors"
-                        >
-                            <LogOut size={14} /> Logout
-                        </button>
-                    )}
-                </div>
-
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Bike size={32} className="text-orange-400" />
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight">Rider dashboard</h1>
-                    <p className="text-gray-500 text-sm mt-1">Pumato Rides</p>
-                </div>
-
-                {content}
-            </div>
-        </div>
+        <RidesShell title="Rider dashboard" subtitle="Pumato Rides">
+            {content}
+            {/* The dashboard fills both columns itself; other states explain riding. */}
+            {!showDashboard && (
+                <Steps
+                    title="How riding works"
+                    steps={[
+                        "Go online whenever you're free to give rides.",
+                        "You'll be notified of every new ride request.",
+                        "The first rider to accept gets it, along with the guest's number.",
+                        "Call the guest, give the ride, then mark it complete.",
+                    ]}
+                />
+            )}
+        </RidesShell>
     );
 }

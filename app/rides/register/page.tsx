@@ -4,7 +4,7 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { ArrowLeft, Bike, CheckCircle2, Clock, Loader2, LogOut, Send, XCircle } from "lucide-react";
+import { Bike, CheckCircle2, Clock, Loader2, Send, XCircle } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { fetchRider, fetchRidesSettings, submitRiderApplication } from "@/lib/repositories";
 import type { RiderApplication } from "@/lib/repositories";
@@ -13,6 +13,7 @@ import { riderRef, riderVerificationMessage, telegramUrl, whatsappUrl } from "@/
 import type { User } from "firebase/auth";
 import type { Rider, RidesSettings } from "@/lib/types";
 import AuthCard from "../components/AuthCard";
+import RidesShell, { mainColumn, Steps } from "../components/RidesShell";
 import { cardClass, inputClass, labelClass, primaryButton } from "../styles";
 
 function ApplicationForm({
@@ -143,7 +144,7 @@ const EMPTY_APPLICATION: RiderApplication = {
 };
 
 export default function RiderRegisterPage() {
-    const { user, loading, logout } = useUserAuth();
+    const { user, loading } = useUserAuth();
     // undefined = still loading; null = hasn't applied
     const [rider, setRider] = useState<Rider | null | undefined>(undefined);
     const [settings, setSettings] = useState<RidesSettings | null>(null);
@@ -262,37 +263,25 @@ export default function RiderRegisterPage() {
     }
 
     return (
-        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 py-12">
-            <div className="w-full max-w-md">
-                <div className="flex items-center justify-between mb-8">
-                    <Link
-                        href="/rides"
-                        className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm font-medium transition-colors"
-                    >
-                        <ArrowLeft size={16} /> Pumato Rides
-                    </Link>
-                    {user && (
-                        <button
-                            onClick={logout}
-                            className="inline-flex items-center gap-1 text-gray-400 hover:text-red-400 text-sm font-medium transition-colors"
-                        >
-                            <LogOut size={14} /> Logout
-                        </button>
-                    )}
-                </div>
+        <RidesShell title="Become a rider" subtitle="Give rides around campus with Pumato Rides.">
+            <div className={mainColumn}>{content}</div>
 
-                <div className="text-center mb-8">
-                    <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                        <Bike size={32} className="text-orange-400" />
-                    </div>
-                    <h1 className="text-3xl font-black tracking-tight">Become a rider</h1>
-                    <p className="text-gray-500 text-sm mt-1">
-                        Give rides around campus with Pumato Rides.
+            <Steps
+                title="What you need"
+                steps={[
+                    "A Pumato account, and your name, phone and vehicle number.",
+                    "Your driving licence, vehicle RC and college ID to share with us.",
+                    "Once we verify them, you can go online and take rides.",
+                ]}
+                footer={
+                    <p className="text-sm text-gray-500">
+                        Already a rider?{" "}
+                        <Link href="/rides/rider" className="text-orange-400 font-bold">
+                            Go to your dashboard →
+                        </Link>
                     </p>
-                </div>
-
-                {content}
-            </div>
-        </div>
+                }
+            />
+        </RidesShell>
     );
 }

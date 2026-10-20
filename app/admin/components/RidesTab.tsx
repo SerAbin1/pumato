@@ -386,9 +386,12 @@ function RidersSection() {
     );
 }
 
+const REQUESTS_PAGE_SIZE = 50;
+
 function RideRequestsSection() {
     const [requests, setRequests] = useState<RideRequest[] | null>(null);
     const [filter, setFilter] = useState<RideRequestStatus | "all">("all");
+    const [pageLimit, setPageLimit] = useState(REQUESTS_PAGE_SIZE);
 
     useEffect(
         () =>
@@ -396,7 +399,7 @@ function RideRequestsSection() {
                 query(
                     collection(db, COLLECTIONS.RIDE_REQUESTS),
                     orderBy("createdAt", "desc"),
-                    limit(50)
+                    limit(pageLimit)
                 ),
                 (snap) =>
                     setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest)),
@@ -405,7 +408,7 @@ function RideRequestsSection() {
                     toast.error("Failed to load ride requests");
                 }
             ),
-        []
+        [pageLimit]
     );
 
     const shown = requests?.filter((r) => filter === "all" || r.status === filter) ?? [];
@@ -413,7 +416,9 @@ function RideRequestsSection() {
     return (
         <section className={sectionClass}>
             <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-gray-500">Latest 50, live.</p>
+                <p className="text-xs text-gray-500">
+                    Showing the {pageLimit} most recent requests
+                </p>
                 <div className="flex gap-1 bg-black/30 p-1 rounded-xl">
                     {(["all", ...RIDE_REQUEST_STATUSES] as const).map((s) => (
                         <button
@@ -458,6 +463,15 @@ function RideRequestsSection() {
                         </div>
                     ))}
                 </div>
+            )}
+            {/* A full page means there may be older requests beyond it. */}
+            {requests && requests.length >= pageLimit && (
+                <button
+                    onClick={() => setPageLimit((n) => n + REQUESTS_PAGE_SIZE)}
+                    className="w-full py-2.5 rounded-xl bg-white/10 hover:bg-white/15 text-white text-sm font-bold"
+                >
+                    Load more
+                </button>
             )}
         </section>
     );

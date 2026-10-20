@@ -4,8 +4,6 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Navbar from "../components/Navbar";
 import {
-    LogOut,
-    ArrowLeft,
     Utensils,
     Truck,
     ShoppingCart,
@@ -155,7 +153,7 @@ interface LaundryConfigDraft {
 
 export default function AdminPage() {
     const router = useRouter();
-    const { user, isAdmin, loading: authLoading, logout } = useAdminAuth();
+    const { user, isAdmin, loading: authLoading } = useAdminAuth();
 
     const [activeSection, setActiveSection] = useState("orders");
     const [orders, setOrders] = useState<Order[]>([]); // placed (pending admin action)
@@ -618,28 +616,8 @@ export default function AdminPage() {
 
             <Navbar />
             <div className="max-w-7xl mx-auto px-4 py-8 pt-24 relative z-10">
-                {/* Header & Toggle */}
+                {/* Section tabs */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
-                    <div>
-                        <div className="flex items-center gap-4 mb-2">
-                            <Link
-                                href="/"
-                                className="inline-flex items-center text-gray-400 hover:text-white text-sm font-medium transition-colors"
-                            >
-                                <ArrowLeft size={16} className="mr-2" /> Back to Store
-                            </Link>
-                            <button
-                                onClick={logout}
-                                className="inline-flex items-center text-gray-400 hover:text-red-400 text-sm font-medium transition-colors gap-1"
-                            >
-                                <LogOut size={14} /> Logout
-                            </button>
-                        </div>
-                        <h1 className="text-4xl font-black text-white tracking-tight">
-                            Admin Dashboard
-                        </h1>
-                    </div>
-
                     <div className="flex gap-4 w-full md:w-auto overflow-x-auto pb-2 md:pb-0 scrollbar-hide">
                         <div className="flex bg-white/5 border border-white/10 p-1 rounded-2xl backdrop-blur-md min-w-max">
                             {NAV_TABS.map(({ id, label, icon: Icon, accent }) => {

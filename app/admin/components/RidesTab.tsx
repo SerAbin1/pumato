@@ -468,12 +468,40 @@ function RideRequestsSection() {
     );
 }
 
+const SUB_TABS = [
+    { id: "requests", label: "Ride requests" },
+    { id: "riders", label: "Riders" },
+    { id: "settings", label: "Settings" },
+] as const;
+
 export default function RidesTab() {
+    const [subTab, setSubTab] = useState<(typeof SUB_TABS)[number]["id"]>("requests");
+
     return (
-        <div className="space-y-6">
-            <RideRequestsSection />
-            <RidersSection />
-            <SettingsSection />
+        <div className="max-w-5xl mx-auto">
+            <div className="flex items-center justify-between mb-6">
+                <h2 className="text-3xl font-black text-white">Rides</h2>
+            </div>
+
+            <div className="flex gap-1 mb-8 border-b border-white/10">
+                {SUB_TABS.map((tab) => (
+                    <button
+                        key={tab.id}
+                        onClick={() => setSubTab(tab.id)}
+                        className={`px-5 py-3 text-sm font-bold transition-all border-b-2 ${
+                            subTab === tab.id
+                                ? "text-white border-orange-500"
+                                : "text-gray-500 border-transparent hover:text-gray-300"
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
+            </div>
+
+            {subTab === "requests" && <RideRequestsSection />}
+            {subTab === "riders" && <RidersSection />}
+            {subTab === "settings" && <SettingsSection />}
         </div>
     );
 }

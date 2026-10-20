@@ -1,0 +1,391 @@
+"use client";
+
+import type { FormEvent } from "react";
+import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import toast from "react-hot-toast";
+import {
+    ArrowLeft,
+    Bike,
+    CheckCircle2,
+    Clock,
+    Loader2,
+    LogIn,
+    LogOut,
+    Send,
+    UserPlus,
+    XCircle,
+} from "lucide-react";
+import { useUserAuth } from "@/app/context/UserAuthContext";
+import { fetchRider, fetchRidesSettings, submitRiderApplication } from "@/lib/repositories";
+import type { RiderApplication } from "@/lib/repositories";
+import { PHONE_PATTERN } from "@/lib/schemas/rides";
+import { riderRef, riderVerificationMessage, telegramUrl, whatsappUrl } from "@/lib/rides";
+import type { User } from "firebase/auth";
+import type { Rider, RidesSettings } from "@/lib/types";
+
+const inputClass =
+    "w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-600 outline-none focus:border-orange-500/50 transition-all";
+const labelClass = "block text-xs font-bold text-gray-400 uppercase tracking-widest mb-2 ml-1";
+const primaryButton =
+    "w-full bg-orange-600 hover:bg-orange-500 disabled:opacity-40 text-white font-black py-3 rounded-xl flex items-center justify-center gap-2 transition-all";
+const cardClass = "bg-white/5 border border-white/10 rounded-3xl p-6 space-y-5";
+
+/** Sign in or sign up in place, so an existing Pumato account just signs in. */
+function AuthCard() {
+    const { login, register, loginWithGoogle } = useUserAuth();
+    const [isRegister, setIsRegister] = useState(false);
+    const [email, setEmail] = useState("");
+    const [password, setPassword] = useState("");
+    const [busy, setBusy] = useState(false);
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        setBusy(true);
+        const result = isRegister ? await register(email, password) : await login(email, password);
+        if (!result.success && result.error) toast.error(result.error);
+        setBusy(false);
+    };
+
+    const handleGoogle = async () => {
+        setBusy(true);
+        const result = await loginWithGoogle();
+        if (result.error === "google-failed") {
+            toast.error("Google sign-in isn't working right now. Please use email instead.");
+        }
+        setBusy(false);
+    };
+
+    return (
+        <form onSubmit={handleSubmit} className={cardClass}>
+            <p className="text-sm text-gray-400">
+                Already use Pumato? Sign in with the same account. Otherwise, create one.
+            </p>
+            <input
+                type="email"
+                aria-label="Email"
+                placeholder="Email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={inputClass}
+                required
+            />
+            <input
+                type="password"
+                aria-label="Password"
+                placeholder="Password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className={inputClass}
+                minLength={6}
+                required
+            />
+            <button type="submit" disabled={busy} className={primaryButton}>
+                {busy ? (
+                    <Loader2 size={20} className="animate-spin" />
+                ) : isRegister ? (
+                    <UserPlus size={20} />
+                ) : (
+                    <LogIn size={20} />
+                )}
+                {isRegister ? "Create account" : "Sign in"}
+            </button>
+            <button
+                type="button"
+                onClick={handleGoogle}
+                disabled={busy}
+                className="w-full bg-white/10 hover:bg-white/15 disabled:opacity-40 text-white font-bold py-3 rounded-xl transition-all"
+            >
+                Continue with Google
+            </button>
+            <button
+                type="button"
+                onClick={() => setIsRegister(!isRegister)}
+                className="w-full text-sm text-gray-400 hover:text-white"
+            >
+                {isRegister ? "Have an account? Sign in" : "New here? Create an account"}
+            </button>
+        </form>
+    );
+}
+
+function ApplicationForm({
+    initial,
+    onSubmit,
+}: {
+    initial: RiderApplication;
+    onSubmit: (application: RiderApplication) => Promise<void>;
+}) {
+    const [form, setForm] = useState(initial);
+    const [busy, setBusy] = useState(false);
+    const set = (key: keyof RiderApplication) => (value: string) =>
+        setForm((f) => ({ ...f, [key]: value }));
+
+    const valid =
+        !!form.name.trim() &&
+        PHONE_PATTERN.test(form.phone) &&
+        !!form.vehicleNumber.trim() &&
+        !!form.collegeId.trim();
+
+    const handleSubmit = async (e: FormEvent) => {
+        e.preventDefault();
+        if (!valid) return;
+        setBusy(true);
+        await onSubmit({
+            name: form.name.trim(),
+            phone: form.phone,
+            vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
+            collegeId: form.collegeId.trim(),
+        });
+        setBusy(false);
+    };
+
+    const field = (
+        key: keyof RiderApplication,
+        label: string,
+        props: { placeholder: string; maxLength: number; inputMode?: "numeric" }
+    ) => (
+        <div>
+            <label htmlFor={key} className={labelClass}>
+                {label}
+            </label>
+            <input
+                id={key}
+                value={form[key]}
+                onChange={(e) =>
+                    set(key)(
+                        key === "phone"
+                            ? e.target.value.replace(/\D/g, "").slice(0, 10)
+                            : e.target.value
+                    )
+                }
+                className={inputClass}
+                required
+                {...props}
+            />
+        </div>
+    );
+
+    return (
+        <form onSubmit={handleSubmit} className={cardClass}>
+            {field("name", "Full name", { placeholder: "As on your college ID", maxLength: 80 })}
+            {field("phone", "Phone", {
+                placeholder: "10-digit number",
+                maxLength: 10,
+                inputMode: "numeric",
+            })}
+            {field("vehicleNumber", "Vehicle number", {
+                placeholder: "KL 01 AB 1234",
+                maxLength: 20,
+            })}
+            {field("collegeId", "College ID / roll number", {
+                placeholder: "Roll number",
+                maxLength: 40,
+            })}
+            <button type="submit" disabled={!valid || busy} className={primaryButton}>
+                {busy ? <Loader2 size={20} className="animate-spin" /> : <Send size={20} />}
+                Submit application
+            </button>
+        </form>
+    );
+}
+
+function VerifyLinks({ rider, settings }: { rider: Rider; settings: RidesSettings }) {
+    const message = riderVerificationMessage(rider);
+    const hasContact = settings.whatsappNumber || settings.telegramUsername;
+    return (
+        <div className="space-y-3">
+            <p className="text-sm text-gray-400">
+                Message us with your ref{" "}
+                <span className="font-mono text-white">{riderRef(rider.uid)}</span> and share your
+                driving licence, vehicle RC and college ID to get verified.
+            </p>
+            {settings.whatsappNumber && (
+                <a
+                    href={whatsappUrl(settings.whatsappNumber, message)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full text-center bg-green-600 hover:bg-green-500 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                    Verify on WhatsApp
+                </a>
+            )}
+            {settings.telegramUsername && (
+                <a
+                    href={telegramUrl(settings.telegramUsername, message)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full text-center bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 rounded-xl transition-all"
+                >
+                    Verify on Telegram
+                </a>
+            )}
+            {!hasContact && (
+                <p className="text-sm text-gray-500">
+                    Verification contacts aren&apos;t set up yet. Please check back soon.
+                </p>
+            )}
+        </div>
+    );
+}
+
+const EMPTY_APPLICATION: RiderApplication = {
+    name: "",
+    phone: "",
+    vehicleNumber: "",
+    collegeId: "",
+};
+
+export default function RiderRegisterPage() {
+    const { user, loading, logout } = useUserAuth();
+    // undefined = still loading; null = hasn't applied
+    const [rider, setRider] = useState<Rider | null | undefined>(undefined);
+    const [settings, setSettings] = useState<RidesSettings | null>(null);
+    const [isRiderClaim, setIsRiderClaim] = useState(false);
+    const [editing, setEditing] = useState(false);
+
+    const load = useCallback(async (signedIn: User, refreshToken: boolean) => {
+        try {
+            const [r, s, token] = await Promise.all([
+                fetchRider(signedIn.uid),
+                fetchRidesSettings(),
+                // Force-refresh once on load so a freshly approved rider sees it.
+                signedIn.getIdTokenResult(refreshToken),
+            ]);
+            setRider(r);
+            setSettings(s);
+            setIsRiderClaim(token.claims.rider === true);
+        } catch (error) {
+            console.error("Failed to load rider application:", error);
+            toast.error("Couldn't load your application. Please refresh.");
+        }
+    }, []);
+
+    useEffect(() => {
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setRider(undefined);
+        setIsRiderClaim(false);
+        setEditing(false);
+        if (user) void load(user, true);
+    }, [user, load]);
+
+    const handleSubmit = async (application: RiderApplication) => {
+        if (!user) return;
+        try {
+            await submitRiderApplication(
+                { uid: user.uid, email: user.email },
+                application,
+                rider == null
+            );
+            setEditing(false);
+            await load(user, false);
+        } catch (error) {
+            console.error("Failed to submit rider application:", error);
+            toast.error("Couldn't submit. Please try again.");
+        }
+    };
+
+    const initial = rider
+        ? {
+              name: rider.name,
+              phone: rider.phone,
+              vehicleNumber: rider.vehicleNumber,
+              collegeId: rider.collegeId,
+          }
+        : EMPTY_APPLICATION;
+
+    let content;
+    if (loading || (user && (rider === undefined || !settings))) {
+        content = (
+            <div className="flex justify-center py-12">
+                <Loader2 size={28} className="animate-spin text-gray-500" />
+            </div>
+        );
+    } else if (!user) {
+        content = <AuthCard />;
+    } else if (isRiderClaim || rider?.status === "approved") {
+        content = (
+            <div className={`${cardClass} text-center`}>
+                <CheckCircle2 size={48} className="text-green-400 mx-auto" />
+                <h2 className="text-xl font-black">You&apos;re a Pumato rider</h2>
+                <p className="text-sm text-gray-400">
+                    You&apos;re verified. The rider dashboard is coming soon.
+                </p>
+            </div>
+        );
+    } else if (rider?.status === "revoked") {
+        content = (
+            <div className={`${cardClass} text-center`}>
+                <XCircle size={48} className="text-red-400 mx-auto" />
+                <h2 className="text-xl font-black">Rider access removed</h2>
+                <p className="text-sm text-gray-400">Please contact the Pumato team.</p>
+            </div>
+        );
+    } else if (!rider || editing || rider.status === "rejected") {
+        content = (
+            <>
+                {rider?.status === "rejected" && !editing && (
+                    <p className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl p-4 mb-4">
+                        Your last application wasn&apos;t approved. Check your details and apply
+                        again.
+                    </p>
+                )}
+                <ApplicationForm initial={initial} onSubmit={handleSubmit} />
+            </>
+        );
+    } else {
+        content = (
+            <div className={cardClass}>
+                <div className="flex items-center gap-3">
+                    <Clock size={24} className="text-orange-400 shrink-0" />
+                    <div>
+                        <h2 className="font-black">Application received</h2>
+                        <p className="text-xs text-gray-500">Waiting for manual verification</p>
+                    </div>
+                </div>
+                <VerifyLinks rider={rider} settings={settings!} />
+                <button
+                    onClick={() => setEditing(true)}
+                    className="w-full text-sm text-gray-400 hover:text-white"
+                >
+                    Edit my details
+                </button>
+            </div>
+        );
+    }
+
+    return (
+        <div className="min-h-screen bg-black text-white flex items-center justify-center px-4 py-12">
+            <div className="w-full max-w-md">
+                <div className="flex items-center justify-between mb-8">
+                    <Link
+                        href="/rides"
+                        className="inline-flex items-center gap-2 text-gray-400 hover:text-white text-sm font-medium transition-colors"
+                    >
+                        <ArrowLeft size={16} /> Pumato Rides
+                    </Link>
+                    {user && (
+                        <button
+                            onClick={logout}
+                            className="inline-flex items-center gap-1 text-gray-400 hover:text-red-400 text-sm font-medium transition-colors"
+                        >
+                            <LogOut size={14} /> Logout
+                        </button>
+                    )}
+                </div>
+
+                <div className="text-center mb-8">
+                    <div className="w-16 h-16 bg-orange-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <Bike size={32} className="text-orange-400" />
+                    </div>
+                    <h1 className="text-3xl font-black tracking-tight">Become a rider</h1>
+                    <p className="text-gray-500 text-sm mt-1">
+                        Give rides around campus with Pumato Rides.
+                    </p>
+                </div>
+
+                {content}
+            </div>
+        </div>
+    );
+}

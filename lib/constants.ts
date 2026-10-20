@@ -12,6 +12,8 @@ export const COLLECTIONS = {
     USERS: "users",
     PAYMENTS: "payments",
     FEEDBACK: "feedback",
+    RIDERS: "riders",
+    RIDE_REQUESTS: "ride_requests",
 };
 
 export const COUNTER_DOCS = {
@@ -25,6 +27,7 @@ export const SITE_CONTENT_DOCS = {
     MARKETPLACE_CATEGORIES: "marketplace_categories",
     MARKETPLACE_FILTERS: "marketplace_filters",
     MARKETPLACE_REDIRECT_LINKS: "marketplace_redirect_links",
+    RIDES_SETTINGS: "rides_settings",
     // Written by the trending Cloud Functions (weekly + admin refresh), never by clients.
     TRENDING: "trending",
 };

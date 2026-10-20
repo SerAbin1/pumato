@@ -36,3 +36,12 @@ export {
 export { fetchFavourites, saveFavourites } from "./user";
 export { createFeedback, updateFeedback } from "./feedback";
 export { createPayment, fetchPayment } from "./payment";
+export {
+    fetchRidesSettings,
+    saveRidesSettings,
+    fetchRider,
+    submitRiderApplication,
+    createRideRequest,
+    EMPTY_RIDES_SETTINGS,
+} from "./rides";
+export type { RiderApplication } from "./rides";

@@ -17,3 +17,11 @@ export {
     LaundrySlotsSchema,
 } from "./settings";
 export { PaymentSchema, PAYMENT_STATUSES } from "./payment";
+export {
+    RidePlaceSchema,
+    RidesSettingsSchema,
+    RiderSchema,
+    RideRequestSchema,
+    RIDER_STATUSES,
+    PHONE_PATTERN,
+} from "./rides";

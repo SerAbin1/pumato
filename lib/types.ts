@@ -40,6 +40,13 @@ import type { MarketplaceListingSchema, MarketplaceRequestSchema } from "@/lib/s
 import type { FeedbackSchema } from "@/lib/schemas/feedback";
 import type { PAYMENT_STATUSES, PaymentSchema } from "@/lib/schemas/payment";
 import type {
+    RIDER_STATUSES,
+    RidePlaceSchema,
+    RideRequestSchema,
+    RiderSchema,
+    RidesSettingsSchema,
+} from "@/lib/schemas/rides";
+import type {
     CampusConfigSchema,
     LaundryCategorySchema,
     LaundryPricingSchema,
@@ -184,3 +191,11 @@ export type MarketplaceRequest = z.infer<typeof MarketplaceRequestSchema> & { id
 export type Feedback = z.infer<typeof FeedbackSchema> & { id: string };
 export type PaymentStatus = (typeof PAYMENT_STATUSES)[number];
 export type Payment = z.infer<typeof PaymentSchema>;
+
+// --- Rides ---
+
+export type RidePlace = z.infer<typeof RidePlaceSchema>;
+export type RidesSettings = z.infer<typeof RidesSettingsSchema>;
+export type RiderStatus = (typeof RIDER_STATUSES)[number];
+export type Rider = z.infer<typeof RiderSchema>;
+export type RideRequest = z.infer<typeof RideRequestSchema> & { id: string };

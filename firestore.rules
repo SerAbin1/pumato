@@ -138,6 +138,59 @@ service cloud.firestore {
       allow read, update, delete: if isAdmin();
     }
 
+    // --- Rides ---
+    function isPhone(value) {
+      return value is string && value.matches('^[0-9]{10}$');
+    }
+
+    function isText(value, max) {
+      return value is string && value.size() > 0 && value.size() <= max;
+    }
+
+    // Riders: the applicant files and edits their own application, always as
+    // `pending`, and only while it is pending or rejected. Approve / reject /
+    // revoke go through the manageUsers function, which also sets the claim.
+    function isValidRider(uid) {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'vehicleNumber', 'collegeId', 'status', 'createdAt', 'updatedAt'])
+        && d.uid == uid
+        && d.email == request.auth.token.get('email', null)
+        && isText(d.name, 80)
+        && isPhone(d.phone)
+        && isText(d.vehicleNumber, 20)
+        && isText(d.collegeId, 40)
+        && d.status == 'pending'
+        && d.updatedAt == request.time;
+    }
+
+    match /riders/{uid} {
+      allow read: if isAdmin() || (request.auth != null && request.auth.uid == uid);
+      allow create: if request.auth != null && request.auth.uid == uid
+        && isValidRider(uid)
+        && request.resource.data.createdAt == request.time;
+      allow update: if request.auth != null && request.auth.uid == uid
+        && resource.data.status in ['pending', 'rejected']
+        && isValidRider(uid)
+        && request.resource.data.createdAt == resource.data.createdAt;
+    }
+
+    // Ride requests: guests book without logging in, so create is open but
+    // pinned to the expected shape. Only admins read them until riders get a dashboard.
+    match /ride_requests/{document} {
+      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'createdAt'])
+        && isText(request.resource.data.name, 80)
+        && isPhone(request.resource.data.phone)
+        && isText(request.resource.data.pickupId, 64)
+        && isText(request.resource.data.pickupName, 80)
+        && isText(request.resource.data.dropId, 64)
+        && isText(request.resource.data.dropName, 80)
+        && request.resource.data.pickupId != request.resource.data.dropId
+        && request.resource.data.fare == null
+        && request.resource.data.status == 'pending'
+        && request.resource.data.createdAt == request.time;
+      allow read, update, delete: if isAdmin();
+    }
+
     // --- Marketplace Requests: public create (seller's sell request), admin-only inbox ---
     match /marketplace_requests/{document} {
       allow create: if true;

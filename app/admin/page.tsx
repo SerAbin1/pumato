@@ -19,6 +19,7 @@ import {
     BarChart3,
     Store,
     MessageSquare,
+    Bike,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
 import {
@@ -76,6 +77,7 @@ import GlobalSettings from "./components/GlobalSettings";
 import StickyActionBar from "./components/StickyActionBar";
 import MarketplaceTab from "./components/MarketplaceTab";
 import FeedbackTab from "./components/FeedbackTab";
+import RidesTab from "./components/RidesTab";
 import SaveConfirmationModal from "./components/SaveConfirmationModal";
 
 import { format12h } from "@/lib/formatters";
@@ -95,6 +97,7 @@ const NAV_TABS = [
     { id: "users", label: "Users", icon: Users },
     { id: "marketplace", label: "Marketplace", icon: Store },
     { id: "feedback", label: "Feedback", icon: MessageSquare },
+    { id: "rides", label: "Rides", icon: Bike },
 ];
 
 // `site_content/order_settings` is written by two tabs. Each owns a disjoint set
@@ -764,6 +767,8 @@ export default function AdminPage() {
                     {activeSection === "marketplace" && <MarketplaceTab />}
 
                     {activeSection === "feedback" && <FeedbackTab />}
+
+                    {activeSection === "rides" && <RidesTab />}
                 </div>
             </div>
 

@@ -323,27 +323,37 @@ function FaresSection() {
             {routes.length === 0 ? (
                 <p className="text-gray-500 text-sm">Add at least two places in Settings.</p>
             ) : (
-                <div className="space-y-2">
+                <div className="grid sm:grid-cols-2 gap-2">
                     {routes.map(([a, b]) => {
                         const key = routeKey(a.id, b.id);
+                        const priced = !!drafts[key]?.trim();
                         return (
-                            <label key={key} className="flex items-center gap-3 text-sm">
-                                <span className="flex-1 min-w-0 text-white">
-                                    {a.name} ↔ {b.name}
+                            <label
+                                key={key}
+                                className="flex items-center gap-3 bg-black/30 border border-white/5 rounded-xl pl-4 pr-2 py-2 text-sm"
+                            >
+                                <span
+                                    title={`${a.name} ↔ ${b.name}`}
+                                    className={`flex-1 min-w-0 truncate font-bold ${priced ? "text-white" : "text-gray-500"}`}
+                                >
+                                    {a.name} <span className="text-gray-600">↔</span> {b.name}
                                 </span>
-                                <input
-                                    value={drafts[key] ?? ""}
-                                    onChange={(e) =>
-                                        setDrafts({
-                                            ...drafts,
-                                            [key]: e.target.value.replace(/\D/g, ""),
-                                        })
-                                    }
-                                    inputMode="numeric"
-                                    placeholder="—"
-                                    aria-label={`Fare from ${a.name} to ${b.name}`}
-                                    className={`${inputClass} w-24 shrink-0 text-right`}
-                                />
+                                <span className="shrink-0 flex items-center gap-1 bg-black/40 border border-white/10 rounded-lg px-2.5 py-1.5 focus-within:border-orange-500/50">
+                                    <span className="text-gray-500">₹</span>
+                                    <input
+                                        value={drafts[key] ?? ""}
+                                        onChange={(e) =>
+                                            setDrafts({
+                                                ...drafts,
+                                                [key]: e.target.value.replace(/\D/g, ""),
+                                            })
+                                        }
+                                        inputMode="numeric"
+                                        placeholder="—"
+                                        aria-label={`Fare from ${a.name} to ${b.name}`}
+                                        className="w-12 bg-transparent text-right text-white font-bold placeholder-gray-600 outline-none"
+                                    />
+                                </span>
                             </label>
                         );
                     })}

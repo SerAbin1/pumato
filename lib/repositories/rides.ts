@@ -11,9 +11,14 @@ import {
     setDoc,
     updateDoc,
 } from "firebase/firestore";
-import { RideRequestSchema, RiderSchema, RidesSettingsSchema } from "@/lib/schemas/rides";
+import {
+    RideFaresSchema,
+    RideRequestSchema,
+    RiderSchema,
+    RidesSettingsSchema,
+} from "@/lib/schemas/rides";
 import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
-import type { Rider, RidesSettings } from "@/lib/types";
+import type { RideFares, Rider, RidesSettings } from "@/lib/types";
 
 const settingsRef = () => doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.RIDES_SETTINGS);
 
@@ -21,6 +26,7 @@ export const EMPTY_RIDES_SETTINGS: RidesSettings = {
     whatsappNumber: "",
     telegramUsername: "",
     places: [],
+    fares: {},
 };
 
 /** @returns rides settings, or empty defaults if the admin hasn't saved any yet */
@@ -29,8 +35,18 @@ export async function fetchRidesSettings(): Promise<RidesSettings> {
     return snap.exists() ? { ...EMPTY_RIDES_SETTINGS, ...snap.data() } : EMPTY_RIDES_SETTINGS;
 }
 
+/** Drops fares for deleted places, so the map doesn't collect dead routes. */
 export async function saveRidesSettings(data: z.input<typeof RidesSettingsSchema>): Promise<void> {
-    await setDoc(settingsRef(), RidesSettingsSchema.parse(data));
+    const ids = new Set(data.places.map((p) => p.id));
+    const fares = Object.fromEntries(
+        Object.entries(data.fares).filter(([key]) => key.split(":").every((id) => ids.has(id)))
+    );
+    await setDoc(settingsRef(), RidesSettingsSchema.parse({ ...data, fares }));
+}
+
+/** Replaces the whole fares map, so cleared routes drop out. */
+export async function saveRideFares(fares: RideFares): Promise<void> {
+    await updateDoc(settingsRef(), { fares: RideFaresSchema.parse(fares) });
 }
 
 /** @returns the signed-in user's rider application, or null if they haven't applied */
@@ -74,11 +90,10 @@ export async function setRiderOnline(uid: string, online: boolean): Promise<void
 }
 
 export async function createRideRequest(
-    data: Omit<z.input<typeof RideRequestSchema>, "status" | "fare" | "createdAt">
+    data: Omit<z.input<typeof RideRequestSchema>, "status" | "createdAt">
 ): Promise<string> {
     const validated = RideRequestSchema.parse({
         ...data,
-        fare: null,
         status: "pending",
         createdAt: serverTimestamp(),
     });

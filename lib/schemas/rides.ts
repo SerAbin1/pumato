@@ -10,11 +10,18 @@ export const RidePlaceSchema = z.object({
     active: z.boolean(),
 });
 
+/** Whole rupees. */
+export const FareSchema = z.number().int().positive();
+
+/** Keyed by routeKey(a, b), so one fare covers both directions of a route. */
+export const RideFaresSchema = z.record(z.string(), FareSchema);
+
 /** `site_content/rides_settings`: one doc, so the booking page costs one read. */
 export const RidesSettingsSchema = z.object({
     whatsappNumber: z.string().trim(),
     telegramUsername: z.string().trim(),
     places: z.array(RidePlaceSchema),
+    fares: RideFaresSchema,
 });
 
 export const RIDER_STATUSES = ["pending", "approved", "rejected", "revoked"] as const;
@@ -48,8 +55,8 @@ export const RideRequestSchema = z
         pickupName: z.string().min(1).max(80),
         dropId: z.string().min(1).max(64),
         dropName: z.string().min(1).max(80),
-        // Reserved for pricing; always null until fares exist.
-        fare: z.null(),
+        // Null when the admin hasn't priced the route; the rider quotes it on the call.
+        fare: FareSchema.nullable(),
         status: z.enum(RIDE_REQUEST_STATUSES),
         createdAt: z.any(),
         // Set when a rider accepts; cleared if they release the ride.

@@ -7,16 +7,17 @@ import toast from "react-hot-toast";
 import { Bike, CheckCircle2, Loader2, MapPin, Navigation } from "lucide-react";
 import { createRideRequest, fetchRidesSettings } from "@/lib/repositories";
 import { PHONE_PATTERN } from "@/lib/schemas/rides";
-import { activePlaces } from "@/lib/rides";
+import { activePlaces, formatFare, routeFare } from "@/lib/rides";
 import CustomSelect from "@/app/components/CustomSelect";
 import { inputClass, labelClass } from "./styles";
 import RidesShell, { mainColumn, Steps } from "./components/RidesShell";
-import type { RidePlace } from "@/lib/types";
+import type { RideFares, RidePlace } from "@/lib/types";
 
 const GUEST_KEY = "pumato_rides_guest";
 
 export default function RidesPage() {
     const [places, setPlaces] = useState<RidePlace[] | null>(null);
+    const [fares, setFares] = useState<RideFares>({});
     const [name, setName] = useState("");
     const [phone, setPhone] = useState("");
     const [pickupId, setPickupId] = useState("");
@@ -26,7 +27,10 @@ export default function RidesPage() {
 
     useEffect(() => {
         fetchRidesSettings()
-            .then((s) => setPlaces(activePlaces(s.places)))
+            .then((s) => {
+                setPlaces(activePlaces(s.places));
+                setFares(s.fares);
+            })
             .catch((error) => {
                 console.error("Failed to load places:", error);
                 toast.error("Couldn't load places. Please refresh.");
@@ -47,6 +51,7 @@ export default function RidesPage() {
     const byId = useMemo(() => new Map(places?.map((p) => [p.id, p])), [places]);
     const pickup = byId.get(pickupId);
     const drop = byId.get(dropId);
+    const fare = pickup && drop ? routeFare(fares, pickup.id, drop.id) : null;
     const canSubmit =
         !!pickup && !!drop && pickupId !== dropId && !!name.trim() && PHONE_PATTERN.test(phone);
 
@@ -62,6 +67,7 @@ export default function RidesPage() {
                 pickupName: pickup.name,
                 dropId: drop.id,
                 dropName: drop.name,
+                fare,
             });
             try {
                 localStorage.setItem(GUEST_KEY, JSON.stringify({ name: name.trim(), phone }));
@@ -92,6 +98,7 @@ export default function RidesPage() {
                         <h2 className="text-xl font-black">Ride requested</h2>
                         <p className="text-gray-400 text-sm">
                             {pickup?.name} → {drop?.name}
+                            {fare !== null && <> · {formatFare(fare)}</>}
                             <br />A rider will call you on {phone} shortly.
                         </p>
                         <button
@@ -142,6 +149,18 @@ export default function RidesPage() {
                                 placeholder="Where to?"
                             />
                         </div>
+                        {pickup && drop && (
+                            <p className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-3 text-sm">
+                                <span className="text-gray-400">Fare</span>
+                                {fare === null ? (
+                                    <span className="text-gray-400">Confirmed by rider</span>
+                                ) : (
+                                    <span className="font-black text-white">
+                                        {formatFare(fare)}
+                                    </span>
+                                )}
+                            </p>
+                        )}
                         <div>
                             <label htmlFor="name" className={labelClass}>
                                 Your name

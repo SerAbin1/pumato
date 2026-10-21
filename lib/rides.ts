@@ -1,4 +1,4 @@
-import type { RidePlace } from "@/lib/types";
+import type { RideFares, RidePlace } from "@/lib/types";
 
 /** Short code the rider quotes in chat so the admin can find their application. */
 export const riderRef = (uid: string) => uid.slice(0, 6).toUpperCase();
@@ -15,3 +15,12 @@ export const telegramUrl = (username: string, text: string) =>
     `https://t.me/${username.replace(/^@/, "")}?text=${encodeURIComponent(text)}`;
 
 export const activePlaces = (places: RidePlace[]) => places.filter((p) => p.active);
+
+/** Sorted, so A → B and B → A share one fare. */
+export const routeKey = (a: string, b: string) => (a < b ? `${a}:${b}` : `${b}:${a}`);
+
+/** @returns the route's fare, or null if the admin hasn't priced it */
+export const routeFare = (fares: RideFares, pickupId: string, dropId: string) =>
+    fares[routeKey(pickupId, dropId)] ?? null;
+
+export const formatFare = (fare: number) => `₹${fare}`;

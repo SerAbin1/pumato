@@ -38,6 +38,7 @@ export { createFeedback, updateFeedback } from "./feedback";
 export { createPayment, fetchPayment } from "./payment";
 export {
     fetchRidesSettings,
+    saveRideFares,
     saveRidesSettings,
     fetchRider,
     submitRiderApplication,

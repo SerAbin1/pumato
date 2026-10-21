@@ -136,16 +136,24 @@ export default function GroceryPage() {
     // 2. Save to localStorage whenever formData changes
     useEffect(() => {
         if (typeof window !== "undefined") {
-            // Map room back to address for cross-tab sharing with CartDrawer
-            const toSave = {
-                name: formData.name,
-                phone: formData.phone,
-                address: formData.hostel,
-                hostel: formData.hostel,
-            };
-            localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
+            // Only save if name, phone or hostel has value to avoid overwriting with empty
+            if (formData.name || formData.phone || formData.hostel) {
+                // Merge with saved details so fields owned elsewhere (e.g. campus) survive.
+                // Map room back to address for cross-tab sharing with CartDrawer
+                const currentSaved = JSON.parse(
+                    localStorage.getItem("pumato_user_details") || "{}"
+                );
+                const toSave = {
+                    ...currentSaved,
+                    name: formData.name || currentSaved.name,
+                    phone: formData.phone || currentSaved.phone,
+                    address: formData.hostel || currentSaved.address,
+                    hostel: formData.hostel || currentSaved.hostel,
+                };
+                localStorage.setItem("pumato_user_details", JSON.stringify(toSave));
+            }
         }
-    }, [formData]);
+    }, [formData.name, formData.phone, formData.hostel]);
 
     const [items, setItems] = useState<GroceryItemDraft[]>([{ id: 1, name: "", quantity: "" }]);
 

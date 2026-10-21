@@ -8,7 +8,7 @@ export default defineConfig({
         },
     },
     staged: {
-        "*.{js,jsx,ts,tsx,mjs,cjs}": ["vp lint --fix", "vp fmt --no-error-on-unmatched-pattern"],
+        "*": "vp check --fix --no-error-on-unmatched-pattern",
     },
     test: {
         // Vitest v4 compatibility: preserve mock call history.

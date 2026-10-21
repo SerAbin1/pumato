@@ -9,6 +9,7 @@ import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
+import { formatFare } from "@/lib/rides";
 import {
     acceptRide,
     completeRide,
@@ -112,6 +113,9 @@ function MyRides({ uid }: { uid: string }) {
                     <div>
                         <p className="font-bold text-white">
                             {r.pickupName} → {r.dropName}
+                            {r.fare !== null && (
+                                <span className="text-orange-400"> · {formatFare(r.fare)}</span>
+                            )}
                         </p>
                         <p className="text-sm text-gray-400">
                             {r.name} · requested {formatTime(r)}
@@ -199,6 +203,9 @@ function PendingRequests({ rider }: { rider: Rider }) {
                     <div>
                         <p className="font-bold text-white">
                             {r.pickupName} → {r.dropName}
+                            {r.fare !== null && (
+                                <span className="text-orange-400"> · {formatFare(r.fare)}</span>
+                            )}
                         </p>
                         <p className="text-xs text-gray-500">{formatTime(r)}</p>
                     </div>

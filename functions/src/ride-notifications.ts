@@ -28,7 +28,7 @@ export const notifyRidersOfRequest = onDocumentCreated(
         // tag and opens targetUrl when tapped.
         const data = {
             title: "New ride request",
-            body: `${request.pickupName} → ${request.dropName}`,
+            body: `${request.pickupName} → ${request.dropName}${request.fare ? ` · ₹${request.fare}` : ""}`,
             targetUrl: "/rides/rider",
             tag: "ride-request",
         };

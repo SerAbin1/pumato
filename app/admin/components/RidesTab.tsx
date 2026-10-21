@@ -2,13 +2,14 @@ import { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { fetchRidesSettings, saveRidesSettings } from "@/lib/repositories";
+import { fetchRidesSettings, saveRideFares, saveRidesSettings } from "@/lib/repositories";
 import { manageUsers } from "@/lib/functions";
-import { riderRef } from "@/lib/rides";
+import { activePlaces, formatFare, riderRef, routeKey } from "@/lib/rides";
 import { RIDE_REQUEST_STATUSES } from "@/lib/schemas/rides";
 import toast from "react-hot-toast";
 import { Check, ChevronDown, Loader2, Phone, Plus, Save, Trash2, X } from "lucide-react";
 import type {
+    RideFares,
     RideRequest,
     RideRequestStatus,
     Rider,
@@ -100,6 +101,7 @@ function RiderDetails({ rider }: { rider: Rider }) {
                         <thead className="text-gray-500 uppercase tracking-wider">
                             <tr>
                                 <th className="py-2 pr-3">Route</th>
+                                <th className="py-2 pr-3">Fare</th>
                                 <th className="py-2 pr-3">Guest</th>
                                 <th className="py-2 pr-3">Requested</th>
                                 <th className="py-2 pr-3">Accepted</th>
@@ -112,6 +114,9 @@ function RiderDetails({ rider }: { rider: Rider }) {
                                 <tr key={r.id} className="border-t border-white/5">
                                     <td className="py-2 pr-3 font-bold text-white">
                                         {r.pickupName} → {r.dropName}
+                                    </td>
+                                    <td className="py-2 pr-3">
+                                        {r.fare === null ? "—" : formatFare(r.fare)}
                                     </td>
                                     <td className="py-2 pr-3">
                                         {r.name}
@@ -260,6 +265,97 @@ function SettingsSection() {
             >
                 {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
                 Save settings
+            </button>
+        </section>
+    );
+}
+
+/** One fare per pair of active places; leave blank and the rider quotes it. */
+function FaresSection() {
+    const [places, setPlaces] = useState<RidesSettings["places"] | null>(null);
+    // Inputs stay strings so a half-typed or cleared field doesn't fight the user.
+    const [drafts, setDrafts] = useState<Record<string, string>>({});
+    const [saving, setSaving] = useState(false);
+
+    useEffect(() => {
+        fetchRidesSettings()
+            .then((s) => {
+                setPlaces(activePlaces(s.places));
+                setDrafts(
+                    Object.fromEntries(Object.entries(s.fares).map(([k, v]) => [k, String(v)]))
+                );
+            })
+            .catch((error) => {
+                console.error("Failed to load fares:", error);
+                toast.error("Failed to load fares");
+            });
+    }, []);
+
+    if (!places) return <p className="text-gray-400">Loading...</p>;
+
+    const routes = places.flatMap((a, i) => places.slice(i + 1).map((b) => [a, b] as const));
+
+    const save = async () => {
+        // Hidden places' fares are kept so they come back when the place is shown again.
+        const fares: RideFares = Object.fromEntries(
+            Object.entries(drafts)
+                .filter(([, v]) => v.trim())
+                .map(([k, v]) => [k, Number(v)])
+        );
+        setSaving(true);
+        try {
+            await saveRideFares(fares);
+            toast.success("Fares saved");
+        } catch (error) {
+            console.error("Failed to save fares:", error);
+            toast.error("Failed to save. Fares must be whole rupees above 0.");
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <section className={sectionClass}>
+            <p className="text-xs text-gray-400">
+                Fare in ₹ for each route, either direction. Leave blank and the rider confirms the
+                fare on the call.
+            </p>
+            {routes.length === 0 ? (
+                <p className="text-gray-500 text-sm">Add at least two places in Settings.</p>
+            ) : (
+                <div className="space-y-2">
+                    {routes.map(([a, b]) => {
+                        const key = routeKey(a.id, b.id);
+                        return (
+                            <label key={key} className="flex items-center gap-3 text-sm">
+                                <span className="flex-1 min-w-0 text-white">
+                                    {a.name} ↔ {b.name}
+                                </span>
+                                <input
+                                    value={drafts[key] ?? ""}
+                                    onChange={(e) =>
+                                        setDrafts({
+                                            ...drafts,
+                                            [key]: e.target.value.replace(/\D/g, ""),
+                                        })
+                                    }
+                                    inputMode="numeric"
+                                    placeholder="—"
+                                    aria-label={`Fare from ${a.name} to ${b.name}`}
+                                    className={`${inputClass} w-24 shrink-0 text-right`}
+                                />
+                            </label>
+                        );
+                    })}
+                </div>
+            )}
+            <button
+                onClick={save}
+                disabled={saving || routes.length === 0}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-orange-600 text-white text-sm font-bold disabled:opacity-40"
+            >
+                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                Save fares
             </button>
         </section>
     );
@@ -445,7 +541,13 @@ function RideRequestsSection() {
                         >
                             <div className="min-w-0 text-sm space-y-0.5">
                                 <p className="font-bold text-white flex items-center gap-2">
-                                    {r.pickupName} → {r.dropName} <StatusBadge status={r.status} />
+                                    {r.pickupName} → {r.dropName}
+                                    {r.fare !== null && (
+                                        <span className="text-orange-400">
+                                            {formatFare(r.fare)}
+                                        </span>
+                                    )}
+                                    <StatusBadge status={r.status} />
                                 </p>
                                 <p className="text-gray-400">
                                     {r.name} · {formatTime(r.createdAt)}
@@ -480,6 +582,7 @@ function RideRequestsSection() {
 const SUB_TABS = [
     { id: "requests", label: "Ride requests" },
     { id: "riders", label: "Riders" },
+    { id: "fares", label: "Fares" },
     { id: "settings", label: "Settings" },
 ] as const;
 
@@ -506,6 +609,7 @@ export default function RidesTab() {
 
             {subTab === "requests" && <RideRequestsSection />}
             {subTab === "riders" && <RidersSection />}
+            {subTab === "fares" && <FaresSection />}
             {subTab === "settings" && <SettingsSection />}
         </div>
     );

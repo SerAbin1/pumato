@@ -78,18 +78,7 @@ function useRideRequests(q: Query) {
 }
 
 /** Rides this rider accepted and hasn't finished: shows the guest's contact. */
-function MyRides({ uid }: { uid: string }) {
-    const rides = useRideRequests(
-        useMemo(
-            () =>
-                query(
-                    collection(db, COLLECTIONS.RIDE_REQUESTS),
-                    where("riderUid", "==", uid),
-                    where("status", "==", "accepted")
-                ),
-            [uid]
-        )
-    );
+function MyRides({ rides }: { rides: RideRequest[] | null }) {
     const [busy, setBusy] = useState<string | null>(null);
 
     const act = async (id: string, action: (id: string) => Promise<void>, failure: string) => {
@@ -158,7 +147,14 @@ const pendingToday = () => {
 };
 
 /** Today's pending requests, oldest first, while the rider is online. */
-function PendingRequests({ rider }: { rider: Rider }) {
+function PendingRequests({
+    rider,
+    hasActiveRide,
+}: {
+    rider: Rider;
+    // null while the rider's own rides are still loading
+    hasActiveRide: boolean | null;
+}) {
     const [pendingQuery] = useState(pendingToday);
     const requests = useRideRequests(pendingQuery);
     const [accepting, setAccepting] = useState<string | null>(null);
@@ -198,6 +194,11 @@ function PendingRequests({ rider }: { rider: Rider }) {
     }
     return (
         <div className="space-y-2">
+            {hasActiveRide && (
+                <p className="text-center text-sm text-orange-300">
+                    Complete or release your current ride to accept another.
+                </p>
+            )}
             {requests.map((r) => (
                 <div key={r.id} className={rowClass}>
                     <div>
@@ -211,7 +212,7 @@ function PendingRequests({ rider }: { rider: Rider }) {
                     </div>
                     <button
                         onClick={() => accept(r.id)}
-                        disabled={accepting !== null}
+                        disabled={accepting !== null || hasActiveRide !== false}
                         className={primaryButton}
                     >
                         {accepting === r.id ? (
@@ -286,6 +287,19 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     const [online, setOnline] = useState(rider.online === true);
     const [busy, setBusy] = useState(false);
     const { permission, request } = useFcmToken(user);
+    const myRides = useRideRequests(
+        useMemo(
+            () =>
+                query(
+                    collection(db, COLLECTIONS.RIDE_REQUESTS),
+                    where("riderUid", "==", user.uid),
+                    where("status", "==", "accepted")
+                ),
+            [user.uid]
+        )
+    );
+    // A rider takes one ride at a time; unknown until their rides load.
+    const hasActiveRide = myRides === null ? null : myRides.length > 0;
 
     const toggleOnline = async () => {
         setBusy(true);
@@ -334,13 +348,13 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
                     </button>
                 </div>
 
-                <MyRides uid={user.uid} />
+                <MyRides rides={myRides} />
             </div>
 
             <div className={`${mainColumn} ${cardClass}`}>
                 <h2 className="font-black">Ride requests</h2>
                 {online ? (
-                    <PendingRequests rider={rider} />
+                    <PendingRequests rider={rider} hasActiveRide={hasActiveRide} />
                 ) : (
                     <p className="text-center text-sm text-gray-500 py-8">
                         Go online to see ride requests.

@@ -1,6 +1,7 @@
 "use strict";
 
 import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
+import type { DocumentData } from "firebase/firestore";
 
 // Fake Firestore. `doc(db, col, id)` returns a path-tagged ref; `doc(collectionRef)`
 // (the auto-id form) returns the pre-allocated order ref.
@@ -29,21 +30,23 @@ const AUTO_ID = "auto-generated-id";
  * Records every tx operation in call order so tests can assert both the payloads
  * and that the read precedes the writes (Firestore enforces this at runtime).
  */
-type Op = { op: "get" | "set"; ref: any; data?: any; options?: unknown };
+type FakeRef = { path: string; id: string };
+type SetOp = { op: "set"; ref: FakeRef; data: DocumentData; options?: unknown };
+type Op = { op: "get"; ref: FakeRef } | SetOp;
 
 function makeTransaction(counterData?: { last?: unknown }) {
     const ops: Op[] = [];
     return {
         ops,
         tx: {
-            get: vi.fn(async (ref: unknown) => {
+            get: vi.fn(async (ref: FakeRef) => {
                 ops.push({ op: "get", ref });
                 return {
                     exists: () => counterData !== undefined,
                     data: () => counterData,
                 };
             }),
-            set: vi.fn((ref: unknown, data: unknown, options?: unknown) => {
+            set: vi.fn((ref: FakeRef, data: DocumentData, options?: unknown) => {
                 ops.push({ op: "set", ref, data, options });
             }),
         },
@@ -58,7 +61,7 @@ async function runCreate(
     const { ops, tx } = makeTransaction(counterData);
     mocks.runTransaction.mockImplementation(async (_db, fn) => fn(tx));
     const result = await createOrder(data);
-    const sets = ops.filter((o) => o.op === "set");
+    const sets = ops.filter((o): o is SetOp => o.op === "set");
     return {
         result,
         ops,

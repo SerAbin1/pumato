@@ -3,7 +3,7 @@ import { format12h } from "@/lib/formatters";
 
 import ServiceOverrideControl from "./ServiceOverrideControl";
 import PreOrderSlotEditor from "./PreOrderSlotEditor";
-import { useState } from "react";
+import { useId, useState } from "react";
 import ConfirmModal from "../../components/ConfirmModal";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import type { ReactNode } from "react";
@@ -23,6 +23,7 @@ interface SlotEditorProps {
 }
 
 function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }: SlotEditorProps) {
+    const uid = useId();
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         slotIdx: number | null;
@@ -77,7 +78,10 @@ function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }
                     >
                         <div className="flex-1 space-y-2">
                             <div className="flex justify-between items-center px-1">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                <label
+                                    htmlFor={`${uid}-slot-${index}-start`}
+                                    className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                                >
                                     Start Time
                                 </label>
                                 <span
@@ -87,6 +91,7 @@ function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }
                                 </span>
                             </div>
                             <input
+                                id={`${uid}-slot-${index}-start`}
                                 type="time"
                                 className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-green-500/50 transition-all font-bold [color-scheme:dark]"
                                 value={slot.start}
@@ -95,7 +100,10 @@ function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }
                         </div>
                         <div className="flex-1 space-y-2">
                             <div className="flex justify-between items-center px-1">
-                                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                <label
+                                    htmlFor={`${uid}-slot-${index}-end`}
+                                    className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                                >
                                     End Time
                                 </label>
                                 <span
@@ -105,6 +113,7 @@ function SlotEditor({ slots, onSlotsChange, label, emptyText, accent = "green" }
                                 </span>
                             </div>
                             <input
+                                id={`${uid}-slot-${index}-end`}
                                 type="time"
                                 className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-green-500/50 transition-all font-bold [color-scheme:dark]"
                                 value={slot.end}

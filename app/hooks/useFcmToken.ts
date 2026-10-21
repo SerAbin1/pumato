@@ -27,9 +27,11 @@ export function useFcmToken(user: Pick<AdminUser, "uid" | "restaurantId"> | null
     );
     const [token, setToken] = useState<string | null>(null);
 
-    // eslint-disable-next-line react-hooks/preserve-manual-memoization
+    const uid = user?.uid;
+    const restaurantId = user?.restaurantId ?? null;
+
     const requestAndSaveToken = useCallback(async () => {
-        if (!user?.uid) return;
+        if (!uid) return;
 
         // 1. Ensure the browser supports FCM
         const messaging = await getFirebaseMessaging();
@@ -57,25 +59,24 @@ export function useFcmToken(user: Pick<AdminUser, "uid" | "restaurantId"> | null
 
         // 4. Only write to Firestore if the token has changed
         try {
-            const tokenRef = doc(db, COLLECTIONS.FCM_TOKENS, user.uid);
+            const tokenRef = doc(db, COLLECTIONS.FCM_TOKENS, uid);
             const existing = await getDoc(tokenRef);
             const existingData = existing.data();
-            const currentRestaurantId = user.restaurantId ?? null;
 
             const tokenChanged = !existing.exists() || existingData?.token !== fcmToken;
-            const restaurantIdChanged = existingData?.restaurantId !== currentRestaurantId;
+            const restaurantIdChanged = existingData?.restaurantId !== restaurantId;
 
             if (tokenChanged || restaurantIdChanged) {
                 await setDoc(tokenRef, {
                     token: fcmToken,
                     updatedAt: new Date().toISOString(),
-                    restaurantId: currentRestaurantId,
+                    restaurantId,
                 });
             }
         } catch (err) {
             console.warn("FCM token save failed:", err);
         }
-    }, [user?.uid, user?.restaurantId]);
+    }, [uid, restaurantId]);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect

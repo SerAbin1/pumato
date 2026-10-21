@@ -150,13 +150,15 @@ function OrderCard({ order, restaurantId, onAction, processing }: OrderCardProps
                                 Select unavailable items:
                             </p>
                             {restaurantItems.map((item, idx) => (
-                                <div
+                                <button
+                                    type="button"
                                     key={idx}
+                                    aria-pressed={oosItems.includes(item.id || item.name)}
                                     onClick={() => toggleOosItem(item.id || item.name)}
-                                    className="flex items-center gap-3 cursor-pointer group"
+                                    className="flex w-full items-center gap-3 text-left cursor-pointer group"
                                     data-testid={`oos-item-checkbox-${item.id || item.name}`}
                                 >
-                                    <div
+                                    <span
                                         className={`w-5 h-5 rounded-md border flex items-center justify-center transition-all ${
                                             oosItems.includes(item.id || item.name)
                                                 ? "bg-red-500 border-red-500"
@@ -166,11 +168,11 @@ function OrderCard({ order, restaurantId, onAction, processing }: OrderCardProps
                                         {oosItems.includes(item.id || item.name) && (
                                             <Check size={12} className="text-white" />
                                         )}
-                                    </div>
+                                    </span>
                                     <span className="text-sm text-white">
                                         {item.name} ×{item.quantity}
                                     </span>
-                                </div>
+                                </button>
                             ))}
                             <div className="flex gap-2 pt-2">
                                 <button

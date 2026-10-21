@@ -27,6 +27,8 @@ function MarketplaceContent() {
     const [filters, setFilters] = useState<{ label: string }[]>([]);
     const [searchQuery, setSearchQuery] = useState("");
     const [filter, setFilter] = useState("all");
+    // Fixed per visit so the order doesn't reshuffle while browsing.
+    const [seed] = useState(() => new Date().getDate());
 
     useEffect(() => {
         const fetchListings = async () => {
@@ -64,9 +66,8 @@ function MarketplaceContent() {
             const query = searchQuery.toLowerCase().trim();
             items = items.filter((l) => l.itemName?.toLowerCase().includes(query));
         }
-        const seed = new Date().getDate();
         return seededShuffle(items, seed);
-    }, [listings, filter, searchQuery]);
+    }, [listings, filter, searchQuery, seed]);
 
     if (id) {
         const listing = listings.find((l) => l.id === id);

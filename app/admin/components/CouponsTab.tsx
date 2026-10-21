@@ -227,9 +227,15 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
                     {coupons.map((c) => (
                         <div
                             key={c.id}
-                            onClick={() => handleEditCoupon(c)}
                             className="bg-white/5 p-8 rounded-[2rem] border border-white/10 hover:bg-white/10 transition-all relative group hover:shadow-xl cursor-pointer"
                         >
+                            {/* Covers the card so it opens the edit form; the action buttons sit above it. */}
+                            <button
+                                type="button"
+                                onClick={() => handleEditCoupon(c)}
+                                aria-label={`Edit ${c.code}`}
+                                className="absolute inset-0 rounded-[2rem]"
+                            />
                             <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-all">
                                 <button
                                     onClick={(e) => handleToggleActive(e, c)}
@@ -303,11 +309,15 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
 
                         <div className="grid grid-cols-2 gap-8">
                             <div className="space-y-3">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor="coupon-type"
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     Discount Type
                                 </label>
                                 <div className="relative">
                                     <select
+                                        id="coupon-type"
                                         className="appearance-none p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
                                         value={couponForm.type}
                                         onChange={(e) =>
@@ -341,9 +351,9 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
                                 />
                             ) : (
                                 <div className="space-y-3 opacity-50">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
                                         Discount Value
-                                    </label>
+                                    </span>
                                     <div className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white/40 font-medium text-sm italic">
                                         Calculated Automatically
                                     </div>
@@ -374,10 +384,14 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
 
                             <div className="space-y-6 pl-13">
                                 <div className="space-y-3">
-                                    <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    <label
+                                        htmlFor="coupon-restaurant"
+                                        className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                    >
                                         Step 1: Select Restaurant
                                     </label>
                                     <select
+                                        id="coupon-restaurant"
                                         className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium"
                                         value={couponForm.restaurantId || ""}
                                         onChange={(e) => {
@@ -582,10 +596,14 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
                         />
 
                         <div className="space-y-3">
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                            <label
+                                htmlFor="coupon-description"
+                                className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                            >
                                 Description
                             </label>
                             <textarea
+                                id="coupon-description"
                                 placeholder="Brief description of the offer..."
                                 className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium h-32 resize-none"
                                 value={couponForm.description}

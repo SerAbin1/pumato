@@ -113,10 +113,14 @@ export default function ListingCard({
                     {isBuyable && (
                         <>
                             <div>
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor={`offer-${listing.id}`}
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     Your Offer (₹)
                                 </label>
                                 <input
+                                    id={`offer-${listing.id}`}
                                     type="number"
                                     min="0"
                                     value={willingPrice}

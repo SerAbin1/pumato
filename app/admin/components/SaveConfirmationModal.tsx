@@ -13,7 +13,7 @@ interface SlotLike {
     cutoffMinutes?: number | string;
 }
 
-const formatValue = (key: string, value: any): string => {
+const formatValue = (key: string, value: unknown): string => {
     if (value === null || value === undefined) return "(not set)";
     if (key === "deliveryCampusConfig" && Array.isArray(value)) {
         if (value.length === 0) return "(empty)";
@@ -59,11 +59,12 @@ const formatValue = (key: string, value: any): string => {
     }
     if (key === "manualOverride") {
         if (!value) return "Auto (follows slots)";
-        return value.status === "open" ? "Force Open" : "Force Closed";
+        return (value as { status?: string }).status === "open" ? "Force Open" : "Force Closed";
     }
     if (typeof value === "boolean") return value ? "Yes" : "No";
     if (typeof value === "string" && value === "") return "(empty)";
-    return String(value);
+    if (typeof value === "string" || typeof value === "number") return String(value);
+    return JSON.stringify(value) ?? "";
 };
 
 const FIELD_LABELS: Record<string, string> = {

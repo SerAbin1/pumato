@@ -27,7 +27,6 @@ export const CANONICAL_URLS = {
     partner: getCanonicalUrl("/partner"),
     partnerLogin: getCanonicalUrl("/partner/login"),
     deliveryPartner: getCanonicalUrl("/delivery-partner"),
-    foodMarketing: getCanonicalUrl("/food-marketing"),
     rides: getCanonicalUrl("/rides"),
     ridesRegister: getCanonicalUrl("/rides/register"),
     ridesRider: getCanonicalUrl("/rides/rider"),

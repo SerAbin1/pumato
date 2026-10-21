@@ -126,6 +126,7 @@ export default function ImageLightbox({
                 >
                     {/* Backdrop */}
                     <div
+                        role="presentation"
                         onClick={onClose}
                         className="absolute inset-0 bg-black/90 backdrop-blur-md z-0"
                     />

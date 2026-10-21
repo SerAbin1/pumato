@@ -65,12 +65,16 @@ export default function GlobalSettings({
                         </p>
 
                         <div className="pl-13 space-y-4">
-                            <label className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1">
+                            <label
+                                htmlFor="payment-qr-url"
+                                className="text-[10px] font-bold text-gray-400 uppercase tracking-widest ml-1"
+                            >
                                 Payment QR Image URL
                             </label>
                             <div className="flex gap-4">
                                 <div className="flex-1 relative group">
                                     <input
+                                        id="payment-qr-url"
                                         type="text"
                                         className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-blue-500/50 transition-all font-medium placeholder-gray-600"
                                         value={orderSettings.paymentQR || ""}

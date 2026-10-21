@@ -11,7 +11,7 @@ vi.mock("react-hot-toast", () => ({ default: toastMock }));
 const { useSettingsForm } = await import("@/app/admin/hooks/useSettingsForm");
 
 /** Mounts the hook and waits for the initial load to settle. */
-async function mountForm(options: SettingsFormOptions<Record<string, any>>) {
+async function mountForm(options: SettingsFormOptions<Record<string, unknown>>) {
     const view = renderHook((props) => useSettingsForm(props), { initialProps: options });
     await waitFor(() => expect(view.result.current.loaded).toBe(true));
     return view;
@@ -53,7 +53,7 @@ describe("useSettingsForm — loading", () => {
 });
 
 describe("useSettingsForm — failed load", () => {
-    const failing = (save: SettingsFormOptions<Record<string, any>>["save"]) => ({
+    const failing = (save: SettingsFormOptions<Record<string, unknown>>["save"]) => ({
         label: "Grocery settings",
         initial: {},
         load: vi.fn().mockRejectedValue(new Error("offline")),
@@ -161,7 +161,7 @@ describe("useSettingsForm — saving", () => {
 });
 
 describe("useSettingsForm — confirmation step", () => {
-    const withConfirm = (save: SettingsFormOptions<Record<string, any>>["save"]) => ({
+    const withConfirm = (save: SettingsFormOptions<Record<string, unknown>>["save"]) => ({
         label: "Global settings",
         confirm: true,
         load: vi.fn().mockResolvedValue({ upiId: "old@upi" }),

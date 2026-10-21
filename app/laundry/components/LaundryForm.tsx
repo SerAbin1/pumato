@@ -60,7 +60,10 @@ export default function LaundryForm({
 
             <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                    <label
+                        htmlFor="laundry-name"
+                        className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                    >
                         Your Name
                     </label>
                     <div className="relative group">
@@ -69,6 +72,7 @@ export default function LaundryForm({
                             size={20}
                         />
                         <input
+                            id="laundry-name"
                             type="text"
                             name="name"
                             required
@@ -80,7 +84,10 @@ export default function LaundryForm({
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                    <label
+                        htmlFor="laundry-phone"
+                        className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                    >
                         Phone Number
                     </label>
                     <div className="relative group">
@@ -89,6 +96,7 @@ export default function LaundryForm({
                             size={20}
                         />
                         <input
+                            id="laundry-phone"
                             type="tel"
                             name="phone"
                             required
@@ -104,9 +112,7 @@ export default function LaundryForm({
                     </div>
                 </div>
                 <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
-                        Campus
-                    </label>
+                    <span className="block text-sm font-bold text-gray-400 mb-2 ml-1">Campus</span>
                     <div className="grid grid-cols-3 gap-3">
                         {campusConfig.map((campus) => (
                             <button
@@ -127,7 +133,10 @@ export default function LaundryForm({
                 </div>
 
                 <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                    <label
+                        htmlFor="laundry-hostel"
+                        className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                    >
                         Hostel
                     </label>
                     <div className="relative group">
@@ -136,6 +145,7 @@ export default function LaundryForm({
                             size={20}
                         />
                         <input
+                            id="laundry-hostel"
                             type="text"
                             name="location"
                             required
@@ -156,10 +166,14 @@ export default function LaundryForm({
                 />
 
                 <div className="space-y-2">
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                    <label
+                        htmlFor="laundry-instructions"
+                        className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                    >
                         Special Instructions (Optional)
                     </label>
                     <textarea
+                        id="laundry-instructions"
                         name="instructions"
                         placeholder="e.g. Handle silk items carefully"
                         className="w-full px-4 py-4 bg-black/20 border border-white/10 rounded-xl focus:outline-none focus:border-blue-500/50 focus:bg-black/40 transition-all font-medium text-white placeholder-gray-600 h-24 resize-none"
@@ -173,9 +187,9 @@ export default function LaundryForm({
                 {/* make the items required (atleast one item) and quantity shall be minimum 1 ai! */}
                 {/* Dynamic Laundry List */}
                 <div className="space-y-4">
-                    <label className="block text-sm font-bold text-gray-400 ml-1">
+                    <span className="block text-sm font-bold text-gray-400 ml-1">
                         Clothing Items
-                    </label>
+                    </span>
                     <div className="space-y-3">
                         {items.map((item, index) => (
                             <div

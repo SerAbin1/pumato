@@ -352,11 +352,15 @@ export default function RestaurantForm({
                 />
                 {!isPartnerPage && (
                     <div className="space-y-3">
-                        <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                        <label
+                            htmlFor="restaurant-image"
+                            className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                        >
                             Image URL
                         </label>
                         <div className="flex gap-2">
                             <input
+                                id="restaurant-image"
                                 className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
                                 value={formData.image}
                                 onChange={(e) =>
@@ -799,9 +803,9 @@ export default function RestaurantForm({
 
                         {/* Excluded Categories */}
                         <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-3 block">
+                            <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-3 block">
                                 Excluded Categories
-                            </label>
+                            </span>
                             <div className="flex flex-wrap gap-2">
                                 {(formData.categories || []).map((cat) => (
                                     <button
@@ -860,7 +864,10 @@ export default function RestaurantForm({
 
                         {/* Exclude Specific Items */}
                         <div>
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-3 block">
+                            <label
+                                htmlFor="restaurant-exclude-search"
+                                className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1 mb-3 block"
+                            >
                                 Exclude Specific Items
                             </label>
                             <div className="relative">
@@ -869,6 +876,7 @@ export default function RestaurantForm({
                                     size={16}
                                 />
                                 <input
+                                    id="restaurant-exclude-search"
                                     type="text"
                                     placeholder="Search items to exclude..."
                                     value={itemSearchQuery}

@@ -84,7 +84,10 @@ export default function DeliverySettings({
                                                         </h4>
                                                     </div>
                                                     <div className="flex items-center gap-3 bg-black/40 px-5 py-3 rounded-2xl border border-white/10 hover:border-orange-500/30 transition-all">
-                                                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none">
+                                                        <label
+                                                            htmlFor={`delivery-${campus.id}-charge`}
+                                                            className="text-[10px] font-black text-gray-500 uppercase tracking-widest leading-none"
+                                                        >
                                                             Charge
                                                         </label>
                                                         <div className="flex items-center gap-1">
@@ -92,6 +95,7 @@ export default function DeliverySettings({
                                                                 ₹
                                                             </span>
                                                             <input
+                                                                id={`delivery-${campus.id}-charge`}
                                                                 type="number"
                                                                 min="0"
                                                                 value={campus.deliveryCharge}
@@ -150,7 +154,10 @@ export default function DeliverySettings({
                                                     >
                                                         <div className="flex-1 space-y-2">
                                                             <div className="flex justify-between items-center px-1">
-                                                                <label className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                                                                <label
+                                                                    htmlFor={`delivery-${campus.id}-slot-${sIdx}-start`}
+                                                                    className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]"
+                                                                >
                                                                     Start
                                                                 </label>
                                                                 <span className="text-[9px] font-black text-orange-500/50">
@@ -158,6 +165,7 @@ export default function DeliverySettings({
                                                                 </span>
                                                             </div>
                                                             <input
+                                                                id={`delivery-${campus.id}-slot-${sIdx}-start`}
                                                                 type="time"
                                                                 className="w-full bg-transparent text-sm text-white font-black focus:outline-none [color-scheme:dark]"
                                                                 value={slot.start}
@@ -186,7 +194,10 @@ export default function DeliverySettings({
                                                         <div className="w-[1px] h-10 bg-white/10" />
                                                         <div className="flex-1 space-y-2">
                                                             <div className="flex justify-between items-center px-1">
-                                                                <label className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]">
+                                                                <label
+                                                                    htmlFor={`delivery-${campus.id}-slot-${sIdx}-end`}
+                                                                    className="text-[9px] font-black text-gray-500 uppercase tracking-[0.2em]"
+                                                                >
                                                                     End
                                                                 </label>
                                                                 <span className="text-[9px] font-black text-orange-500/50">
@@ -194,6 +205,7 @@ export default function DeliverySettings({
                                                                 </span>
                                                             </div>
                                                             <input
+                                                                id={`delivery-${campus.id}-slot-${sIdx}-end`}
                                                                 type="time"
                                                                 className="w-full bg-transparent text-sm text-white font-black focus:outline-none [color-scheme:dark]"
                                                                 value={slot.end}

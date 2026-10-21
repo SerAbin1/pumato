@@ -57,9 +57,9 @@ export default function SlotSelector({
     return (
         <div className="space-y-6">
             <div className="space-y-3">
-                <label className="block text-sm font-bold text-gray-400 ml-1">
+                <span className="block text-sm font-bold text-gray-400 ml-1">
                     Select Pickup Date
-                </label>
+                </span>
 
                 {/* Custom Date Scroller */}
                 <div className="relative">

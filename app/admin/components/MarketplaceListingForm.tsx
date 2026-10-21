@@ -238,10 +238,14 @@ export default function MarketplaceListingForm({
                 />
 
                 <div className="space-y-3">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                    <label
+                        htmlFor="listing-filter"
+                        className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                    >
                         Filter
                     </label>
                     <select
+                        id="listing-filter"
                         className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
                         value={creatingFilter ? "__new__" : formData.filter}
                         onChange={(e) => {
@@ -284,10 +288,14 @@ export default function MarketplaceListingForm({
                 </div>
 
                 <div className="space-y-3">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                    <label
+                        htmlFor="listing-campus"
+                        className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                    >
                         Campus
                     </label>
                     <select
+                        id="listing-campus"
                         className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
                         value={formData.campus}
                         onChange={(e) => setFormData({ ...formData, campus: e.target.value })}
@@ -319,10 +327,14 @@ export default function MarketplaceListingForm({
                 />
 
                 <div className="col-span-full space-y-3">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                    <label
+                        htmlFor="listing-description"
+                        className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                    >
                         Description
                     </label>
                     <textarea
+                        id="listing-description"
                         className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium h-32 resize-none"
                         value={formData.description}
                         onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -330,9 +342,9 @@ export default function MarketplaceListingForm({
                 </div>
 
                 <div className="col-span-full space-y-3">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
                         Custom Links
-                    </label>
+                    </span>
                     <div className="space-y-3">
                         {(formData.customLinks || []).map((link, index) => {
                             const typeDef = CUSTOM_LINK_TYPES.find((t) => t.id === link.type);
@@ -400,9 +412,9 @@ export default function MarketplaceListingForm({
                 </div>
 
                 <div className="col-span-full space-y-3">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
                         Images
-                    </label>
+                    </span>
                     <p className="text-xs text-gray-500 -mt-1">
                         Any image size or shape works. Photos are shown in a fixed frame on the
                         listing, and buyers can tap to view the full uncropped image. Landscape
@@ -446,9 +458,9 @@ export default function MarketplaceListingForm({
                 </div>
 
                 <div className="col-span-full space-y-5 bg-white/5 p-5 rounded-2xl border border-white/5">
-                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                    <span className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
                         Promotion
-                    </label>
+                    </span>
                     <span className="ml-3 text-[10px] font-bold text-purple-300 bg-purple-500/15 px-2 py-0.5 rounded-full uppercase tracking-wider border border-purple-500/30">
                         {deriveTier(formData.promotion)}
                     </span>

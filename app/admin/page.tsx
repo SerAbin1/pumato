@@ -140,7 +140,7 @@ const project = <T extends AnyRecord>(
 };
 
 /** Settings drafts are loosely typed while edited; the repository's zod schema validates them. */
-type SaveInput<F extends (...args: any) => any> = Parameters<F>[0];
+type SaveInput<F extends (...args: never) => unknown> = Parameters<F>[0];
 
 type GlobalSettingsDraft = OrderSettingsDraft & {
     whatsappGroups: NonNullable<OrderSettingsDraft["whatsappGroups"]>;
@@ -490,7 +490,7 @@ export default function AdminPage() {
                 getDocs(collection(db, COLLECTIONS.RESTAURANTS)),
                 (async () => {
                     try {
-                        return await manageCoupons({ action: "FETCH_ALL" });
+                        return await manageCoupons<Coupon[]>({ action: "FETCH_ALL" });
                     } catch (err) {
                         console.error("Failed to fetch coupons", err);
                         return { data: [] };
@@ -503,7 +503,7 @@ export default function AdminPage() {
             );
 
             setCoupons(
-                ((promoRes.data || []) as Coupon[]).map((c) => ({
+                (promoRes.data || []).map((c) => ({
                     id: c.id,
                     code: c.code,
                     type: c.type,

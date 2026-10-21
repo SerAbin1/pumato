@@ -11,7 +11,7 @@ const functions = getFunctions(app);
  */
 const callable = (name: string) => {
     const fn = httpsCallable(functions, name);
-    return <Res = any>(data?: unknown) => fn(data) as Promise<HttpsCallableResult<Res>>;
+    return <Res = unknown>(data?: unknown) => fn(data) as Promise<HttpsCallableResult<Res>>;
 };
 
 export const manageCoupons = callable("manageCoupons");

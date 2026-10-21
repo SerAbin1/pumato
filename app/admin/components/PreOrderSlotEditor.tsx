@@ -1,5 +1,5 @@
 import { Timer, Plus, Trash } from "lucide-react";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { format12h } from "@/lib/formatters";
 import ConfirmModal from "../../components/ConfirmModal";
 import type { ReactNode } from "react";
@@ -24,6 +24,7 @@ export default function PreOrderSlotEditor({
     emptyText = "No pre-order slots defined.",
     accent = "cyan",
 }: PreOrderSlotEditorProps) {
+    const uid = useId();
     const [confirmModal, setConfirmModal] = useState<{
         isOpen: boolean;
         slotIdx: number | null;
@@ -57,7 +58,9 @@ export default function PreOrderSlotEditor({
                         <Timer size={18} />
                     </div>
                     <div>
-                        <h3 className="text-xl font-bold text-white">{label}</h3>
+                        <h3 id={`${uid}-title`} className="text-xl font-bold text-white">
+                            {label}
+                        </h3>
                         <p className="text-gray-400 text-sm">
                             Customers must pick one of these slots to check out — cutoff is minutes
                             before the slot starts after which it&apos;s no longer bookable.
@@ -66,6 +69,9 @@ export default function PreOrderSlotEditor({
                 </div>
                 <button
                     type="button"
+                    role="switch"
+                    aria-checked={isEnabled}
+                    aria-labelledby={`${uid}-title`}
                     onClick={() => onToggleEnabled(!isEnabled)}
                     className={`relative w-14 h-8 rounded-full transition-all border flex-shrink-0 ${isEnabled ? `bg-${accent}-500/80 border-${accent}-400` : "bg-white/10 border-white/20"}`}
                 >
@@ -94,7 +100,10 @@ export default function PreOrderSlotEditor({
                             <div className="flex flex-col md:flex-row gap-4 items-start md:items-end">
                                 <div className="flex-1 space-y-2">
                                     <div className="flex justify-between items-center px-1">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                        <label
+                                            htmlFor={`${uid}-slot-${index}-start`}
+                                            className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                                        >
                                             Start Time
                                         </label>
                                         <span
@@ -104,6 +113,7 @@ export default function PreOrderSlotEditor({
                                         </span>
                                     </div>
                                     <input
+                                        id={`${uid}-slot-${index}-start`}
                                         type="time"
                                         className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
                                         value={slot.start}
@@ -112,7 +122,10 @@ export default function PreOrderSlotEditor({
                                 </div>
                                 <div className="flex-1 space-y-2">
                                     <div className="flex justify-between items-center px-1">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                        <label
+                                            htmlFor={`${uid}-slot-${index}-end`}
+                                            className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                                        >
                                             End Time
                                         </label>
                                         <span
@@ -122,6 +135,7 @@ export default function PreOrderSlotEditor({
                                         </span>
                                     </div>
                                     <input
+                                        id={`${uid}-slot-${index}-end`}
                                         type="time"
                                         className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
                                         value={slot.end}
@@ -129,10 +143,14 @@ export default function PreOrderSlotEditor({
                                     />
                                 </div>
                                 <div className="w-full md:w-36 space-y-2">
-                                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1 block">
+                                    <label
+                                        htmlFor={`${uid}-slot-${index}-cutoff`}
+                                        className="text-[10px] font-bold text-gray-500 uppercase tracking-widest px-1 block"
+                                    >
                                         Cutoff (mins)
                                     </label>
                                     <input
+                                        id={`${uid}-slot-${index}-cutoff`}
                                         type="number"
                                         min="0"
                                         placeholder="None"
@@ -163,7 +181,10 @@ export default function PreOrderSlotEditor({
                             <div className="flex flex-col md:flex-row gap-4 items-start md:items-end pl-1">
                                 <div className="flex-1 space-y-2">
                                     <div className="flex justify-between items-center px-1">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                        <label
+                                            htmlFor={`${uid}-slot-${index}-processing-start`}
+                                            className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                                        >
                                             Processing Window Start
                                         </label>
                                         <span
@@ -173,6 +194,7 @@ export default function PreOrderSlotEditor({
                                         </span>
                                     </div>
                                     <input
+                                        id={`${uid}-slot-${index}-processing-start`}
                                         type="time"
                                         className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
                                         value={slot.processingStart || ""}
@@ -183,7 +205,10 @@ export default function PreOrderSlotEditor({
                                 </div>
                                 <div className="flex-1 space-y-2">
                                     <div className="flex justify-between items-center px-1">
-                                        <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                                        <label
+                                            htmlFor={`${uid}-slot-${index}-processing-end`}
+                                            className="text-[10px] font-bold text-gray-500 uppercase tracking-widest"
+                                        >
                                             Processing Window End
                                         </label>
                                         <span
@@ -193,6 +218,7 @@ export default function PreOrderSlotEditor({
                                         </span>
                                     </div>
                                     <input
+                                        id={`${uid}-slot-${index}-processing-end`}
                                         type="time"
                                         className="w-full p-4 bg-black/20 border border-white/10 rounded-2xl text-white focus:outline-none focus:border-cyan-500/50 transition-all font-bold [color-scheme:dark]"
                                         value={slot.processingEnd || ""}

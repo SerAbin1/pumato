@@ -37,6 +37,7 @@ function promotionBadge(promotion: StoredPromotion | null | undefined) {
 }
 
 export default function MarketplaceTab() {
+    const [today] = useState(() => new Date().toISOString().slice(0, 10));
     const [subSection, setSubSection] = useState("requests"); // requests, listings, filters, categories, settings
     const [requests, setRequests] = useState<MarketplaceRequest[]>([]);
     const [listings, setListings] = useState<MarketplaceListing[]>([]);
@@ -345,7 +346,7 @@ export default function MarketplaceTab() {
 
     const isExpired = (listing: MarketplaceListing) => {
         if (!listing.expiryDate) return false;
-        return listing.expiryDate < new Date().toISOString().slice(0, 10);
+        return listing.expiryDate < today;
     };
 
     return (
@@ -445,10 +446,14 @@ export default function MarketplaceTab() {
                             Filters are used to sort listings on the Marketplace page.
                         </p>
                         <div className="space-y-2">
-                            <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                            <label
+                                htmlFor="filter-label"
+                                className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                            >
                                 Label
                             </label>
                             <input
+                                id="filter-label"
                                 type="text"
                                 value={filterLabel}
                                 onChange={(e) => setFilterLabel(e.target.value)}
@@ -495,10 +500,14 @@ export default function MarketplaceTab() {
                         <h3 className="text-lg font-bold text-white mb-4">Add Category</h3>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor="category-label"
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     Label
                                 </label>
                                 <input
+                                    id="category-label"
                                     type="text"
                                     value={catLabel}
                                     onChange={(e) => setCatLabel(e.target.value)}
@@ -507,10 +516,14 @@ export default function MarketplaceTab() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor="category-action-label"
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     Action Label
                                 </label>
                                 <input
+                                    id="category-action-label"
                                     type="text"
                                     value={catActionLabel}
                                     onChange={(e) => setCatActionLabel(e.target.value)}
@@ -520,9 +533,9 @@ export default function MarketplaceTab() {
                             </div>
 
                             <div className="space-y-3 mb-4">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-white mb-2">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider text-white mb-2">
                                     Required Fields
-                                </label>
+                                </span>
                                 <div className="grid grid-cols-2 gap-1">
                                     <label
                                         key="itemName"
@@ -600,9 +613,9 @@ export default function MarketplaceTab() {
                             </div>
 
                             <div className="space-y-3">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-wider text-white mb-2">
+                                <span className="text-xs font-bold text-gray-400 uppercase tracking-wider text-white mb-2">
                                     Optional Fields
-                                </label>
+                                </span>
                                 <div className="grid grid-cols-2 gap-1">
                                     <label
                                         key="description"
@@ -737,10 +750,14 @@ export default function MarketplaceTab() {
 
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor="redirect-link-label"
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     Label
                                 </label>
                                 <input
+                                    id="redirect-link-label"
                                     type="text"
                                     value={linkLabel}
                                     onChange={(e) => setLinkLabel(e.target.value)}
@@ -749,10 +766,14 @@ export default function MarketplaceTab() {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor="redirect-link-url"
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     URL
                                 </label>
                                 <input
+                                    id="redirect-link-url"
                                     type="text"
                                     value={linkUrl}
                                     onChange={(e) => setLinkUrl(e.target.value)}

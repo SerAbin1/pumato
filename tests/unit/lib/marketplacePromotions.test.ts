@@ -120,14 +120,15 @@ describe("selectPromotions", () => {
             inFeed: { reach: 75 },
             popup: { enabled: true, reach: 25 },
         });
-        for (let i = 0; i < 500; i++) {
-            const o = { ...opts, visitorId: `v${i}` };
-            const seesPopup =
+        const visitors = Array.from({ length: 500 }, (_, i) => ({ ...opts, visitorId: `v${i}` }));
+        const popupViewers = visitors.filter(
+            (o) =>
                 selectPromotions([both], { ...o, placement: "popup", surface: undefined }).length >
-                0;
-            const seesFeed = selectPromotions([both], o).length > 0;
-            if (seesPopup) expect(seesFeed).toBe(true);
-        }
+                0
+        );
+        const popupOnly = popupViewers.filter((o) => selectPromotions([both], o).length === 0);
+        expect(popupViewers.length).toBeGreaterThan(0);
+        expect(popupOnly).toEqual([]);
     });
 
     it("reads listings saved with the old single-tier shape", () => {

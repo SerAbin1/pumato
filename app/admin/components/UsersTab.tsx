@@ -263,10 +263,14 @@ export default function UsersTab({ restaurants }: { restaurants: Restaurant[] })
 
                         {activeTab === "partners" && (
                             <div className="space-y-3">
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor="user-restaurant"
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     Assign Restaurant
                                 </label>
                                 <select
+                                    id="user-restaurant"
                                     className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium"
                                     value={form.restaurantId}
                                     onChange={(e) =>

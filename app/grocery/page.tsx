@@ -362,7 +362,10 @@ export default function GroceryPage() {
                             </h3>
                             <div className="grid md:grid-cols-2 gap-6">
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                    <label
+                                        htmlFor="grocery-name"
+                                        className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1"
+                                    >
                                         Name
                                     </label>
                                     <div className="relative group">
@@ -371,6 +374,7 @@ export default function GroceryPage() {
                                             size={20}
                                         />
                                         <input
+                                            id="grocery-name"
                                             type="text"
                                             required
                                             value={formData.name}
@@ -383,7 +387,10 @@ export default function GroceryPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                    <label
+                                        htmlFor="grocery-phone"
+                                        className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1"
+                                    >
                                         Phone Number
                                     </label>
                                     <div className="relative group">
@@ -392,6 +399,7 @@ export default function GroceryPage() {
                                             size={20}
                                         />
                                         <input
+                                            id="grocery-phone"
                                             type="tel"
                                             required
                                             maxLength={10}
@@ -408,9 +416,9 @@ export default function GroceryPage() {
                                     </div>
                                 </div>
                                 <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                    <span className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
                                         Campus
-                                    </label>
+                                    </span>
                                     <div className="grid grid-cols-3 gap-3">
                                         {campusConfig.map((campus) => (
                                             <button
@@ -433,7 +441,10 @@ export default function GroceryPage() {
                                 </div>
 
                                 <div className="space-y-2 md:col-span-2">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1">
+                                    <label
+                                        htmlFor="grocery-hostel"
+                                        className="text-xs font-bold text-gray-400 uppercase tracking-wider ml-1"
+                                    >
                                         Hostel
                                     </label>
                                     <div className="relative group">
@@ -442,6 +453,7 @@ export default function GroceryPage() {
                                             size={20}
                                         />
                                         <input
+                                            id="grocery-hostel"
                                             type="text"
                                             required
                                             value={formData.hostel}
@@ -531,10 +543,10 @@ export default function GroceryPage() {
                         {/* Delivery Slot Selection (Pre-order) */}
                         {preOrderMode && (
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
+                                <span className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
                                     <Timer size={14} className="text-cyan-500" />
                                     Delivery Time Slot
-                                </label>
+                                </span>
                                 {availablePreOrderSlots.length === 0 ? (
                                     <p className="text-xs text-orange-400 bg-orange-500/10 px-3 py-2 rounded-xl border border-orange-500/20">
                                         No pre-order delivery slots available right now. Please

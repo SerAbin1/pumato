@@ -956,9 +956,9 @@ export default function CartDrawer() {
 
                                                 {/* Campus Selection */}
                                                 <div>
-                                                    <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 block">
+                                                    <span className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 block">
                                                         Campus
-                                                    </label>
+                                                    </span>
                                                     <div className="flex gap-2">
                                                         {campusConfig.map((campus) => (
                                                             <button
@@ -986,13 +986,13 @@ export default function CartDrawer() {
                                                 {/* Delivery Slot Selection */}
                                                 {requiresSlot && (
                                                     <div className="space-y-2">
-                                                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
+                                                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider pl-1 mb-2 flex items-center gap-2">
                                                             <Timer
                                                                 size={14}
                                                                 className="text-cyan-500"
                                                             />
                                                             Delivery Time Slot
-                                                        </label>
+                                                        </span>
                                                         {restaurantCount > 1 &&
                                                             availableSlots.length > 0 && (
                                                                 <p className="text-[10px] text-gray-500 pl-1 -mt-1 mb-1">

@@ -60,7 +60,10 @@ export default function SellForm({
             <form onSubmit={handleSubmit} className="space-y-6">
                 {showField("itemName") && (
                     <div>
-                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                        <label
+                            htmlFor="sell-item-name"
+                            className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                        >
                             Item Name
                         </label>
                         <div className="relative group">
@@ -69,6 +72,7 @@ export default function SellForm({
                                 size={20}
                             />
                             <input
+                                id="sell-item-name"
                                 type="text"
                                 name="itemName"
                                 required={isRequired("itemName")}
@@ -83,7 +87,10 @@ export default function SellForm({
 
                 {showField("description") && (
                     <div>
-                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                        <label
+                            htmlFor="sell-description"
+                            className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                        >
                             Description
                         </label>
                         <div className="relative group">
@@ -92,6 +99,7 @@ export default function SellForm({
                                 size={20}
                             />
                             <textarea
+                                id="sell-description"
                                 name="description"
                                 required={isRequired("description")}
                                 placeholder="Condition, age, reason for selling, etc."
@@ -105,7 +113,10 @@ export default function SellForm({
 
                 {showField("askingPrice") && (
                     <div>
-                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                        <label
+                            htmlFor="sell-price"
+                            className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                        >
                             Asking Price (₹)
                         </label>
                         <div className="relative group">
@@ -114,6 +125,7 @@ export default function SellForm({
                                 size={20}
                             />
                             <input
+                                id="sell-price"
                                 type="number"
                                 name="askingPrice"
                                 min="0"
@@ -129,9 +141,9 @@ export default function SellForm({
 
                 {showField("campus") && (
                     <div>
-                        <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                        <span className="block text-sm font-bold text-gray-400 mb-2 ml-1">
                             Campus
-                        </label>
+                        </span>
                         <div className="grid grid-cols-3 gap-3">
                             {campusConfig.map((campus) => (
                                 <button
@@ -233,7 +245,10 @@ export default function SellForm({
                 <hr className="border-white/5 border-dashed my-6" />
 
                 <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                    <label
+                        htmlFor="sell-name"
+                        className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                    >
                         Your Name
                     </label>
                     <div className="relative group">
@@ -242,6 +257,7 @@ export default function SellForm({
                             size={20}
                         />
                         <input
+                            id="sell-name"
                             type="text"
                             name="sellerName"
                             required
@@ -254,7 +270,10 @@ export default function SellForm({
                 </div>
 
                 <div>
-                    <label className="block text-sm font-bold text-gray-400 mb-2 ml-1">
+                    <label
+                        htmlFor="sell-whatsapp"
+                        className="block text-sm font-bold text-gray-400 mb-2 ml-1"
+                    >
                         Your WhatsApp Number
                     </label>
                     <div className="relative group">
@@ -263,6 +282,7 @@ export default function SellForm({
                             size={20}
                         />
                         <input
+                            id="sell-whatsapp"
                             type="tel"
                             name="sellerWhatsApp"
                             required

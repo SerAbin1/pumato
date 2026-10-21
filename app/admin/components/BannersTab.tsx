@@ -84,10 +84,14 @@ export default function BannersTab({ banners, setBanners, handleFileUpload }: Ba
 
                                 {/* Gradient Picker */}
                                 <div className="space-y-3">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    <label
+                                        htmlFor={`banner-${num}-gradient`}
+                                        className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                    >
                                         Background Style
                                     </label>
                                     <select
+                                        id={`banner-${num}-gradient`}
                                         value={banner.gradient || ""}
                                         onChange={(e) =>
                                             setBanners({
@@ -121,11 +125,15 @@ export default function BannersTab({ banners, setBanners, handleFileUpload }: Ba
 
                                 {/* Image Upload */}
                                 <div className="space-y-3">
-                                    <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                    <label
+                                        htmlFor={`banner-${num}-image`}
+                                        className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                    >
                                         Banner Image (Optional)
                                     </label>
                                     <div className="flex gap-2">
                                         <input
+                                            id={`banner-${num}-image`}
                                             className="p-4 bg-black/20 border border-white/10 rounded-xl w-full text-white focus:outline-none focus:border-orange-500/50 transition-all font-medium text-sm"
                                             value={banner.image || ""}
                                             onChange={(e) =>

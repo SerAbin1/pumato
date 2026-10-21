@@ -859,10 +859,14 @@ export default function LaundrySettings({
                             </h3>
                             <div className="grid gap-4 md:grid-cols-2">
                                 <div className="space-y-1">
-                                    <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                    <label
+                                        htmlFor="laundry-steam-iron-price"
+                                        className="ml-1 text-[10px] font-bold uppercase text-gray-500"
+                                    >
                                         Steam Iron Price (₹)
                                     </label>
                                     <input
+                                        id="laundry-steam-iron-price"
                                         type="number"
                                         min="0"
                                         value={laundryPricing.steamIronPrice}
@@ -1025,17 +1029,21 @@ export default function LaundrySettings({
                             </div>
 
                             <div className="space-y-6">
-                                <label className="ml-1 block text-sm font-bold uppercase tracking-widest text-gray-400">
+                                <span className="ml-1 block text-sm font-bold uppercase tracking-widest text-gray-400">
                                     Available Slots
-                                </label>
+                                </span>
 
                                 <div className="flex items-end gap-2">
                                     <div className="grid flex-1 grid-cols-2 gap-2">
                                         <div className="space-y-1">
-                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                            <label
+                                                htmlFor="laundry-slot-start"
+                                                className="ml-1 text-[10px] font-bold uppercase text-gray-500"
+                                            >
                                                 Start
                                             </label>
                                             <input
+                                                id="laundry-slot-start"
                                                 type="time"
                                                 value={slotStart}
                                                 onChange={(e) => setSlotStart(e.target.value)}
@@ -1043,10 +1051,14 @@ export default function LaundrySettings({
                                             />
                                         </div>
                                         <div className="space-y-1">
-                                            <label className="ml-1 text-[10px] font-bold uppercase text-gray-500">
+                                            <label
+                                                htmlFor="laundry-slot-end"
+                                                className="ml-1 text-[10px] font-bold uppercase text-gray-500"
+                                            >
                                                 End
                                             </label>
                                             <input
+                                                id="laundry-slot-end"
                                                 type="time"
                                                 value={slotEnd}
                                                 onChange={(e) => setSlotEnd(e.target.value)}

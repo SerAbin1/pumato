@@ -40,6 +40,13 @@ function RestaurantContent() {
 
     const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
     const [loading, setLoading] = useState(true);
+    // Daily shuffle seed, fixed per visit so the menu doesn't reshuffle while browsing.
+    const [seed] = useState(() =>
+        new Date()
+            .toDateString()
+            .split("")
+            .reduce((a, b) => a + b.charCodeAt(0), 0)
+    );
     const [filter, setFilter] = useState("all");
     const [sortOrder, setSortOrder] = useState<"default" | "asc" | "desc">("default");
     const [searchQuery, setSearchQuery] = useState("");
@@ -117,9 +124,6 @@ function RestaurantContent() {
     const processedMenu = useMemo((): Record<string, MenuItem[]> => {
         if (!restaurant || !restaurant.menu) return {};
 
-        const seedString = new Date().toDateString();
-        const seed = seedString.split("").reduce((a, b) => a + b.charCodeAt(0), 0);
-
         let items = filteredMenu;
 
         // Apply fuzzy search if query exists
@@ -184,7 +188,7 @@ function RestaurantContent() {
         });
 
         return finalMenu;
-    }, [restaurant, filteredMenu, menuFuse, searchTerm, sortOrder]);
+    }, [restaurant, filteredMenu, menuFuse, searchTerm, sortOrder, seed]);
 
     const promos = usePromotedListings("inFeed", "restaurant_menu");
     // Item id -> sponsored listing shown right after it. Skipped while searching.
@@ -777,11 +781,12 @@ function RestaurantContent() {
                         exit={{ y: 100 }}
                         className="fixed bottom-0 left-0 right-0 z-40 p-4 pb-6"
                     >
-                        <div
-                            className="max-w-2xl mx-auto bg-gradient-to-r from-orange-600 to-red-600 text-white p-4 rounded-2xl shadow-2xl shadow-orange-900/50 flex items-center justify-between cursor-pointer hover:scale-[1.02] transition-transform border border-white/10"
+                        <button
+                            type="button"
+                            className="w-full max-w-2xl mx-auto bg-gradient-to-r from-orange-600 to-red-600 text-white text-left p-4 rounded-2xl shadow-2xl shadow-orange-900/50 flex items-center justify-between cursor-pointer hover:scale-[1.02] transition-transform border border-white/10"
                             onClick={() => setIsCartOpen(true)}
                         >
-                            <div className="flex flex-col">
+                            <span className="flex flex-col">
                                 <span className="font-black text-xs uppercase tracking-widest opacity-80">
                                     {totalItems} ITEMS ADDED
                                 </span>
@@ -789,11 +794,11 @@ function RestaurantContent() {
                                     ₹{itemTotal}{" "}
                                     <span className="font-normal text-sm opacity-80">+ taxes</span>
                                 </span>
-                            </div>
-                            <div className="flex items-center gap-2 font-bold text-lg bg-black/20 px-4 py-2 rounded-xl backdrop-blur-md">
+                            </span>
+                            <span className="flex items-center gap-2 font-bold text-lg bg-black/20 px-4 py-2 rounded-xl backdrop-blur-md">
                                 View Cart <ShoppingBag size={20} fill="currentColor" />
-                            </div>
-                        </div>
+                            </span>
+                        </button>
                     </motion.div>
                 )}
             </AnimatePresence>

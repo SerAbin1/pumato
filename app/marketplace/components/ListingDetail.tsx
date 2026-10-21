@@ -118,10 +118,14 @@ export default function ListingDetail({ listing }: { listing: MarketplaceListing
                     {isBuyable && (
                         <div className="bg-white/5 border border-white/10 rounded-2xl p-6 space-y-4">
                             <div>
-                                <label className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1">
+                                <label
+                                    htmlFor="offer-price"
+                                    className="text-xs font-bold text-gray-400 uppercase tracking-widest ml-1"
+                                >
                                     Your Offer (₹)
                                 </label>
                                 <input
+                                    id="offer-price"
                                     type="number"
                                     min="0"
                                     value={willingPrice}

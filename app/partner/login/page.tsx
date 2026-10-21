@@ -95,7 +95,10 @@ export default function PartnerLoginPage() {
 
                     {/* Email Field */}
                     <div className="mb-6">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">
+                        <label
+                            htmlFor="partner-email"
+                            className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1"
+                        >
                             Email Address
                         </label>
                         <div className="relative">
@@ -104,6 +107,7 @@ export default function PartnerLoginPage() {
                                 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
                             />
                             <input
+                                id="partner-email"
                                 type="email"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
@@ -116,7 +120,10 @@ export default function PartnerLoginPage() {
 
                     {/* Password Field */}
                     <div className="mb-8">
-                        <label className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1">
+                        <label
+                            htmlFor="partner-password"
+                            className="block text-xs font-bold text-gray-400 uppercase tracking-widest mb-3 ml-1"
+                        >
                             Password
                         </label>
                         <div className="relative">
@@ -125,6 +132,7 @@ export default function PartnerLoginPage() {
                                 className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-500"
                             />
                             <input
+                                id="partner-password"
                                 type={showPassword ? "text" : "password"}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}

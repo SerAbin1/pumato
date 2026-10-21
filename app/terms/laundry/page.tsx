@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import { ArrowLeft, Shirt } from "lucide-react";
 import Link from "next/link";
 
+const YEAR = new Date().getFullYear();
+
 export default function LaundryTermsPage() {
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden selection:bg-blue-500 selection:text-white pb-20">
@@ -384,7 +386,7 @@ export default function LaundryTermsPage() {
                 </div>
 
                 <div className="mt-12 text-center text-gray-500 text-sm">
-                    <p>© {new Date().getFullYear()} PUMATO. All rights reserved.</p>
+                    <p>© {YEAR} PUMATO. All rights reserved.</p>
                 </div>
             </div>
         </main>

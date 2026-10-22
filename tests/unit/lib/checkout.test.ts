@@ -329,17 +329,22 @@ describe("planCheckout — placing the order", () => {
         expect(plan).toMatchObject({ deliverySlot: { source: "campus", campusId: "cfg-north" } });
     });
 
-    it("falls back to the customer's campus when the config has no id", () => {
-        const plan = planCheckout(
-            input({
-                requiresSlot: true,
-                selectedSlot: SLOT,
-                groupSlotDefs: [SLOT_DEFS],
-                campusPreOrder: { enabled: true },
-            })
-        );
-        expect(plan).toMatchObject({ deliverySlot: { source: "campus", campusId: "north" } });
-    });
+    it.each([undefined, null, ""])(
+        "falls back to the customer's campus when the config id is %j",
+        (id) => {
+            const plan = planCheckout(
+                input({
+                    requiresSlot: true,
+                    selectedSlot: SLOT,
+                    groupSlotDefs: [SLOT_DEFS],
+                    campusPreOrder: { enabled: true, id },
+                })
+            );
+            expect(plan).toMatchObject({
+                deliverySlot: { source: "campus", campusId: "north" },
+            });
+        }
+    );
 
     it("validates a coupon up front only on the WhatsApp flow", () => {
         expect(planCheckout(input({ couponCode: "SAVE10" }))).toMatchObject({

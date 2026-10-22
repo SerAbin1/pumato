@@ -35,7 +35,7 @@ export interface CheckoutInput {
     /** Each slot group's raw definitions, to re-check the chosen slot against `now`. */
     groupSlotDefs: (SlotDef[] | null | undefined)[];
     now: SlotNow;
-    campusPreOrder: { enabled: boolean; id?: string };
+    campusPreOrder: { enabled: boolean; id?: string | null };
     isDirectFlow: boolean;
     isSignedIn: boolean;
     couponCode: string | null | undefined;

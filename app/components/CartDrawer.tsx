@@ -22,7 +22,8 @@ import { useRestaurants } from "../hooks/useCartData";
 import { formatWhatsAppMessage } from "@/lib/whatsapp";
 import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { chooseOrderFlow, flowErrorMessage, submitDirectOrder } from "@/lib/directOrders";
+import { flowErrorMessage, submitDirectOrder } from "@/lib/directOrders";
+import { classifyCheckoutError, isDirectCart, planCheckout } from "@/lib/checkout";
 
 import { serverTimestamp } from "firebase/firestore";
 import { createOrder } from "@/lib/repositories";
@@ -32,8 +33,6 @@ import { isCheckoutOpen } from "@/lib/serviceStatus";
 import {
     getSharedPreOrderSlots,
     groupsShareAnyWindow,
-    isPreOrderSlotSelectionValid,
-    buildDeliverySlotFromOccurrence,
     formatDeliverySlot,
     formatProcessingWindow,
 } from "@/lib/preOrderSlots";
@@ -88,16 +87,10 @@ export default function CartDrawer() {
 
     const hasMinOrderIssue = minOrderShortfalls && minOrderShortfalls.length > 0;
 
-    // Carts made up entirely of Payment Partner restaurants are confirmed and paid
-    // in the app; anything else keeps the WhatsApp flow.
-    const isDirectFlow = useMemo(() => {
-        const ids = [
-            ...new Set(
-                cartItems.map((item) => item.restaurantId).filter((id): id is string => !!id)
-            ),
-        ];
-        return ids.length > 0 && chooseOrderFlow(ids, restaurants) === "direct";
-    }, [cartItems, restaurants]);
+    const isDirectFlow = useMemo(
+        () => isDirectCart(cartItems, restaurants),
+        [cartItems, restaurants]
+    );
 
     const [isCheckingOut, setIsCheckingOut] = useState(false);
     const [inputCode, setInputCode] = useState("");
@@ -229,46 +222,35 @@ export default function CartDrawer() {
     };
 
     const handleCheckout = async () => {
-        if (cartItems.length === 0) {
-            setCheckoutError("Your cart is empty. Please add items before checking out.");
+        let lastOrder: unknown = null;
+        try {
+            lastOrder = JSON.parse(localStorage.getItem("pumato_last_order") || "null");
+        } catch (err) {
+            console.warn("localStorage error (duplicate order guard):", err);
+        }
+
+        const plan = planCheckout({
+            cartItemCount: cartItems.length,
+            userDetails,
+            requiresSlot,
+            selectedSlot,
+            groupSlotDefs,
+            now: istNow(),
+            campusPreOrder: { enabled: isCampusPreOrderMode, id: selectedCampusPreOrder.id },
+            isDirectFlow,
+            isSignedIn: !!authUser,
+            couponCode,
+            lastOrder,
+            nowMs: Date.now(),
+        });
+
+        if (plan.kind === "invalid") {
+            setCheckoutError(plan.error);
+            if (plan.clearSlot) setSelectedSlot(null);
             return;
         }
-        const trimmedName = userDetails.name.trim();
-        const trimmedAddress = userDetails.address.trim();
-        if (!trimmedName || !userDetails.phone || !userDetails.campus || !trimmedAddress) {
-            setCheckoutError("Please fill in all details including Campus and Hostel.");
-            return;
-        }
 
-        if (userDetails.phone.length !== 10) {
-            setCheckoutError("Please enter a valid 10-digit phone number.");
-            return;
-        }
-
-        if (requiresSlot && !selectedSlot) {
-            setCheckoutError("Please select a delivery time slot.");
-            return;
-        }
-
-        if (requiresSlot) {
-            if (!isPreOrderSlotSelectionValid(selectedSlot, groupSlotDefs, istNow())) {
-                setCheckoutError(
-                    "Your selected delivery slot is no longer available. Please pick another."
-                );
-                setSelectedSlot(null);
-                return;
-            }
-        }
-
-        const deliverySlotRecord = !selectedSlot
-            ? null
-            : buildDeliverySlotFromOccurrence(
-                  selectedSlot,
-                  isCampusPreOrderMode ? "campus" : "restaurant",
-                  isCampusPreOrderMode ? selectedCampusPreOrder.id || userDetails.campus : undefined
-              );
-
-        if (isDirectFlow && !authUser) {
+        if (plan.kind === "sign-in") {
             // The customer confirms and pays in the app, which needs an account.
             setIsCartOpen(false);
             toast("Sign in to place your order", { icon: "🔐" });
@@ -276,29 +258,22 @@ export default function CartDrawer() {
             return;
         }
 
+        // WhatsApp only; in-app orders are tracked on /orders.
+        if (plan.kind === "duplicate") {
+            setCheckoutError(null);
+            setShowDuplicateModal(true);
+            return;
+        }
+
+        const { customer, deliverySlot: deliverySlotRecord } = plan;
+
         setIsCheckingOut(true);
         setCheckoutError(null);
-
-        // --- DUPLICATE ORDER GUARD --- (WhatsApp only; in-app orders are tracked on /orders)
-        try {
-            const lastOrder = JSON.parse(localStorage.getItem("pumato_last_order") || "null");
-            if (!isDirectFlow && lastOrder && lastOrder.phone === userDetails.phone) {
-                const elapsed = Date.now() - lastOrder.timestamp;
-                if (elapsed < 60 * 1000) {
-                    // within 1 minute
-                    setIsCheckingOut(false);
-                    setShowDuplicateModal(true);
-                    return;
-                }
-            }
-        } catch (err) {
-            console.warn("localStorage error (duplicate order guard):", err);
-        }
 
         try {
             // If coupon is applied, validate with cloud function first. In-app orders
             // count the coupon's use server-side, when the order is placed.
-            if (couponCode && !isDirectFlow) {
+            if (plan.validateCoupon) {
                 try {
                     await checkoutCoupon({ couponCode });
                 } catch (err) {
@@ -342,10 +317,10 @@ export default function CartDrawer() {
                 });
             }
 
-            if (isDirectFlow) {
+            if (plan.flow === "direct") {
                 const { orderNumber } = await submitDirectOrder({
                     cartItems,
-                    customer: { ...userDetails, name: trimmedName, address: trimmedAddress },
+                    customer,
                     couponCode,
                     deliverySlot: deliverySlotRecord,
                 });
@@ -490,19 +465,12 @@ export default function CartDrawer() {
         } catch (err) {
             const error = err as { code?: string; message?: string };
             console.error("Checkout error:", error);
-            if (isDirectFlow && !/coupon/i.test(error.message || "")) {
+            const failure = classifyCheckoutError(error, isDirectFlow);
+            if (failure.kind === "direct") {
                 setCheckoutError(flowErrorMessage(error));
-            } else if (
-                error.code?.endsWith("resource-exhausted") ||
-                error.message?.includes("limit reached")
-            ) {
-                setCheckoutError("Coupon usage limit reached. Please remove it to proceed.");
-                removeCoupon();
-            } else if (error.code?.endsWith("not-found") || error.message?.includes("Invalid")) {
-                setCheckoutError("Invalid coupon. Please remove it to proceed.");
-                removeCoupon();
             } else {
-                setCheckoutError("Something went wrong. Please try again.");
+                setCheckoutError(failure.message);
+                if (failure.removeCoupon) removeCoupon();
             }
         } finally {
             setIsCheckingOut(false);

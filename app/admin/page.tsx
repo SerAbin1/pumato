@@ -20,15 +20,7 @@ import {
     Bike,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import {
-    collection,
-    getDocs,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    Timestamp,
-} from "firebase/firestore";
+import { collection, getDocs, onSnapshot } from "firebase/firestore";
 import {
     saveOrderSettings,
     savePromoBanners,
@@ -41,6 +33,7 @@ import {
     fetchGrocerySettings,
     fetchLaundryConfig,
     fetchLaundrySlots,
+    subscribeAdminOrders,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import { manageCoupons } from "@/lib/functions";
@@ -306,36 +299,16 @@ export default function AdminPage() {
         }
     }, []);
 
+    // Today's "placed" orders, oldest first
     useEffect(() => {
         if (!user || !isAdmin) return;
-
-        const now = new Date();
-        const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-        // Listen for "placed" orders from today
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("status", "==", "placed"),
-            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
-            orderBy("createdAt", "asc")
-        );
-
-        const unsubscribe = onSnapshot(
-            q,
-            (snapshot) => {
-                const newOrders = snapshot.docs.map(
-                    (doc) =>
-                        ({
-                            id: doc.id,
-                            ...doc.data(),
-                            createdAt: doc.data().createdAt?.toDate(),
-                        }) as Order
-                );
-
+        return subscribeAdminOrders(
+            "placed",
+            (newOrders, addedIds) => {
                 // Play sound for new orders (not on initial load)
                 if (isInitialLoad.current) {
                     isInitialLoad.current = false;
-                } else if (snapshot.docChanges().some((change) => change.type === "added")) {
+                } else if (addedIds.length > 0) {
                     playNotificationSound();
                     toast("New Order Received!", { icon: "🔔" });
                 }
@@ -348,66 +321,26 @@ export default function AdminPage() {
                 setLoadingOrders(false);
             }
         );
-
-        return () => unsubscribe();
     }, [user, isAdmin, playNotificationSound]);
 
     // In-progress orders listener (confirmed/viewed/ready_for_delivery/out_of_stock)
     useEffect(() => {
         if (!user || !isAdmin) return;
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("status", "in", ["confirmed", "viewed", "ready_for_delivery", "out_of_stock"]),
-            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
-            orderBy("createdAt", "asc")
+        return subscribeAdminOrders(
+            "inProgress",
+            (orders) => setInProgressOrders(orders),
+            (error) => console.error("In-progress orders listener error:", error)
         );
-        const unsub = onSnapshot(q, (snap) => {
-            setInProgressOrders(
-                snap.docs
-                    .map(
-                        (d) =>
-                            ({
-                                id: d.id,
-                                ...d.data(),
-                                createdAt: d.data().createdAt?.toDate(),
-                            }) as Order
-                    )
-                    // In-app orders have their own sub-tab.
-                    .filter((o) => o.flow !== "direct")
-            );
-        });
-        return () => unsub();
     }, [user, isAdmin]);
 
     // In-app orders from the last day, any status, newest first
     useEffect(() => {
         if (!user || !isAdmin) return;
-        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("flow", "==", "direct"),
-            where("createdAt", ">=", Timestamp.fromDate(since)),
-            orderBy("createdAt", "desc")
-        );
-        const unsub = onSnapshot(
-            q,
-            (snap) => {
-                setDirectOrders(
-                    snap.docs.map(
-                        (d) =>
-                            ({
-                                id: d.id,
-                                ...d.data(),
-                                createdAt: d.data().createdAt?.toDate(),
-                            }) as Order
-                    )
-                );
-            },
+        return subscribeAdminOrders(
+            "direct",
+            (orders) => setDirectOrders(orders),
             (error) => console.error("In-app orders listener error:", error)
         );
-        return () => unsub();
     }, [user, isAdmin]);
 
     useEffect(() => {
@@ -450,29 +383,11 @@ export default function AdminPage() {
     // Past orders listener (picked_up / delivered)
     useEffect(() => {
         if (!user || !isAdmin) return;
-        const startOfToday = new Date();
-        startOfToday.setHours(0, 0, 0, 0);
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("status", "in", ["picked_up", "delivered"]),
-            where("createdAt", ">=", Timestamp.fromDate(startOfToday)),
-            orderBy("createdAt", "desc")
+        return subscribeAdminOrders(
+            "past",
+            (orders) => setPastOrders(orders),
+            (error) => console.error("Past orders listener error:", error)
         );
-        const unsub = onSnapshot(q, (snap) => {
-            setPastOrders(
-                snap.docs
-                    .map(
-                        (d) =>
-                            ({
-                                id: d.id,
-                                ...d.data(),
-                                createdAt: d.data().createdAt?.toDate(),
-                            }) as Order
-                    )
-                    .filter((o) => o.flow !== "direct")
-            );
-        });
-        return () => unsub();
     }, [user, isAdmin]);
 
     // Laundry slots are per-day, so they reload when the selected day changes

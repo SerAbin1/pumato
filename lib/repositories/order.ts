@@ -216,3 +216,75 @@ export function subscribePartnerOrders(
             );
     }
 }
+
+export type AdminOrdersView = "placed" | "inProgress" | "past" | "direct";
+
+/**
+ * All restaurants' orders for one admin dashboard list:
+ * - `placed`: today's orders awaiting confirmation, oldest first
+ * - `inProgress`: today's confirmed / viewed / ready / out-of-stock WhatsApp orders, oldest first
+ * - `past`: today's picked-up / delivered WhatsApp orders, newest first
+ * - `direct`: in-app orders from the last day, any status, newest first
+ */
+export function subscribeAdminOrders(
+    view: AdminOrdersView,
+    onChange: OrdersListener,
+    onError: (error: Error) => void
+): Unsubscribe {
+    const orders = collection(db, COLLECTIONS.ORDERS);
+
+    switch (view) {
+        case "placed":
+            return listen(
+                query(
+                    orders,
+                    where("status", "==", "placed"),
+                    where("createdAt", ">=", startOfToday()),
+                    orderBy("createdAt", "asc")
+                ),
+                onChange,
+                onError
+            );
+        case "inProgress":
+            return listen(
+                query(
+                    orders,
+                    where("status", "in", [
+                        "confirmed",
+                        "viewed",
+                        "ready_for_delivery",
+                        "out_of_stock",
+                    ]),
+                    where("createdAt", ">=", startOfToday()),
+                    orderBy("createdAt", "asc")
+                ),
+                onChange,
+                onError,
+                // In-app orders have their own sub-tab.
+                { keep: notDirect }
+            );
+        case "past":
+            return listen(
+                query(
+                    orders,
+                    where("status", "in", ["picked_up", "delivered"]),
+                    where("createdAt", ">=", startOfToday()),
+                    orderBy("createdAt", "desc")
+                ),
+                onChange,
+                onError,
+                { keep: notDirect }
+            );
+        case "direct":
+            return listen(
+                query(
+                    orders,
+                    where("flow", "==", "direct"),
+                    where("createdAt", ">=", lastDay()),
+                    orderBy("createdAt", "desc")
+                ),
+                onChange,
+                onError
+            );
+    }
+}

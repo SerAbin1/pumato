@@ -6,8 +6,9 @@ export {
     fetchUserOrders,
     subscribeUserOrders,
     subscribePartnerOrders,
+    subscribeAdminOrders,
 } from "./order";
-export type { PartnerOrdersView } from "./order";
+export type { PartnerOrdersView, AdminOrdersView } from "./order";
 
 export { createLaundryOrder, updateLaundryOrder, deleteLaundryOrder } from "./laundry";
 

@@ -7,8 +7,9 @@ export {
     subscribeUserOrders,
     subscribePartnerOrders,
     subscribeAdminOrders,
+    subscribeDeliveryOrders,
 } from "./order";
-export type { PartnerOrdersView, AdminOrdersView } from "./order";
+export type { PartnerOrdersView, AdminOrdersView, DeliveryOrdersView } from "./order";
 
 export { createLaundryOrder, updateLaundryOrder, deleteLaundryOrder } from "./laundry";
 

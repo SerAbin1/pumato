@@ -4,18 +4,8 @@ import { useEffect, useState } from "react";
 import { db, auth } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
 import { displayOrderNumber } from "@/lib/formatters";
-import {
-    collection,
-    query,
-    where,
-    orderBy,
-    onSnapshot,
-    Timestamp,
-    runTransaction,
-    doc,
-    serverTimestamp,
-    limit,
-} from "firebase/firestore";
+import { runTransaction, doc, serverTimestamp } from "firebase/firestore";
+import { subscribeDeliveryOrders } from "@/lib/repositories";
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Truck, MapPin, Package, LogIn, LogOut, Check, Clock, User } from "lucide-react";
@@ -143,63 +133,23 @@ export default function DeliveryPartnerPage() {
     // Real-time: ready_for_delivery and picked_up orders
     useEffect(() => {
         if (!user || !isDeliveryPartner) return;
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("status", "in", ["ready_for_delivery", "picked_up"]),
-            where("createdAt", ">=", Timestamp.fromDate(todayStart)),
-            orderBy("createdAt", "asc"),
-            limit(50)
+        return subscribeDeliveryOrders(
+            user.uid,
+            "ready",
+            (orders) => setReadyOrders(orders),
+            (error) => console.error("Ready orders listener error:", error)
         );
-
-        const unsub = onSnapshot(q, (snap) => {
-            setReadyOrders(
-                snap.docs.map(
-                    (d) =>
-                        ({
-                            id: d.id,
-                            ...d.data(),
-                            createdAt: d.data().createdAt?.toDate(),
-                            readyAt: d.data().readyAt?.toDate
-                                ? d.data().readyAt.toDate()
-                                : d.data().readyAt,
-                        }) as Order
-                )
-            );
-        });
-        return () => unsub();
     }, [user, isDeliveryPartner]);
 
     // Real-time: my picked_up orders today
     useEffect(() => {
         if (!user || !isDeliveryPartner) return;
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("deliveryPartnerUid", "==", user.uid),
-            where("status", "in", ["picked_up", "delivered"]),
-            where("createdAt", ">=", Timestamp.fromDate(todayStart)),
-            orderBy("createdAt", "desc"),
-            limit(50)
+        return subscribeDeliveryOrders(
+            user.uid,
+            "mine",
+            (orders) => setMyOrders(orders),
+            (error) => console.error("My orders listener error:", error)
         );
-
-        const unsub = onSnapshot(q, (snap) => {
-            setMyOrders(
-                snap.docs.map(
-                    (d) =>
-                        ({
-                            id: d.id,
-                            ...d.data(),
-                            createdAt: d.data().createdAt?.toDate(),
-                        }) as Order
-                )
-            );
-        });
-        return () => unsub();
     }, [user, isDeliveryPartner]);
 
     const handlePickup = async (order: Order) => {

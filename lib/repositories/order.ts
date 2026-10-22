@@ -288,3 +288,57 @@ export function subscribeAdminOrders(
             );
     }
 }
+
+export type DeliveryOrdersView = "ready" | "mine";
+
+/**
+ * Orders for one delivery partner dashboard list:
+ * - `ready`: today's orders waiting for pickup or on the road, oldest first,
+ *   with `readyAt` read as a Date for the countdown
+ * - `mine`: today's orders this partner (`uid`) picked up or delivered, newest first
+ */
+export function subscribeDeliveryOrders(
+    uid: string,
+    view: DeliveryOrdersView,
+    onChange: OrdersListener,
+    onError: (error: Error) => void
+): Unsubscribe {
+    const orders = collection(db, COLLECTIONS.ORDERS);
+
+    switch (view) {
+        case "ready":
+            return listen(
+                query(
+                    orders,
+                    where("status", "in", ["ready_for_delivery", "picked_up"]),
+                    where("createdAt", ">=", startOfToday()),
+                    orderBy("createdAt", "asc"),
+                    limitTo(50)
+                ),
+                onChange,
+                onError,
+                {
+                    map: (d) => {
+                        const { readyAt } = d.data();
+                        return {
+                            ...toOrderRecord<Order>(d),
+                            readyAt: readyAt?.toDate ? readyAt.toDate() : readyAt,
+                        };
+                    },
+                }
+            );
+        case "mine":
+            return listen(
+                query(
+                    orders,
+                    where("deliveryPartnerUid", "==", uid),
+                    where("status", "in", ["picked_up", "delivered"]),
+                    where("createdAt", ">=", startOfToday()),
+                    orderBy("createdAt", "desc"),
+                    limitTo(50)
+                ),
+                onChange,
+                onError
+            );
+    }
+}

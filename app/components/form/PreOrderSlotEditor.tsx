@@ -1,7 +1,7 @@
 import { Timer, Plus, Trash } from "lucide-react";
 import { useId, useState } from "react";
 import { format12h } from "@/lib/formatters";
-import ConfirmModal from "../../components/ConfirmModal";
+import ConfirmModal from "../ConfirmModal";
 import type { ReactNode } from "react";
 import type { SlotDef } from "@/lib/preOrderSlots";
 

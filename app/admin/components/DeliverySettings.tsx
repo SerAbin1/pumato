@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { Clock, Plus, Trash } from "lucide-react";
-import FormInput from "./FormInput";
+import FormInput from "@/app/components/form/FormInput";
 import ServiceOverrideControl from "./ServiceOverrideControl";
-import PreOrderSlotEditor from "./PreOrderSlotEditor";
+import PreOrderSlotEditor from "@/app/components/form/PreOrderSlotEditor";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { format12h } from "@/lib/formatters";
 import ConfirmModal from "../../components/ConfirmModal";

@@ -72,7 +72,7 @@ import LaundrySettings from "./components/LaundrySettings";
 import DeliverySettings from "./components/DeliverySettings";
 import GrocerySettings from "./components/GrocerySettings";
 import GlobalSettings from "./components/GlobalSettings";
-import StickyActionBar from "./components/StickyActionBar";
+import StickyActionBar from "@/app/components/form/StickyActionBar";
 import MarketplaceTab from "./components/MarketplaceTab";
 import FeedbackTab from "./components/FeedbackTab";
 import RidesTab from "./components/RidesTab";

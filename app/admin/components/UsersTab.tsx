@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Users, Truck, Store, Plus, Shield, Clock, Trash2 } from "lucide-react";
 import { manageUsers } from "@/lib/functions";
-import FormInput from "./FormInput";
-import StickyActionBar from "./StickyActionBar";
+import FormInput from "@/app/components/form/FormInput";
+import StickyActionBar from "@/app/components/form/StickyActionBar";
 import { toast } from "react-hot-toast";
 import ConfirmModal from "../../components/ConfirmModal";
 import type { Restaurant } from "@/lib/types";

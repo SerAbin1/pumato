@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { Upload, X, Loader2, Link, Plus } from "lucide-react";
 import { uploadImage } from "@/lib/uploadImage";
-import FormInput from "./FormInput";
-import StickyActionBar from "./StickyActionBar";
+import FormInput from "@/app/components/form/FormInput";
+import StickyActionBar from "@/app/components/form/StickyActionBar";
 import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";

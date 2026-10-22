@@ -2,7 +2,7 @@ import { useState } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Phone, Plus, Trash, Upload } from "lucide-react";
 import Image from "next/image";
-import FormInput from "./FormInput";
+import FormInput from "@/app/components/form/FormInput";
 import ConfirmModal from "../../components/ConfirmModal";
 import type { createFileUploadHandler } from "@/lib/uploadImage";
 import type { GrocerySettingsDraft, OrderSettingsDraft, SetDraft } from "../types";

@@ -28,9 +28,9 @@ import {
     reversePriceChange,
     getAffectedItemsCount as countAffectedItems,
 } from "@/lib/restaurants/priceAdjustments";
-import FormInput from "./FormInput";
-import StickyActionBar from "./StickyActionBar";
-import PreOrderSlotEditor from "./PreOrderSlotEditor";
+import FormInput from "@/app/components/form/FormInput";
+import StickyActionBar from "@/app/components/form/StickyActionBar";
+import PreOrderSlotEditor from "@/app/components/form/PreOrderSlotEditor";
 import CustomSelect from "../../components/CustomSelect";
 import ConfirmModal from "../../components/ConfirmModal";
 import type { AddonDraft, MenuItemDraft, RestaurantDraft, VariantDraft } from "../types";

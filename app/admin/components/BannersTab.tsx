@@ -1,5 +1,5 @@
 import { Sparkles, Eye, EyeOff, Upload, X } from "lucide-react";
-import FormInput from "./FormInput";
+import FormInput from "@/app/components/form/FormInput";
 
 import type { Banner, PromoBanners } from "@/lib/types";
 import type { createFileUploadHandler } from "@/lib/uploadImage";

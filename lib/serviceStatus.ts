@@ -1,3 +1,5 @@
+import { isWithinWindow } from "@/lib/ist";
+
 export type OverrideStatus = "open" | "closed" | null | undefined;
 
 export interface ServiceSlot {
@@ -27,20 +29,7 @@ export function isServiceLive(
         return false;
     }
 
-    const isLive = scheduledSlots.some((slot) => {
-        const [startH, startM] = (slot.start || "00:00").split(":").map(Number);
-        const [endH, endM] = (slot.end || "23:59").split(":").map(Number);
-        const startTime = startH * 60 + startM;
-        const endTime = endH * 60 + endM;
-
-        if (startTime <= endTime) {
-            return nowInMinutes >= startTime && nowInMinutes <= endTime;
-        } else {
-            return nowInMinutes >= startTime || nowInMinutes <= endTime;
-        }
-    });
-
-    return isLive;
+    return scheduledSlots.some((slot) => isWithinWindow(nowInMinutes, slot.start, slot.end));
 }
 
 /**

@@ -1,4 +1,6 @@
-import { formatISTDateKey, formatDateKeyShort } from "@/lib/dateUtils";
+import { formatDateKeyShort } from "@/lib/dateUtils";
+import { formatISTDateKey, fromMinutes, toMinutes } from "@/lib/ist";
+import type { ISTNow } from "@/lib/ist";
 import { format12h } from "@/lib/formatters";
 import type { DeliverySlot } from "@/lib/types";
 
@@ -12,12 +14,7 @@ export interface SlotDef {
 }
 
 /** The current IST calendar day plus minutes since midnight. */
-export interface ISTNow {
-    year: number;
-    month: number;
-    day: number;
-    timeInMinutes: number;
-}
+export type SlotNow = Pick<ISTNow, "year" | "month" | "day" | "timeInMinutes">;
 
 /** A slot definition resolved to today's date. */
 export interface SlotOccurrence {
@@ -45,16 +42,6 @@ interface Candidate {
     processingEnd: string;
 }
 
-const toMinutes = (hhmm: string | undefined) => {
-    const [h, m] = (hhmm || "00:00").split(":").map(Number);
-    return h * 60 + m;
-};
-
-const fromMinutes = (min: number) =>
-    `${Math.floor(min / 60)
-        .toString()
-        .padStart(2, "0")}:${(min % 60).toString().padStart(2, "0")}`;
-
 // Treats "" as "no constraint" rather than as an actual boundary — a restaurant that doesn't
 // define a processing window shouldn't narrow the shared one down to nothing.
 const laterOf = (a: string, b: string) => (!a ? b : !b ? a : a > b ? a : b);
@@ -72,7 +59,7 @@ const earlierOf = (a: string, b: string) => (!a ? b : !b ? a : a < b ? a : b);
  */
 export function resolvePreOrderSlotOccurrence(
     slotDef: SlotDef | null | undefined,
-    now: ISTNow
+    now: SlotNow
 ): SlotOccurrence {
     const cutoffMinutes = Number(slotDef?.cutoffMinutes) || 0;
     const startMin = toMinutes(slotDef?.start);
@@ -104,7 +91,7 @@ export function resolvePreOrderSlotOccurrence(
  */
 export function getAvailablePreOrderSlots(
     slotDefs: SlotDef[] | null | undefined,
-    now: ISTNow
+    now: SlotNow
 ): SlotOccurrence[] {
     if (!Array.isArray(slotDefs)) return [];
     return slotDefs
@@ -160,7 +147,7 @@ function intersectWithGroup(candidates: Candidate[], occurrences: SlotOccurrence
  */
 export function getSharedPreOrderSlots(
     perGroupSlotDefs: (SlotDef[] | null | undefined)[] | null | undefined,
-    now: ISTNow
+    now: SlotNow
 ): SlotOccurrence[] {
     if (!Array.isArray(perGroupSlotDefs) || perGroupSlotDefs.length === 0) return [];
 
@@ -250,7 +237,7 @@ export function groupsShareAnyWindow(
 export function isPreOrderSlotSelectionValid(
     selectedSlot: Pick<SlotOccurrence, "date" | "start" | "end"> | null | undefined,
     perGroupSlotDefs: (SlotDef[] | null | undefined)[],
-    now: ISTNow
+    now: SlotNow
 ): boolean {
     if (!selectedSlot) return false;
     return getSharedPreOrderSlots(perGroupSlotDefs, now).some(

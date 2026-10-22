@@ -1,5 +1,6 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { getFirestore } from "firebase-admin/firestore";
+import { IST_TIME_ZONE } from "./ist";
 import { restoreExpiredStock } from "./order-flow";
 import type { FlowMenuItem } from "./order-flow";
 
@@ -10,7 +11,7 @@ const db = getFirestore();
  * midnight IST. Items a restaurant hid by hand are left alone.
  */
 export const restockMenus = onSchedule(
-    { schedule: "every day 00:05", timeZone: "Asia/Kolkata" },
+    { schedule: "every day 00:05", timeZone: IST_TIME_ZONE },
     async () => {
         const now = new Date();
         const snapshot = await db.collection("restaurants").get();

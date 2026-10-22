@@ -4,15 +4,7 @@
  * until someone remembers to switch them back on.
  */
 
-// IST has no daylight saving: always UTC+05:30.
-const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** The next midnight in IST after `now`. */
-const nextIstMidnight = (now: Date): Date => {
-    const istDayStart = Math.floor((now.getTime() + IST_OFFSET_MS) / DAY_MS) * DAY_MS;
-    return new Date(istDayStart + DAY_MS - IST_OFFSET_MS);
-};
+import { nextIstMidnight } from "../ist";
 
 interface StockedItem {
     id: string;

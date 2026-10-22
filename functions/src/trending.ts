@@ -1,6 +1,7 @@
 import { onSchedule } from "firebase-functions/v2/scheduler";
 import { onCall, HttpsError } from "firebase-functions/v2/https";
 import { getFirestore, Timestamp, FieldValue } from "firebase-admin/firestore";
+import { DAY_MS, IST_TIME_ZONE, istWeekday, startOfIstDay } from "./ist";
 
 /** The parts of an order document the ranking reads. */
 export interface TrendingOrder {
@@ -15,9 +16,6 @@ export interface TrendingEntry {
 }
 
 const LIMIT = 10;
-const DAY_MS = 24 * 60 * 60 * 1000;
-// IST has no DST, so a fixed offset is exact.
-const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
 
 /**
  * The most recent complete Monday–Saturday week in IST: Monday 00:00 up to
@@ -27,13 +25,7 @@ const IST_OFFSET_MS = (5 * 60 + 30) * 60 * 1000;
  *
  */
 export function lastWeekWindow(now = new Date()): { start: Date; end: Date } {
-    const ist = new Date(now.getTime() + IST_OFFSET_MS);
-    const sundayMidnightIst = Date.UTC(
-        ist.getUTCFullYear(),
-        ist.getUTCMonth(),
-        ist.getUTCDate() - ist.getUTCDay()
-    );
-    const end = new Date(sundayMidnightIst - IST_OFFSET_MS);
+    const end = new Date(startOfIstDay(now).getTime() - istWeekday(now) * DAY_MS);
     return { start: new Date(end.getTime() - 6 * DAY_MS), end };
 }
 
@@ -122,7 +114,7 @@ async function recomputeTrending(now = new Date()): Promise<{ count: number }> {
 // Sunday morning rather than midnight, so Saturday's late orders have been
 // delivered by the time they're counted.
 export const scheduledTrending = onSchedule(
-    { schedule: "every sunday 06:00", timeZone: "Asia/Kolkata" },
+    { schedule: "every sunday 06:00", timeZone: IST_TIME_ZONE },
     async () => {
         await recomputeTrending();
     }

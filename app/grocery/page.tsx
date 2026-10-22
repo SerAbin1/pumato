@@ -32,7 +32,7 @@ import toast from "react-hot-toast";
 import { doc, getDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { DEFAULT_CAMPUS_CONFIG, COLLECTIONS, LAUNDRY_SETTINGS_DOCS } from "@/lib/constants";
-import { getISTTime, getISTObject } from "@/lib/dateUtils";
+import { istNow } from "@/lib/ist";
 import { isServiceLive } from "@/lib/serviceStatus";
 import {
     getAvailablePreOrderSlots,
@@ -77,7 +77,7 @@ export default function GroceryPage() {
     const availablePreOrderSlots = useMemo(
         () =>
             campusPreOrderCfg.isPreOrderEnabled
-                ? getAvailablePreOrderSlots(campusPreOrderCfg.preOrderSlots, getISTObject())
+                ? getAvailablePreOrderSlots(campusPreOrderCfg.preOrderSlots, istNow())
                 : [],
         // eslint-disable-next-line react-hooks/exhaustive-deps
         [campusPreOrderCfg, nowTick]
@@ -95,7 +95,7 @@ export default function GroceryPage() {
 
     useEffect(() => {
         const checkLiveStatus = () => {
-            const { timeInMinutes } = getISTTime();
+            const { timeInMinutes } = istNow();
             setIsLive(
                 isServiceLive(grocerySettings.manualOverride?.status, serviceHours, timeInMinutes)
             );

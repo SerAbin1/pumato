@@ -11,7 +11,7 @@ import CartDrawer from "./CartDrawer";
 import WhatsNewBell from "./WhatsNewBell";
 import { usePathname } from "next/navigation";
 import Image from "next/image";
-import { getISTTime } from "@/lib/dateUtils";
+import { fromMinutes, istNow, toMinutes } from "@/lib/ist";
 import { isServiceLive } from "@/lib/serviceStatus";
 import { hasAnyFoodPreOrderAvailable, hasGroceryPreOrderAvailable } from "@/lib/preOrderSlots";
 import CampusSelector from "./CampusSelector";
@@ -39,20 +39,12 @@ interface LiveIndicatorProps {
     preOrderRestaurantNames?: string[];
 }
 
-const toMinutes = (hhmm: string | undefined) => {
-    const [h, m] = (hhmm || "00:00").split(":").map(Number);
-    return h * 60 + m;
-};
-
 // Returns the "order by" time (e.g. "7:00 PM") for a pre-order slot's cutoff,
 // or "" when there is no cutoff (orders accepted right up to slot start).
 const getCutoffDisplay = (start: string, cutoffMinutes: number | string | undefined) => {
     const cutoff = Number(cutoffMinutes) || 0;
     if (cutoff <= 0 || !start) return "";
-    const total = (toMinutes(start) - cutoff + 1440) % 1440;
-    const hh = String(Math.floor(total / 60)).padStart(2, "0");
-    const mm = String(total % 60).padStart(2, "0");
-    return format12h(`${hh}:${mm}`);
+    return format12h(fromMinutes((toMinutes(start) - cutoff + 1440) % 1440));
 };
 
 const LiveIndicator = ({
@@ -518,7 +510,7 @@ export default function Navbar() {
 
     useEffect(() => {
         const checkLive = () => {
-            const { timeInMinutes } = getISTTime();
+            const { timeInMinutes } = istNow();
 
             // Priority: Campus Slots > Global Slots
             // if in food delivery page, use campusSlots else their settings slots

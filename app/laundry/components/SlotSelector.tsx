@@ -1,7 +1,7 @@
 import { useRef } from "react";
 import { motion } from "framer-motion";
 import { LAUNDRY_NUMBER } from "@/lib/whatsapp";
-import { getISTDate } from "@/lib/dateUtils";
+import { addDaysToISTDateKey, formatISTDateKey, istNow } from "@/lib/ist";
 
 import type { Dispatch, SetStateAction } from "react";
 import type { LaundryFormData } from "../types";
@@ -30,21 +30,18 @@ export default function SlotSelector({
     // Helper to generate next 7 days
     const generateDates = () => {
         const dates = [];
-        const baseDate = getISTDate(); // Start from today (IST)
+        const today = istNow(); // Start from today (IST)
 
         for (let i = 0; i < 7; i++) {
-            const date = new Date(baseDate);
-            date.setDate(baseDate.getDate() + i);
+            const parts = addDaysToISTDateKey(today, i);
+            const date = new Date(parts.year, parts.month, parts.day);
 
             // Format: YYYY-MM-DD for value
-            const year = date.getFullYear();
-            const month = String(date.getMonth() + 1).padStart(2, "0");
-            const day = String(date.getDate()).padStart(2, "0");
-            const fullDate = `${year}-${month}-${day}`;
+            const fullDate = formatISTDateKey(parts);
 
             // Display formatting
             const dayName = date.toLocaleDateString("en-US", { weekday: "short" }); // Mon
-            const dayNum = date.getDate(); // 15
+            const dayNum = parts.day; // 15
             const isToday = i === 0;
 
             dates.push({ fullDate, dayName, dayNum, isToday });

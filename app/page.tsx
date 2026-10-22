@@ -17,14 +17,14 @@ import type { GrocerySettings, OrderSettings } from "@/lib/types";
 import Image from "next/image";
 import TestimonialsMarquee from "./components/TestimonialsMarquee";
 import { useCart } from "./context/CartContext";
-import { getISTTime } from "@/lib/dateUtils";
+import { istNow } from "@/lib/ist";
 import { isServiceLive } from "@/lib/serviceStatus";
 
 // --- COMPONENTS ---
 
 // --- HELPER FUNCTION ---
 const checkIsLive = (settings: OrderSettings | GrocerySettings, isGrocery = false) => {
-    const { timeInMinutes } = getISTTime();
+    const { timeInMinutes } = istNow();
     if (isGrocery) {
         const slots = (settings as GrocerySettings)?.service_hours ?? [];
         return isServiceLive(settings?.manualOverride?.status, slots, timeInMinutes);

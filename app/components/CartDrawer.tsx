@@ -27,7 +27,7 @@ import { chooseOrderFlow, flowErrorMessage, submitDirectOrder } from "@/lib/dire
 import { serverTimestamp } from "firebase/firestore";
 import { createOrder } from "@/lib/repositories";
 import { checkoutCoupon } from "@/lib/functions";
-import { getISTTime, getISTObject } from "@/lib/dateUtils";
+import { istNow } from "@/lib/ist";
 import { isCheckoutOpen } from "@/lib/serviceStatus";
 import {
     getSharedPreOrderSlots,
@@ -143,7 +143,7 @@ export default function CartDrawer() {
             if (isCampusPreOrderMode) {
                 const defsList = [selectedCampusPreOrder.preOrderSlots];
                 return {
-                    availableSlots: getSharedPreOrderSlots(defsList, getISTObject()),
+                    availableSlots: getSharedPreOrderSlots(defsList, istNow()),
                     requiresSlot: true,
                     groupSlotDefs: defsList,
                     hasSlotConflict: false,
@@ -171,7 +171,7 @@ export default function CartDrawer() {
                 };
 
             const defsList = slotRestaurants.map((r) => r.preOrderSlots);
-            const shared = getSharedPreOrderSlots(defsList, getISTObject());
+            const shared = getSharedPreOrderSlots(defsList, istNow());
 
             return {
                 availableSlots: shared,
@@ -194,7 +194,7 @@ export default function CartDrawer() {
 
     const isStoreOpen = useMemo(() => {
         if (!isCartOpen) return true;
-        const { timeInMinutes } = getISTTime();
+        const { timeInMinutes } = istNow();
         const campusConfig = orderSettings?.deliveryCampusConfig || [];
         const selectedCampus = campusConfig.find(
             (c) => c.name === userDetails?.campus || c.id === userDetails?.campus
@@ -251,7 +251,7 @@ export default function CartDrawer() {
         }
 
         if (requiresSlot) {
-            if (!isPreOrderSlotSelectionValid(selectedSlot, groupSlotDefs, getISTObject())) {
+            if (!isPreOrderSlotSelectionValid(selectedSlot, groupSlotDefs, istNow())) {
                 setCheckoutError(
                     "Your selected delivery slot is no longer available. Please pick another."
                 );

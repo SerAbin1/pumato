@@ -12,6 +12,7 @@ import {
     limit as limitTo,
     getDocs,
     onSnapshot,
+    Timestamp,
 } from "firebase/firestore";
 import type { DocumentData, Query, QueryDocumentSnapshot, Unsubscribe } from "firebase/firestore";
 import { OrderSchema } from "@/lib/schemas/order";
@@ -133,4 +134,85 @@ export async function fetchUserOrders(
     const snap = await getDocs(userOrdersQuery(userId, max));
 
     return snap.docs.map((d) => toOrderRecord<UserOrderRecord>(d));
+}
+
+const startOfToday = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return Timestamp.fromDate(d);
+};
+const lastDay = () => Timestamp.fromDate(new Date(Date.now() - 24 * 60 * 60 * 1000));
+
+const isDirect = (o: Order) => o.flow === "direct";
+const notDirect = (o: Order) => o.flow !== "direct";
+
+type OrdersListener = (orders: Order[], addedIds: string[]) => void;
+
+export type PartnerOrdersView = "live" | "past" | "direct";
+
+/**
+ * A restaurant's orders for one partner dashboard list:
+ * - `live`: today's confirmed / viewed WhatsApp orders, oldest first
+ * - `past`: today's handed-off WhatsApp orders, newest first
+ * - `direct`: in-app orders from the last day, newest first. Filtered here rather
+ *   than in the query so the existing (restaurantIds, createdAt) index serves it.
+ */
+export function subscribePartnerOrders(
+    restaurantId: string,
+    view: PartnerOrdersView,
+    onChange: OrdersListener,
+    onError: (error: Error) => void
+): Unsubscribe {
+    const forRestaurant = where("restaurantIds", "array-contains", restaurantId);
+    const orders = collection(db, COLLECTIONS.ORDERS);
+
+    switch (view) {
+        case "live":
+            return listen(
+                query(
+                    orders,
+                    forRestaurant,
+                    where("status", "in", ["confirmed", "viewed"]),
+                    where("createdAt", ">=", startOfToday()),
+                    orderBy("createdAt", "asc"),
+                    limitTo(100)
+                ),
+                onChange,
+                onError,
+                // In-app orders never take these statuses, but keep the lists apart regardless.
+                { keep: notDirect }
+            );
+        case "past":
+            return listen(
+                query(
+                    orders,
+                    forRestaurant,
+                    where("status", "in", [
+                        "ready_for_delivery",
+                        "out_of_stock",
+                        "picked_up",
+                        "delivered",
+                    ]),
+                    where("createdAt", ">=", startOfToday()),
+                    orderBy("createdAt", "desc"),
+                    limitTo(100)
+                ),
+                onChange,
+                onError,
+                { keep: notDirect }
+            );
+        case "direct":
+            return listen(
+                query(
+                    orders,
+                    forRestaurant,
+                    where("createdAt", ">=", lastDay()),
+                    orderBy("createdAt", "desc"),
+                    limitTo(200)
+                ),
+                onChange,
+                onError,
+                { keep: isDirect }
+            );
+    }
 }

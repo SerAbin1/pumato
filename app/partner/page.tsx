@@ -3,23 +3,12 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAdminAuth } from "@/app/context/AdminAuthContext";
-import {
-    doc,
-    getDoc,
-    collection,
-    query,
-    where,
-    orderBy,
-    limit,
-    onSnapshot,
-    Timestamp,
-    serverTimestamp,
-} from "firebase/firestore";
+import { doc, getDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import { displayOrderNumber } from "@/lib/formatters";
-import { updateOrder, updateRestaurant } from "@/lib/repositories";
+import { subscribePartnerOrders, updateOrder, updateRestaurant } from "@/lib/repositories";
 import RestaurantForm from "@/app/components/restaurant/RestaurantForm";
 import DirectOrderCard, { needsPartnerAction } from "./components/DirectOrderCard";
 import { markOutOfStockForDay } from "@/functions/src/order-flow";
@@ -298,129 +287,74 @@ export default function PartnerDashboard() {
     // Live orders listener (confirmed / viewed) — oldest first
     useEffect(() => {
         if (!user?.restaurantId) return;
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("restaurantIds", "array-contains", user.restaurantId),
-            where("status", "in", ["confirmed", "viewed"]),
-            where("createdAt", ">=", Timestamp.fromDate(todayStart)),
-            orderBy("createdAt", "asc"),
-            limit(100)
+        return subscribePartnerOrders(
+            user.restaurantId,
+            "live",
+            (orders, addedIds) => {
+                if (isInitialLoad.current) {
+                    isInitialLoad.current = false;
+                } else if (addedIds.length > 0) {
+                    playNotificationSound();
+                    toast("New Order!", { icon: "🔔" });
+                }
+                setLiveOrders(orders);
+            },
+            (error) => console.error("Live orders listener error:", error)
         );
-
-        const unsub = onSnapshot(q, (snap) => {
-            const docs = snap.docs.map(
-                (d) =>
-                    ({
-                        id: d.id,
-                        ...d.data(),
-                        createdAt: d.data().createdAt?.toDate(),
-                    }) as Order
-            );
-            if (isInitialLoad.current) {
-                isInitialLoad.current = false;
-            } else if (snap.docChanges().some((c) => c.type === "added")) {
-                playNotificationSound();
-                toast("New Order!", { icon: "🔔" });
-            }
-            // In-app orders never take these statuses, but keep the lists apart regardless.
-            setLiveOrders(docs.filter((o) => o.flow !== "direct"));
-        });
-        return () => unsub();
     }, [user, playNotificationSound]);
 
     // Past orders listener (ready_for_delivery / out_of_stock / picked_up / delivered) — newest first
     useEffect(() => {
         if (!user?.restaurantId) return;
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("restaurantIds", "array-contains", user.restaurantId),
-            where("status", "in", ["ready_for_delivery", "out_of_stock", "picked_up", "delivered"]),
-            where("createdAt", ">=", Timestamp.fromDate(todayStart)),
-            orderBy("createdAt", "desc"),
-            limit(100)
+        return subscribePartnerOrders(
+            user.restaurantId,
+            "past",
+            (orders) => setPastOrders(orders),
+            (error) => console.error("Past orders listener error:", error)
         );
-
-        const unsub = onSnapshot(q, (snap) => {
-            setPastOrders(
-                snap.docs
-                    .map(
-                        (d) =>
-                            ({
-                                id: d.id,
-                                ...d.data(),
-                                createdAt: d.data().createdAt?.toDate(),
-                            }) as Order
-                    )
-                    .filter((o) => o.flow !== "direct")
-            );
-        });
-        return () => unsub();
     }, [user]);
 
-    // In-app orders from the last day, newest first. Filtered client-side so the
-    // existing (restaurantIds, createdAt) index serves the query.
+    // In-app orders from the last day, newest first
     useEffect(() => {
         const restaurantId = user?.restaurantId;
         if (!restaurantId) return;
-        const since = new Date(Date.now() - 24 * 60 * 60 * 1000);
-
-        const q = query(
-            collection(db, COLLECTIONS.ORDERS),
-            where("restaurantIds", "array-contains", restaurantId),
-            where("createdAt", ">=", Timestamp.fromDate(since)),
-            orderBy("createdAt", "desc"),
-            limit(200)
+        return subscribePartnerOrders(
+            restaurantId,
+            "direct",
+            (docs) => {
+                // Chime when something new lands on this restaurant: a share to confirm,
+                // or a payment it collects waiting to be verified.
+                const pending = new Set(
+                    docs
+                        .filter((o) => o.legs?.[restaurantId]?.status === "pending")
+                        .map((o) => o.id)
+                );
+                const verifying = new Set(
+                    docs
+                        .filter(
+                            (o) =>
+                                o.status === "payment_submitted" &&
+                                o.paymentCollector?.type === "restaurant" &&
+                                o.paymentCollector.restaurantId === restaurantId
+                        )
+                        .map((o) => o.id)
+                );
+                const previous = awaitingAction.current;
+                if (previous) {
+                    if ([...pending].some((id) => !previous.pending.has(id))) {
+                        playNotificationSound();
+                        toast("New in-app order to confirm!", { icon: "🔔" });
+                    }
+                    if ([...verifying].some((id) => !previous.verifying.has(id))) {
+                        playNotificationSound();
+                        toast("A customer paid. Verify the payment.", { icon: "💸" });
+                    }
+                }
+                awaitingAction.current = { pending, verifying };
+                setDirectOrders(docs);
+            },
+            (error) => console.error("In-app orders listener error:", error)
         );
-
-        const unsub = onSnapshot(q, (snap) => {
-            const docs = snap.docs
-                .map(
-                    (d) =>
-                        ({
-                            id: d.id,
-                            ...d.data(),
-                            createdAt: d.data().createdAt?.toDate(),
-                        }) as Order
-                )
-                .filter((o) => o.flow === "direct");
-
-            // Chime when something new lands on this restaurant: a share to confirm,
-            // or a payment it collects waiting to be verified.
-            const pending = new Set(
-                docs.filter((o) => o.legs?.[restaurantId]?.status === "pending").map((o) => o.id)
-            );
-            const verifying = new Set(
-                docs
-                    .filter(
-                        (o) =>
-                            o.status === "payment_submitted" &&
-                            o.paymentCollector?.type === "restaurant" &&
-                            o.paymentCollector.restaurantId === restaurantId
-                    )
-                    .map((o) => o.id)
-            );
-            const previous = awaitingAction.current;
-            if (previous) {
-                if ([...pending].some((id) => !previous.pending.has(id))) {
-                    playNotificationSound();
-                    toast("New in-app order to confirm!", { icon: "🔔" });
-                }
-                if ([...verifying].some((id) => !previous.verifying.has(id))) {
-                    playNotificationSound();
-                    toast("A customer paid. Verify the payment.", { icon: "💸" });
-                }
-            }
-            awaitingAction.current = { pending, verifying };
-
-            setDirectOrders(docs);
-        });
-        return () => unsub();
     }, [user, playNotificationSound]);
 
     // Auth redirect + restaurant fetch

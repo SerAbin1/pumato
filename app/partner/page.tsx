@@ -20,7 +20,7 @@ import { COLLECTIONS } from "@/lib/constants";
 import { formatDeliverySlot } from "@/lib/preOrderSlots";
 import { displayOrderNumber } from "@/lib/formatters";
 import { updateOrder, updateRestaurant } from "@/lib/repositories";
-import RestaurantForm from "@/app/admin/components/RestaurantForm";
+import RestaurantForm from "@/app/components/restaurant/RestaurantForm";
 import DirectOrderCard, { needsPartnerAction } from "./components/DirectOrderCard";
 import { markOutOfStockForDay } from "@/functions/src/order-flow";
 import {
@@ -38,7 +38,7 @@ import toast from "react-hot-toast";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Order, Restaurant } from "@/lib/types";
-import type { RestaurantDraft } from "@/app/admin/types";
+import type { RestaurantDraft } from "@/app/components/restaurant/types";
 
 type PartnerAction = "viewed" | "ready_for_delivery" | "out_of_stock";
 

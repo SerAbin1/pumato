@@ -31,9 +31,9 @@ import {
 import FormInput from "@/app/components/form/FormInput";
 import StickyActionBar from "@/app/components/form/StickyActionBar";
 import PreOrderSlotEditor from "@/app/components/form/PreOrderSlotEditor";
-import CustomSelect from "../../components/CustomSelect";
-import ConfirmModal from "../../components/ConfirmModal";
-import type { AddonDraft, MenuItemDraft, RestaurantDraft, VariantDraft } from "../types";
+import CustomSelect from "../CustomSelect";
+import ConfirmModal from "../ConfirmModal";
+import type { AddonDraft, MenuItemDraft, RestaurantDraft, VariantDraft } from "./types";
 import type { PriceChangeMode } from "@/lib/restaurants/priceAdjustments";
 
 interface RestaurantFormProps {

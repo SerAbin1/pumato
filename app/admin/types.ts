@@ -1,47 +1,13 @@
 import type { SlotDef } from "@/lib/preOrderSlots";
 import type { StoredPromotion } from "@/lib/marketplacePromotions";
-import type {
-    CustomLink,
-    DeliveryCampusConfig,
-    GrocerySettings,
-    MenuItem,
-    OrderSettings,
-    Restaurant,
-} from "@/lib/types";
+import type { CustomLink, DeliveryCampusConfig, GrocerySettings, OrderSettings } from "@/lib/types";
 import type { ManualOverride } from "./components/ServiceOverrideControl";
 
 /**
- * Editable shapes for the admin and partner forms. Inputs hold raw values
- * (an empty weight, a half-typed price) until the form normalises them on
- * save and the zod schema validates them in the repository.
+ * Editable shapes for the admin settings forms. Inputs hold raw values until
+ * the form normalises them on save and the zod schema validates them in the
+ * repository.
  */
-export interface VariantDraft {
-    id: string;
-    name: string;
-    price: string;
-    weight?: number | string | null;
-}
-
-export interface AddonDraft {
-    id: string;
-    name: string;
-    price: string;
-}
-
-export interface MenuItemDraft extends Omit<MenuItem, "weight" | "variants" | "addons"> {
-    weight?: number | string;
-    variants?: VariantDraft[];
-    addons?: AddonDraft[];
-}
-
-export interface RestaurantDraft extends Partial<
-    Omit<Restaurant, "menu" | "categories" | "preOrderSlots">
-> {
-    categories: string[];
-    menu: MenuItemDraft[];
-    preOrderSlots?: SlotDef[];
-}
-
 export type CampusDeliveryDraft = Omit<DeliveryCampusConfig, "preOrderSlots"> & {
     preOrderSlots?: SlotDef[];
 };

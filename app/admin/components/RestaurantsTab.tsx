@@ -6,10 +6,10 @@ import { Trash, Save, Eye, EyeOff, Plus, Star, Flame, Loader2 } from "lucide-rea
 import { saveRestaurant, updateRestaurant, deleteRestaurant } from "@/lib/repositories";
 import { refreshTrending } from "@/lib/functions";
 import { TRENDING_CACHE_KEY } from "@/lib/trending";
-import RestaurantForm from "./RestaurantForm";
+import RestaurantForm from "@/app/components/restaurant/RestaurantForm";
 import ConfirmModal from "../../components/ConfirmModal";
 import type { Restaurant } from "@/lib/types";
-import type { RestaurantDraft } from "../types";
+import type { RestaurantDraft } from "@/app/components/restaurant/types";
 
 export default function RestaurantsTab({
     restaurants,

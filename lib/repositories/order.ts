@@ -13,7 +13,7 @@ import {
     getDocs,
     onSnapshot,
 } from "firebase/firestore";
-import type { Unsubscribe } from "firebase/firestore";
+import type { DocumentData, Query, QueryDocumentSnapshot, Unsubscribe } from "firebase/firestore";
 import { OrderSchema } from "@/lib/schemas/order";
 import { parsePatch } from "@/lib/schemas/patch";
 import { formatOrderNumber } from "@/lib/formatters";
@@ -51,6 +51,43 @@ export async function updateOrder(id: string, data: object): Promise<void> {
     await updateDoc(doc(db, COLLECTIONS.ORDERS, id), validated);
 }
 
+type Doc = QueryDocumentSnapshot<DocumentData>;
+
+/** A snapshot doc with its `id` attached and `createdAt` read as a Date. */
+function toOrderRecord<T>(d: Doc): T {
+    const data = d.data();
+    return { id: d.id, ...data, createdAt: data.createdAt?.toDate?.() ?? null } as T;
+}
+
+/**
+ * Runs `q` live. Each snapshot hands over the mapped orders that pass `keep`,
+ * plus the ids the snapshot reports as added. The first snapshot reports every
+ * doc as added, so callers that only chime on new orders skip it.
+ */
+function listen<T extends { id: string }>(
+    q: Query,
+    onChange: (orders: T[], addedIds: string[]) => void,
+    onError: (error: Error) => void,
+    {
+        keep = () => true,
+        map = toOrderRecord<T>,
+    }: { keep?: (o: T) => boolean; map?: (d: Doc) => T } = {}
+): Unsubscribe {
+    return onSnapshot(
+        q,
+        (snap) => {
+            const orders = snap.docs.map(map).filter(keep);
+            const kept = new Set(orders.map((o) => o.id));
+            const addedIds = snap
+                .docChanges()
+                .filter((c) => c.type === "added" && kept.has(c.doc.id))
+                .map((c) => c.doc.id);
+            onChange(orders, addedIds);
+        },
+        onError
+    );
+}
+
 /**
  * A signed-in customer's own orders, newest first.
  * Security rules only return orders whose `userId` matches the caller.
@@ -80,19 +117,9 @@ export function subscribeUserOrders(
     onError: (error: Error) => void,
     max = 50
 ): Unsubscribe {
-    return onSnapshot(
+    return listen<UserOrderRecord>(
         userOrdersQuery(userId, max),
-        (snap) =>
-            onChange(
-                snap.docs.map(
-                    (d) =>
-                        ({
-                            id: d.id,
-                            ...d.data(),
-                            createdAt: d.data().createdAt?.toDate?.() ?? null,
-                        }) as UserOrderRecord
-                )
-            ),
+        (orders) => onChange(orders),
         onError
     );
 }
@@ -105,12 +132,5 @@ export async function fetchUserOrders(
 
     const snap = await getDocs(userOrdersQuery(userId, max));
 
-    return snap.docs.map(
-        (d) =>
-            ({
-                id: d.id,
-                ...d.data(),
-                createdAt: d.data().createdAt?.toDate?.() ?? null,
-            }) as UserOrderRecord
-    );
+    return snap.docs.map((d) => toOrderRecord<UserOrderRecord>(d));
 }

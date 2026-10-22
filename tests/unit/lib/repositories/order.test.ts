@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     collection: vi.fn(),
     updateDoc: vi.fn(),
     runTransaction: vi.fn(),
+    onSnapshot: vi.fn(),
 }));
 
 vi.mock("@/lib/firebase", () => ({ db: { __db: true } }));
@@ -18,9 +19,23 @@ vi.mock("firebase/firestore", () => ({
     collection: mocks.collection,
     updateDoc: mocks.updateDoc,
     runTransaction: mocks.runTransaction,
+    onSnapshot: mocks.onSnapshot,
+    // Query builders tag their arguments so tests can read back the constraints.
+    query: (...args: unknown[]) => ({ __query: args }),
+    where: (...args: unknown[]) => ({ where: args }),
+    orderBy: (...args: unknown[]) => ({ orderBy: args }),
+    limit: (n: number) => ({ limit: n }),
+    Timestamp: { fromDate: (d: Date) => ({ __ts: d }) },
 }));
 
-const { createOrder, updateOrder } = await import("@/lib/repositories/order");
+const {
+    createOrder,
+    updateOrder,
+    subscribeUserOrders,
+    subscribePartnerOrders,
+    subscribeAdminOrders,
+    subscribeDeliveryOrders,
+} = await import("@/lib/repositories/order");
 
 type OrderInput = Parameters<typeof createOrder>[0];
 
@@ -243,5 +258,119 @@ describe("updateOrder", () => {
     it("rejects an invalid partial update", async () => {
         await expect(updateOrder("order-1", { status: "nonsense" })).rejects.toThrow();
         expect(mocks.updateDoc).not.toHaveBeenCalled();
+    });
+});
+
+/** A query snapshot doc whose `createdAt` (and any other Timestamp field) is a fake Timestamp. */
+const snapDoc = (id: string, data: Record<string, unknown>) => ({ id, data: () => data });
+const ts = (iso: string) => ({ toDate: () => new Date(iso) });
+
+/**
+ * Captures the query and callbacks handed to onSnapshot, so a test can push
+ * snapshots through them.
+ */
+function captureSnapshot() {
+    let next: (snap: unknown) => void = () => {};
+    let fail: (error: Error) => void = () => {};
+    let q: { __query: unknown[] } | undefined;
+    const unsubscribe = vi.fn();
+    mocks.onSnapshot.mockImplementation((query, onNext, onError) => {
+        q = query;
+        next = onNext;
+        fail = onError;
+        return unsubscribe;
+    });
+    return {
+        unsubscribe,
+        constraints: () => q!.__query.slice(1),
+        emit: (docs: ReturnType<typeof snapDoc>[], addedIds: string[] = []) =>
+            next({
+                docs,
+                docChanges: () => addedIds.map((id) => ({ type: "added", doc: { id } })),
+            }),
+        fail: (error: Error) => fail(error),
+    };
+}
+
+describe("order subscriptions", () => {
+    it("attaches the id and reads createdAt as a Date", () => {
+        const snap = captureSnapshot();
+        const onChange = vi.fn();
+        subscribeUserOrders("user-1", onChange, vi.fn());
+
+        snap.emit([
+            snapDoc("a", { status: "placed", createdAt: ts("2026-10-22T05:00:00Z") }),
+            snapDoc("b", { status: "placed" }),
+        ]);
+
+        expect(onChange).toHaveBeenCalledWith([
+            { id: "a", status: "placed", createdAt: new Date("2026-10-22T05:00:00Z") },
+            { id: "b", status: "placed", createdAt: null },
+        ]);
+    });
+
+    it("returns the unsubscribe and forwards listener errors", () => {
+        const snap = captureSnapshot();
+        const onError = vi.fn();
+        const unsubscribe = subscribeAdminOrders("placed", vi.fn(), onError);
+
+        const error = new Error("permission-denied");
+        snap.fail(error);
+
+        expect(unsubscribe).toBe(snap.unsubscribe);
+        expect(onError).toHaveBeenCalledWith(error);
+    });
+
+    it("keeps only in-app orders on the partner direct list, scoped to the restaurant", () => {
+        const snap = captureSnapshot();
+        const onChange = vi.fn();
+        subscribePartnerOrders("res-1", "direct", onChange, vi.fn());
+
+        expect(snap.constraints()).toContainEqual({
+            where: ["restaurantIds", "array-contains", "res-1"],
+        });
+
+        snap.emit([snapDoc("wa", { flow: "whatsapp" }), snapDoc("app", { flow: "direct" })]);
+
+        expect(onChange.mock.calls[0][0].map((o: { id: string }) => o.id)).toEqual(["app"]);
+    });
+
+    it("drops in-app orders from the WhatsApp lists", () => {
+        const snap = captureSnapshot();
+        const onChange = vi.fn();
+        subscribeAdminOrders("inProgress", onChange, vi.fn());
+
+        snap.emit([snapDoc("wa", {}), snapDoc("app", { flow: "direct" })]);
+
+        expect(onChange.mock.calls[0][0].map((o: { id: string }) => o.id)).toEqual(["wa"]);
+    });
+
+    it("reports added ids only for orders that made the list", () => {
+        const snap = captureSnapshot();
+        const onChange = vi.fn();
+        subscribePartnerOrders("res-1", "live", onChange, vi.fn());
+
+        snap.emit([snapDoc("wa", {}), snapDoc("app", { flow: "direct" })], ["wa", "app"]);
+
+        expect(onChange.mock.calls[0][1]).toEqual(["wa"]);
+    });
+
+    it("reads readyAt as a Date on the delivery ready list", () => {
+        const snap = captureSnapshot();
+        const onChange = vi.fn();
+        subscribeDeliveryOrders("rider-1", "ready", onChange, vi.fn());
+
+        snap.emit([snapDoc("a", { readyAt: ts("2026-10-22T06:00:00Z") })]);
+
+        expect(onChange.mock.calls[0][0][0].readyAt).toEqual(new Date("2026-10-22T06:00:00Z"));
+    });
+
+    it("scopes the delivery mine list to the partner", () => {
+        const snap = captureSnapshot();
+        subscribeDeliveryOrders("rider-1", "mine", vi.fn(), vi.fn());
+
+        expect(snap.constraints()).toContainEqual({
+            where: ["deliveryPartnerUid", "==", "rider-1"],
+        });
     });
 });

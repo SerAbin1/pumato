@@ -8,4 +8,9 @@ export { sendFcmNotification } from "./send-fcm-notification";
 export { scheduledTrending, refreshTrending } from "./trending";
 export { placeDirectOrder, updateDirectOrder } from "./direct-orders";
 export { restockMenus } from "./restock";
-export { notifyRidersOfRequest } from "./ride-notifications";
+export {
+    notifyRidersOfRequest,
+    onRideRequestUpdated,
+    sweepScheduledRides,
+    ridersAvailability,
+} from "./ride-notifications";

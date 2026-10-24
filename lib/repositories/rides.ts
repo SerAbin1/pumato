@@ -31,6 +31,7 @@ import type {
     RidePreference,
     RideRequest,
     Rider,
+    RiderGender,
     RidesAvailability,
     RidesSettings,
 } from "@/lib/types";
@@ -102,6 +103,11 @@ export async function submitRiderApplication(
         const { createdAt: _createdAt, ...rest } = validated;
         await setDoc(ref, rest, { merge: true });
     }
+}
+
+/** Admin: records gender for riders approved before the application asked it. */
+export async function setRiderGender(uid: string, gender: RiderGender): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), { gender, updatedAt: serverTimestamp() });
 }
 
 export async function setRiderOnline(uid: string, online: boolean): Promise<void> {

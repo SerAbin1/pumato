@@ -34,6 +34,7 @@ const {
     widenRideRequest,
     cancelRideRequest,
     releaseRide,
+    setRiderGender,
     subscribePendingRides,
     subscribeUpcomingRides,
     subscribeRiderRides,
@@ -150,6 +151,16 @@ describe("ride updates", () => {
         expect(mocks.updateDoc).toHaveBeenCalledWith(
             { path: "ride_requests/r1" },
             { status: "cancelled", cancelledAt: "SERVER_TS" }
+        );
+    });
+});
+
+describe("setRiderGender", () => {
+    it("records a rider's gender for the admin", async () => {
+        await setRiderGender("rider1", "female");
+        expect(mocks.updateDoc).toHaveBeenCalledWith(
+            { path: "riders/rider1" },
+            { gender: "female", updatedAt: "SERVER_TS" }
         );
     });
 });

@@ -41,6 +41,7 @@ import type { FeedbackSchema } from "@/lib/schemas/feedback";
 import type { PAYMENT_STATUSES, PaymentSchema } from "@/lib/schemas/payment";
 import type {
     RIDE_REQUEST_STATUSES,
+    RIDER_GENDERS,
     RIDER_PREFERENCES,
     RIDER_STATUSES,
     RidePlaceSchema,
@@ -202,6 +203,7 @@ export type RidesSettings = z.infer<typeof RidesSettingsSchema>;
 export type RideFares = RidesSettings["fares"];
 export type RideSchedule = z.infer<typeof RideScheduleSchema>;
 export type RiderStatus = (typeof RIDER_STATUSES)[number];
+export type RiderGender = (typeof RIDER_GENDERS)[number];
 export type Rider = z.infer<typeof RiderSchema>;
 export type RideRequestStatus = (typeof RIDE_REQUEST_STATUSES)[number];
 export type RideRequest = z.infer<typeof RideRequestSchema> & { id: string };

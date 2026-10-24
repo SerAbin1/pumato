@@ -52,6 +52,7 @@ export {
     fetchRider,
     submitRiderApplication,
     setRiderOnline,
+    setRiderGender,
     acceptRide,
     completeRide,
     releaseRide,

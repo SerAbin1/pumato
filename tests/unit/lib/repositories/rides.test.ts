@@ -33,6 +33,7 @@ const {
     confirmRide,
     widenRideRequest,
     cancelRideRequest,
+    releaseRide,
     subscribePendingRides,
     subscribeUpcomingRides,
     subscribeRiderRides,
@@ -118,6 +119,21 @@ describe("ride updates", () => {
         expect(mocks.updateDoc).toHaveBeenCalledWith(
             { path: "ride_requests/r1" },
             { riderConfirmedAt: "SERVER_TS" }
+        );
+    });
+
+    it("releases a ride with its confirmation, so the next rider is asked afresh", async () => {
+        await releaseRide("r1");
+        expect(mocks.updateDoc).toHaveBeenCalledWith(
+            { path: "ride_requests/r1" },
+            {
+                status: "pending",
+                riderUid: "DELETE",
+                riderName: "DELETE",
+                acceptedAt: "DELETE",
+                confirmRequestedAt: "DELETE",
+                riderConfirmedAt: "DELETE",
+            }
         );
     });
 

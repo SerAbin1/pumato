@@ -156,7 +156,7 @@ service cloud.firestore {
     // revoke go through the manageUsers function, which also sets the claim.
     function isValidRider(uid) {
       let d = request.resource.data;
-      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'vehicleNumber', 'collegeId', 'status', 'online', 'createdAt', 'updatedAt'])
+      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'vehicleNumber', 'collegeId', 'gender', 'status', 'online', 'createdAt', 'updatedAt'])
         && d.get('online', false) == false
         && d.uid == uid
         && d.email == request.auth.token.get('email', null)
@@ -164,8 +164,13 @@ service cloud.firestore {
         && isPhone(d.phone)
         && isText(d.vehicleNumber, 20)
         && isText(d.collegeId, 40)
+        && isGender(d.gender)
         && d.status == 'pending'
         && d.updatedAt == request.time;
+    }
+
+    function isGender(value) {
+      return value in ['female', 'male', 'other'];
     }
 
     // Read from riders/{uid}, so a revoked or offline rider is refused even
@@ -173,6 +178,10 @@ service cloud.firestore {
     function isOnlineRider() {
       let rider = get(/databases/$(database)/documents/riders/$(request.auth.uid)).data;
       return rider.status == 'approved' && rider.get('online', false) == true;
+    }
+
+    function isFemaleRider() {
+      return get(/databases/$(database)/documents/riders/$(request.auth.uid)).data.get('gender', null) == 'female';
     }
 
     match /riders/{uid} {
@@ -192,10 +201,21 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
-    // Ride requests: guests book without logging in, so create is open but
-    // pinned to the expected shape. Riders see pending requests on their dashboard.
+    // Ride requests: guests book a ride now without logging in, so create is open
+    // but pinned to the expected shape. Scheduling needs a signed-in user, so they
+    // can follow the ride up. Riders see pending requests on their dashboard; a
+    // female-preference request only female riders.
+    function isValidSchedule(d) {
+      return d.scheduledFor is timestamp
+        && d.scheduledFor > request.time
+        // Hard cap only: the booking page enforces the admin's window.
+        && d.scheduledFor < request.time + duration.value(30, 'd')
+        && request.auth != null
+        && d.get('userId', null) == request.auth.uid;
+    }
+
     match /ride_requests/{document} {
-      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'riderPreference', 'userId', 'scheduledFor', 'createdAt'])
         && isText(request.resource.data.name, 80)
         && isPhone(request.resource.data.phone)
         && isText(request.resource.data.pickupId, 64)
@@ -207,20 +227,52 @@ service cloud.firestore {
         && (request.resource.data.fare == null
             || (request.resource.data.fare is int && request.resource.data.fare > 0))
         && request.resource.data.status == 'pending'
+        && request.resource.data.riderPreference in ['any', 'female']
+        && (!('scheduledFor' in request.resource.data) || isValidSchedule(request.resource.data))
+        && (!('userId' in request.resource.data)
+            || (request.auth != null && request.resource.data.userId == request.auth.uid))
         && request.resource.data.createdAt == request.time;
+      // Pending queries must filter riderPreference to what the rider may see.
       allow read: if isRider()
-        && (resource.data.status == 'pending' || resource.data.get('riderUid', null) == request.auth.uid);
+        && (resource.data.get('riderUid', null) == request.auth.uid
+          || (resource.data.status == 'pending'
+            && (resource.data.riderPreference == 'any' || isFemaleRider())));
+      allow read: if request.auth != null && resource.data.get('userId', null) == request.auth.uid;
+
+      // Anyone holding the request id (the guest who booked it) can drop the
+      // female-rider preference while it waits, so every rider can take it.
+      allow update: if resource.data.status == 'pending'
+        && resource.data.get('riderPreference', 'any') == 'female'
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['riderPreference'])
+        && request.resource.data.riderPreference == 'any';
+
+      // The signed-in user cancels their scheduled ride before it's done.
+      allow update: if request.auth != null
+        && resource.data.get('userId', null) == request.auth.uid
+        && resource.data.status in ['pending', 'accepted']
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
+        && request.resource.data.status == 'cancelled'
+        && request.resource.data.cancelledAt == request.time;
 
       // Accept: an approved, online rider takes a pending ride. The transaction in
       // acceptRide plus the `pending` check here make the first rider win.
       allow update: if isRider() && isOnlineRider()
         && resource.data.status == 'pending'
+        && (resource.data.get('riderPreference', 'any') == 'any' || isFemaleRider())
         && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'riderUid', 'riderName', 'acceptedAt'])
         && request.resource.data.status == 'accepted'
         && request.resource.data.riderUid == request.auth.uid
         && isText(request.resource.data.riderName, 80)
         && request.resource.data.acceptedAt == request.time;
+
+      // Confirm a scheduled ride once the sweep has asked: only the rider who accepted it.
+      allow update: if isRider()
+        && resource.data.status == 'accepted'
+        && resource.data.riderUid == request.auth.uid
+        && 'confirmRequestedAt' in resource.data
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['riderConfirmedAt'])
+        && request.resource.data.riderConfirmedAt == request.time;
 
       // Complete, or release back to pending: only the rider who accepted it.
       allow update: if isRider()
@@ -230,9 +282,9 @@ service cloud.firestore {
               && request.resource.data.status == 'completed'
               && request.resource.data.completedAt == request.time)
           || (request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status', 'riderUid', 'riderName', 'acceptedAt'])
+                .hasOnly(['status', 'riderUid', 'riderName', 'acceptedAt', 'confirmRequestedAt', 'riderConfirmedAt'])
               && request.resource.data.status == 'pending'
-              && !request.resource.data.keys().hasAny(['riderUid', 'riderName', 'acceptedAt'])));
+              && !request.resource.data.keys().hasAny(['riderUid', 'riderName', 'acceptedAt', 'confirmRequestedAt', 'riderConfirmedAt'])));
 
       allow read, update, delete: if isAdmin();
     }

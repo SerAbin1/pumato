@@ -160,6 +160,8 @@ export async function releaseRide(requestId: string): Promise<void> {
         riderUid: deleteField(),
         riderName: deleteField(),
         acceptedAt: deleteField(),
+        confirmRequestedAt: deleteField(),
+        riderConfirmedAt: deleteField(),
     });
 }
 

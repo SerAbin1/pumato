@@ -7,7 +7,7 @@ import {
     istNow,
 } from "@/lib/ist";
 import { format12h } from "@/lib/formatters";
-import type { RideFares, RidePlace, RideSchedule } from "@/lib/types";
+import type { RideFares, RidePlace, RideRequestStatus, RideSchedule } from "@/lib/types";
 
 /** Short code the rider quotes in chat so the admin can find their application. */
 export const riderRef = (uid: string) => uid.slice(0, 6).toUpperCase();
@@ -92,4 +92,33 @@ export const occupiesRider = (
 ) => {
     const at = scheduledTime(ride);
     return at === null || isDueSoon(at, now, schedule);
+};
+
+/** "Today", "Tomorrow", or "Mon 26 Oct" for an IST day ("YYYY-MM-DD"). */
+export const formatDateOption = (dateKey: string, now: Date) => {
+    const today = istNow(now);
+    if (dateKey === formatISTDateKey(today)) return "Today";
+    if (dateKey === formatISTDateKey(addDaysToISTDateKey(today, 1))) return "Tomorrow";
+    return rideDayFormatter.format(istInstant(dateKey, "12:00"));
+};
+
+/** Where a scheduled ride stands, for the user who booked it. */
+export const scheduledRideStatus = (ride: {
+    status: RideRequestStatus;
+    riderName?: string;
+    broadcastAt?: unknown;
+    riderConfirmedAt?: unknown;
+}) => {
+    switch (ride.status) {
+        case "pending":
+            return ride.broadcastAt ? "Looking for a rider now" : "Waiting for a rider";
+        case "accepted":
+            return `${ride.riderConfirmedAt ? "Confirmed" : "Accepted"} by ${ride.riderName}`;
+        case "completed":
+            return "Completed";
+        case "cancelled":
+            return "Cancelled";
+        case "expired":
+            return "No rider found";
+    }
 };

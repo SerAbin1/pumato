@@ -3,6 +3,7 @@ import {
     bookableDates,
     bookableTimes,
     DEFAULT_RIDE_SCHEDULE,
+    formatDateOption,
     formatRideTime,
     isDueSoon,
     isSchedulable,
@@ -11,6 +12,7 @@ import {
     riderRef,
     routeFare,
     routeKey,
+    scheduledRideStatus,
     telegramUrl,
     whatsappUrl,
 } from "@/lib/rides";
@@ -142,5 +144,39 @@ describe("scheduled rides near their time", () => {
     it("read their time from the stored timestamp", () => {
         expect(scheduledTime({ scheduledFor: { toDate: () => ride } })).toEqual(ride);
         expect(scheduledTime({})).toBeNull();
+    });
+});
+
+describe("formatDateOption", () => {
+    it("names today and tomorrow, then shows the date", () => {
+        expect(formatDateOption("2026-10-24", now)).toBe("Today");
+        expect(formatDateOption("2026-10-25", now)).toBe("Tomorrow");
+        expect(formatDateOption("2026-10-26", now)).toBe("Mon 26 Oct");
+    });
+});
+
+describe("scheduledRideStatus", () => {
+    const ts = { toDate: () => now };
+
+    it("says whether the ride is still looking for a rider", () => {
+        expect(scheduledRideStatus({ status: "pending" })).toBe("Waiting for a rider");
+        expect(scheduledRideStatus({ status: "pending", broadcastAt: ts })).toBe(
+            "Looking for a rider now"
+        );
+    });
+
+    it("names the rider who took it, and whether they've confirmed", () => {
+        expect(scheduledRideStatus({ status: "accepted", riderName: "Ravi" })).toBe(
+            "Accepted by Ravi"
+        );
+        expect(
+            scheduledRideStatus({ status: "accepted", riderName: "Ravi", riderConfirmedAt: ts })
+        ).toBe("Confirmed by Ravi");
+    });
+
+    it("describes finished rides", () => {
+        expect(scheduledRideStatus({ status: "completed" })).toBe("Completed");
+        expect(scheduledRideStatus({ status: "cancelled" })).toBe("Cancelled");
+        expect(scheduledRideStatus({ status: "expired" })).toBe("No rider found");
     });
 });

@@ -71,7 +71,10 @@ export async function fetchRider(uid: string): Promise<Rider | null> {
     return snap.exists() ? (snap.data() as Rider) : null;
 }
 
-export type RiderApplication = Pick<Rider, "name" | "phone" | "vehicleNumber" | "collegeId">;
+export type RiderApplication = Pick<
+    Rider,
+    "name" | "phone" | "vehicleNumber" | "collegeId" | "gender"
+>;
 
 /**
  * Files or re-files (edit while pending, re-apply after rejection) the

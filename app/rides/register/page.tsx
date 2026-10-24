@@ -8,7 +8,7 @@ import { Bike, CheckCircle2, Clock, Loader2, Send, XCircle } from "lucide-react"
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { fetchRider, fetchRidesSettings, submitRiderApplication } from "@/lib/repositories";
 import type { RiderApplication } from "@/lib/repositories";
-import { PHONE_PATTERN } from "@/lib/schemas/rides";
+import { PHONE_PATTERN, RIDER_GENDERS } from "@/lib/schemas/rides";
 import { riderRef, riderVerificationMessage, telegramUrl, whatsappUrl } from "@/lib/rides";
 import type { User } from "firebase/auth";
 import type { Rider, RidesSettings } from "@/lib/types";
@@ -25,10 +25,11 @@ function ApplicationForm({
 }) {
     const [form, setForm] = useState(initial);
     const [busy, setBusy] = useState(false);
-    const set = (key: keyof RiderApplication) => (value: string) =>
+    const set = (key: Exclude<keyof RiderApplication, "gender">) => (value: string) =>
         setForm((f) => ({ ...f, [key]: value }));
 
     const valid =
+        !!form.gender &&
         !!form.name.trim() &&
         PHONE_PATTERN.test(form.phone) &&
         !!form.vehicleNumber.trim() &&
@@ -43,12 +44,13 @@ function ApplicationForm({
             phone: form.phone,
             vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
             collegeId: form.collegeId.trim(),
+            gender: form.gender,
         });
         setBusy(false);
     };
 
     const field = (
-        key: keyof RiderApplication,
+        key: Exclude<keyof RiderApplication, "gender">,
         label: string,
         props: { placeholder: string; maxLength: number; inputMode?: "numeric" }
     ) => (
@@ -76,6 +78,25 @@ function ApplicationForm({
     return (
         <form onSubmit={handleSubmit} className={cardClass}>
             {field("name", "Full name", { placeholder: "As on your college ID", maxLength: 80 })}
+            <fieldset>
+                <legend className={labelClass}>Gender</legend>
+                <div className="grid grid-cols-3 gap-2">
+                    {RIDER_GENDERS.map((gender) => (
+                        <button
+                            key={gender}
+                            type="button"
+                            aria-pressed={form.gender === gender}
+                            onClick={() => setForm((f) => ({ ...f, gender }))}
+                            className={`py-3 rounded-xl border text-sm font-bold capitalize transition-all ${form.gender === gender ? "bg-orange-500/15 border-orange-500 text-white" : "bg-black/30 border-white/10 text-gray-400"}`}
+                        >
+                            {gender}
+                        </button>
+                    ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2 ml-1">
+                    Female riders also get requests from guests who prefer a female rider.
+                </p>
+            </fieldset>
             {field("phone", "Phone", {
                 placeholder: "10-digit number",
                 maxLength: 10,
@@ -141,6 +162,7 @@ const EMPTY_APPLICATION: RiderApplication = {
     phone: "",
     vehicleNumber: "",
     collegeId: "",
+    gender: undefined,
 };
 
 export default function RiderRegisterPage() {
@@ -198,6 +220,7 @@ export default function RiderRegisterPage() {
               phone: rider.phone,
               vehicleNumber: rider.vehicleNumber,
               collegeId: rider.collegeId,
+              gender: rider.gender,
           }
         : EMPTY_APPLICATION;
 

@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vite-plus/test";
 import {
     bookableDates,
-    bookableTimes,
     DEFAULT_RIDE_SCHEDULE,
     formatDateOption,
     formatRideTime,
@@ -12,6 +11,7 @@ import {
     riderRef,
     routeFare,
     routeKey,
+    scheduleProblem,
     scheduledRideStatus,
     telegramUrl,
     whatsappUrl,
@@ -75,30 +75,21 @@ describe("scheduling window", () => {
     });
 });
 
-describe("bookable times", () => {
-    it("offers 15-minute slots from the first one past the lead", () => {
-        expect(bookableTimes("2026-10-24", now, schedule)).toEqual([
-            "22:45",
-            "23:00",
-            "23:15",
-            "23:30",
-            "23:45",
-        ]);
+describe("scheduleProblem", () => {
+    it("asks for a time past the minimum lead", () => {
+        expect(scheduleProblem(istInstant("2026-10-24", "22:30"), now, schedule)).toBe(
+            "Pick a time at least 30 min from now."
+        );
     });
 
-    it("offers the whole day in between", () => {
-        const times = bookableTimes("2026-10-25", now, schedule);
-        expect(times[0]).toBe("00:00");
-        expect(times.at(-1)).toBe("23:45");
-        expect(times).toHaveLength(96);
+    it("caps how far ahead a ride can be booked", () => {
+        expect(scheduleProblem(istInstant("2026-10-27", "22:11"), now, schedule)).toBe(
+            "You can book up to 3 days ahead."
+        );
     });
 
-    it("stops at the last day's limit", () => {
-        expect(bookableTimes("2026-10-27", now, schedule).at(-1)).toBe("22:00");
-    });
-
-    it("offers nothing on a day past the window", () => {
-        expect(bookableTimes("2026-10-28", now, schedule)).toEqual([]);
+    it("accepts any minute inside the window", () => {
+        expect(scheduleProblem(istInstant("2026-10-24", "22:43"), now, schedule)).toBeNull();
     });
 });
 
@@ -112,7 +103,12 @@ describe("bookable dates", () => {
         ]);
     });
 
-    it("skips today once its last slot is inside the lead", () => {
+    it("keeps today while a minute of it is still bookable", () => {
+        const late = istInstant("2026-10-24", "23:20");
+        expect(bookableDates(late, schedule)[0]).toBe("2026-10-24");
+    });
+
+    it("skips today once all of it is inside the lead", () => {
         const late = istInstant("2026-10-24", "23:30");
         expect(bookableDates(late, schedule)[0]).toBe("2026-10-25");
     });

@@ -30,17 +30,16 @@ import { PHONE_PATTERN } from "@/lib/schemas/rides";
 import {
     activePlaces,
     bookableDates,
-    bookableTimes,
     DEFAULT_RIDE_SCHEDULE,
     formatDateOption,
     formatFare,
     formatRideTime,
     routeFare,
+    scheduleProblem,
     scheduledRideStatus,
     scheduledTime,
 } from "@/lib/rides";
 import { istInstant } from "@/lib/ist";
-import { format12h } from "@/lib/formatters";
 import CustomSelect from "@/app/components/CustomSelect";
 import ConfirmModal from "@/app/components/ConfirmModal";
 import { inputClass, labelClass, primaryButton, secondaryButton } from "./styles";
@@ -312,9 +311,10 @@ export default function RidesPage() {
     const fare = pickup && drop ? routeFare(fares, pickup.id, drop.id) : null;
 
     const dates = bookableDates(now, schedule);
-    const times = dateKey ? bookableTimes(dateKey, now, schedule) : [];
-    // A slot that has slipped inside the lead while the page sat open no longer counts.
-    const scheduledFor = dateKey && times.includes(time) ? istInstant(dateKey, time) : null;
+    const typedFor = dateKey && time ? istInstant(dateKey, time) : null;
+    // Rechecked as the clock ticks, so a time that slips inside the lead stops counting.
+    const timeProblem = typedFor && scheduleProblem(typedFor, now, schedule);
+    const scheduledFor = typedFor && !timeProblem ? typedFor : null;
     const scheduling = mode === "schedule";
     const needsSignIn = scheduling && !user;
 
@@ -460,19 +460,28 @@ export default function RidesPage() {
                                     />
                                 </div>
                                 <div>
-                                    <p className={labelClass}>
+                                    <label htmlFor="time" className={labelClass}>
                                         <Clock size={12} className="inline mr-1" /> Pickup time
-                                    </p>
-                                    <CustomSelect
-                                        options={times.map((t) => ({
-                                            value: t,
-                                            label: format12h(t),
-                                        }))}
-                                        value={times.includes(time) ? time : ""}
-                                        onChange={setTime}
-                                        placeholder={dateKey ? "Select time" : "Pick a date"}
+                                    </label>
+                                    <input
+                                        id="time"
+                                        type="time"
+                                        value={time}
+                                        onChange={(e) => setTime(e.target.value)}
+                                        aria-invalid={!!timeProblem}
+                                        aria-describedby={timeProblem ? "time-problem" : undefined}
+                                        className={`${inputClass} [color-scheme:dark]`}
+                                        required
                                     />
                                 </div>
+                                {timeProblem && (
+                                    <p
+                                        id="time-problem"
+                                        className="col-span-2 text-sm text-orange-300 ml-1"
+                                    >
+                                        {timeProblem}
+                                    </p>
+                                )}
                             </div>
                         )}
                         {pickup && drop && (

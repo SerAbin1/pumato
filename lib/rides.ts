@@ -41,28 +41,35 @@ export const DEFAULT_RIDE_SCHEDULE: RideSchedule = {
     maxDaysAhead: 3,
 };
 
-const SLOT_MINUTES = 15;
 const MINUTE_MS = 60_000;
 const DAY_MS = 24 * 60 * MINUTE_MS;
 
 /** Whether a ride can be booked for `at`: past the minimum lead, within max days ahead. */
-export const isSchedulable = (at: Date, now: Date, schedule: RideSchedule) => {
+export const isSchedulable = (at: Date, now: Date, schedule: RideSchedule) =>
+    scheduleProblem(at, now, schedule) === null;
+
+/** Why a ride can't be booked for `at`, or null when it can. */
+export const scheduleProblem = (at: Date, now: Date, schedule: RideSchedule) => {
     const lead = at.getTime() - now.getTime();
-    return lead >= schedule.minLeadMinutes * MINUTE_MS && lead <= schedule.maxDaysAhead * DAY_MS;
+    if (lead < schedule.minLeadMinutes * MINUTE_MS) {
+        return `Pick a time at least ${schedule.minLeadMinutes} min from now.`;
+    }
+    if (lead > schedule.maxDaysAhead * DAY_MS) {
+        return `You can book up to ${schedule.maxDaysAhead} days ahead.`;
+    }
+    return null;
 };
 
-/** The schedulable 15-minute slots ("HH:MM") on IST day `dateKey`. */
-export const bookableTimes = (dateKey: string, now: Date, schedule: RideSchedule) =>
-    Array.from({ length: (24 * 60) / SLOT_MINUTES }, (_, i) =>
-        fromMinutes(i * SLOT_MINUTES)
-    ).filter((time) => isSchedulable(istInstant(dateKey, time), now, schedule));
-
-/** IST days ("YYYY-MM-DD") with at least one schedulable slot. */
+/** IST days ("YYYY-MM-DD") with at least one schedulable minute. */
 export const bookableDates = (now: Date, schedule: RideSchedule) => {
     const today = istNow(now);
     return Array.from({ length: schedule.maxDaysAhead + 1 }, (_, i) =>
         formatISTDateKey(addDaysToISTDateKey(today, i))
-    ).filter((dateKey) => bookableTimes(dateKey, now, schedule).length > 0);
+    ).filter(
+        (dateKey) =>
+            isSchedulable(istInstant(dateKey, "23:59"), now, schedule) ||
+            isSchedulable(istInstant(dateKey, "00:00"), now, schedule)
+    );
 };
 
 const rideDayFormatter = new Intl.DateTimeFormat("en-GB", {

@@ -28,6 +28,8 @@ export const SITE_CONTENT_DOCS = {
     MARKETPLACE_FILTERS: "marketplace_filters",
     MARKETPLACE_REDIRECT_LINKS: "marketplace_redirect_links",
     RIDES_SETTINGS: "rides_settings",
+    // Written by the ridersAvailability function; whether any female rider can take a request.
+    RIDES_AVAILABILITY: "rides_availability",
     // Written by the trending Cloud Functions (weekly + admin refresh), never by clients.
     TRENDING: "trending",
 };

@@ -1,0 +1,203 @@
+import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
+
+// Fake Firestore: refs and query builders tag their arguments so tests can read them back.
+const mocks = vi.hoisted(() => ({
+    getDoc: vi.fn(),
+    addDoc: vi.fn(),
+    updateDoc: vi.fn(),
+    onSnapshot: vi.fn(),
+}));
+
+vi.mock("@/lib/firebase", () => ({ db: { __db: true } }));
+vi.mock("firebase/firestore", () => ({
+    doc: (_db: unknown, ...path: string[]) => ({ path: path.join("/") }),
+    collection: (_db: unknown, name: string) => ({ collection: name }),
+    getDoc: mocks.getDoc,
+    addDoc: mocks.addDoc,
+    updateDoc: mocks.updateDoc,
+    onSnapshot: mocks.onSnapshot,
+    setDoc: vi.fn(),
+    runTransaction: vi.fn(),
+    serverTimestamp: () => "SERVER_TS",
+    deleteField: () => "DELETE",
+    query: (...args: unknown[]) => ({ __query: args }),
+    where: (...args: unknown[]) => ({ where: args }),
+    orderBy: (...args: unknown[]) => ({ orderBy: args }),
+    limit: (n: number) => ({ limit: n }),
+    Timestamp: { fromDate: (d: Date) => ({ __ts: d }) },
+}));
+
+const {
+    fetchRidesSettings,
+    createRideRequest,
+    confirmRide,
+    widenRideRequest,
+    cancelRideRequest,
+    subscribePendingRides,
+    subscribeUpcomingRides,
+    subscribeRiderRides,
+    subscribeMyScheduledRides,
+    subscribeRideAvailability,
+} = await import("@/lib/repositories/rides");
+const { DEFAULT_RIDE_SCHEDULE } = await import("@/lib/rides");
+
+type Tagged = { __query: unknown[] };
+const lastQuery = () => mocks.onSnapshot.mock.calls.at(-1)![0] as Tagged;
+const constraints = (q: Tagged) => q.__query.slice(1);
+
+/** Feeds `docs` to the last onSnapshot listener. */
+const emit = (docs: { id: string; data: Record<string, unknown> }[]) =>
+    mocks.onSnapshot.mock.calls.at(-1)![1]({
+        docs: docs.map((d) => ({ id: d.id, data: () => d.data })),
+    });
+
+const booking = {
+    name: "Asha",
+    phone: "9876543210",
+    pickupId: "gate",
+    pickupName: "Gate 1",
+    dropId: "lib",
+    dropName: "Library",
+    fare: 20,
+};
+
+beforeEach(() => {
+    vi.clearAllMocks();
+    mocks.addDoc.mockResolvedValue({ id: "new-ride" });
+});
+
+describe("fetchRidesSettings", () => {
+    it("fills in the default schedule for settings saved before it existed", async () => {
+        mocks.getDoc.mockResolvedValue({
+            exists: () => true,
+            data: () => ({ whatsappNumber: "1", telegramUsername: "", places: [], fares: {} }),
+        });
+        expect((await fetchRidesSettings()).schedule).toEqual(DEFAULT_RIDE_SCHEDULE);
+    });
+});
+
+describe("createRideRequest", () => {
+    it("books a ride now with no schedule fields", async () => {
+        expect(await createRideRequest({ ...booking, riderPreference: "female" })).toBe("new-ride");
+        const [ref, data] = mocks.addDoc.mock.calls[0];
+        expect(ref).toEqual({ collection: "ride_requests" });
+        expect(data).toMatchObject({
+            status: "pending",
+            riderPreference: "female",
+            createdAt: "SERVER_TS",
+        });
+        expect(data).not.toHaveProperty("scheduledFor");
+        expect(data).not.toHaveProperty("userId");
+    });
+
+    it("stores a scheduled ride's time as a timestamp, with its user", async () => {
+        const at = new Date("2026-10-25T11:00:00Z");
+        await createRideRequest({
+            ...booking,
+            riderPreference: "any",
+            userId: "u1",
+            scheduledFor: at,
+        });
+        expect(mocks.addDoc.mock.calls[0][1]).toMatchObject({
+            userId: "u1",
+            scheduledFor: { __ts: at },
+        });
+    });
+
+    it("refuses a scheduled ride without a user", async () => {
+        await expect(
+            createRideRequest({ ...booking, riderPreference: "any", scheduledFor: new Date() })
+        ).rejects.toThrow();
+        expect(mocks.addDoc).not.toHaveBeenCalled();
+    });
+});
+
+describe("ride updates", () => {
+    it("confirms a scheduled ride for the rider", async () => {
+        await confirmRide("r1");
+        expect(mocks.updateDoc).toHaveBeenCalledWith(
+            { path: "ride_requests/r1" },
+            { riderConfirmedAt: "SERVER_TS" }
+        );
+    });
+
+    it("widens a female-preference request to every rider", async () => {
+        await widenRideRequest("r1");
+        expect(mocks.updateDoc).toHaveBeenCalledWith(
+            { path: "ride_requests/r1" },
+            { riderPreference: "any" }
+        );
+    });
+
+    it("cancels a ride", async () => {
+        await cancelRideRequest("r1");
+        expect(mocks.updateDoc).toHaveBeenCalledWith(
+            { path: "ride_requests/r1" },
+            { status: "cancelled", cancelledAt: "SERVER_TS" }
+        );
+    });
+});
+
+describe("rider subscriptions", () => {
+    const now = new Date("2026-10-24T16:40:00Z");
+
+    it("lists today's pending ride-now requests the rider may see, oldest first", () => {
+        const onChange = vi.fn();
+        subscribePendingRides(["any"], onChange, vi.fn(), now);
+        expect(constraints(lastQuery())).toEqual([
+            { where: ["status", "==", "pending"] },
+            { where: ["riderPreference", "in", ["any"]] },
+            { where: ["createdAt", ">=", expect.anything()] },
+            { orderBy: ["createdAt", "asc"] },
+        ]);
+
+        // Scheduled rides booked today have their own list.
+        emit([
+            { id: "now", data: { pickupName: "A" } },
+            { id: "later", data: { pickupName: "B", scheduledFor: { toDate: () => now } } },
+        ]);
+        expect(onChange).toHaveBeenCalledWith([{ id: "now", pickupName: "A" }]);
+    });
+
+    it("lists pending scheduled requests from an hour ago on, soonest first", () => {
+        subscribeUpcomingRides(["any", "female"], vi.fn(), vi.fn(), now);
+        expect(constraints(lastQuery())).toEqual([
+            { where: ["status", "==", "pending"] },
+            { where: ["riderPreference", "in", ["any", "female"]] },
+            { where: ["scheduledFor", ">=", { __ts: new Date("2026-10-24T15:40:00Z") }] },
+            { orderBy: ["scheduledFor", "asc"] },
+        ]);
+    });
+
+    it("lists the rider's accepted rides", () => {
+        subscribeRiderRides("rider1", vi.fn(), vi.fn());
+        expect(constraints(lastQuery())).toEqual([
+            { where: ["riderUid", "==", "rider1"] },
+            { where: ["status", "==", "accepted"] },
+        ]);
+    });
+});
+
+describe("guest subscriptions", () => {
+    it("lists the user's scheduled rides, newest first", () => {
+        subscribeMyScheduledRides("u1", vi.fn(), vi.fn());
+        expect(constraints(lastQuery())).toEqual([
+            { where: ["userId", "==", "u1"] },
+            { orderBy: ["scheduledFor", "desc"] },
+            { limit: 20 },
+        ]);
+    });
+
+    it("reads rider availability, treating a missing doc as nobody available", () => {
+        const onChange = vi.fn();
+        subscribeRideAvailability(onChange);
+        const [ref, listener] = mocks.onSnapshot.mock.calls.at(-1)!;
+        expect(ref).toEqual({ path: "site_content/rides_availability" });
+
+        listener({ data: () => undefined });
+        expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: false, femaleApproved: false });
+
+        listener({ data: () => ({ femaleOnline: true, femaleApproved: true }) });
+        expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: true, femaleApproved: true });
+    });
+});

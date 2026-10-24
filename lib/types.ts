@@ -41,6 +41,7 @@ import type { FeedbackSchema } from "@/lib/schemas/feedback";
 import type { PAYMENT_STATUSES, PaymentSchema } from "@/lib/schemas/payment";
 import type {
     RIDE_REQUEST_STATUSES,
+    RIDER_PREFERENCES,
     RIDER_STATUSES,
     RidePlaceSchema,
     RideRequestSchema,
@@ -204,3 +205,9 @@ export type RiderStatus = (typeof RIDER_STATUSES)[number];
 export type Rider = z.infer<typeof RiderSchema>;
 export type RideRequestStatus = (typeof RIDE_REQUEST_STATUSES)[number];
 export type RideRequest = z.infer<typeof RideRequestSchema> & { id: string };
+export type RidePreference = (typeof RIDER_PREFERENCES)[number];
+/** `site_content/rides_availability`, kept up to date by the ridersAvailability function. */
+export interface RidesAvailability {
+    femaleOnline: boolean;
+    femaleApproved: boolean;
+}

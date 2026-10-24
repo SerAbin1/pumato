@@ -42,6 +42,7 @@ export const RidesSettingsSchema = z.object({
     telegramUsername: z.string().trim(),
     places: z.array(RidePlaceSchema),
     fares: RideFaresSchema,
+    schedule: RideScheduleSchema,
 });
 
 export const RIDER_STATUSES = ["pending", "approved", "rejected", "revoked"] as const;

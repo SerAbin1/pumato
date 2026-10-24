@@ -6,11 +6,18 @@ import {
     deleteField,
     doc,
     getDoc,
+    limit,
+    onSnapshot,
+    orderBy,
+    query,
     runTransaction,
     serverTimestamp,
     setDoc,
+    Timestamp,
     updateDoc,
+    where,
 } from "firebase/firestore";
+import type { Query, Unsubscribe } from "firebase/firestore";
 import {
     RideFaresSchema,
     RideRequestSchema,
@@ -18,7 +25,15 @@ import {
     RidesSettingsSchema,
 } from "@/lib/schemas/rides";
 import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
-import type { RideFares, Rider, RidesSettings } from "@/lib/types";
+import { DEFAULT_RIDE_SCHEDULE } from "@/lib/rides";
+import type {
+    RideFares,
+    RidePreference,
+    RideRequest,
+    Rider,
+    RidesAvailability,
+    RidesSettings,
+} from "@/lib/types";
 
 const settingsRef = () => doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.RIDES_SETTINGS);
 
@@ -27,6 +42,7 @@ export const EMPTY_RIDES_SETTINGS: RidesSettings = {
     telegramUsername: "",
     places: [],
     fares: {},
+    schedule: DEFAULT_RIDE_SCHEDULE,
 };
 
 /** @returns rides settings, or empty defaults if the admin hasn't saved any yet */
@@ -89,11 +105,19 @@ export async function setRiderOnline(uid: string, online: boolean): Promise<void
     await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), { online, updatedAt: serverTimestamp() });
 }
 
-export async function createRideRequest(
-    data: Omit<z.input<typeof RideRequestSchema>, "status" | "createdAt">
-): Promise<string> {
+export type RideBooking = Pick<
+    z.input<typeof RideRequestSchema>,
+    "name" | "phone" | "pickupId" | "pickupName" | "dropId" | "dropName" | "fare" | "userId"
+> & {
+    riderPreference: RidePreference;
+    /** Set for a scheduled ride, which also needs `userId`. */
+    scheduledFor?: Date;
+};
+
+export async function createRideRequest({ scheduledFor, ...data }: RideBooking): Promise<string> {
     const validated = RideRequestSchema.parse({
         ...data,
+        ...(scheduledFor && { scheduledFor: Timestamp.fromDate(scheduledFor) }),
         status: "pending",
         createdAt: serverTimestamp(),
     });
@@ -137,4 +161,137 @@ export async function releaseRide(requestId: string): Promise<void> {
         riderName: deleteField(),
         acceptedAt: deleteField(),
     });
+}
+
+/** The accepted rider confirms they'll still give a scheduled ride. */
+export async function confirmRide(requestId: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
+        riderConfirmedAt: serverTimestamp(),
+    });
+}
+
+/** Drops the female-rider preference so every rider can take the request. */
+export async function widenRideRequest(requestId: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), { riderPreference: "any" });
+}
+
+/** The user cancels their scheduled ride. */
+export async function cancelRideRequest(requestId: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
+        status: "cancelled",
+        cancelledAt: serverTimestamp(),
+    });
+}
+
+type RidesListener = (rides: RideRequest[]) => void;
+
+function listen(
+    q: Query,
+    onChange: RidesListener,
+    onError: (error: Error) => void,
+    keep: (r: RideRequest) => boolean = () => true
+): Unsubscribe {
+    return onSnapshot(
+        q,
+        (snap) =>
+            onChange(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest).filter(keep)),
+        onError
+    );
+}
+
+const rideRequests = () => collection(db, COLLECTIONS.RIDE_REQUESTS);
+
+// How long a scheduled ride stays on the riders' list after its time.
+const UPCOMING_GRACE_MS = 60 * 60 * 1000;
+
+/**
+ * Today's pending ride-now requests, oldest first. `preferences` must match
+ * what the rider may read (see firestore.rules), or the query is refused.
+ */
+export function subscribePendingRides(
+    preferences: RidePreference[],
+    onChange: RidesListener,
+    onError: (error: Error) => void,
+    now = new Date()
+): Unsubscribe {
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    return listen(
+        query(
+            rideRequests(),
+            where("status", "==", "pending"),
+            where("riderPreference", "in", preferences),
+            where("createdAt", ">=", Timestamp.fromDate(todayStart)),
+            orderBy("createdAt", "asc")
+        ),
+        onChange,
+        onError,
+        (r) => !r.scheduledFor
+    );
+}
+
+/** Pending scheduled requests, soonest first, including ones just past their time. */
+export function subscribeUpcomingRides(
+    preferences: RidePreference[],
+    onChange: RidesListener,
+    onError: (error: Error) => void,
+    now = new Date()
+): Unsubscribe {
+    return listen(
+        query(
+            rideRequests(),
+            where("status", "==", "pending"),
+            where("riderPreference", "in", preferences),
+            where(
+                "scheduledFor",
+                ">=",
+                Timestamp.fromDate(new Date(now.getTime() - UPCOMING_GRACE_MS))
+            ),
+            orderBy("scheduledFor", "asc")
+        ),
+        onChange,
+        onError
+    );
+}
+
+/** Rides this rider accepted and hasn't finished. */
+export function subscribeRiderRides(
+    riderUid: string,
+    onChange: RidesListener,
+    onError: (error: Error) => void
+): Unsubscribe {
+    return listen(
+        query(rideRequests(), where("riderUid", "==", riderUid), where("status", "==", "accepted")),
+        onChange,
+        onError
+    );
+}
+
+/** The signed-in user's scheduled rides, latest first. */
+export function subscribeMyScheduledRides(
+    userId: string,
+    onChange: RidesListener,
+    onError: (error: Error) => void
+): Unsubscribe {
+    return listen(
+        query(
+            rideRequests(),
+            where("userId", "==", userId),
+            orderBy("scheduledFor", "desc"),
+            limit(20)
+        ),
+        onChange,
+        onError
+    );
+}
+
+/** Whether any female rider can take a request; nobody until the function first writes it. */
+export function subscribeRideAvailability(
+    onChange: (availability: RidesAvailability) => void
+): Unsubscribe {
+    return onSnapshot(
+        doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.RIDES_AVAILABILITY),
+        (snap) => onChange({ femaleOnline: false, femaleApproved: false, ...snap.data() }),
+        (error) => console.error("Failed to load rider availability:", error)
+    );
 }

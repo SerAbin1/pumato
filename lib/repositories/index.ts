@@ -57,6 +57,14 @@ export {
     releaseRide,
     RIDE_TAKEN,
     createRideRequest,
+    confirmRide,
+    widenRideRequest,
+    cancelRideRequest,
+    subscribePendingRides,
+    subscribeUpcomingRides,
+    subscribeRiderRides,
+    subscribeMyScheduledRides,
+    subscribeRideAvailability,
     EMPTY_RIDES_SETTINGS,
 } from "./rides";
-export type { RiderApplication } from "./rides";
+export type { RiderApplication, RideBooking } from "./rides";

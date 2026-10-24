@@ -68,6 +68,7 @@ export default function RidesPage() {
                 dropId: drop.id,
                 dropName: drop.name,
                 fare,
+                riderPreference: "any",
             });
             try {
                 localStorage.setItem(GUEST_KEY, JSON.stringify({ name: name.trim(), phone }));

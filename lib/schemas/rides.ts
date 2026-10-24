@@ -84,7 +84,7 @@ export const RIDE_REQUEST_STATUSES = [
 ] as const;
 
 /** Most passengers one request can book; matches firestore.rules. */
-export const MAX_PASSENGERS = 4;
+export const MAX_PASSENGERS = 2;
 
 /** "female" sends the request to female riders only. */
 export const RIDER_PREFERENCES = ["any", "female"] as const;

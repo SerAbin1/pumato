@@ -232,7 +232,7 @@ service cloud.firestore {
         && (!('passengers' in request.resource.data)
             || (request.resource.data.passengers is int
                 && request.resource.data.passengers >= 1
-                && request.resource.data.passengers <= 4))
+                && request.resource.data.passengers <= 2))
         && (!('scheduledFor' in request.resource.data) || isValidSchedule(request.resource.data))
         && (!('userId' in request.resource.data)
             || (request.auth != null && request.resource.data.userId == request.auth.uid))

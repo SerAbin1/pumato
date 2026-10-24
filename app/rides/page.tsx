@@ -109,9 +109,11 @@ function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => 
 /** Optional exact pin for a ride now, so the rider can find a guest away from the named spot. */
 function PickupPin({
     pin,
+    placeChosen,
     onChange,
 }: {
     pin: PickupLocation | null;
+    placeChosen: boolean;
     onChange: (pin: PickupLocation | null) => void;
 }) {
     const [locating, setLocating] = useState(false);
@@ -146,17 +148,26 @@ function PickupPin({
 
     if (pin) {
         return (
-            <p className="mt-2 flex items-center gap-2 text-sm text-emerald-300">
-                <Crosshair size={14} /> Exact location added ({pickupAccuracyLabel(pin.accuracy)})
-                <button
-                    type="button"
-                    onClick={() => onChange(null)}
-                    aria-label="Remove exact location"
-                    className="ml-auto text-gray-400 hover:text-white"
-                >
-                    <X size={16} />
-                </button>
-            </p>
+            <div className="mt-2 space-y-1">
+                <p className="flex items-center gap-2 text-sm text-emerald-300">
+                    <Crosshair size={14} /> Exact location added (
+                    {pickupAccuracyLabel(pin.accuracy)})
+                    <button
+                        type="button"
+                        onClick={() => onChange(null)}
+                        aria-label="Remove exact location"
+                        className="ml-auto text-gray-400 hover:text-white"
+                    >
+                        <X size={16} />
+                    </button>
+                </p>
+                {/* The pin helps the rider find them; the fare still comes from a named place. */}
+                {!placeChosen && (
+                    <p className="text-xs text-orange-300">
+                        Also pick the nearest place above, so we can work out the fare.
+                    </p>
+                )}
+            </div>
         );
     }
     return (
@@ -511,7 +522,9 @@ export default function RidesPage() {
                                 }}
                                 placeholder="Where are you?"
                             />
-                            {!scheduling && <PickupPin pin={pin} onChange={setPin} />}
+                            {!scheduling && (
+                                <PickupPin pin={pin} placeChosen={!!pickup} onChange={setPin} />
+                            )}
                         </div>
                         <div>
                             <p className={labelClass}>

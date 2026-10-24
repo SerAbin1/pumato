@@ -44,6 +44,7 @@ import type {
     RIDER_STATUSES,
     RidePlaceSchema,
     RideRequestSchema,
+    RideScheduleSchema,
     RiderSchema,
     RidesSettingsSchema,
 } from "@/lib/schemas/rides";
@@ -198,6 +199,7 @@ export type Payment = z.infer<typeof PaymentSchema>;
 export type RidePlace = z.infer<typeof RidePlaceSchema>;
 export type RidesSettings = z.infer<typeof RidesSettingsSchema>;
 export type RideFares = RidesSettings["fares"];
+export type RideSchedule = z.infer<typeof RideScheduleSchema>;
 export type RiderStatus = (typeof RIDER_STATUSES)[number];
 export type Rider = z.infer<typeof RiderSchema>;
 export type RideRequestStatus = (typeof RIDE_REQUEST_STATUSES)[number];

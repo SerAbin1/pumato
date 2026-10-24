@@ -1,5 +1,17 @@
 import { describe, it, expect } from "vite-plus/test";
-import { riderRef, routeFare, routeKey, telegramUrl, whatsappUrl } from "@/lib/rides";
+import {
+    bookableDates,
+    bookableTimes,
+    DEFAULT_RIDE_SCHEDULE,
+    formatRideTime,
+    isSchedulable,
+    riderRef,
+    routeFare,
+    routeKey,
+    telegramUrl,
+    whatsappUrl,
+} from "@/lib/rides";
+import { istInstant } from "@/lib/ist";
 
 describe("rider contact links", () => {
     it("builds a wa.me link from a number typed with spaces and a plus", () => {
@@ -31,5 +43,78 @@ describe("route fares", () => {
 
     it("returns null for a route with no fare", () => {
         expect(routeFare({}, "gate", "lib")).toBeNull();
+    });
+});
+
+// 30 min lead, up to 3 days ahead.
+const schedule = DEFAULT_RIDE_SCHEDULE;
+// Sat 24 Oct 2026, 22:10 IST.
+const now = istInstant("2026-10-24", "22:10");
+
+describe("scheduling window", () => {
+    it("refuses a time inside the minimum lead", () => {
+        expect(isSchedulable(istInstant("2026-10-24", "22:30"), now, schedule)).toBe(false);
+    });
+
+    it("accepts a time exactly at the minimum lead", () => {
+        expect(isSchedulable(istInstant("2026-10-24", "22:40"), now, schedule)).toBe(true);
+    });
+
+    it("accepts up to max days ahead, and not beyond", () => {
+        expect(isSchedulable(istInstant("2026-10-27", "22:10"), now, schedule)).toBe(true);
+        expect(isSchedulable(istInstant("2026-10-27", "22:15"), now, schedule)).toBe(false);
+    });
+
+    it("refuses a time in the past", () => {
+        expect(isSchedulable(istInstant("2026-10-24", "09:00"), now, schedule)).toBe(false);
+    });
+});
+
+describe("bookable times", () => {
+    it("offers 15-minute slots from the first one past the lead", () => {
+        expect(bookableTimes("2026-10-24", now, schedule)).toEqual([
+            "22:45",
+            "23:00",
+            "23:15",
+            "23:30",
+            "23:45",
+        ]);
+    });
+
+    it("offers the whole day in between", () => {
+        const times = bookableTimes("2026-10-25", now, schedule);
+        expect(times[0]).toBe("00:00");
+        expect(times.at(-1)).toBe("23:45");
+        expect(times).toHaveLength(96);
+    });
+
+    it("stops at the last day's limit", () => {
+        expect(bookableTimes("2026-10-27", now, schedule).at(-1)).toBe("22:00");
+    });
+
+    it("offers nothing on a day past the window", () => {
+        expect(bookableTimes("2026-10-28", now, schedule)).toEqual([]);
+    });
+});
+
+describe("bookable dates", () => {
+    it("lists every IST day from today to the last bookable day", () => {
+        expect(bookableDates(now, schedule)).toEqual([
+            "2026-10-24",
+            "2026-10-25",
+            "2026-10-26",
+            "2026-10-27",
+        ]);
+    });
+
+    it("skips today once its last slot is inside the lead", () => {
+        const late = istInstant("2026-10-24", "23:30");
+        expect(bookableDates(late, schedule)[0]).toBe("2026-10-25");
+    });
+});
+
+describe("formatRideTime", () => {
+    it("shows weekday, date and 12-hour IST time", () => {
+        expect(formatRideTime(istInstant("2026-10-25", "16:30"))).toBe("Sun 25 Oct, 4:30 PM");
     });
 });

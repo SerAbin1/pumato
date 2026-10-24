@@ -16,6 +16,26 @@ export const FareSchema = z.number().int().positive();
 /** Keyed by routeKey(a, b), so one fare covers both directions of a route. */
 export const RideFaresSchema = z.record(z.string(), FareSchema);
 
+/** Admin-tunable timings for scheduled rides. */
+export const RideScheduleSchema = z
+    .object({
+        // How long before the ride the accepted rider is asked to confirm.
+        reminderMinutes: z.number().int().min(5).max(180),
+        // How long they have to confirm before the ride goes back to everyone.
+        confirmMinutes: z.number().int().min(1).max(120),
+        // Earliest a ride can be booked for, from now.
+        minLeadMinutes: z
+            .number()
+            .int()
+            .min(0)
+            .max(24 * 60),
+        maxDaysAhead: z.number().int().min(1).max(30),
+    })
+    .refine(
+        (s) => s.confirmMinutes < s.reminderMinutes,
+        "The confirm window must end before the ride starts"
+    );
+
 /** `site_content/rides_settings`: one doc, so the booking page costs one read. */
 export const RidesSettingsSchema = z.object({
     whatsappNumber: z.string().trim(),

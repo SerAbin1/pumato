@@ -10,6 +10,7 @@ import {
     Check,
     CheckCheck,
     Loader2,
+    MapPin,
     Phone,
     Power,
     Undo2,
@@ -24,6 +25,8 @@ import {
     isDueSoon,
     occupiesRider,
     passengersLabel,
+    pickupAccuracyLabel,
+    pickupMapsUrl,
     scheduledTime,
 } from "@/lib/rides";
 import {
@@ -212,6 +215,17 @@ function MyRides({ rides, schedule }: { rides: RideRequest[] | null; schedule: R
                         >
                             <Phone size={18} /> Call {r.phone}
                         </a>
+                        {r.pickupLocation && (
+                            <a
+                                href={pickupMapsUrl(r.pickupLocation)}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className={secondaryButton}
+                            >
+                                <MapPin size={18} /> Open pickup pin (
+                                {pickupAccuracyLabel(r.pickupLocation.accuracy)})
+                            </a>
+                        )}
                         <div className="flex gap-2">
                             <button
                                 onClick={() =>

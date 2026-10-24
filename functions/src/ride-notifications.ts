@@ -65,6 +65,7 @@ const rideOf = (data: DocumentData) => ({
     dropName: data.dropName as string,
     fare: data.fare as number | null,
     riderPreference: data.riderPreference ?? "any",
+    passengers: data.passengers as number | undefined,
     scheduledFor: toDate(data.scheduledFor),
     scheduled: data.scheduledFor !== undefined,
 });

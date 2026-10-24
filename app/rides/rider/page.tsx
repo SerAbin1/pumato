@@ -13,6 +13,7 @@ import {
     Phone,
     Power,
     Undo2,
+    Users,
 } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
@@ -22,6 +23,7 @@ import {
     formatRideTime,
     isDueSoon,
     occupiesRider,
+    passengersLabel,
     scheduledTime,
 } from "@/lib/rides";
 import {
@@ -111,6 +113,7 @@ function useNow(intervalMs = 30_000) {
 /** Route, fare, and for a scheduled or female-preference ride, a badge saying so. */
 function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }) {
     const at = scheduledTime(ride);
+    const passengers = passengersLabel(ride.passengers);
     return (
         <div className="space-y-1">
             <p className="font-bold text-white">
@@ -119,8 +122,13 @@ function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }
                     <span className="text-orange-400"> · {formatFare(ride.fare)}</span>
                 )}
             </p>
-            {(at || ride.riderPreference === "female") && (
+            {(at || passengers || ride.riderPreference === "female") && (
                 <div className="flex flex-wrap gap-1">
+                    {passengers && (
+                        <span className={`${badgeClass} bg-white/10 text-gray-200`}>
+                            <Users size={12} /> {passengers}
+                        </span>
+                    )}
                     {at && (
                         <span className={`${badgeClass} bg-sky-500/15 text-sky-300`}>
                             <CalendarClock size={12} /> {formatRideTime(at)}

@@ -113,9 +113,11 @@ export function rideRequestBody(ride: {
     fare?: number | null;
     scheduledFor?: Date;
     riderPreference?: RidePreference;
+    passengers?: number;
 }): string {
     return [
         `${ride.pickupName} → ${ride.dropName}`,
+        ride.passengers && ride.passengers > 1 ? `${ride.passengers} passengers` : null,
         ride.fare ? `₹${ride.fare}` : null,
         ride.scheduledFor ? formatRideTime(ride.scheduledFor) : null,
         ride.riderPreference === "female" ? "Female rider requested" : null,

@@ -13,6 +13,7 @@ import {
     activePlaces,
     formatFare,
     formatRideTime,
+    passengersLabel,
     riderRef,
     routeKey,
     scheduledTime,
@@ -66,11 +67,17 @@ function StatusBadge({ status }: { status: RideRequestStatus }) {
     );
 }
 
-/** Scheduled time and female preference, when a request has them. */
+/** Scheduled time, passengers and female preference, when a request has them. */
 function RequestTags({ request }: { request: RideRequest }) {
     const at = scheduledTime(request);
+    const passengers = passengersLabel(request.passengers);
     return (
         <>
+            {passengers && (
+                <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-white/10 text-gray-200">
+                    {passengers}
+                </span>
+            )}
             {at && (
                 <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-sky-500/20 text-sky-300">
                     {formatRideTime(at)}

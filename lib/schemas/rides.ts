@@ -86,6 +86,16 @@ export const RIDE_REQUEST_STATUSES = [
 /** Most passengers one request can book; matches firestore.rules. */
 export const MAX_PASSENGERS = 2;
 
+/** Where the guest is standing, from the browser's location; a ride now only. */
+export const PickupLocationSchema = z
+    .object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        // Metres, as the browser reports it, so the rider knows how far to trust the pin.
+        accuracy: z.number().positive(),
+    })
+    .strict();
+
 /** "female" sends the request to female riders only. */
 export const RIDER_PREFERENCES = ["any", "female"] as const;
 
@@ -103,6 +113,7 @@ export const RideRequestSchema = z
         riderPreference: z.enum(RIDER_PREFERENCES).default("any"),
         // Absent on requests booked before the option existed: one passenger.
         passengers: z.number().int().min(1).max(MAX_PASSENGERS).optional(),
+        pickupLocation: PickupLocationSchema.optional(),
         createdAt: z.any(),
         // Scheduled rides only: booking needs a signed-in user, so they can follow it up.
         userId: z.string().optional(),
@@ -120,4 +131,9 @@ export const RideRequestSchema = z
         completedAt: z.any().optional(),
     })
     .refine((r) => r.pickupId !== r.dropId, "Pickup and drop must differ")
-    .refine((r) => r.scheduledFor === undefined || !!r.userId, "Sign in to schedule a ride");
+    .refine((r) => r.scheduledFor === undefined || !!r.userId, "Sign in to schedule a ride")
+    // Where they are when booking isn't where they'll be at a later time.
+    .refine(
+        (r) => r.scheduledFor === undefined || r.pickupLocation === undefined,
+        "Only a ride now can share a pickup pin"
+    );

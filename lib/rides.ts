@@ -133,3 +133,11 @@ export const scheduledRideStatus = (ride: {
 /** "2 passengers", or null for a single passenger (the usual case, so not worth a badge). */
 export const passengersLabel = (passengers: number | undefined) =>
     passengers && passengers > 1 ? `${passengers} passengers` : null;
+
+/** A Google Maps link to the guest's pin; a plain search URL, so no API key. */
+export const pickupMapsUrl = ({ lat, lng }: { lat: number; lng: number }) =>
+    `https://maps.google.com/?q=${lat},${lng}`;
+
+/** "±25 m", or "±1.8 km" for a rough fix (a laptop on Wi-Fi). */
+export const pickupAccuracyLabel = (metres: number) =>
+    metres < 1000 ? `±${Math.round(metres)} m` : `±${(metres / 1000).toFixed(1)} km`;

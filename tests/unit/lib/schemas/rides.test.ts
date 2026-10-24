@@ -46,6 +46,32 @@ describe("RideRequestSchema", () => {
         );
     });
 
+    it("accepts a ride now with the guest's exact pickup pin", () => {
+        const pinned = { ...request, pickupLocation: { lat: 9.5916, lng: 76.5222, accuracy: 25 } };
+        expect(RideRequestSchema.safeParse(pinned).success).toBe(true);
+    });
+
+    it("refuses a pin that isn't a real coordinate", () => {
+        for (const pickupLocation of [
+            { lat: 91, lng: 76.5, accuracy: 25 },
+            { lat: 9.5, lng: -181, accuracy: 25 },
+            { lat: 9.5, lng: 76.5, accuracy: 0 },
+            { lat: 9.5, lng: 76.5, accuracy: 25, label: "home" },
+        ]) {
+            expect(RideRequestSchema.safeParse({ ...request, pickupLocation }).success).toBe(false);
+        }
+    });
+
+    it("refuses a pin on a scheduled ride", () => {
+        const scheduled = {
+            ...request,
+            userId: "u1",
+            scheduledFor: new Date(),
+            pickupLocation: { lat: 9.5916, lng: 76.5222, accuracy: 25 },
+        };
+        expect(RideRequestSchema.safeParse(scheduled).success).toBe(false);
+    });
+
     it("knows cancelled and expired rides", () => {
         for (const status of ["cancelled", "expired"]) {
             expect(RideRequestSchema.safeParse({ ...request, status }).success).toBe(true);

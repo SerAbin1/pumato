@@ -7,6 +7,8 @@ import {
     isDueSoon,
     isSchedulable,
     occupiesRider,
+    pickupAccuracyLabel,
+    pickupMapsUrl,
     scheduledTime,
     riderRef,
     routeFare,
@@ -174,5 +176,21 @@ describe("scheduledRideStatus", () => {
         expect(scheduledRideStatus({ status: "completed" })).toBe("Completed");
         expect(scheduledRideStatus({ status: "cancelled" })).toBe("Cancelled");
         expect(scheduledRideStatus({ status: "expired" })).toBe("No rider found");
+    });
+});
+
+describe("pickup pin", () => {
+    it("links the pin to Google Maps", () => {
+        expect(pickupMapsUrl({ lat: 9.5916, lng: 76.5222 })).toBe(
+            "https://maps.google.com/?q=9.5916,76.5222"
+        );
+    });
+
+    it("rounds the accuracy to whole metres", () => {
+        expect(pickupAccuracyLabel(24.6)).toBe("±25 m");
+    });
+
+    it("gives a rough fix in kilometres", () => {
+        expect(pickupAccuracyLabel(1840)).toBe("±1.8 km");
     });
 });

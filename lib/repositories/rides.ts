@@ -124,6 +124,7 @@ export type RideBooking = Pick<
     | "dropName"
     | "fare"
     | "passengers"
+    | "pickupLocation"
     | "userId"
 > & {
     riderPreference: RidePreference;

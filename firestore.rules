@@ -214,8 +214,17 @@ service cloud.firestore {
         && d.get('userId', null) == request.auth.uid;
     }
 
+    // PickupLocationSchema in lib/schemas/rides.ts.
+    function isValidPickupLocation(loc) {
+      return loc is map
+        && loc.keys().hasOnly(['lat', 'lng', 'accuracy'])
+        && loc.lat is number && loc.lat >= -90 && loc.lat <= 90
+        && loc.lng is number && loc.lng >= -180 && loc.lng <= 180
+        && loc.accuracy is number && loc.accuracy > 0;
+    }
+
     match /ride_requests/{document} {
-      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'riderPreference', 'passengers', 'userId', 'scheduledFor', 'createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'riderPreference', 'passengers', 'pickupLocation', 'userId', 'scheduledFor', 'createdAt'])
         && isText(request.resource.data.name, 80)
         && isPhone(request.resource.data.phone)
         && isText(request.resource.data.pickupId, 64)
@@ -234,6 +243,10 @@ service cloud.firestore {
                 && request.resource.data.passengers >= 1
                 && request.resource.data.passengers <= 2))
         && (!('scheduledFor' in request.resource.data) || isValidSchedule(request.resource.data))
+        // A ride now only: where they are when booking isn't where they'll be later.
+        && (!('pickupLocation' in request.resource.data)
+            || (!('scheduledFor' in request.resource.data)
+                && isValidPickupLocation(request.resource.data.pickupLocation)))
         && (!('userId' in request.resource.data)
             || (request.auth != null && request.resource.data.userId == request.auth.uid))
         && request.resource.data.createdAt == request.time;

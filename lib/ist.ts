@@ -50,6 +50,15 @@ export function istNow(at: Date = new Date()): ISTNow {
     };
 }
 
+// IST has no daylight saving: always UTC+05:30.
+const IST_OFFSET_MIN = 5 * 60 + 30;
+
+/** The instant at IST wall-clock `hhmm` on IST day `dateKey` ("YYYY-MM-DD"). */
+export const istInstant = (dateKey: string, hhmm: string): Date => {
+    const [year, month, day] = dateKey.split("-").map(Number);
+    return new Date(Date.UTC(year, month - 1, day, 0, toMinutes(hhmm) - IST_OFFSET_MIN));
+};
+
 /** "HH:MM" → minutes since midnight. A missing time is read as `fallback`. */
 export const toMinutes = (hhmm: string | undefined, fallback = "00:00") => {
     const [h, m] = (hhmm || fallback).split(":").map(Number);

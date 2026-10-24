@@ -8,6 +8,7 @@ import {
     isWithinWindow,
     formatISTDateKey,
     addDaysToISTDateKey,
+    istInstant,
 } from "../../../lib/ist";
 
 describe("istNow", () => {
@@ -163,6 +164,25 @@ describe("addDaysToISTDateKey", () => {
             year: 2026,
             month: 6,
             day: 31,
+        });
+    });
+});
+
+describe("istInstant", () => {
+    it("reads a date key and HH:MM as IST wall-clock time", () => {
+        expect(istInstant("2026-10-25", "16:30").toISOString()).toBe("2026-10-25T11:00:00.000Z");
+    });
+
+    it("lands early-morning IST on the previous UTC day", () => {
+        expect(istInstant("2026-10-25", "02:00").toISOString()).toBe("2026-10-24T20:30:00.000Z");
+    });
+
+    it("round-trips through istNow", () => {
+        expect(istNow(istInstant("2026-12-31", "23:45"))).toMatchObject({
+            year: 2026,
+            month: 11,
+            day: 31,
+            timeInMinutes: 23 * 60 + 45,
         });
     });
 });

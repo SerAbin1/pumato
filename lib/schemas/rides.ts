@@ -46,6 +46,9 @@ export const RidesSettingsSchema = z.object({
 
 export const RIDER_STATUSES = ["pending", "approved", "rejected", "revoked"] as const;
 
+/** Only "female" changes anything: those riders also get female-preference requests. */
+export const RIDER_GENDERS = ["female", "male", "other"] as const;
+
 /**
  * `riders/{uid}`. The applicant writes it as `pending`; only the manageUsers
  * function moves it on, together with the `rider` claim.
@@ -57,6 +60,8 @@ export const RiderSchema = z.object({
     phone: z.string().regex(PHONE_PATTERN, "Enter a 10-digit phone number"),
     vehicleNumber: z.string().trim().min(1).max(20),
     collegeId: z.string().trim().min(1).max(40),
+    // Asked on every application; riders approved before it existed have none.
+    gender: z.enum(RIDER_GENDERS).optional(),
     status: z.enum(RIDER_STATUSES),
     // Set by the approved rider from their dashboard; online riders get ride requests.
     online: z.boolean().optional(),
@@ -64,8 +69,21 @@ export const RiderSchema = z.object({
     updatedAt: z.any(),
 });
 
-/** pending → accepted → completed; the rider can release an accepted ride back to pending. */
-export const RIDE_REQUEST_STATUSES = ["pending", "accepted", "completed"] as const;
+/**
+ * pending → accepted → completed; the rider can release an accepted ride back
+ * to pending. A scheduled ride can also be cancelled by its user, or expire
+ * when nobody took it.
+ */
+export const RIDE_REQUEST_STATUSES = [
+    "pending",
+    "accepted",
+    "completed",
+    "cancelled",
+    "expired",
+] as const;
+
+/** "female" sends the request to female riders only. */
+export const RIDER_PREFERENCES = ["any", "female"] as const;
 
 export const RideRequestSchema = z
     .object({
@@ -78,11 +96,22 @@ export const RideRequestSchema = z
         // Null when the admin hasn't priced the route; the rider quotes it on the call.
         fare: FareSchema.nullable(),
         status: z.enum(RIDE_REQUEST_STATUSES),
+        riderPreference: z.enum(RIDER_PREFERENCES).default("any"),
         createdAt: z.any(),
+        // Scheduled rides only: booking needs a signed-in user, so they can follow it up.
+        userId: z.string().optional(),
+        scheduledFor: z.any().optional(),
+        // Set by the sweep: when riders were pushed again near the ride's time,
+        // and when the accepted rider was asked to confirm.
+        broadcastAt: z.any().optional(),
+        confirmRequestedAt: z.any().optional(),
+        riderConfirmedAt: z.any().optional(),
+        cancelledAt: z.any().optional(),
         // Set when a rider accepts; cleared if they release the ride.
         riderUid: z.string().optional(),
         riderName: z.string().optional(),
         acceptedAt: z.any().optional(),
         completedAt: z.any().optional(),
     })
-    .refine((r) => r.pickupId !== r.dropId, "Pickup and drop must differ");
+    .refine((r) => r.pickupId !== r.dropId, "Pickup and drop must differ")
+    .refine((r) => r.scheduledFor === undefined || !!r.userId, "Sign in to schedule a ride");

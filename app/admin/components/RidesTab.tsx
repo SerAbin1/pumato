@@ -35,6 +35,8 @@ const REQUEST_STATUS_STYLES: Record<RideRequestStatus, string> = {
     pending: "bg-orange-500/20 text-orange-400",
     accepted: "bg-sky-500/20 text-sky-400",
     completed: "bg-green-500/20 text-green-400",
+    cancelled: "bg-white/10 text-gray-400",
+    expired: "bg-red-500/20 text-red-400",
 };
 
 const formatTime = (value: { toDate?: () => Date } | undefined) =>

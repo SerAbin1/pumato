@@ -3,26 +3,45 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import toast from "react-hot-toast";
-import { collection, onSnapshot, orderBy, query, Timestamp, where } from "firebase/firestore";
-import { BellOff, BellRing, Check, Loader2, Phone, Power, Undo2 } from "lucide-react";
+import {
+    BellOff,
+    BellRing,
+    CalendarClock,
+    Check,
+    CheckCheck,
+    Loader2,
+    Phone,
+    Power,
+    Undo2,
+} from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
-import { db } from "@/lib/firebase";
-import { COLLECTIONS } from "@/lib/constants";
-import { formatFare } from "@/lib/rides";
+import {
+    DEFAULT_RIDE_SCHEDULE,
+    formatFare,
+    formatRideTime,
+    isDueSoon,
+    occupiesRider,
+    scheduledTime,
+} from "@/lib/rides";
 import {
     acceptRide,
     completeRide,
+    confirmRide,
     fetchRider,
+    fetchRidesSettings,
     releaseRide,
     RIDE_TAKEN,
     setRiderOnline,
+    subscribePendingRides,
+    subscribeRiderRides,
+    subscribeUpcomingRides,
 } from "@/lib/repositories";
 import type { ReactNode } from "react";
 import type { FirebaseError } from "firebase/app";
-import type { Query } from "firebase/firestore";
+import type { Unsubscribe } from "firebase/firestore";
 import type { User } from "firebase/auth";
-import type { RideRequest, Rider } from "@/lib/types";
+import type { RidePreference, RideRequest, Rider, RideSchedule } from "@/lib/types";
 import AuthCard from "../components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "../components/RidesShell";
 import { cardClass, primaryButton, secondaryButton } from "../styles";
@@ -50,35 +69,77 @@ const NOT_A_RIDER: Record<string, { title: string; body: string; cta: string }> 
     },
 };
 
-const formatTime = (r: RideRequest) =>
+const formatRequested = (r: RideRequest) =>
     r.createdAt?.toDate?.().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) ?? "";
+
+const formatClock = (at: Date) => at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 const rowClass = "bg-black/30 border border-white/5 rounded-xl p-4 space-y-3";
 const smallButton =
     "flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-sm font-bold disabled:opacity-40 transition-all";
+const badgeClass = "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold";
 
-/** Live ride requests for `q`; pass a memoised query so it subscribes once. */
-function useRideRequests(q: Query) {
-    const [requests, setRequests] = useState<RideRequest[] | null>(null);
+type RidesSubscription = (
+    onChange: (rides: RideRequest[]) => void,
+    onError: (error: Error) => void
+) => Unsubscribe;
 
+/** Live rides from a repository subscription; pass a memoised one so it subscribes once. */
+function useRides(subscribe: RidesSubscription) {
+    const [rides, setRides] = useState<RideRequest[] | null>(null);
     useEffect(
         () =>
-            onSnapshot(
-                q,
-                (snap) =>
-                    setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest)),
-                (error) => {
-                    console.error("Failed to load ride requests:", error);
-                    toast.error("Couldn't load ride requests. Please refresh.");
-                }
-            ),
-        [q]
+            subscribe(setRides, (error) => {
+                console.error("Failed to load ride requests:", error);
+                toast.error("Couldn't load ride requests. Please refresh.");
+            }),
+        [subscribe]
     );
-    return requests;
+    return rides;
+}
+
+/** The current time, ticking so scheduled rides move into "due" without a refresh. */
+function useNow(intervalMs = 30_000) {
+    const [now, setNow] = useState(() => new Date());
+    useEffect(() => {
+        const id = setInterval(() => setNow(new Date()), intervalMs);
+        return () => clearInterval(id);
+    }, [intervalMs]);
+    return now;
+}
+
+/** Route, fare, and for a scheduled or female-preference ride, a badge saying so. */
+function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }) {
+    const at = scheduledTime(ride);
+    return (
+        <div className="space-y-1">
+            <p className="font-bold text-white">
+                {ride.pickupName} → {ride.dropName}
+                {ride.fare !== null && (
+                    <span className="text-orange-400"> · {formatFare(ride.fare)}</span>
+                )}
+            </p>
+            {(at || ride.riderPreference === "female") && (
+                <div className="flex flex-wrap gap-1">
+                    {at && (
+                        <span className={`${badgeClass} bg-sky-500/15 text-sky-300`}>
+                            <CalendarClock size={12} /> {formatRideTime(at)}
+                        </span>
+                    )}
+                    {ride.riderPreference === "female" && (
+                        <span className={`${badgeClass} bg-pink-500/15 text-pink-300`}>
+                            Female rider requested
+                        </span>
+                    )}
+                </div>
+            )}
+            {detail && <p className="text-sm text-gray-400">{detail}</p>}
+        </div>
+    );
 }
 
 /** Rides this rider accepted and hasn't finished: shows the guest's contact. */
-function MyRides({ rides }: { rides: RideRequest[] | null }) {
+function MyRides({ rides, schedule }: { rides: RideRequest[] | null; schedule: RideSchedule }) {
     const [busy, setBusy] = useState<string | null>(null);
 
     const act = async (id: string, action: (id: string) => Promise<void>, failure: string) => {
@@ -94,76 +155,125 @@ function MyRides({ rides }: { rides: RideRequest[] | null }) {
     };
 
     if (!rides?.length) return null;
+    // Rides now first, then scheduled rides soonest first.
+    const sorted = [...rides].sort(
+        (a, b) => (scheduledTime(a)?.getTime() ?? 0) - (scheduledTime(b)?.getTime() ?? 0)
+    );
     return (
         <div className={cardClass}>
             <h2 className="font-black">Your rides</h2>
-            {rides.map((r) => (
-                <div key={r.id} className={rowClass}>
-                    <div>
-                        <p className="font-bold text-white">
-                            {r.pickupName} → {r.dropName}
-                            {r.fare !== null && (
-                                <span className="text-orange-400"> · {formatFare(r.fare)}</span>
-                            )}
-                        </p>
-                        <p className="text-sm text-gray-400">
-                            {r.name} · requested {formatTime(r)}
-                        </p>
-                    </div>
-                    <a href={`tel:${r.phone}`} className={primaryButton}>
-                        <Phone size={18} /> Call {r.phone}
-                    </a>
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => act(r.id, completeRide, "Couldn't complete the ride.")}
-                            disabled={busy === r.id}
-                            className={`${smallButton} bg-green-600 hover:bg-green-500 text-white`}
+            {sorted.map((r) => {
+                const asked = r.confirmRequestedAt?.toDate?.() as Date | undefined;
+                const needsConfirm = !!asked && !r.riderConfirmedAt;
+                return (
+                    <div key={r.id} className={rowClass}>
+                        <RideSummary
+                            ride={r}
+                            detail={
+                                <>
+                                    {r.name} · requested {formatRequested(r)}
+                                    {r.riderConfirmedAt && (
+                                        <span className="text-green-400"> · Confirmed</span>
+                                    )}
+                                </>
+                            }
+                        />
+                        {needsConfirm && (
+                            <div className="space-y-2">
+                                <p className="text-sm text-orange-300">
+                                    Confirm by{" "}
+                                    {formatClock(
+                                        new Date(asked.getTime() + schedule.confirmMinutes * 60_000)
+                                    )}{" "}
+                                    or this ride goes to other riders.
+                                </p>
+                                <button
+                                    onClick={() =>
+                                        act(r.id, confirmRide, "Couldn't confirm the ride.")
+                                    }
+                                    disabled={busy === r.id}
+                                    className={primaryButton}
+                                >
+                                    <CheckCheck size={20} /> Confirm ride
+                                </button>
+                            </div>
+                        )}
+                        <a
+                            href={`tel:${r.phone}`}
+                            className={needsConfirm ? secondaryButton : primaryButton}
                         >
-                            <Check size={16} /> Complete
-                        </button>
-                        <button
-                            onClick={() => act(r.id, releaseRide, "Couldn't release the ride.")}
-                            disabled={busy === r.id}
-                            className={`${smallButton} bg-white/10 hover:bg-white/15 text-gray-300`}
-                        >
-                            <Undo2 size={16} /> Release
-                        </button>
+                            <Phone size={18} /> Call {r.phone}
+                        </a>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() =>
+                                    act(r.id, completeRide, "Couldn't complete the ride.")
+                                }
+                                disabled={busy === r.id}
+                                className={`${smallButton} bg-green-600 hover:bg-green-500 text-white`}
+                            >
+                                <Check size={16} /> Complete
+                            </button>
+                            <button
+                                onClick={() => act(r.id, releaseRide, "Couldn't release the ride.")}
+                                disabled={busy === r.id}
+                                className={`${smallButton} bg-white/10 hover:bg-white/15 text-gray-300`}
+                            >
+                                <Undo2 size={16} /> Release
+                            </button>
+                        </div>
                     </div>
-                </div>
-            ))}
+                );
+            })}
         </div>
     );
 }
 
-const pendingToday = () => {
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
-    return query(
-        collection(db, COLLECTIONS.RIDE_REQUESTS),
-        where("status", "==", "pending"),
-        where("createdAt", ">=", Timestamp.fromDate(todayStart)),
-        orderBy("createdAt", "asc")
-    );
-};
-
-/** Today's pending requests, oldest first, while the rider is online. */
+/**
+ * Pending requests while the rider is online: rides now plus scheduled rides
+ * that are due, oldest first, then scheduled rides they can claim ahead.
+ */
 function PendingRequests({
     rider,
     hasActiveRide,
+    schedule,
+    now,
 }: {
     rider: Rider;
     // null while the rider's own rides are still loading
     hasActiveRide: boolean | null;
+    schedule: RideSchedule;
+    now: Date;
 }) {
-    const [pendingQuery] = useState(pendingToday);
-    const requests = useRideRequests(pendingQuery);
+    // Female riders also see female-preference requests; the rules refuse anything wider.
+    const preferences = useMemo<RidePreference[]>(
+        () => (rider.gender === "female" ? ["any", "female"] : ["any"]),
+        [rider.gender]
+    );
+    const rideNow = useRides(
+        useCallback<RidesSubscription>(
+            (onChange, onError) => subscribePendingRides(preferences, onChange, onError),
+            [preferences]
+        )
+    );
+    const upcoming = useRides(
+        useCallback<RidesSubscription>(
+            (onChange, onError) => subscribeUpcomingRides(preferences, onChange, onError),
+            [preferences]
+        )
+    );
     const [accepting, setAccepting] = useState<string | null>(null);
 
-    const accept = async (id: string) => {
-        setAccepting(id);
+    const accept = async (ride: RideRequest) => {
+        setAccepting(ride.id);
         try {
-            await acceptRide(id, { uid: rider.uid, name: rider.name });
-            toast.success("Ride accepted. Call the guest now.");
+            await acceptRide(ride.id, { uid: rider.uid, name: rider.name });
+            const at = scheduledTime(ride);
+            toast.success(
+                at && !isDueSoon(at, new Date(), schedule)
+                    ? `Ride accepted. We'll ask you to confirm ${schedule.reminderMinutes} min before.`
+                    : "Ride accepted. Call the guest now."
+            );
         } catch (error) {
             // Once another rider has it, the request is no longer readable to us.
             const taken =
@@ -178,52 +288,66 @@ function PendingRequests({
         }
     };
 
-    if (requests === null) {
+    if (rideNow === null || upcoming === null) {
         return (
             <div className="flex justify-center py-8">
                 <Loader2 size={24} className="animate-spin text-gray-500" />
             </div>
         );
     }
-    if (requests.length === 0) {
-        return (
-            <p className="text-center text-sm text-gray-500 py-8">
-                No ride requests right now. We&apos;ll notify you when one comes in.
-            </p>
-        );
-    }
+
+    const isDue = (r: RideRequest) => isDueSoon(scheduledTime(r)!, now, schedule);
+    const requests = [...upcoming.filter(isDue), ...rideNow];
+    const later = upcoming.filter((r) => !isDue(r));
+
+    const row = (r: RideRequest, blocked: boolean) => (
+        <div key={r.id} className={rowClass}>
+            <RideSummary ride={r} detail={scheduledTime(r) ? null : formatRequested(r)} />
+            <button
+                onClick={() => accept(r)}
+                disabled={accepting !== null || blocked}
+                className={primaryButton}
+            >
+                {accepting === r.id ? (
+                    <Loader2 size={20} className="animate-spin" />
+                ) : (
+                    <Check size={20} />
+                )}
+                Accept
+            </button>
+        </div>
+    );
+
     return (
-        <div className="space-y-2">
-            {hasActiveRide && (
-                <p className="text-center text-sm text-orange-300">
-                    Complete or release your current ride to accept another.
-                </p>
-            )}
-            {requests.map((r) => (
-                <div key={r.id} className={rowClass}>
-                    <div>
-                        <p className="font-bold text-white">
-                            {r.pickupName} → {r.dropName}
-                            {r.fare !== null && (
-                                <span className="text-orange-400"> · {formatFare(r.fare)}</span>
-                            )}
-                        </p>
-                        <p className="text-xs text-gray-500">{formatTime(r)}</p>
-                    </div>
-                    <button
-                        onClick={() => accept(r.id)}
-                        disabled={accepting !== null || hasActiveRide !== false}
-                        className={primaryButton}
-                    >
-                        {accepting === r.id ? (
-                            <Loader2 size={20} className="animate-spin" />
-                        ) : (
-                            <Check size={20} />
+        <div className="space-y-6">
+            <div className="space-y-2">
+                {requests.length === 0 ? (
+                    <p className="text-center text-sm text-gray-500 py-8">
+                        No ride requests right now. We&apos;ll notify you when one comes in.
+                    </p>
+                ) : (
+                    <>
+                        {hasActiveRide && (
+                            <p className="text-center text-sm text-orange-300">
+                                Complete or release your current ride to accept another.
+                            </p>
                         )}
-                        Accept
-                    </button>
+                        {requests.map((r) => row(r, hasActiveRide !== false))}
+                    </>
+                )}
+            </div>
+            {later.length > 0 && (
+                <div className="space-y-2">
+                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
+                        Scheduled
+                    </h3>
+                    <p className="text-xs text-gray-500">
+                        Claim one ahead; we&apos;ll ask you to confirm {schedule.reminderMinutes}{" "}
+                        min before it starts.
+                    </p>
+                    {later.map((r) => row(r, false))}
                 </div>
-            ))}
+            )}
         </div>
     );
 }
@@ -287,19 +411,23 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     const [online, setOnline] = useState(rider.online === true);
     const [busy, setBusy] = useState(false);
     const { permission, request } = useFcmToken(user);
-    const myRides = useRideRequests(
-        useMemo(
-            () =>
-                query(
-                    collection(db, COLLECTIONS.RIDE_REQUESTS),
-                    where("riderUid", "==", user.uid),
-                    where("status", "==", "accepted")
-                ),
+    const [schedule, setSchedule] = useState(DEFAULT_RIDE_SCHEDULE);
+    const now = useNow();
+    const myRides = useRides(
+        useCallback<RidesSubscription>(
+            (onChange, onError) => subscribeRiderRides(user.uid, onChange, onError),
             [user.uid]
         )
     );
     // A rider takes one ride at a time; unknown until their rides load.
-    const hasActiveRide = myRides === null ? null : myRides.length > 0;
+    const hasActiveRide =
+        myRides === null ? null : myRides.some((r) => occupiesRider(r, now, schedule));
+
+    useEffect(() => {
+        fetchRidesSettings()
+            .then((s) => setSchedule(s.schedule))
+            .catch((error) => console.error("Failed to load rides settings:", error));
+    }, []);
 
     const toggleOnline = async () => {
         setBusy(true);
@@ -348,13 +476,18 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
                     </button>
                 </div>
 
-                <MyRides rides={myRides} />
+                <MyRides rides={myRides} schedule={schedule} />
             </div>
 
             <div className={`${mainColumn} ${cardClass}`}>
                 <h2 className="font-black">Ride requests</h2>
                 {online ? (
-                    <PendingRequests rider={rider} hasActiveRide={hasActiveRide} />
+                    <PendingRequests
+                        rider={rider}
+                        hasActiveRide={hasActiveRide}
+                        schedule={schedule}
+                        now={now}
+                    />
                 ) : (
                     <p className="text-center text-sm text-gray-500 py-8">
                         Go online to see ride requests.
@@ -433,8 +566,9 @@ export default function RiderDashboardPage() {
                     title="How riding works"
                     steps={[
                         "Go online whenever you're free to give rides.",
-                        "You'll be notified of every new ride request.",
+                        "You'll be notified of every new ride request, and of rides booked ahead.",
                         "The first rider to accept gets it, along with the guest's number.",
+                        "For a scheduled ride, confirm when we ask, shortly before it starts.",
                         "Call the guest, give the ride, then mark it complete.",
                     ]}
                 />

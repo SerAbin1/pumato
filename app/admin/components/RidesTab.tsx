@@ -2,10 +2,22 @@ import { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
-import { fetchRidesSettings, saveRideFares, saveRidesSettings } from "@/lib/repositories";
+import {
+    fetchRidesSettings,
+    saveRideFares,
+    saveRidesSettings,
+    setRiderGender,
+} from "@/lib/repositories";
 import { manageUsers } from "@/lib/functions";
-import { activePlaces, formatFare, riderRef, routeKey } from "@/lib/rides";
-import { RIDE_REQUEST_STATUSES } from "@/lib/schemas/rides";
+import {
+    activePlaces,
+    formatFare,
+    formatRideTime,
+    riderRef,
+    routeKey,
+    scheduledTime,
+} from "@/lib/rides";
+import { RIDE_REQUEST_STATUSES, RIDER_GENDERS } from "@/lib/schemas/rides";
 import toast from "react-hot-toast";
 import { Check, ChevronDown, Loader2, Phone, Plus, Save, Trash2, X } from "lucide-react";
 import type {
@@ -13,6 +25,8 @@ import type {
     RideRequest,
     RideRequestStatus,
     Rider,
+    RiderGender,
+    RideSchedule,
     RiderStatus,
     RidesSettings,
 } from "@/lib/types";
@@ -49,6 +63,25 @@ function StatusBadge({ status }: { status: RideRequestStatus }) {
         >
             {status}
         </span>
+    );
+}
+
+/** Scheduled time and female preference, when a request has them. */
+function RequestTags({ request }: { request: RideRequest }) {
+    const at = scheduledTime(request);
+    return (
+        <>
+            {at && (
+                <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-sky-500/20 text-sky-300">
+                    {formatRideTime(at)}
+                </span>
+            )}
+            {request.riderPreference === "female" && (
+                <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300">
+                    Female rider
+                </span>
+            )}
+        </>
     );
 }
 
@@ -115,7 +148,7 @@ function RiderDetails({ rider }: { rider: Rider }) {
                             {rides.map((r) => (
                                 <tr key={r.id} className="border-t border-white/5">
                                     <td className="py-2 pr-3 font-bold text-white">
-                                        {r.pickupName} → {r.dropName}
+                                        {r.pickupName} → {r.dropName} <RequestTags request={r} />
                                     </td>
                                     <td className="py-2 pr-3">
                                         {r.fare === null ? "—" : formatFare(r.fare)}
@@ -142,6 +175,13 @@ function RiderDetails({ rider }: { rider: Rider }) {
         </div>
     );
 }
+
+const SCHEDULE_FIELDS: { key: keyof RideSchedule; label: string }[] = [
+    { key: "reminderMinutes", label: "Ask rider to confirm (min before)" },
+    { key: "confirmMinutes", label: "Rider has to confirm (min)" },
+    { key: "minLeadMinutes", label: "Earliest booking (min ahead)" },
+    { key: "maxDaysAhead", label: "Latest booking (days ahead)" },
+];
 
 function SettingsSection() {
     const [settings, setSettings] = useState<RidesSettings | null>(null);
@@ -182,7 +222,9 @@ function SettingsSection() {
             toast.success("Rides settings saved");
         } catch (error) {
             console.error("Failed to save rides settings:", error);
-            toast.error("Failed to save. Check every place has a name.");
+            toast.error(
+                "Failed to save. Check every place has a name, and the confirm window is shorter than the reminder."
+            );
         } finally {
             setSaving(false);
         }
@@ -257,6 +299,33 @@ function SettingsSection() {
                     >
                         <Plus size={16} />
                     </button>
+                </div>
+            </div>
+
+            <div className="space-y-2">
+                <p className="text-xs text-gray-400">
+                    Scheduled rides. The accepted rider is asked to confirm before the ride; if they
+                    don&apos;t in time, the ride goes back to every online rider.
+                </p>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {SCHEDULE_FIELDS.map(({ key, label }) => (
+                        <label key={key} className="text-xs text-gray-400 space-y-1">
+                            <span>{label}</span>
+                            <input
+                                value={settings.schedule[key]}
+                                onChange={(e) =>
+                                    update({
+                                        schedule: {
+                                            ...settings.schedule,
+                                            [key]: Number(e.target.value.replace(/\D/g, "")),
+                                        },
+                                    })
+                                }
+                                inputMode="numeric"
+                                className={inputClass}
+                            />
+                        </label>
+                    ))}
                 </div>
             </div>
 
@@ -410,6 +479,20 @@ function RidersSection() {
         }
     };
 
+    const setGender = async (uid: string, gender: RiderGender) => {
+        setBusy(uid);
+        try {
+            await setRiderGender(uid, gender);
+            toast.success("Gender saved");
+            await fetchRiders();
+        } catch (error) {
+            console.error("Failed to set rider gender:", error);
+            toast.error("Failed to save gender");
+        } finally {
+            setBusy(null);
+        }
+    };
+
     const shown = riders?.filter((r) => r.status === filter) ?? [];
 
     return (
@@ -463,10 +546,34 @@ function RidersSection() {
                                 </p>
                                 <p className="text-gray-400">
                                     {rider.phone} · {rider.vehicleNumber} · ID {rider.collegeId}
+                                    {rider.gender && (
+                                        <span className="capitalize"> · {rider.gender}</span>
+                                    )}
                                 </p>
                                 <p className="text-xs text-gray-500">{rider.email}</p>
                             </button>
                             <div className="flex gap-2">
+                                {/* Riders approved before the application asked have none. */}
+                                {!rider.gender && (
+                                    <select
+                                        aria-label={`Gender of ${rider.name}`}
+                                        value=""
+                                        onChange={(e) =>
+                                            setGender(rider.uid, e.target.value as RiderGender)
+                                        }
+                                        disabled={busy === rider.uid}
+                                        className="bg-black/30 border border-orange-500/40 rounded-xl px-2 py-1.5 text-xs text-orange-300"
+                                    >
+                                        <option value="" disabled>
+                                            Set gender
+                                        </option>
+                                        {RIDER_GENDERS.map((g) => (
+                                            <option key={g} value={g} className="capitalize">
+                                                {g}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
                                 {RIDER_ACTIONS[rider.status]?.map(
                                     ({ action, label, className }) => (
                                         <button
@@ -554,6 +661,7 @@ function RideRequestsSection() {
                             <div className="min-w-0 text-sm space-y-0.5">
                                 <p className="font-bold text-white flex items-center gap-2">
                                     {r.pickupName} → {r.dropName}
+                                    <RequestTags request={r} />
                                     {r.fare !== null && (
                                         <span className="text-orange-400">
                                             {formatFare(r.fare)}

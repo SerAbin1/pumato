@@ -9,11 +9,13 @@ import {
     CalendarClock,
     CheckCircle2,
     Clock,
+    Crosshair,
     Loader2,
     MapPin,
     Navigation,
     ShieldCheck,
     Users,
+    X,
     Zap,
 } from "lucide-react";
 import type { User } from "firebase/auth";
@@ -35,6 +37,7 @@ import {
     formatFare,
     formatRideTime,
     passengersLabel,
+    pickupAccuracyLabel,
     routeFare,
     scheduleProblem,
     scheduledRideStatus,
@@ -47,6 +50,7 @@ import { inputClass, labelClass, primaryButton, secondaryButton } from "./styles
 import AuthCard from "./components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "./components/RidesShell";
 import type {
+    PickupLocation,
     RideFares,
     RidePlace,
     RidePreference,
@@ -99,6 +103,72 @@ function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => 
             {option("now", <Zap size={18} />, "Ride now", "Get a ride immediately")}
             {option("schedule", <CalendarClock size={18} />, "Schedule", "Book for a later time")}
         </div>
+    );
+}
+
+/** Optional exact pin for a ride now, so the rider can find a guest away from the named spot. */
+function PickupPin({
+    pin,
+    onChange,
+}: {
+    pin: PickupLocation | null;
+    onChange: (pin: PickupLocation | null) => void;
+}) {
+    const [locating, setLocating] = useState(false);
+
+    const locate = () => {
+        if (!("geolocation" in navigator)) {
+            toast.error("Your browser can't share its location.");
+            return;
+        }
+        setLocating(true);
+        navigator.geolocation.getCurrentPosition(
+            ({ coords }) => {
+                setLocating(false);
+                onChange({
+                    // ~10 cm; more digits only make the link longer.
+                    lat: Number(coords.latitude.toFixed(6)),
+                    lng: Number(coords.longitude.toFixed(6)),
+                    accuracy: Math.max(1, Math.round(coords.accuracy)),
+                });
+            },
+            (error) => {
+                setLocating(false);
+                toast.error(
+                    error.code === error.PERMISSION_DENIED
+                        ? "Location is blocked. Allow it in your browser, or just pick the pickup."
+                        : "Couldn't find your location. Please try again."
+                );
+            },
+            { enableHighAccuracy: true, timeout: 15_000, maximumAge: 60_000 }
+        );
+    };
+
+    if (pin) {
+        return (
+            <p className="mt-2 flex items-center gap-2 text-sm text-emerald-300">
+                <Crosshair size={14} /> Exact location added ({pickupAccuracyLabel(pin.accuracy)})
+                <button
+                    type="button"
+                    onClick={() => onChange(null)}
+                    aria-label="Remove exact location"
+                    className="ml-auto text-gray-400 hover:text-white"
+                >
+                    <X size={16} />
+                </button>
+            </p>
+        );
+    }
+    return (
+        <button
+            type="button"
+            onClick={locate}
+            disabled={locating}
+            className="mt-2 flex items-center gap-2 text-sm text-orange-400 hover:text-orange-300 disabled:opacity-60"
+        >
+            {locating ? <Loader2 size={14} className="animate-spin" /> : <Crosshair size={14} />}
+            {locating ? "Finding you…" : "Share my exact location (optional)"}
+        </button>
     );
 }
 
@@ -279,6 +349,7 @@ export default function RidesPage() {
     const [pickupId, setPickupId] = useState("");
     const [dropId, setDropId] = useState("");
     const [passengers, setPassengers] = useState(1);
+    const [pin, setPin] = useState<PickupLocation | null>(null);
     const [dateKey, setDateKey] = useState("");
     const [time, setTime] = useState("");
     const [preferFemale, setPreferFemale] = useState(false);
@@ -347,6 +418,7 @@ export default function RidesPage() {
                 dropName: drop.name,
                 fare,
                 passengers,
+                ...(!scheduling && pin && { pickupLocation: pin }),
                 riderPreference: preference,
                 ...(scheduling && user && scheduledFor && { userId: user.uid, scheduledFor }),
             });
@@ -392,6 +464,7 @@ export default function RidesPage() {
         setPickupId("");
         setDropId("");
         setPassengers(1);
+        setPin(null);
         setDateKey("");
         setTime("");
     };
@@ -438,6 +511,7 @@ export default function RidesPage() {
                                 }}
                                 placeholder="Where are you?"
                             />
+                            {!scheduling && <PickupPin pin={pin} onChange={setPin} />}
                         </div>
                         <div>
                             <p className={labelClass}>

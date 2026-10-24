@@ -75,3 +75,21 @@ const rideDayFormatter = new Intl.DateTimeFormat("en-GB", {
 /** "Sun 25 Oct, 4:30 PM", in IST. */
 export const formatRideTime = (at: Date) =>
     `${rideDayFormatter.format(at)}, ${format12h(fromMinutes(istNow(at).timeInMinutes))}`;
+
+/** A scheduled ride's time from its stored timestamp, or null for a ride now. */
+export const scheduledTime = (ride: { scheduledFor?: { toDate: () => Date } }) =>
+    ride.scheduledFor?.toDate() ?? null;
+
+/** Whether a scheduled ride has reached its reminder time, when it's treated like a ride now. */
+export const isDueSoon = (scheduledFor: Date, now: Date, schedule: RideSchedule) =>
+    scheduledFor.getTime() - schedule.reminderMinutes * MINUTE_MS <= now.getTime();
+
+/** A rider takes one ride at a time; a scheduled ride only counts once it's due. */
+export const occupiesRider = (
+    ride: { scheduledFor?: { toDate: () => Date } },
+    now: Date,
+    schedule: RideSchedule
+) => {
+    const at = scheduledTime(ride);
+    return at === null || isDueSoon(at, now, schedule);
+};

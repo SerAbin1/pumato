@@ -4,7 +4,10 @@ import {
     bookableTimes,
     DEFAULT_RIDE_SCHEDULE,
     formatRideTime,
+    isDueSoon,
     isSchedulable,
+    occupiesRider,
+    scheduledTime,
     riderRef,
     routeFare,
     routeKey,
@@ -116,5 +119,28 @@ describe("bookable dates", () => {
 describe("formatRideTime", () => {
     it("shows weekday, date and 12-hour IST time", () => {
         expect(formatRideTime(istInstant("2026-10-25", "16:30"))).toBe("Sun 25 Oct, 4:30 PM");
+    });
+});
+
+describe("scheduled rides near their time", () => {
+    const ride = istInstant("2026-10-25", "16:30");
+
+    it("are due from the reminder time", () => {
+        expect(isDueSoon(ride, istInstant("2026-10-25", "15:59"), schedule)).toBe(false);
+        expect(isDueSoon(ride, istInstant("2026-10-25", "16:00"), schedule)).toBe(true);
+    });
+
+    it("occupy their rider only once due, while a ride now always does", () => {
+        const early = istInstant("2026-10-25", "12:00");
+        const due = istInstant("2026-10-25", "16:10");
+        const scheduled = { scheduledFor: { toDate: () => ride } };
+        expect(occupiesRider({}, early, schedule)).toBe(true);
+        expect(occupiesRider(scheduled, early, schedule)).toBe(false);
+        expect(occupiesRider(scheduled, due, schedule)).toBe(true);
+    });
+
+    it("read their time from the stored timestamp", () => {
+        expect(scheduledTime({ scheduledFor: { toDate: () => ride } })).toEqual(ride);
+        expect(scheduledTime({})).toBeNull();
     });
 });

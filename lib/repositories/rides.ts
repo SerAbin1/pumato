@@ -116,7 +116,15 @@ export async function setRiderOnline(uid: string, online: boolean): Promise<void
 
 export type RideBooking = Pick<
     z.input<typeof RideRequestSchema>,
-    "name" | "phone" | "pickupId" | "pickupName" | "dropId" | "dropName" | "fare" | "userId"
+    | "name"
+    | "phone"
+    | "pickupId"
+    | "pickupName"
+    | "dropId"
+    | "dropName"
+    | "fare"
+    | "passengers"
+    | "userId"
 > & {
     riderPreference: RidePreference;
     /** Set for a scheduled ride, which also needs `userId`. */

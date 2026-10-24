@@ -83,6 +83,9 @@ export const RIDE_REQUEST_STATUSES = [
     "expired",
 ] as const;
 
+/** Most passengers one request can book; matches firestore.rules. */
+export const MAX_PASSENGERS = 4;
+
 /** "female" sends the request to female riders only. */
 export const RIDER_PREFERENCES = ["any", "female"] as const;
 
@@ -98,6 +101,8 @@ export const RideRequestSchema = z
         fare: FareSchema.nullable(),
         status: z.enum(RIDE_REQUEST_STATUSES),
         riderPreference: z.enum(RIDER_PREFERENCES).default("any"),
+        // Absent on requests booked before the option existed: one passenger.
+        passengers: z.number().int().min(1).max(MAX_PASSENGERS).optional(),
         createdAt: z.any(),
         // Scheduled rides only: booking needs a signed-in user, so they can follow it up.
         userId: z.string().optional(),

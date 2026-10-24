@@ -215,7 +215,7 @@ service cloud.firestore {
     }
 
     match /ride_requests/{document} {
-      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'riderPreference', 'userId', 'scheduledFor', 'createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'riderPreference', 'passengers', 'userId', 'scheduledFor', 'createdAt'])
         && isText(request.resource.data.name, 80)
         && isPhone(request.resource.data.phone)
         && isText(request.resource.data.pickupId, 64)
@@ -228,6 +228,11 @@ service cloud.firestore {
             || (request.resource.data.fare is int && request.resource.data.fare > 0))
         && request.resource.data.status == 'pending'
         && request.resource.data.riderPreference in ['any', 'female']
+        // MAX_PASSENGERS in lib/schemas/rides.ts.
+        && (!('passengers' in request.resource.data)
+            || (request.resource.data.passengers is int
+                && request.resource.data.passengers >= 1
+                && request.resource.data.passengers <= 4))
         && (!('scheduledFor' in request.resource.data) || isValidSchedule(request.resource.data))
         && (!('userId' in request.resource.data)
             || (request.auth != null && request.resource.data.userId == request.auth.uid))

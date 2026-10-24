@@ -129,3 +129,7 @@ export const scheduledRideStatus = (ride: {
             return "No rider found";
     }
 };
+
+/** "2 passengers", or null for a single passenger (the usual case, so not worth a badge). */
+export const passengersLabel = (passengers: number | undefined) =>
+    passengers && passengers > 1 ? `${passengers} passengers` : null;

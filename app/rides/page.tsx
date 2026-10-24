@@ -26,7 +26,7 @@ import {
     subscribeRideAvailability,
     widenRideRequest,
 } from "@/lib/repositories";
-import { PHONE_PATTERN } from "@/lib/schemas/rides";
+import { MAX_PASSENGERS, PHONE_PATTERN } from "@/lib/schemas/rides";
 import {
     activePlaces,
     bookableDates,
@@ -34,6 +34,7 @@ import {
     formatDateOption,
     formatFare,
     formatRideTime,
+    passengersLabel,
     routeFare,
     scheduleProblem,
     scheduledRideStatus,
@@ -63,6 +64,7 @@ interface Booking {
     pickupName: string;
     dropName: string;
     fare: number | null;
+    passengers: number;
     phone: string;
     preference: RidePreference;
     scheduledFor: Date | null;
@@ -144,6 +146,9 @@ function BookedCard({
             <p className="text-gray-400 text-sm">
                 {booking.pickupName} → {booking.dropName}
                 {booking.fare !== null && <> · {formatFare(booking.fare)}</>}
+                {passengersLabel(booking.passengers) && (
+                    <> · {passengersLabel(booking.passengers)}</>
+                )}
                 <br />
                 {booking.scheduledFor ? (
                     <>
@@ -273,6 +278,7 @@ export default function RidesPage() {
     const [phone, setPhone] = useState("");
     const [pickupId, setPickupId] = useState("");
     const [dropId, setDropId] = useState("");
+    const [passengers, setPassengers] = useState(1);
     const [dateKey, setDateKey] = useState("");
     const [time, setTime] = useState("");
     const [preferFemale, setPreferFemale] = useState(false);
@@ -340,6 +346,7 @@ export default function RidesPage() {
                 dropId: drop.id,
                 dropName: drop.name,
                 fare,
+                passengers,
                 riderPreference: preference,
                 ...(scheduling && user && scheduledFor && { userId: user.uid, scheduledFor }),
             });
@@ -353,6 +360,7 @@ export default function RidesPage() {
                 pickupName: pickup.name,
                 dropName: drop.name,
                 fare,
+                passengers,
                 phone,
                 preference,
                 scheduledFor: scheduling ? scheduledFor : null,
@@ -383,6 +391,7 @@ export default function RidesPage() {
         setBooking(null);
         setPickupId("");
         setDropId("");
+        setPassengers(1);
         setDateKey("");
         setTime("");
     };
@@ -442,6 +451,26 @@ export default function RidesPage() {
                                 onChange={setDropId}
                                 placeholder="Where to?"
                             />
+                        </div>
+                        <div>
+                            <p className={labelClass}>
+                                <Users size={12} className="inline mr-1" /> Passengers
+                            </p>
+                            <div className="flex gap-2">
+                                {Array.from({ length: MAX_PASSENGERS }, (_, i) => i + 1).map(
+                                    (n) => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            aria-pressed={passengers === n}
+                                            onClick={() => setPassengers(n)}
+                                            className={`flex-1 rounded-xl border py-2.5 font-black transition-all ${passengers === n ? "bg-orange-500/10 border-orange-500 text-white" : "bg-black/30 border-white/10 text-gray-400 hover:text-white"}`}
+                                        >
+                                            {n}
+                                        </button>
+                                    )
+                                )}
+                            </div>
                         </div>
                         {scheduling && (
                             <div className="grid grid-cols-2 gap-3">

@@ -9,16 +9,19 @@ import {
     occupiesRider,
     pickupAccuracyLabel,
     pickupMapsUrl,
+    rideStatus,
     scheduledTime,
     riderRef,
     routeFare,
     routeKey,
     scheduleProblem,
     scheduledRideStatus,
+    splitMyRides,
     telegramUrl,
     whatsappUrl,
 } from "@/lib/rides";
 import { istInstant } from "@/lib/ist";
+import type { RideRequestStatus } from "@/lib/types";
 
 describe("rider contact links", () => {
     it("builds a wa.me link from a number typed with spaces and a plus", () => {
@@ -176,6 +179,67 @@ describe("scheduledRideStatus", () => {
         expect(scheduledRideStatus({ status: "completed" })).toBe("Completed");
         expect(scheduledRideStatus({ status: "cancelled" })).toBe("Cancelled");
         expect(scheduledRideStatus({ status: "expired" })).toBe("No rider found");
+    });
+});
+
+describe("a user's rides", () => {
+    const at = (dateKey: string, hhmm: string) => ({ toDate: () => istInstant(dateKey, hhmm) });
+    // now is 24 Oct, 22:10 IST.
+    const rideNow = (status: RideRequestStatus, bookedOn = "2026-10-24", bookedAt = "21:00") => ({
+        status,
+        createdAt: at(bookedOn, bookedAt),
+    });
+
+    it("says nobody took a ride now still waiting from an earlier day", () => {
+        expect(rideStatus(rideNow("pending", "2026-10-23"), now)).toBe("No rider found");
+        expect(rideStatus(rideNow("pending"), now)).toBe("Waiting for a rider");
+    });
+
+    it("leaves accepted and scheduled rides as they stand", () => {
+        expect(rideStatus({ ...rideNow("accepted", "2026-10-23"), riderName: "Ravi" }, now)).toBe(
+            "Accepted by Ravi"
+        );
+        expect(
+            rideStatus(
+                {
+                    status: "pending",
+                    createdAt: at("2026-10-23", "10:00"),
+                    scheduledFor: at("2026-10-25", "09:00"),
+                },
+                now
+            )
+        ).toBe("Waiting for a rider");
+    });
+
+    it("splits current rides, soonest first, from past ones, latest first", () => {
+        const waiting = { id: "waiting", ...rideNow("pending", "2026-10-24", "22:00") };
+        const riding = { id: "riding", ...rideNow("accepted", "2026-10-24", "21:30") };
+        const tomorrow = {
+            id: "tomorrow",
+            status: "pending" as const,
+            createdAt: at("2026-10-20", "10:00"),
+            scheduledFor: at("2026-10-25", "09:00"),
+        };
+        const done = { id: "done", ...rideNow("completed", "2026-10-24", "08:00") };
+        const unclaimed = { id: "unclaimed", ...rideNow("pending", "2026-10-23", "18:00") };
+        const lastWeek = {
+            id: "lastWeek",
+            status: "cancelled" as const,
+            createdAt: at("2026-10-10", "10:00"),
+            scheduledFor: at("2026-10-17", "09:00"),
+        };
+
+        const { current, past } = splitMyRides(
+            [waiting, riding, tomorrow, done, unclaimed, lastWeek],
+            now
+        );
+        expect(current.map((r) => r.id)).toEqual(["riding", "waiting", "tomorrow"]);
+        expect(past.map((r) => r.id)).toEqual(["done", "unclaimed", "lastWeek"]);
+    });
+
+    it("counts a ride just booked, before the server stamps its time, as current", () => {
+        const { current } = splitMyRides([{ id: "new", status: "pending", createdAt: null }], now);
+        expect(current.map((r) => r.id)).toEqual(["new"]);
     });
 });
 

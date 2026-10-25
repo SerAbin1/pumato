@@ -130,6 +130,43 @@ export const scheduledRideStatus = (ride: {
     }
 };
 
+type Stamp = { toDate: () => Date };
+
+type MyRide = {
+    status: RideRequestStatus;
+    scheduledFor?: Stamp;
+    // Null until the server stamps a ride just booked.
+    createdAt?: Stamp | null;
+};
+
+/** When the ride happens: its scheduled time, or when a ride now was booked. */
+export const rideTime = (ride: MyRide, now: Date) =>
+    scheduledTime(ride) ?? ride.createdAt?.toDate() ?? now;
+
+/** A ride now nobody took on its day: riders only see today's, and nothing marks it expired. */
+export const isUnclaimed = (ride: MyRide, now: Date) =>
+    ride.status === "pending" &&
+    !ride.scheduledFor &&
+    !!ride.createdAt &&
+    formatISTDateKey(istNow(ride.createdAt.toDate())) < formatISTDateKey(istNow(now));
+
+/** Where any of the user's rides stands, ride now or scheduled. */
+export const rideStatus = (ride: MyRide & Parameters<typeof scheduledRideStatus>[0], now: Date) =>
+    isUnclaimed(ride, now) ? "No rider found" : scheduledRideStatus(ride);
+
+/** Still waiting for, or with, a rider. */
+export const isOpenRide = (ride: MyRide, now: Date) =>
+    (ride.status === "pending" || ride.status === "accepted") && !isUnclaimed(ride, now);
+
+/** The user's rides still under way, soonest first, and the rest, latest first. */
+export const splitMyRides = <T extends MyRide>(rides: T[], now: Date) => {
+    const byTime = (a: T, b: T) => rideTime(a, now).getTime() - rideTime(b, now).getTime();
+    return {
+        current: rides.filter((r) => isOpenRide(r, now)).sort(byTime),
+        past: rides.filter((r) => !isOpenRide(r, now)).sort((a, b) => byTime(b, a)),
+    };
+};
+
 /** "2 passengers", or null for a single passenger (the usual case, so not worth a badge). */
 export const passengersLabel = (passengers: number | undefined) =>
     passengers && passengers > 1 ? `${passengers} passengers` : null;

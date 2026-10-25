@@ -1,5 +1,10 @@
 import { describe, it, expect } from "vite-plus/test";
-import { RideRequestSchema, RiderSchema, RideScheduleSchema } from "@/lib/schemas/rides";
+import {
+    RideRatingSchema,
+    RideRequestSchema,
+    RiderSchema,
+    RideScheduleSchema,
+} from "@/lib/schemas/rides";
 import { DEFAULT_RIDE_SCHEDULE } from "@/lib/rides";
 
 describe("RideScheduleSchema", () => {
@@ -90,6 +95,16 @@ const application = {
     createdAt: new Date(),
     updatedAt: new Date(),
 };
+
+describe("RideRatingSchema", () => {
+    it("takes whole stars from one to five", () => {
+        expect(RideRatingSchema.safeParse(1).success).toBe(true);
+        expect(RideRatingSchema.safeParse(5).success).toBe(true);
+        expect(RideRatingSchema.safeParse(0).success).toBe(false);
+        expect(RideRatingSchema.safeParse(6).success).toBe(false);
+        expect(RideRatingSchema.safeParse(4.5).success).toBe(false);
+    });
+});
 
 describe("RiderSchema", () => {
     it("records the rider's gender", () => {

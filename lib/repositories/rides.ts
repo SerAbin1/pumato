@@ -21,6 +21,7 @@ import {
 import type { Query, Unsubscribe } from "firebase/firestore";
 import {
     RideFaresSchema,
+    RideRatingSchema,
     RideRequestSchema,
     RiderSchema,
     RidesSettingsSchema,
@@ -201,6 +202,13 @@ export async function cancelRideRequest(requestId: string): Promise<void> {
     await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
         status: "cancelled",
         cancelledAt: serverTimestamp(),
+    });
+}
+
+/** The user rates the rider of their completed ride, once. */
+export async function rateRide(requestId: string, rating: number): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
+        rating: RideRatingSchema.parse(rating),
     });
 }
 

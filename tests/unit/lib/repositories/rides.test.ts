@@ -38,6 +38,7 @@ const {
     confirmRide,
     widenRideRequest,
     cancelRideRequest,
+    rateRide,
     releaseRide,
     setRiderGender,
     subscribePendingRides,
@@ -157,6 +158,16 @@ describe("ride updates", () => {
             { path: "ride_requests/r1" },
             { riderPreference: "any" }
         );
+    });
+
+    it("rates a completed ride", async () => {
+        await rateRide("r1", 4);
+        expect(mocks.updateDoc).toHaveBeenCalledWith({ path: "ride_requests/r1" }, { rating: 4 });
+    });
+
+    it("refuses a rating outside one to five stars", async () => {
+        await expect(rateRide("r1", 6)).rejects.toThrow();
+        expect(mocks.updateDoc).not.toHaveBeenCalled();
     });
 
     it("cancels a ride", async () => {

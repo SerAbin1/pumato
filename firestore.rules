@@ -273,6 +273,17 @@ service cloud.firestore {
         && request.resource.data.status == 'cancelled'
         && request.resource.data.cancelledAt == request.time;
 
+      // The signed-in user rates the rider of their completed ride, once.
+      // RideRatingSchema in lib/schemas/rides.ts.
+      allow update: if request.auth != null
+        && resource.data.get('userId', null) == request.auth.uid
+        && resource.data.status == 'completed'
+        && !('rating' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating'])
+        && request.resource.data.rating is int
+        && request.resource.data.rating >= 1
+        && request.resource.data.rating <= 5;
+
       // Accept: an approved, online rider takes a pending ride. The transaction in
       // acceptRide plus the `pending` check here make the first rider win.
       allow update: if isRider() && isOnlineRider()

@@ -96,6 +96,10 @@ export const PickupLocationSchema = z
     })
     .strict();
 
+/** Stars a user gives the rider of a completed ride; matches firestore.rules. */
+export const MAX_RATING = 5;
+export const RideRatingSchema = z.number().int().min(1).max(MAX_RATING);
+
 /** "female" sends the request to female riders only. */
 export const RIDER_PREFERENCES = ["any", "female"] as const;
 
@@ -129,6 +133,10 @@ export const RideRequestSchema = z
         riderName: z.string().optional(),
         acceptedAt: z.any().optional(),
         completedAt: z.any().optional(),
+        // Given once by the signed-in user who booked it; the function adds it to the
+        // rider's total and stamps ratingCountedAt so a retry can't count it twice.
+        rating: RideRatingSchema.optional(),
+        ratingCountedAt: z.any().optional(),
     })
     .refine((r) => r.pickupId !== r.dropId, "Pickup and drop must differ")
     .refine((r) => r.scheduledFor === undefined || !!r.userId, "Sign in to schedule a ride")

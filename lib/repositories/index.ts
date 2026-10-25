@@ -61,6 +61,7 @@ export {
     confirmRide,
     widenRideRequest,
     cancelRideRequest,
+    rateRide,
     subscribePendingRides,
     subscribeUpcomingRides,
     subscribeRiderRides,

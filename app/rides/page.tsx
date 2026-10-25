@@ -14,6 +14,7 @@ import {
     MapPin,
     Navigation,
     ShieldCheck,
+    Star,
     Users,
     X,
     Zap,
@@ -25,11 +26,12 @@ import {
     cancelRideRequest,
     createRideRequest,
     fetchRidesSettings,
+    rateRide,
     subscribeMyRides,
     subscribeRideAvailability,
     widenRideRequest,
 } from "@/lib/repositories";
-import { MAX_PASSENGERS, PHONE_PATTERN } from "@/lib/schemas/rides";
+import { MAX_PASSENGERS, MAX_RATING, PHONE_PATTERN } from "@/lib/schemas/rides";
 import {
     activePlaces,
     addGuestRide,
@@ -285,6 +287,51 @@ function RideRoute({
     );
 }
 
+/** Stars for the rider of a completed ride; tapping one saves it, once. */
+function RateRider({ ride }: { ride: RideRequest }) {
+    const [saving, setSaving] = useState<number | null>(null);
+
+    const rate = async (stars: number) => {
+        setSaving(stars);
+        try {
+            await rateRide(ride.id, stars);
+            toast.success("Thanks for rating your rider!");
+        } catch (error) {
+            console.error("Failed to rate ride:", error);
+            toast.error("Couldn't save your rating. Please try again.");
+        } finally {
+            setSaving(null);
+        }
+    };
+
+    const shown = ride.rating ?? saving ?? 0;
+    return (
+        <div className="flex items-center justify-between gap-2 text-sm">
+            <span className="text-gray-400">
+                {ride.rating ? "You rated" : "Rate"} {ride.riderName}
+            </span>
+            <div className="flex">
+                {Array.from({ length: MAX_RATING }, (_, i) => i + 1).map((n) => (
+                    <button
+                        key={n}
+                        onClick={() => void rate(n)}
+                        disabled={!!ride.rating || saving !== null}
+                        aria-label={`${n} of ${MAX_RATING} stars`}
+                        className="p-1 disabled:cursor-default"
+                    >
+                        <Star
+                            size={18}
+                            className={
+                                n <= shown ? "fill-orange-400 text-orange-400" : "text-gray-600"
+                            }
+                        />
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function MyRideCard({
     ride,
     now,
@@ -299,8 +346,8 @@ function MyRideCard({
     // A scheduled ride can be cancelled until its time; a ride now while it's under way.
     const cancellable = open && (!at || at > now);
     return (
-        <div className={`${rideCard} ${open ? "" : "opacity-60"}`}>
-            <div className="space-y-0.5 text-sm">
+        <div className={rideCard}>
+            <div className={`space-y-0.5 text-sm ${open ? "" : "opacity-60"}`}>
                 <RideRoute ride={ride} />
                 <p className="text-gray-400">
                     {at ? formatRideTime(at) : `Booked ${formatRideTime(rideTime(ride, now))}`}
@@ -320,6 +367,7 @@ function MyRideCard({
                     <WidenButton requestId={ride.id} />
                 </>
             )}
+            {ride.status === "completed" && ride.riderName && <RateRider ride={ride} />}
             {cancellable && onCancel && (
                 <button onClick={() => onCancel(ride)} className={cancelButton}>
                     Cancel ride

@@ -9,6 +9,7 @@ import {
     CalendarClock,
     Check,
     CheckCheck,
+    History,
     Loader2,
     MapPin,
     Phone,
@@ -30,10 +31,21 @@ import {
     scheduledTime,
 } from "@/lib/rides";
 import {
+    addLocalRide,
+    addSyncedRides,
+    completedRidesKey,
+    EMPTY_COMPLETED_RIDES,
+    formatWeek,
+    parseCompletedRides,
+    toCompletedRide,
+    weeklyEarnings,
+} from "@/lib/riderRides";
+import {
     acceptRide,
     completeRide,
     confirmRide,
     fetchRider,
+    fetchRiderCompletedRides,
     fetchRidesSettings,
     releaseRide,
     RIDE_TAKEN,
@@ -46,7 +58,14 @@ import type { ReactNode } from "react";
 import type { FirebaseError } from "firebase/app";
 import type { Unsubscribe } from "firebase/firestore";
 import type { User } from "firebase/auth";
-import type { RidePreference, RideRequest, Rider, RideSchedule } from "@/lib/types";
+import type {
+    CompletedRide,
+    CompletedRidesCache,
+    RidePreference,
+    RideRequest,
+    Rider,
+    RideSchedule,
+} from "@/lib/types";
 import AuthCard from "../components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "../components/RidesShell";
 import { cardClass, primaryButton, secondaryButton } from "../styles";
@@ -113,6 +132,67 @@ function useNow(intervalMs = 30_000) {
     return now;
 }
 
+/**
+ * The rider's completed rides: the browser's copy at once, then only the rides
+ * completed since it was saved. Null until the copy is read.
+ */
+function useCompletedRides(uid: string) {
+    const [cache, setCache] = useState<CompletedRidesCache | null>(null);
+
+    const update = useCallback(
+        (change: (cache: CompletedRidesCache) => CompletedRidesCache) =>
+            setCache((prev) => {
+                const next = change(prev ?? EMPTY_COMPLETED_RIDES);
+                try {
+                    localStorage.setItem(completedRidesKey(uid), JSON.stringify(next));
+                } catch {
+                    // Not saving it only costs a fuller fetch next visit.
+                }
+                return next;
+            }),
+        [uid]
+    );
+
+    useEffect(() => {
+        let saved = EMPTY_COMPLETED_RIDES;
+        try {
+            saved = parseCompletedRides(localStorage.getItem(completedRidesKey(uid)));
+        } catch {
+            // Storage unavailable: fetch the latest rides instead.
+        }
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setCache(saved);
+        let stale = false;
+        fetchRiderCompletedRides(uid, saved.syncedTo)
+            .then((rides) => {
+                if (stale) return;
+                // A completed ride always carries completedAt.
+                const fetched = rides.map((r) =>
+                    toCompletedRide({ ...r, completedAt: r.completedAt })
+                );
+                update((c) => addSyncedRides(c, fetched));
+            })
+            .catch((error) => console.error("Failed to load completed rides:", error));
+        return () => {
+            stale = true;
+        };
+    }, [uid, update]);
+
+    /** Counts a ride the rider just completed, without fetching it. */
+    const addCompleted = useCallback(
+        (ride: RideRequest) =>
+            update((c) =>
+                addLocalRide(
+                    c,
+                    toCompletedRide({ ...ride, completedAt: { toDate: () => new Date() } })
+                )
+            ),
+        [update]
+    );
+
+    return { rides: cache?.rides ?? null, addCompleted };
+}
+
 /** Route, fare, and for a scheduled or female-preference ride, a badge saying so. */
 function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }) {
     const at = scheduledTime(ride);
@@ -150,13 +230,27 @@ function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }
 }
 
 /** Rides this rider accepted and hasn't finished: shows the guest's contact. */
-function MyRides({ rides, schedule }: { rides: RideRequest[] | null; schedule: RideSchedule }) {
+function MyRides({
+    rides,
+    schedule,
+    onCompleted,
+}: {
+    rides: RideRequest[] | null;
+    schedule: RideSchedule;
+    onCompleted: (ride: RideRequest) => void;
+}) {
     const [busy, setBusy] = useState<string | null>(null);
 
-    const act = async (id: string, action: (id: string) => Promise<void>, failure: string) => {
+    const act = async (
+        id: string,
+        action: (id: string) => Promise<void>,
+        failure: string,
+        onDone?: () => void
+    ) => {
         setBusy(id);
         try {
             await action(id);
+            onDone?.();
         } catch (error) {
             console.error(failure, error);
             toast.error(`${failure} Please try again.`);
@@ -229,7 +323,9 @@ function MyRides({ rides, schedule }: { rides: RideRequest[] | null; schedule: R
                         <div className="flex gap-2">
                             <button
                                 onClick={() =>
-                                    act(r.id, completeRide, "Couldn't complete the ride.")
+                                    act(r.id, completeRide, "Couldn't complete the ride.", () =>
+                                        onCompleted(r)
+                                    )
                                 }
                                 disabled={busy === r.id}
                                 className={`${smallButton} bg-green-600 hover:bg-green-500 text-white`}
@@ -374,6 +470,72 @@ function PendingRequests({
     );
 }
 
+function Stat({ value, label }: { value: ReactNode; label: string }) {
+    return (
+        <div className="bg-black/30 border border-white/5 rounded-xl p-4">
+            <p className="text-2xl font-black text-white">{value}</p>
+            <p className="text-xs text-gray-500">{label}</p>
+        </div>
+    );
+}
+
+/** This week's earnings from the cached completed rides, and the full history behind them. */
+function Earnings({ rides, now }: { rides: CompletedRide[] | null; now: Date }) {
+    const [showHistory, setShowHistory] = useState(false);
+    if (rides === null) return null;
+    const { total, count, unpriced } = weeklyEarnings(rides, now);
+    return (
+        <div className={cardClass}>
+            <div className="flex items-baseline justify-between gap-2">
+                <h2 className="font-black">This week</h2>
+                <p className="text-xs text-gray-500">{formatWeek(now)}</p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+                <Stat
+                    value={<span className="text-orange-400">{formatFare(total)}</span>}
+                    label="Earned"
+                />
+                <Stat value={count} label="Completed rides" />
+            </div>
+            {unpriced > 0 && (
+                <p className="text-xs text-gray-500">
+                    {unpriced === 1 ? "1 ride" : `${unpriced} rides`} on routes without a set fare
+                    {unpriced === 1 ? " isn't" : " aren't"} in the total.
+                </p>
+            )}
+            <button onClick={() => setShowHistory(!showHistory)} className={secondaryButton}>
+                <History size={18} /> {showHistory ? "Hide history" : "View history"}
+            </button>
+            {showHistory &&
+                (rides.length === 0 ? (
+                    <p className="text-center text-sm text-gray-500">No completed rides yet.</p>
+                ) : (
+                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                        {rides.map((r) => (
+                            <div
+                                key={r.id}
+                                className="bg-black/30 border border-white/5 rounded-xl p-3 text-sm"
+                            >
+                                <p className="font-bold text-white">
+                                    {r.pickupName} → {r.dropName}
+                                    {r.fare !== null && (
+                                        <span className="text-orange-400">
+                                            {" "}
+                                            · {formatFare(r.fare)}
+                                        </span>
+                                    )}
+                                </p>
+                                <p className="text-gray-500">
+                                    {r.guestName} · {formatRideTime(new Date(r.completedAt))}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                ))}
+        </div>
+    );
+}
+
 /** iPhones only allow web push for sites added to the home screen and opened from there. */
 const needsHomeScreen = () => {
     const ios =
@@ -433,6 +595,7 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     const [online, setOnline] = useState(rider.online === true);
     const [busy, setBusy] = useState(false);
     const { permission, request } = useFcmToken(user);
+    const completed = useCompletedRides(user.uid);
     const [schedule, setSchedule] = useState(DEFAULT_RIDE_SCHEDULE);
     const now = useNow();
     const myRides = useRides(
@@ -498,7 +661,8 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
                     </button>
                 </div>
 
-                <MyRides rides={myRides} schedule={schedule} />
+                <MyRides rides={myRides} schedule={schedule} onCompleted={completed.addCompleted} />
+                <Earnings rides={completed.rides} now={now} />
             </div>
 
             <div className={`${mainColumn} ${cardClass}`}>

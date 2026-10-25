@@ -137,3 +137,17 @@ export const RideRequestSchema = z
         (r) => r.scheduledFor === undefined || r.pickupLocation === undefined,
         "Only a ride now can share a pickup pin"
     );
+
+/**
+ * A signed-out guest's ride, kept in their browser so they can cancel it. Guests
+ * can only ride now, and can't read the request back, so this is as booked.
+ */
+export const GuestRideSchema = z.object({
+    id: z.string().min(1),
+    pickupName: z.string(),
+    dropName: z.string(),
+    fare: FareSchema.nullable(),
+    passengers: z.number().int().min(1),
+    // Epoch ms, as JSON keeps it.
+    createdAt: z.number(),
+});

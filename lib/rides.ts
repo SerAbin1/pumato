@@ -7,7 +7,8 @@ import {
     istNow,
 } from "@/lib/ist";
 import { format12h } from "@/lib/formatters";
-import type { RideFares, RidePlace, RideRequestStatus, RideSchedule } from "@/lib/types";
+import { GuestRideSchema } from "@/lib/schemas/rides";
+import type { GuestRide, RideFares, RidePlace, RideRequestStatus, RideSchedule } from "@/lib/types";
 
 /** Short code the rider quotes in chat so the admin can find their application. */
 export const riderRef = (uid: string) => uid.slice(0, 6).toUpperCase();
@@ -166,6 +167,33 @@ export const splitMyRides = <T extends MyRide>(rides: T[], now: Date) => {
         past: rides.filter((r) => !isOpenRide(r, now)).sort((a, b) => byTime(b, a)),
     };
 };
+
+const MAX_GUEST_RIDES = 5;
+
+/**
+ * A guest's saved rides from storage, keeping only today's: riders stop seeing
+ * a ride now after its day. Broken storage or entries just read as none.
+ */
+export const parseGuestRides = (raw: string | null, now: Date): GuestRide[] => {
+    let saved: unknown;
+    try {
+        saved = JSON.parse(raw ?? "[]");
+    } catch {
+        return [];
+    }
+    if (!Array.isArray(saved)) return [];
+    const today = formatISTDateKey(istNow(now));
+    return saved.flatMap((entry) => {
+        const parsed = GuestRideSchema.safeParse(entry);
+        return parsed.success && formatISTDateKey(istNow(new Date(parsed.data.createdAt))) === today
+            ? [parsed.data]
+            : [];
+    });
+};
+
+/** Newest first, keeping the last few. */
+export const addGuestRide = (rides: GuestRide[], ride: GuestRide) =>
+    [ride, ...rides.filter((r) => r.id !== ride.id)].slice(0, MAX_GUEST_RIDES);
 
 /** "2 passengers", or null for a single passenger (the usual case, so not worth a badge). */
 export const passengersLabel = (passengers: number | undefined) =>

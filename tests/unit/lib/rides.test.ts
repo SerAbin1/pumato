@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vite-plus/test";
 import {
+    addGuestRide,
     bookableDates,
     DEFAULT_RIDE_SCHEDULE,
     formatDateOption,
@@ -7,6 +8,7 @@ import {
     isDueSoon,
     isSchedulable,
     occupiesRider,
+    parseGuestRides,
     pickupAccuracyLabel,
     pickupMapsUrl,
     rideStatus,
@@ -240,6 +242,38 @@ describe("a user's rides", () => {
     it("counts a ride just booked, before the server stamps its time, as current", () => {
         const { current } = splitMyRides([{ id: "new", status: "pending", createdAt: null }], now);
         expect(current.map((r) => r.id)).toEqual(["new"]);
+    });
+});
+
+describe("a guest's saved rides", () => {
+    const ride = (id: string, bookedAt = istInstant("2026-10-24", "21:00")) => ({
+        id,
+        pickupName: "Gate 1",
+        dropName: "Library",
+        fare: 20,
+        passengers: 1,
+        createdAt: bookedAt.getTime(),
+    });
+
+    it("reads back today's rides and drops earlier days'", () => {
+        const yesterday = ride("old", istInstant("2026-10-23", "23:50"));
+        expect(parseGuestRides(JSON.stringify([ride("r1"), yesterday]), now)).toEqual([ride("r1")]);
+    });
+
+    it("treats missing or broken storage as no rides", () => {
+        expect(parseGuestRides(null, now)).toEqual([]);
+        expect(parseGuestRides("{not json", now)).toEqual([]);
+        expect(parseGuestRides(JSON.stringify({ id: "r1" }), now)).toEqual([]);
+    });
+
+    it("skips entries that don't look like a saved ride", () => {
+        const raw = JSON.stringify([{ id: "r2", pickupName: "Gate 1" }, ride("r1")]);
+        expect(parseGuestRides(raw, now)).toEqual([ride("r1")]);
+    });
+
+    it("adds the newest ride first and keeps the last five", () => {
+        const saved = ["a", "b", "c", "d", "e"].map((id) => ride(id));
+        expect(addGuestRide(saved, ride("f")).map((r) => r.id)).toEqual(["f", "a", "b", "c", "d"]);
     });
 });
 

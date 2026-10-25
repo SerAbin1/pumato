@@ -158,7 +158,7 @@
             "queryScope": "COLLECTION",
             "fields": [
                 { "fieldPath": "userId", "order": "ASCENDING" },
-                { "fieldPath": "scheduledFor", "order": "DESCENDING" }
+                { "fieldPath": "createdAt", "order": "DESCENDING" }
             ]
         },
         {

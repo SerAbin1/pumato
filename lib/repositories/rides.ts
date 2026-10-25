@@ -287,8 +287,8 @@ export function subscribeRiderRides(
     );
 }
 
-/** The signed-in user's scheduled rides, latest first. */
-export function subscribeMyScheduledRides(
+/** Every ride the signed-in user booked, ride now or scheduled, latest booked first. */
+export function subscribeMyRides(
     userId: string,
     onChange: RidesListener,
     onError: (error: Error) => void
@@ -297,8 +297,8 @@ export function subscribeMyScheduledRides(
         query(
             rideRequests(),
             where("userId", "==", userId),
-            orderBy("scheduledFor", "desc"),
-            limit(20)
+            orderBy("createdAt", "desc"),
+            limit(30)
         ),
         onChange,
         onError

@@ -24,7 +24,7 @@ import {
     cancelRideRequest,
     createRideRequest,
     fetchRidesSettings,
-    subscribeMyScheduledRides,
+    subscribeMyRides,
     subscribeRideAvailability,
     widenRideRequest,
 } from "@/lib/repositories";
@@ -265,7 +265,7 @@ function MyScheduledRides({ user, now }: { user: User; now: Date }) {
 
     useEffect(
         () =>
-            subscribeMyScheduledRides(user.uid, setRides, (error) => {
+            subscribeMyRides(user.uid, setRides, (error) => {
                 console.error("Failed to load scheduled rides:", error);
                 toast.error("Couldn't load your scheduled rides. Please refresh.");
             }),

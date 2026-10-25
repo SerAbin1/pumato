@@ -38,7 +38,7 @@ const {
     subscribePendingRides,
     subscribeUpcomingRides,
     subscribeRiderRides,
-    subscribeMyScheduledRides,
+    subscribeMyRides,
     subscribeRideAvailability,
 } = await import("@/lib/repositories/rides");
 const { DEFAULT_RIDE_SCHEDULE } = await import("@/lib/rides");
@@ -213,12 +213,12 @@ describe("rider subscriptions", () => {
 });
 
 describe("guest subscriptions", () => {
-    it("lists the user's scheduled rides, newest first", () => {
-        subscribeMyScheduledRides("u1", vi.fn(), vi.fn());
+    it("lists every ride the user booked, ride now or scheduled, newest first", () => {
+        subscribeMyRides("u1", vi.fn(), vi.fn());
         expect(constraints(lastQuery())).toEqual([
             { where: ["userId", "==", "u1"] },
-            { orderBy: ["scheduledFor", "desc"] },
-            { limit: 20 },
+            { orderBy: ["createdAt", "desc"] },
+            { limit: 30 },
         ]);
     });
 

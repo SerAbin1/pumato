@@ -14,12 +14,14 @@ import {
     MapPin,
     Phone,
     Power,
+    Star,
     Undo2,
     Users,
 } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useFcmToken } from "@/app/hooks/useFcmToken";
 import {
+    averageRating,
     DEFAULT_RIDE_SCHEDULE,
     formatFare,
     formatRideTime,
@@ -44,12 +46,12 @@ import {
     acceptRide,
     completeRide,
     confirmRide,
-    fetchRider,
     fetchRiderCompletedRides,
     fetchRidesSettings,
     releaseRide,
     RIDE_TAKEN,
     setRiderOnline,
+    subscribeRider,
     subscribePendingRides,
     subscribeRiderRides,
     subscribeUpcomingRides,
@@ -480,22 +482,50 @@ function Stat({ value, label }: { value: ReactNode; label: string }) {
 }
 
 /** This week's earnings from the cached completed rides, and the full history behind them. */
-function Earnings({ rides, now }: { rides: CompletedRide[] | null; now: Date }) {
+function Earnings({
+    rides,
+    rider,
+    now,
+}: {
+    rides: CompletedRide[] | null;
+    rider: Rider;
+    now: Date;
+}) {
     const [showHistory, setShowHistory] = useState(false);
     if (rides === null) return null;
     const { total, count, unpriced } = weeklyEarnings(rides, now);
+    const rating = averageRating(rider);
+    const ratings = rider.ratingCount ?? 0;
     return (
         <div className={cardClass}>
             <div className="flex items-baseline justify-between gap-2">
                 <h2 className="font-black">This week</h2>
                 <p className="text-xs text-gray-500">{formatWeek(now)}</p>
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            {/* Earnings are this week's; the rating is all time. */}
+            <div className="grid grid-cols-3 gap-3">
                 <Stat
                     value={<span className="text-orange-400">{formatFare(total)}</span>}
                     label="Earned"
                 />
                 <Stat value={count} label="Completed rides" />
+                <Stat
+                    value={
+                        rating === null ? (
+                            "–"
+                        ) : (
+                            <span className="inline-flex items-center gap-1">
+                                <Star size={18} className="fill-orange-400 text-orange-400" />
+                                {rating}
+                            </span>
+                        )
+                    }
+                    label={
+                        ratings === 0
+                            ? "No ratings yet"
+                            : `${ratings} rating${ratings === 1 ? "" : "s"}, all time`
+                    }
+                />
             </div>
             {unpriced > 0 && (
                 <p className="text-xs text-gray-500">
@@ -592,7 +622,8 @@ function NotificationNotice({
 }
 
 function Dashboard({ user, rider }: { user: User; rider: Rider }) {
-    const [online, setOnline] = useState(rider.online === true);
+    // From the live rider doc, so it also follows a switch made on another device.
+    const online = rider.online === true;
     const [busy, setBusy] = useState(false);
     const { permission, request } = useFcmToken(user);
     const completed = useCompletedRides(user.uid);
@@ -618,7 +649,6 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
         setBusy(true);
         try {
             await setRiderOnline(user.uid, !online);
-            setOnline(!online);
         } catch (error) {
             console.error("Failed to change online status:", error);
             toast.error("Couldn't change your status. Please try again.");
@@ -662,7 +692,7 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
                 </div>
 
                 <MyRides rides={myRides} schedule={schedule} onCompleted={completed.addCompleted} />
-                <Earnings rides={completed.rides} now={now} />
+                <Earnings rides={completed.rides} rider={rider} now={now} />
             </div>
 
             <div className={`${mainColumn} ${cardClass}`}>
@@ -688,31 +718,34 @@ export default function RiderDashboardPage() {
     const { user, loading } = useUserAuth();
     // undefined = still loading; null = hasn't applied
     const [rider, setRider] = useState<Rider | null | undefined>(undefined);
-    const [isRiderClaim, setIsRiderClaim] = useState(false);
-
-    const load = useCallback(async (signedIn: User) => {
-        try {
-            const [r, token] = await Promise.all([
-                fetchRider(signedIn.uid),
-                // Force-refresh so a freshly approved (or revoked) rider sees it.
-                signedIn.getIdTokenResult(true),
-            ]);
-            setRider(r);
-            setIsRiderClaim(token.claims.rider === true);
-        } catch (error) {
-            console.error("Failed to load rider:", error);
-            toast.error("Couldn't load your rider profile. Please refresh.");
-        }
-    }, []);
+    // undefined = still checking
+    const [isRiderClaim, setIsRiderClaim] = useState<boolean | undefined>(undefined);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setRider(undefined);
-        setIsRiderClaim(false);
-        if (user) void load(user);
-    }, [user, load]);
+        setIsRiderClaim(undefined);
+        if (!user) return;
+        let stale = false;
+        // Force-refresh so a freshly approved (or revoked) rider sees it.
+        user.getIdTokenResult(true)
+            .then((token) => !stale && setIsRiderClaim(token.claims.rider === true))
+            .catch((error) => {
+                console.error("Failed to check rider access:", error);
+                toast.error("Couldn't load your rider profile. Please refresh.");
+            });
+        // Live, so a new rating or an online switch elsewhere shows without a reload.
+        const unsubscribe = subscribeRider(user.uid, setRider, (error) => {
+            console.error("Failed to load rider:", error);
+            toast.error("Couldn't load your rider profile. Please refresh.");
+        });
+        return () => {
+            stale = true;
+            unsubscribe();
+        };
+    }, [user]);
 
-    const isLoading = loading || (user && rider === undefined);
+    const isLoading = loading || (user && (rider === undefined || isRiderClaim === undefined));
     const showDashboard = !isLoading && user && rider?.status === "approved" && isRiderClaim;
 
     let content;

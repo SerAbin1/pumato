@@ -14,6 +14,7 @@ import {
     DEFAULT_SCHEDULE,
     formatRideTime,
     inAudience,
+    newRating,
     planScheduledRide,
     pushAudience,
     rideRequestBody,
@@ -121,6 +122,9 @@ export const onRideRequestUpdated = onDocumentUpdated(
             );
         }
 
+        const rated = newRating(before, after);
+        if (rated && event.data) await countRating(event.data.after.ref, rated);
+
         if (after.status === "cancelled" && before.status === "accepted" && before.riderUid) {
             await pushUids([before.riderUid], {
                 title: "Ride cancelled",
@@ -131,6 +135,29 @@ export const onRideRequestUpdated = onDocumentUpdated(
         }
     }
 );
+
+/**
+ * Adds a ride's rating to its rider's total. Stamps the ride in the same
+ * transaction, so a retried trigger can't count it twice.
+ */
+async function countRating(
+    ride: DocumentReference,
+    { riderUid, rating }: { riderUid: string; rating: number }
+) {
+    try {
+        await db.runTransaction(async (tx) => {
+            const snap = await tx.get(ride);
+            if (snap.get("ratingCountedAt")) return;
+            tx.update(db.collection("riders").doc(riderUid), {
+                ratingSum: FieldValue.increment(rating),
+                ratingCount: FieldValue.increment(1),
+            });
+            tx.update(ride, { ratingCountedAt: FieldValue.serverTimestamp() });
+        });
+    } catch (error) {
+        console.error(`Failed to count the rating on ${ride.id}:`, error);
+    }
+}
 
 /** Applies the sweep's decision to one ride, re-read in a transaction so a rider's confirm isn't lost. */
 async function sweepRide(

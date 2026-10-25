@@ -66,6 +66,9 @@ export const RiderSchema = z.object({
     status: z.enum(RIDER_STATUSES),
     // Set by the approved rider from their dashboard; online riders get ride requests.
     online: z.boolean().optional(),
+    // Kept by the onRideRequestUpdated function as users rate this rider's rides.
+    ratingSum: z.number().int().optional(),
+    ratingCount: z.number().int().optional(),
     createdAt: z.any(),
     updatedAt: z.any(),
 });

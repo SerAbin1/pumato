@@ -50,6 +50,7 @@ export {
     saveRideFares,
     saveRidesSettings,
     fetchRider,
+    subscribeRider,
     submitRiderApplication,
     setRiderOnline,
     setRiderGender,

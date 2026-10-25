@@ -3,6 +3,7 @@ import {
     affectsAvailability,
     formatRideTime,
     inAudience,
+    newRating,
     planScheduledRide,
     pushAudience,
     rideRequestBody,
@@ -180,5 +181,33 @@ describe("affectsAvailability", () => {
         expect(affectsAvailability(rider, renamed)).toBe(false);
         const male = { status: "approved", gender: "male", online: true };
         expect(affectsAvailability(male, { ...male, online: false })).toBe(false);
+    });
+});
+
+describe("newRating", () => {
+    const completed = { status: "completed", riderUid: "rider1" };
+
+    it("counts a ride's first rating towards its rider", () => {
+        expect(newRating(completed, { ...completed, rating: 4 })).toEqual({
+            riderUid: "rider1",
+            rating: 4,
+        });
+    });
+
+    it("ignores updates that don't add a rating", () => {
+        expect(newRating(completed, completed)).toBeNull();
+        // The function's own stamp, once it has counted the rating.
+        expect(
+            newRating({ ...completed, rating: 4 }, { ...completed, rating: 4, ratingCountedAt: 1 })
+        ).toBeNull();
+    });
+
+    it("ignores a rating that isn't whole stars from one to five", () => {
+        expect(newRating(completed, { ...completed, rating: 9 })).toBeNull();
+        expect(newRating(completed, { ...completed, rating: 2.5 })).toBeNull();
+    });
+
+    it("ignores a rating on a ride with no rider", () => {
+        expect(newRating({ status: "completed" }, { status: "completed", rating: 5 })).toBeNull();
     });
 });

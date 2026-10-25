@@ -156,8 +156,11 @@ service cloud.firestore {
     // revoke go through the manageUsers function, which also sets the claim.
     function isValidRider(uid) {
       let d = request.resource.data;
-      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'vehicleNumber', 'collegeId', 'gender', 'status', 'online', 'createdAt', 'updatedAt'])
+      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'vehicleNumber', 'collegeId', 'gender', 'status', 'online', 'ratingSum', 'ratingCount', 'createdAt', 'updatedAt'])
         && d.get('online', false) == false
+        // Ratings are the function's to keep; a re-application carries them over untouched.
+        && d.get('ratingSum', 0) == (resource == null ? 0 : resource.data.get('ratingSum', 0))
+        && d.get('ratingCount', 0) == (resource == null ? 0 : resource.data.get('ratingCount', 0))
         && d.uid == uid
         && d.email == request.auth.token.get('email', null)
         && isText(d.name, 80)

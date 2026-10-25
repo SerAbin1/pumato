@@ -74,6 +74,19 @@ export async function fetchRider(uid: string): Promise<Rider | null> {
     return snap.exists() ? (snap.data() as Rider) : null;
 }
 
+/** The signed-in user's rider doc as it changes: going online elsewhere, a new rating. */
+export function subscribeRider(
+    uid: string,
+    onChange: (rider: Rider | null) => void,
+    onError: (error: Error) => void
+): Unsubscribe {
+    return onSnapshot(
+        doc(db, COLLECTIONS.RIDERS, uid),
+        (snap) => onChange(snap.exists() ? (snap.data() as Rider) : null),
+        onError
+    );
+}
+
 export type RiderApplication = Pick<
     Rider,
     "name" | "phone" | "vehicleNumber" | "collegeId" | "gender"

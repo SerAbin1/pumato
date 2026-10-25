@@ -41,6 +41,7 @@ const {
     rateRide,
     releaseRide,
     setRiderGender,
+    subscribeRider,
     subscribePendingRides,
     subscribeUpcomingRides,
     subscribeRiderRides,
@@ -176,6 +177,21 @@ describe("ride updates", () => {
             { path: "ride_requests/r1" },
             { status: "cancelled", cancelledAt: "SERVER_TS" }
         );
+    });
+});
+
+describe("subscribeRider", () => {
+    it("follows the rider's own doc, null until they apply", () => {
+        const onChange = vi.fn();
+        subscribeRider("rider1", onChange, vi.fn());
+        const [ref, listener] = mocks.onSnapshot.mock.calls.at(-1)!;
+        expect(ref).toEqual({ path: "riders/rider1" });
+
+        listener({ exists: () => false, data: () => undefined });
+        expect(onChange).toHaveBeenLastCalledWith(null);
+
+        listener({ exists: () => true, data: () => ({ name: "Ravi", ratingCount: 2 }) });
+        expect(onChange).toHaveBeenLastCalledWith({ name: "Ravi", ratingCount: 2 });
     });
 });
 

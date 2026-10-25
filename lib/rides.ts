@@ -206,3 +206,12 @@ export const pickupMapsUrl = ({ lat, lng }: { lat: number; lng: number }) =>
 /** "±25 m", or "±1.8 km" for a rough fix (a laptop on Wi-Fi). */
 export const pickupAccuracyLabel = (metres: number) =>
     metres < 1000 ? `±${Math.round(metres)} m` : `±${(metres / 1000).toFixed(1)} km`;
+
+/** The rider's average stars to one decimal, or null before their first rating. */
+export const averageRating = ({
+    ratingSum = 0,
+    ratingCount = 0,
+}: {
+    ratingSum?: number;
+    ratingCount?: number;
+}) => (ratingCount > 0 ? Math.round((ratingSum / ratingCount) * 10) / 10 : null);

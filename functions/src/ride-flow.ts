@@ -140,3 +140,17 @@ export const affectsAvailability = (
     before: AvailabilityRider | undefined,
     after: AvailabilityRider | undefined
 ) => availabilityKey(before) !== availabilityKey(after);
+
+/** Mirrors RideRatingSchema in lib/schemas/rides.ts. */
+const isRating = (value: unknown): value is number =>
+    Number.isInteger(value) && (value as number) >= 1 && (value as number) <= 5;
+
+/** The rating to add to a rider's total when a user first rates their ride, or null. */
+export function newRating(
+    before: Record<string, unknown>,
+    after: Record<string, unknown>
+): { riderUid: string; rating: number } | null {
+    if (before.rating !== undefined || !isRating(after.rating)) return null;
+    if (typeof after.riderUid !== "string") return null;
+    return { riderUid: after.riderUid, rating: after.rating };
+}

@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import {
     addGuestRide,
+    averageRating,
     bookableDates,
     DEFAULT_RIDE_SCHEDULE,
     formatDateOption,
@@ -274,6 +275,17 @@ describe("a guest's saved rides", () => {
     it("adds the newest ride first and keeps the last five", () => {
         const saved = ["a", "b", "c", "d", "e"].map((id) => ride(id));
         expect(addGuestRide(saved, ride("f")).map((r) => r.id)).toEqual(["f", "a", "b", "c", "d"]);
+    });
+});
+
+describe("averageRating", () => {
+    it("rounds to one decimal place", () => {
+        expect(averageRating({ ratingSum: 29, ratingCount: 6 })).toBe(4.8);
+    });
+
+    it("is null before the rider's first rating", () => {
+        expect(averageRating({})).toBeNull();
+        expect(averageRating({ ratingSum: 0, ratingCount: 0 })).toBeNull();
     });
 });
 

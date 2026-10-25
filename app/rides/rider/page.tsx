@@ -69,6 +69,7 @@ import type {
     Rider,
     RideSchedule,
 } from "@/lib/types";
+import { isIOS, unblockSteps } from "@/lib/notificationHelp";
 import AuthCard from "../components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "../components/RidesShell";
 import { cardClass, primaryButton, secondaryButton } from "../styles";
@@ -610,15 +611,14 @@ function Earnings({
 }
 
 /** iPhones only allow web push for sites added to the home screen and opened from there. */
-const needsHomeScreen = () => {
-    const ios =
-        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        // iPadOS reports itself as a Mac.
-        (navigator.userAgent.includes("Macintosh") && navigator.maxTouchPoints > 1);
-    return ios && !window.matchMedia("(display-mode: standalone)").matches;
-};
+const needsHomeScreen = () =>
+    isIOS(navigator.userAgent, navigator.maxTouchPoints) &&
+    !window.matchMedia("(display-mode: standalone)").matches;
 
-/** Tells the rider when they won't get ride notifications, and how to fix it. */
+/**
+ * Tells the rider when they won't get ride notifications, and how to fix it.
+ * Allowing them again in the browser's settings is picked up without a reload.
+ */
 function NotificationNotice({
     permission,
     request,
@@ -628,19 +628,45 @@ function NotificationNotice({
 }) {
     const [homeScreen] = useState(needsHomeScreen);
 
+    useEffect(() => {
+        if (permission !== "denied") return;
+        let status: PermissionStatus | undefined;
+        // Re-reads the permission and, once allowed, registers this device.
+        const recheck = () => void request();
+        navigator.permissions
+            ?.query({ name: "notifications" })
+            .then((s) => {
+                status = s;
+                s.addEventListener("change", recheck);
+            })
+            // Some browsers can't report it; the rider just reloads after allowing.
+            .catch(() => {});
+        return () => status?.removeEventListener("change", recheck);
+    }, [permission, request]);
+
     let message: ReactNode = null;
     if (homeScreen) {
         message = (
             <>
-                To get ride notifications on iPhone, tap <b>Share</b> → <b>Add to Home Screen</b>,
-                then open Pumato from your home screen.
+                iPhone browsers don&apos;t show notifications from websites, so you won&apos;t hear
+                about new requests. Check this page now and then.
+                <span className="block mt-2 text-orange-200/70">
+                    To get notifications, tap <b>Share</b> → <b>Add to Home Screen</b>, then open
+                    Pumato from your home screen.
+                </span>
             </>
         );
     } else if (permission === "unsupported") {
         message = "This browser can't show notifications. Keep this page open to see new requests.";
     } else if (permission === "denied") {
-        message =
-            "Notifications are blocked, so you'll miss new requests. Allow them for this site in your browser settings.";
+        message = (
+            <>
+                Notifications are blocked, so you&apos;ll miss new requests.
+                <span className="block mt-2 text-orange-200/70">
+                    {unblockSteps(navigator.userAgent, navigator.maxTouchPoints)}
+                </span>
+            </>
+        );
     } else if (permission === "default") {
         message = (
             <>

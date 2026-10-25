@@ -3,4 +3,4 @@
 - Dev servers: Ask for approval before starting one.
 - Changes: Explain the proposed approach and wait for approval before editing files.
 - I will run the dev server and verify changes; you don't worry about it.
-- tdd always
+- tdd always for logic changes (ignore for visual changes)

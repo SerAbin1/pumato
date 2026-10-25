@@ -139,6 +139,15 @@
             "collectionGroup": "ride_requests",
             "queryScope": "COLLECTION",
             "fields": [
+                { "fieldPath": "riderUid", "order": "ASCENDING" },
+                { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "completedAt", "order": "DESCENDING" }
+            ]
+        },
+        {
+            "collectionGroup": "ride_requests",
+            "queryScope": "COLLECTION",
+            "fields": [
                 { "fieldPath": "status", "order": "ASCENDING" },
                 { "fieldPath": "riderPreference", "order": "ASCENDING" },
                 { "fieldPath": "createdAt", "order": "ASCENDING" }

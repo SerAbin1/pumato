@@ -65,6 +65,7 @@ export {
     subscribeUpcomingRides,
     subscribeRiderRides,
     subscribeMyRides,
+    fetchRiderCompletedRides,
     subscribeRideAvailability,
     EMPTY_RIDES_SETTINGS,
 } from "./rides";

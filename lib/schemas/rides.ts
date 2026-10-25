@@ -151,3 +151,24 @@ export const GuestRideSchema = z.object({
     // Epoch ms, as JSON keeps it.
     createdAt: z.number(),
 });
+
+/**
+ * A ride the rider completed, as their browser keeps it for history and
+ * earnings. A completed ride never changes, so the copy never goes stale.
+ */
+export const CompletedRideSchema = z.object({
+    id: z.string().min(1),
+    pickupName: z.string(),
+    dropName: z.string(),
+    fare: FareSchema.nullable(),
+    passengers: z.number().int().min(1),
+    guestName: z.string(),
+    // Epoch ms, as JSON keeps it.
+    completedAt: z.number(),
+});
+
+export const CompletedRidesCacheSchema = z.object({
+    // The latest server completedAt fetched; null before the first sync.
+    syncedTo: z.number().nullable(),
+    rides: z.array(CompletedRideSchema),
+});

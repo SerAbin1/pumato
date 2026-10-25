@@ -6,6 +6,7 @@ import {
     deleteField,
     doc,
     getDoc,
+    getDocs,
     limit,
     onSnapshot,
     orderBy,
@@ -303,6 +304,30 @@ export function subscribeMyRides(
         onChange,
         onError
     );
+}
+
+/**
+ * The rider's completed rides: the latest 100 on a first visit, then only those
+ * completed after `syncedTo` (epoch ms), latest first.
+ */
+export async function fetchRiderCompletedRides(
+    riderUid: string,
+    syncedTo: number | null
+): Promise<RideRequest[]> {
+    const snap = await getDocs(
+        query(
+            rideRequests(),
+            where("riderUid", "==", riderUid),
+            where("status", "==", "completed"),
+            ...(syncedTo === null
+                ? [orderBy("completedAt", "desc"), limit(100)]
+                : [
+                      where("completedAt", ">", Timestamp.fromMillis(syncedTo)),
+                      orderBy("completedAt", "desc"),
+                  ])
+        )
+    );
+    return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest);
 }
 
 /** Whether any female rider can take a request; nobody until the function first writes it. */

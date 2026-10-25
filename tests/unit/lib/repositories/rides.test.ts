@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vite-plus/test";
 // Fake Firestore: refs and query builders tag their arguments so tests can read them back.
 const mocks = vi.hoisted(() => ({
     getDoc: vi.fn(),
+    getDocs: vi.fn(),
     addDoc: vi.fn(),
     updateDoc: vi.fn(),
     onSnapshot: vi.fn(),
@@ -13,6 +14,7 @@ vi.mock("firebase/firestore", () => ({
     doc: (_db: unknown, ...path: string[]) => ({ path: path.join("/") }),
     collection: (_db: unknown, name: string) => ({ collection: name }),
     getDoc: mocks.getDoc,
+    getDocs: mocks.getDocs,
     addDoc: mocks.addDoc,
     updateDoc: mocks.updateDoc,
     onSnapshot: mocks.onSnapshot,
@@ -24,7 +26,10 @@ vi.mock("firebase/firestore", () => ({
     where: (...args: unknown[]) => ({ where: args }),
     orderBy: (...args: unknown[]) => ({ orderBy: args }),
     limit: (n: number) => ({ limit: n }),
-    Timestamp: { fromDate: (d: Date) => ({ __ts: d }) },
+    Timestamp: {
+        fromDate: (d: Date) => ({ __ts: d }),
+        fromMillis: (ms: number) => ({ __ms: ms }),
+    },
 }));
 
 const {
@@ -39,6 +44,7 @@ const {
     subscribeUpcomingRides,
     subscribeRiderRides,
     subscribeMyRides,
+    fetchRiderCompletedRides,
     subscribeRideAvailability,
 } = await import("@/lib/repositories/rides");
 const { DEFAULT_RIDE_SCHEDULE } = await import("@/lib/rides");
@@ -233,5 +239,35 @@ describe("guest subscriptions", () => {
 
         listener({ data: () => ({ femaleOnline: true, femaleApproved: true }) });
         expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: true, femaleApproved: true });
+    });
+});
+
+describe("fetchRiderCompletedRides", () => {
+    const completedAt = { toDate: () => new Date(1000) };
+
+    it("fetches the rider's latest completed rides on a first visit", async () => {
+        mocks.getDocs.mockResolvedValue({
+            docs: [{ id: "r1", data: () => ({ name: "Asha", completedAt }) }],
+        });
+        expect(await fetchRiderCompletedRides("rider1", null)).toEqual([
+            { id: "r1", name: "Asha", completedAt },
+        ]);
+        expect(constraints(mocks.getDocs.mock.calls[0][0])).toEqual([
+            { where: ["riderUid", "==", "rider1"] },
+            { where: ["status", "==", "completed"] },
+            { orderBy: ["completedAt", "desc"] },
+            { limit: 100 },
+        ]);
+    });
+
+    it("fetches only rides completed since the last sync", async () => {
+        mocks.getDocs.mockResolvedValue({ docs: [] });
+        await fetchRiderCompletedRides("rider1", 5000);
+        expect(constraints(mocks.getDocs.mock.calls[0][0])).toEqual([
+            { where: ["riderUid", "==", "rider1"] },
+            { where: ["status", "==", "completed"] },
+            { where: ["completedAt", ">", { __ms: 5000 }] },
+            { orderBy: ["completedAt", "desc"] },
+        ]);
     });
 });

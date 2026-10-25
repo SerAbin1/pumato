@@ -44,6 +44,8 @@ import type {
     RIDER_GENDERS,
     RIDER_PREFERENCES,
     RIDER_STATUSES,
+    CompletedRidesCacheSchema,
+    CompletedRideSchema,
     GuestRideSchema,
     PickupLocationSchema,
     RidePlaceSchema,
@@ -212,6 +214,8 @@ export type RideRequest = z.infer<typeof RideRequestSchema> & { id: string };
 export type RidePreference = (typeof RIDER_PREFERENCES)[number];
 export type PickupLocation = z.infer<typeof PickupLocationSchema>;
 export type GuestRide = z.infer<typeof GuestRideSchema>;
+export type CompletedRide = z.infer<typeof CompletedRideSchema>;
+export type CompletedRidesCache = z.infer<typeof CompletedRidesCacheSchema>;
 /** `site_content/rides_availability`, kept up to date by the ridersAvailability function. */
 export interface RidesAvailability {
     femaleOnline: boolean;

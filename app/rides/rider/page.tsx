@@ -31,6 +31,7 @@ import {
     pickupAccuracyLabel,
     pickupMapsUrl,
     scheduledTime,
+    splitRequests,
 } from "@/lib/rides";
 import {
     addLocalRide,
@@ -349,17 +350,27 @@ function MyRides({
     );
 }
 
+type RequestsTab = "live" | "scheduled";
+
+const tabClass = (active: boolean) =>
+    `flex-1 py-2 rounded-xl text-sm font-bold transition-all ${
+        active ? "bg-orange-600 text-white" : "text-gray-400 hover:text-white"
+    }`;
+
 /**
- * Pending requests while the rider is online: rides now plus scheduled rides
- * that are due, oldest first, then scheduled rides they can claim ahead.
+ * Pending requests in two tabs. Live: scheduled rides that are due, then rides
+ * now, only while online. Scheduled: rides to claim ahead, which an offline
+ * rider can browse but must go online to accept.
  */
-function PendingRequests({
+function RideRequests({
     rider,
+    online,
     hasActiveRide,
     schedule,
     now,
 }: {
     rider: Rider;
+    online: boolean;
     // null while the rider's own rides are still loading
     hasActiveRide: boolean | null;
     schedule: RideSchedule;
@@ -372,8 +383,12 @@ function PendingRequests({
     );
     const rideNow = useRides(
         useCallback<RidesSubscription>(
-            (onChange, onError) => subscribePendingRides(preferences, onChange, onError),
-            [preferences]
+            (onChange, onError) => {
+                if (online) return subscribePendingRides(preferences, onChange, onError);
+                onChange([]);
+                return () => {};
+            },
+            [online, preferences]
         )
     );
     const upcoming = useRides(
@@ -382,6 +397,8 @@ function PendingRequests({
             [preferences]
         )
     );
+    const [chosenTab, setTab] = useState<RequestsTab | null>(null);
+    const tab = chosenTab ?? (online ? "live" : "scheduled");
     const [accepting, setAccepting] = useState<string | null>(null);
 
     const accept = async (ride: RideRequest) => {
@@ -408,17 +425,10 @@ function PendingRequests({
         }
     };
 
-    if (rideNow === null || upcoming === null) {
-        return (
-            <div className="flex justify-center py-8">
-                <Loader2 size={24} className="animate-spin text-gray-500" />
-            </div>
-        );
-    }
-
-    const isDue = (r: RideRequest) => isDueSoon(scheduledTime(r)!, now, schedule);
-    const requests = [...upcoming.filter(isDue), ...rideNow];
-    const later = upcoming.filter((r) => !isDue(r));
+    const loaded = rideNow !== null && upcoming !== null;
+    const { live, later } = loaded
+        ? splitRequests(rideNow, upcoming, now, schedule)
+        : { live: [], later: [] };
 
     const row = (r: RideRequest, blocked: boolean) => (
         <div key={r.id} className={rowClass}>
@@ -438,35 +448,68 @@ function PendingRequests({
         </div>
     );
 
-    return (
-        <div className="space-y-6">
-            <div className="space-y-2">
-                {requests.length === 0 ? (
-                    <p className="text-center text-sm text-gray-500 py-8">
-                        No ride requests right now. We&apos;ll notify you when one comes in.
-                    </p>
-                ) : (
-                    <>
-                        {hasActiveRide && (
-                            <p className="text-center text-sm text-orange-300">
-                                Complete or release your current ride to accept another.
-                            </p>
-                        )}
-                        {requests.map((r) => row(r, hasActiveRide !== false))}
-                    </>
-                )}
+    let list;
+    if (!loaded) {
+        list = (
+            <div className="flex justify-center py-8">
+                <Loader2 size={24} className="animate-spin text-gray-500" />
             </div>
-            {later.length > 0 && (
-                <div className="space-y-2">
-                    <h3 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                        Scheduled
-                    </h3>
-                    <p className="text-xs text-gray-500">
-                        Claim one ahead; we&apos;ll ask you to confirm {schedule.reminderMinutes}{" "}
-                        min before it starts.
+        );
+    } else if (tab === "live") {
+        list = !online ? (
+            <p className="text-center text-sm text-gray-500 py-8">
+                Go online to see live ride requests.
+            </p>
+        ) : live.length === 0 ? (
+            <p className="text-center text-sm text-gray-500 py-8">
+                No ride requests right now. We&apos;ll notify you when one comes in.
+            </p>
+        ) : (
+            <>
+                {hasActiveRide && (
+                    <p className="text-center text-sm text-orange-300">
+                        Complete or release your current ride to accept another.
                     </p>
-                    {later.map((r) => row(r, false))}
-                </div>
+                )}
+                {live.map((r) => row(r, hasActiveRide !== false))}
+            </>
+        );
+    } else {
+        list =
+            later.length === 0 ? (
+                <p className="text-center text-sm text-gray-500 py-8">
+                    No scheduled rides to claim right now.
+                </p>
+            ) : (
+                <>
+                    <p className="text-xs text-gray-500">
+                        {online
+                            ? `Claim one ahead; we'll ask you to confirm ${schedule.reminderMinutes} min before it starts.`
+                            : "Go online to claim one."}
+                    </p>
+                    {later.map((r) => row(r, !online))}
+                </>
+            );
+    }
+
+    return (
+        <div className="space-y-4">
+            <div className="flex gap-1 bg-black/30 border border-white/5 rounded-2xl p-1">
+                <button onClick={() => setTab("live")} className={tabClass(tab === "live")}>
+                    Live requests
+                </button>
+                <button
+                    onClick={() => setTab("scheduled")}
+                    className={tabClass(tab === "scheduled")}
+                >
+                    Scheduled{loaded && ` (${later.length})`}
+                </button>
+            </div>
+            <div className="space-y-2">{list}</div>
+            {!online && (
+                <p className="text-xs text-gray-500 text-center">
+                    While you&apos;re offline, you only see scheduled requests.
+                </p>
             )}
         </div>
     );
@@ -697,18 +740,13 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
 
             <div className={`${mainColumn} ${cardClass}`}>
                 <h2 className="font-black">Ride requests</h2>
-                {online ? (
-                    <PendingRequests
-                        rider={rider}
-                        hasActiveRide={hasActiveRide}
-                        schedule={schedule}
-                        now={now}
-                    />
-                ) : (
-                    <p className="text-center text-sm text-gray-500 py-8">
-                        Go online to see ride requests.
-                    </p>
-                )}
+                <RideRequests
+                    rider={rider}
+                    online={online}
+                    hasActiveRide={hasActiveRide}
+                    schedule={schedule}
+                    now={now}
+                />
             </div>
         </>
     );

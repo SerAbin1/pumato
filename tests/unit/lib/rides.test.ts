@@ -14,6 +14,7 @@ import {
     pickupMapsUrl,
     rideStatus,
     scheduledTime,
+    splitRequests,
     riderRef,
     routeFare,
     routeKey,
@@ -286,6 +287,28 @@ describe("averageRating", () => {
     it("is null before the rider's first rating", () => {
         expect(averageRating({})).toBeNull();
         expect(averageRating({ ratingSum: 0, ratingCount: 0 })).toBeNull();
+    });
+});
+
+describe("splitRequests", () => {
+    const scheduled = (id: string, hhmm: string) => ({
+        id,
+        scheduledFor: { toDate: () => istInstant("2026-10-24", hhmm) },
+    });
+
+    it("puts scheduled rides that are due with the rides now, ahead of them", () => {
+        // now is 22:10; due from 30 min before.
+        const { live, later } = splitRequests<{
+            id: string;
+            scheduledFor?: { toDate: () => Date };
+        }>(
+            [{ id: "now1" }],
+            [scheduled("due", "22:30"), scheduled("tonight", "23:30")],
+            now,
+            DEFAULT_RIDE_SCHEDULE
+        );
+        expect(live.map((r) => r.id)).toEqual(["due", "now1"]);
+        expect(later.map((r) => r.id)).toEqual(["tonight"]);
     });
 });
 

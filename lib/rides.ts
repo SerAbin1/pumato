@@ -215,3 +215,20 @@ export const averageRating = ({
     ratingSum?: number;
     ratingCount?: number;
 }) => (ratingCount > 0 ? Math.round((ratingSum / ratingCount) * 10) / 10 : null);
+
+/**
+ * A rider's requests: live is scheduled rides that are due, then rides now;
+ * later is scheduled rides they can claim ahead.
+ */
+export const splitRequests = <T extends { scheduledFor?: { toDate: () => Date } }>(
+    rideNow: T[],
+    upcoming: T[],
+    now: Date,
+    schedule: RideSchedule
+) => {
+    const isDue = (r: T) => isDueSoon(scheduledTime(r)!, now, schedule);
+    return {
+        live: [...upcoming.filter(isDue), ...rideNow],
+        later: upcoming.filter((r) => !isDue(r)),
+    };
+};

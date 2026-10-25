@@ -18,6 +18,7 @@ import {
     X,
     Zap,
 } from "lucide-react";
+import type { FirebaseError } from "firebase/app";
 import type { User } from "firebase/auth";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import {
@@ -31,17 +32,22 @@ import {
 import { MAX_PASSENGERS, PHONE_PATTERN } from "@/lib/schemas/rides";
 import {
     activePlaces,
+    addGuestRide,
     bookableDates,
     DEFAULT_RIDE_SCHEDULE,
     formatDateOption,
     formatFare,
     formatRideTime,
+    isOpenRide,
+    parseGuestRides,
     passengersLabel,
     pickupAccuracyLabel,
+    rideStatus,
+    rideTime,
     routeFare,
     scheduleProblem,
-    scheduledRideStatus,
     scheduledTime,
+    splitMyRides,
 } from "@/lib/rides";
 import { istInstant } from "@/lib/ist";
 import CustomSelect from "@/app/components/CustomSelect";
@@ -50,6 +56,7 @@ import { inputClass, labelClass, primaryButton, secondaryButton } from "./styles
 import AuthCard from "./components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "./components/RidesShell";
 import type {
+    GuestRide,
     PickupLocation,
     RideFares,
     RidePlace,
@@ -60,6 +67,7 @@ import type {
 } from "@/lib/types";
 
 const GUEST_KEY = "pumato_rides_guest";
+const GUEST_RIDES_KEY = "pumato_rides_guest_rides";
 
 type Mode = "now" | "schedule";
 
@@ -235,7 +243,7 @@ function BookedCard({
                     <>
                         {formatRideTime(booking.scheduledFor)}. A rider can accept it any time
                         before; we&apos;ll ask them to confirm {schedule.reminderMinutes} min
-                        before. Follow it under Your scheduled rides.
+                        before. Follow it under Your rides.
                     </>
                 ) : (
                     <>A rider will call you on {booking.phone} shortly.</>
@@ -258,16 +266,79 @@ function BookedCard({
     );
 }
 
-/** The signed-in user's scheduled rides, with where each stands. */
-function MyScheduledRides({ user, now }: { user: User; now: Date }) {
+const rideCard = "bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3";
+const cancelButton = "w-full text-sm text-gray-400 hover:text-red-400";
+const groupHeading = "text-xs font-bold text-gray-400 uppercase tracking-widest";
+
+function RideRoute({
+    ride,
+}: {
+    ride: { pickupName: string; dropName: string; fare: number | null };
+}) {
+    return (
+        <p className="font-bold text-white">
+            {ride.pickupName} → {ride.dropName}
+            {ride.fare !== null && (
+                <span className="text-orange-400"> · {formatFare(ride.fare)}</span>
+            )}
+        </p>
+    );
+}
+
+function MyRideCard({
+    ride,
+    now,
+    onCancel,
+}: {
+    ride: RideRequest;
+    now: Date;
+    onCancel?: (ride: RideRequest) => void;
+}) {
+    const at = scheduledTime(ride);
+    const open = isOpenRide(ride, now);
+    // A scheduled ride can be cancelled until its time; a ride now while it's under way.
+    const cancellable = open && (!at || at > now);
+    return (
+        <div className={`${rideCard} ${open ? "" : "opacity-60"}`}>
+            <div className="space-y-0.5 text-sm">
+                <RideRoute ride={ride} />
+                <p className="text-gray-400">
+                    {at ? formatRideTime(at) : `Booked ${formatRideTime(rideTime(ride, now))}`}
+                </p>
+                <p className={open ? "text-orange-300" : "text-gray-500"}>
+                    {rideStatus(ride, now)}
+                    {open && ride.riderPreference === "female" && ride.status === "pending" && (
+                        <> · female riders only</>
+                    )}
+                </p>
+            </div>
+            {open && ride.status === "pending" && ride.riderPreference === "female" && (
+                <>
+                    <p className="text-xs text-gray-500">
+                        Removing the preference makes it more likely a rider takes it.
+                    </p>
+                    <WidenButton requestId={ride.id} />
+                </>
+            )}
+            {cancellable && onCancel && (
+                <button onClick={() => onCancel(ride)} className={cancelButton}>
+                    Cancel ride
+                </button>
+            )}
+        </div>
+    );
+}
+
+/** The signed-in user's rides, ride now or scheduled: the ones under way, then past ones. */
+function MyRides({ user, now }: { user: User; now: Date }) {
     const [rides, setRides] = useState<RideRequest[]>([]);
     const [cancelling, setCancelling] = useState<RideRequest | null>(null);
 
     useEffect(
         () =>
             subscribeMyRides(user.uid, setRides, (error) => {
-                console.error("Failed to load scheduled rides:", error);
-                toast.error("Couldn't load your scheduled rides. Please refresh.");
+                console.error("Failed to load rides:", error);
+                toast.error("Couldn't load your rides. Please refresh.");
             }),
         [user.uid]
     );
@@ -283,53 +354,18 @@ function MyScheduledRides({ user, now }: { user: User; now: Date }) {
     };
 
     if (rides.length === 0) return null;
+    const { current, past } = splitMyRides(rides, now);
     return (
         <section className={`${sideColumn} space-y-3`}>
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-widest">
-                Your scheduled rides
-            </h2>
-            {rides.map((r) => {
-                const at = scheduledTime(r);
-                const open = r.status === "pending" || r.status === "accepted";
-                return (
-                    <div
-                        key={r.id}
-                        className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3"
-                    >
-                        <div className="space-y-0.5 text-sm">
-                            <p className="font-bold text-white">
-                                {r.pickupName} → {r.dropName}
-                                {r.fare !== null && (
-                                    <span className="text-orange-400"> · {formatFare(r.fare)}</span>
-                                )}
-                            </p>
-                            {at && <p className="text-gray-400">{formatRideTime(at)}</p>}
-                            <p className={open ? "text-orange-300" : "text-gray-500"}>
-                                {scheduledRideStatus(r)}
-                                {r.riderPreference === "female" && r.status === "pending" && (
-                                    <> · female riders only</>
-                                )}
-                            </p>
-                        </div>
-                        {r.status === "pending" && r.riderPreference === "female" && (
-                            <>
-                                <p className="text-xs text-gray-500">
-                                    Removing the preference makes it more likely a rider takes it.
-                                </p>
-                                <WidenButton requestId={r.id} />
-                            </>
-                        )}
-                        {open && at && at > now && (
-                            <button
-                                onClick={() => setCancelling(r)}
-                                className="w-full text-sm text-gray-400 hover:text-red-400"
-                            >
-                                Cancel ride
-                            </button>
-                        )}
-                    </div>
-                );
-            })}
+            <h2 className="text-lg font-black">Your rides</h2>
+            {current.length > 0 && <h3 className={groupHeading}>Current</h3>}
+            {current.map((r) => (
+                <MyRideCard key={r.id} ride={r} now={now} onCancel={setCancelling} />
+            ))}
+            {past.length > 0 && <h3 className={`${groupHeading} pt-2`}>Past</h3>}
+            {past.map((r) => (
+                <MyRideCard key={r.id} ride={r} now={now} />
+            ))}
             <ConfirmModal
                 isOpen={cancelling !== null}
                 onClose={() => setCancelling(null)}
@@ -340,6 +376,78 @@ function MyScheduledRides({ user, now }: { user: User; now: Date }) {
                         ? "Your rider will be told it's cancelled."
                         : "No rider will be sent."
                 }
+                confirmLabel="Cancel ride"
+                cancelLabel="Keep it"
+            />
+        </section>
+    );
+}
+
+/**
+ * Today's rides booked here without signing in, as booked: a guest can't read
+ * the request back, so the list can't show whether a rider took it.
+ */
+function GuestRides({
+    rides,
+    signedIn,
+    onRemove,
+}: {
+    rides: GuestRide[];
+    signedIn: boolean;
+    onRemove: (id: string) => void;
+}) {
+    const [cancelling, setCancelling] = useState<GuestRide | null>(null);
+
+    const cancel = async (ride: GuestRide) => {
+        try {
+            await cancelRideRequest(ride.id);
+            toast.success("Ride cancelled");
+            onRemove(ride.id);
+        } catch (error) {
+            // Refused once the ride is no longer open: completed or cancelled already.
+            if ((error as FirebaseError)?.code === "permission-denied") {
+                toast.error("This ride has already finished.");
+                onRemove(ride.id);
+                return;
+            }
+            console.error("Failed to cancel ride:", error);
+            toast.error("Couldn't cancel the ride. Please try again.");
+        }
+    };
+
+    if (rides.length === 0) return null;
+    return (
+        <section className={`${sideColumn} space-y-3`}>
+            <h2 className="text-lg font-black">
+                {signedIn ? "Booked before you signed in" : "Your rides"}
+            </h2>
+            {rides.map((r) => (
+                <div key={r.id} className={rideCard}>
+                    <div className="space-y-0.5 text-sm">
+                        <RideRoute ride={r} />
+                        <p className="text-gray-400">
+                            Booked {formatRideTime(new Date(r.createdAt))}
+                            {passengersLabel(r.passengers) && (
+                                <> · {passengersLabel(r.passengers)}</>
+                            )}
+                        </p>
+                    </div>
+                    <button onClick={() => setCancelling(r)} className={cancelButton}>
+                        Cancel ride
+                    </button>
+                </div>
+            ))}
+            {!signedIn && (
+                <p className="text-xs text-gray-500">
+                    Sign in when you book to follow your rides and see past ones.
+                </p>
+            )}
+            <ConfirmModal
+                isOpen={cancelling !== null}
+                onClose={() => setCancelling(null)}
+                onConfirm={() => cancelling && void cancel(cancelling)}
+                title="Cancel this ride?"
+                message="If a rider has accepted it, they'll be told it's cancelled."
                 confirmLabel="Cancel ride"
                 cancelLabel="Keep it"
             />
@@ -367,6 +475,7 @@ export default function RidesPage() {
     const [noFemaleRider, setNoFemaleRider] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [booking, setBooking] = useState<Booking | null>(null);
+    const [guestRides, setGuestRides] = useState<GuestRide[]>([]);
 
     useEffect(() => {
         fetchRidesSettings()
@@ -389,6 +498,11 @@ export default function RidesPage() {
             }
         } catch {
             // Storage unavailable (private mode): the guest just types their details.
+        }
+        try {
+            setGuestRides(parseGuestRides(localStorage.getItem(GUEST_RIDES_KEY), new Date()));
+        } catch {
+            // Storage unavailable: the guest just can't cancel from here.
         }
         return subscribeRideAvailability(setAvailability);
     }, []);
@@ -416,6 +530,15 @@ export default function RidesPage() {
         // Wait to know whether a female rider is available before booking with the preference.
         (!preferFemale || availability !== null);
 
+    const saveGuestRides = (rides: GuestRide[]) => {
+        setGuestRides(rides);
+        try {
+            localStorage.setItem(GUEST_RIDES_KEY, JSON.stringify(rides));
+        } catch {
+            // Not remembering the ride only loses the cancel button after a reload.
+        }
+    };
+
     const book = async (preference: RidePreference) => {
         if (!pickup || !drop || !canSubmit) return;
         setSubmitting(true);
@@ -439,6 +562,18 @@ export default function RidesPage() {
                 localStorage.setItem(GUEST_KEY, JSON.stringify({ name: name.trim(), phone }));
             } catch {
                 // Not remembering the guest is fine.
+            }
+            if (!user) {
+                saveGuestRides(
+                    addGuestRide(guestRides, {
+                        id,
+                        pickupName: pickup.name,
+                        dropName: drop.name,
+                        fare,
+                        passengers,
+                        createdAt: now.getTime(),
+                    })
+                );
             }
             setBooking({
                 id,
@@ -711,7 +846,12 @@ export default function RidesPage() {
                 }
             />
 
-            {user && <MyScheduledRides user={user} now={now} />}
+            {user && <MyRides user={user} now={now} />}
+            <GuestRides
+                rides={guestRides}
+                signedIn={!!user}
+                onRemove={(id) => saveGuestRides(guestRides.filter((r) => r.id !== id))}
+            />
 
             <ConfirmModal
                 isOpen={noFemaleRider}

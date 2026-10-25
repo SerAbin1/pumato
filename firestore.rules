@@ -264,9 +264,10 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['riderPreference'])
         && request.resource.data.riderPreference == 'any';
 
-      // The signed-in user cancels their scheduled ride before it's done.
-      allow update: if request.auth != null
-        && resource.data.get('userId', null) == request.auth.uid
+      // The user cancels their ride before it's done: the signed-in owner, or for a
+      // guest's ride, anyone holding the request id (kept in the guest's browser).
+      allow update: if (resource.data.get('userId', null) == null
+          || (request.auth != null && resource.data.userId == request.auth.uid))
         && resource.data.status in ['pending', 'accepted']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
         && request.resource.data.status == 'cancelled'

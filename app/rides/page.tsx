@@ -431,7 +431,9 @@ export default function RidesPage() {
                 passengers,
                 ...(!scheduling && pin && { pickupLocation: pin }),
                 riderPreference: preference,
-                ...(scheduling && user && scheduledFor && { userId: user.uid, scheduledFor }),
+                // Signed in, a ride now is linked too, so it shows under Your rides.
+                ...(user && { userId: user.uid }),
+                ...(scheduling && scheduledFor && { scheduledFor }),
             });
             try {
                 localStorage.setItem(GUEST_KEY, JSON.stringify({ name: name.trim(), phone }));

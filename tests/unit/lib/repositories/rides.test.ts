@@ -92,6 +92,13 @@ describe("createRideRequest", () => {
         expect(data).not.toHaveProperty("userId");
     });
 
+    it("links a signed-in user's ride now to them, so it shows in their rides", async () => {
+        await createRideRequest({ ...booking, riderPreference: "any", userId: "u1" });
+        const data = mocks.addDoc.mock.calls[0][1];
+        expect(data).toMatchObject({ userId: "u1" });
+        expect(data).not.toHaveProperty("scheduledFor");
+    });
+
     it("stores a scheduled ride's time as a timestamp, with its user", async () => {
         const at = new Date("2026-10-25T11:00:00Z");
         await createRideRequest({

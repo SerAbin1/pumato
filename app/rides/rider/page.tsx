@@ -728,7 +728,8 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
 
     return (
         <>
-            <div className={`${sideColumn} space-y-4`}>
+            {/* On phones the cards join the shell grid so This week can drop below ride requests. */}
+            <div className={`${sideColumn} contents lg:block lg:space-y-4`}>
                 <NotificationNotice permission={permission} request={request} />
                 <div className={cardClass}>
                     <div className="flex items-center gap-3">
@@ -761,7 +762,9 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
                 </div>
 
                 <MyRides rides={myRides} schedule={schedule} onCompleted={completed.addCompleted} />
-                <Earnings rides={completed.rides} rider={rider} now={now} />
+                <div className="max-lg:order-last">
+                    <Earnings rides={completed.rides} rider={rider} now={now} />
+                </div>
             </div>
 
             <div className={`${mainColumn} ${cardClass}`}>

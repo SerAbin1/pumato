@@ -558,10 +558,15 @@ export default function RidesPage() {
         } catch {
             // Storage unavailable: the guest just can't cancel from here.
         }
-        return subscribeRideAvailability(setAvailability);
     }, []);
 
     const campus = userDetails.campus;
+    useEffect(() => {
+        if (!campus) return;
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setAvailability(null);
+        return subscribeRideAvailability(campus, setAvailability);
+    }, [campus]);
     const places = useMemo(
         () => allPlaces && placesForCampus(allPlaces, campus),
         [allPlaces, campus]
@@ -584,6 +589,7 @@ export default function RidesPage() {
     const needsSignIn = scheduling && !user;
 
     const canSubmit =
+        !!campus &&
         !!pickup &&
         !!drop &&
         pickupId !== dropId &&
@@ -603,7 +609,7 @@ export default function RidesPage() {
     };
 
     const book = async (preference: RidePreference) => {
-        if (!pickup || !drop || !canSubmit) return;
+        if (!campus || !pickup || !drop || !canSubmit) return;
         setSubmitting(true);
         try {
             const id = await createRideRequest({
@@ -614,6 +620,7 @@ export default function RidesPage() {
                 dropId: drop.id,
                 dropName: drop.name,
                 fare,
+                campusId: campus,
                 passengers,
                 ...(!scheduling && pin && { pickupLocation: pin }),
                 riderPreference: preference,

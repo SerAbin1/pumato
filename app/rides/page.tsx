@@ -39,6 +39,7 @@ import {
     activePlaces,
     addGuestRide,
     bookableDates,
+    dropPlaces,
     DEFAULT_RIDE_SCHEDULE,
     formatDateOption,
     formatFare,
@@ -566,6 +567,10 @@ export default function RidesPage() {
         [allPlaces, campus]
     );
     const byId = useMemo(() => new Map(places?.map((p) => [p.id, p])), [places]);
+    const drops = useMemo(
+        () => (allPlaces ? dropPlaces(allPlaces, campus, pickupId) : []),
+        [allPlaces, campus, pickupId]
+    );
     const pickup = byId.get(pickupId);
     const drop = byId.get(dropId);
     const fare = pickup && drop ? routeFare(fares, pickup.id, drop.id) : null;
@@ -746,8 +751,15 @@ export default function RidesPage() {
                                 value={pickupId}
                                 onChange={(id) => {
                                     setPickupId(id);
-                                    // The drop list hides the pickup, so a matching drop is gone.
-                                    if (id === dropId) setDropId("");
+                                    // The drop list follows the pickup, so the drop may be gone.
+                                    if (
+                                        allPlaces &&
+                                        !dropPlaces(allPlaces, campus, id).some(
+                                            (p) => p.id === dropId
+                                        )
+                                    ) {
+                                        setDropId("");
+                                    }
                                 }}
                                 placeholder="Where are you?"
                             />
@@ -760,9 +772,7 @@ export default function RidesPage() {
                                 <Navigation size={12} className="inline mr-1" /> Drop
                             </p>
                             <CustomSelect
-                                options={places
-                                    .filter((p) => p.id !== pickupId)
-                                    .map((p) => ({ value: p.id, label: p.name }))}
+                                options={drops.map((p) => ({ value: p.id, label: p.name }))}
                                 value={dropId}
                                 onChange={setDropId}
                                 placeholder="Where to?"

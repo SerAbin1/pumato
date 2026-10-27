@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
-import { COLLECTIONS } from "@/lib/constants";
+import { COLLECTIONS, DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
 import {
     fetchRidesSettings,
@@ -190,9 +190,43 @@ const SCHEDULE_FIELDS: { key: keyof RideSchedule; label: string }[] = [
     { key: "maxDaysAhead", label: "Latest booking (days ahead)" },
 ];
 
+/** Each campus's places, then those on no campus; "" is no campus. */
+const PLACE_GROUPS = [
+    ...DEFAULT_CAMPUS_CONFIG.map((c) => ({ id: c.id, name: c.name })),
+    { id: "", name: "No campus (shown on every campus)" },
+];
+
+function CampusSelect({
+    value,
+    onChange,
+    label,
+}: {
+    value: string;
+    onChange: (campusId: string) => void;
+    label: string;
+}) {
+    return (
+        <select
+            value={value}
+            onChange={(e) => onChange(e.target.value)}
+            aria-label={label}
+            className="shrink-0 bg-black/30 border border-white/10 rounded-xl px-2 py-2.5 text-xs text-white"
+        >
+            <option value="">No campus</option>
+            {DEFAULT_CAMPUS_CONFIG.map((c) => (
+                <option key={c.id} value={c.id}>
+                    {c.name}
+                </option>
+            ))}
+        </select>
+    );
+}
+
 function SettingsSection() {
     const [settings, setSettings] = useState<RidesSettings | null>(null);
     const [newPlace, setNewPlace] = useState("");
+    // "" is no campus.
+    const [newPlaceCampus, setNewPlaceCampus] = useState("");
     const [saving, setSaving] = useState(false);
 
     useEffect(() => {
@@ -209,6 +243,15 @@ function SettingsSection() {
     const update = (patch: Partial<RidesSettings>) => setSettings({ ...settings, ...patch });
     const updatePlace = (id: string, patch: Partial<RidesSettings["places"][number]>) =>
         update({ places: settings.places.map((p) => (p.id === id ? { ...p, ...patch } : p)) });
+    // Firestore refuses undefined fields, so a place on no campus has no campusId at all.
+    const setPlaceCampus = (id: string, campusId: string) =>
+        update({
+            places: settings.places.map((p) => {
+                if (p.id !== id) return p;
+                const { campusId: _, ...rest } = p;
+                return campusId ? { ...rest, campusId } : rest;
+            }),
+        });
 
     const addPlace = () => {
         const name = newPlace.trim();
@@ -216,7 +259,12 @@ function SettingsSection() {
         update({
             places: [
                 ...settings.places,
-                { id: crypto.randomUUID().slice(0, 8), name, active: true },
+                {
+                    id: crypto.randomUUID().slice(0, 8),
+                    name,
+                    active: true,
+                    ...(newPlaceCampus && { campusId: newPlaceCampus }),
+                },
             ],
         });
         setNewPlace("");
@@ -262,34 +310,58 @@ function SettingsSection() {
 
             <div className="space-y-2">
                 <p className="text-xs text-gray-400">
-                    Campus places (pickup & drop). Hide a place instead of deleting it if past
-                    requests use it.
+                    Places (pickup & drop). Users see their campus&apos;s places plus those on no
+                    campus. Hide a place instead of deleting it if past requests use it.
                 </p>
-                {settings.places.map((place) => (
-                    <div key={place.id} className="flex items-center gap-2">
-                        <input
-                            value={place.name}
-                            onChange={(e) => updatePlace(place.id, { name: e.target.value })}
-                            aria-label="Place name"
-                            className={inputClass}
-                        />
-                        <button
-                            onClick={() => updatePlace(place.id, { active: !place.active })}
-                            className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold ${place.active ? "bg-green-600/20 text-green-400" : "bg-white/10 text-gray-500"}`}
-                        >
-                            {place.active ? "Shown" : "Hidden"}
-                        </button>
-                        <button
-                            onClick={() =>
-                                update({ places: settings.places.filter((p) => p.id !== place.id) })
-                            }
-                            aria-label={`Delete ${place.name}`}
-                            className="shrink-0 p-2 rounded-xl text-gray-500 hover:text-red-400"
-                        >
-                            <Trash2 size={16} />
-                        </button>
-                    </div>
-                ))}
+                {PLACE_GROUPS.map((group) => {
+                    const places = settings.places.filter((p) => (p.campusId ?? "") === group.id);
+                    if (places.length === 0) return null;
+                    return (
+                        <div key={group.id} className="space-y-2">
+                            <p className="text-[11px] font-bold uppercase tracking-wider text-gray-500">
+                                {group.name}
+                            </p>
+                            {places.map((place) => (
+                                <div key={place.id} className="flex items-center gap-2">
+                                    <input
+                                        value={place.name}
+                                        onChange={(e) =>
+                                            updatePlace(place.id, { name: e.target.value })
+                                        }
+                                        aria-label="Place name"
+                                        className={inputClass}
+                                    />
+                                    <CampusSelect
+                                        value={place.campusId ?? ""}
+                                        onChange={(campusId) => setPlaceCampus(place.id, campusId)}
+                                        label={`Campus of ${place.name}`}
+                                    />
+                                    <button
+                                        onClick={() =>
+                                            updatePlace(place.id, { active: !place.active })
+                                        }
+                                        className={`shrink-0 px-3 py-2 rounded-xl text-xs font-bold ${place.active ? "bg-green-600/20 text-green-400" : "bg-white/10 text-gray-500"}`}
+                                    >
+                                        {place.active ? "Shown" : "Hidden"}
+                                    </button>
+                                    <button
+                                        onClick={() =>
+                                            update({
+                                                places: settings.places.filter(
+                                                    (p) => p.id !== place.id
+                                                ),
+                                            })
+                                        }
+                                        aria-label={`Delete ${place.name}`}
+                                        className="shrink-0 p-2 rounded-xl text-gray-500 hover:text-red-400"
+                                    >
+                                        <Trash2 size={16} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    );
+                })}
                 <div className="flex items-center gap-2">
                     <input
                         value={newPlace}
@@ -298,6 +370,11 @@ function SettingsSection() {
                         placeholder="Add a place, e.g. Main Gate"
                         aria-label="New place"
                         className={inputClass}
+                    />
+                    <CampusSelect
+                        value={newPlaceCampus}
+                        onChange={setNewPlaceCampus}
+                        label="Campus of new place"
                     />
                     <button
                         onClick={addPlace}

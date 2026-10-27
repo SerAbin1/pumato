@@ -10,7 +10,19 @@ import {
     useMotionValue,
     useMotionTemplate,
 } from "framer-motion";
-import { Instagram, Mail, MessageCircle, ArrowRight, Zap, Wallet, ShieldCheck } from "lucide-react";
+import {
+    Instagram,
+    Mail,
+    MessageCircle,
+    ArrowRight,
+    Zap,
+    Wallet,
+    ShieldCheck,
+    UtensilsCrossed,
+    ShoppingBasket,
+    Shirt,
+    Store,
+} from "lucide-react";
 import { useRef, useEffect, useState } from "react";
 import type { MouseEvent, ReactNode } from "react";
 import type { GrocerySettings, OrderSettings } from "@/lib/types";
@@ -253,18 +265,60 @@ export default function GatewayPage() {
                             Hostel Need — Food, Laundry, and More, Delivered Fast.
                         </motion.p>
 
-                        <motion.button
-                            onClick={() =>
-                                document
-                                    .getElementById("services")!
-                                    .scrollIntoView({ behavior: "smooth" })
-                            }
-                            className="bg-white text-black px-10 py-4 rounded-full font-bold text-lg hover:scale-105 hover:bg-orange-50 transition-all flex items-center gap-2 mx-auto"
-                            whileHover={{ gap: "12px" }}
-                            whileTap={{ scale: 0.95 }}
+                        <motion.div
+                            className="flex justify-center gap-6 md:gap-10"
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ delay: 1.2, duration: 0.6 }}
                         >
-                            Get Started <ArrowRight size={20} />
-                        </motion.button>
+                            {[
+                                {
+                                    label: "Food",
+                                    href: "/delivery",
+                                    icon: <UtensilsCrossed size={24} className="text-orange-500" />,
+                                    isLive: isFoodLive,
+                                },
+                                {
+                                    label: "Grocery",
+                                    href: "/grocery",
+                                    icon: <ShoppingBasket size={24} className="text-green-500" />,
+                                    isLive: isGroceryLive,
+                                },
+                                {
+                                    label: "Laundry",
+                                    href: "/laundry",
+                                    icon: <Shirt size={24} className="text-blue-500" />,
+                                },
+                                {
+                                    label: "Marketplace",
+                                    href: "/marketplace",
+                                    icon: <Store size={24} className="text-purple-500" />,
+                                },
+                            ].map((service) => (
+                                <motion.div
+                                    key={service.label}
+                                    whileHover={{ scale: 1.08 }}
+                                    whileTap={{ scale: 0.92 }}
+                                >
+                                    <Link
+                                        href={service.href}
+                                        className="flex flex-col items-center gap-2"
+                                    >
+                                        <span className="relative w-14 h-14 md:w-16 md:h-16 rounded-full bg-white/5 backdrop-blur-md border border-white/10 hover:bg-white/10 transition-colors flex items-center justify-center">
+                                            {service.icon}
+                                            {service.isLive !== undefined && (
+                                                <span
+                                                    className={`absolute top-0.5 right-0.5 w-3 h-3 rounded-full border-2 border-black ${service.isLive ? "bg-green-500 animate-pulse" : "bg-red-500"}`}
+                                                />
+                                            )}
+                                        </span>
+                                        <span className="text-xs md:text-sm font-medium text-gray-300">
+                                            {service.label}
+                                        </span>
+                                    </Link>
+                                </motion.div>
+                            ))}
+                        </motion.div>
                     </motion.div>
                 </div>
             </section>

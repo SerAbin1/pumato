@@ -149,6 +149,7 @@
             "queryScope": "COLLECTION",
             "fields": [
                 { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "campusId", "order": "ASCENDING" },
                 { "fieldPath": "riderPreference", "order": "ASCENDING" },
                 { "fieldPath": "createdAt", "order": "ASCENDING" }
             ]
@@ -158,6 +159,7 @@
             "queryScope": "COLLECTION",
             "fields": [
                 { "fieldPath": "status", "order": "ASCENDING" },
+                { "fieldPath": "campusId", "order": "ASCENDING" },
                 { "fieldPath": "riderPreference", "order": "ASCENDING" },
                 { "fieldPath": "scheduledFor", "order": "ASCENDING" }
             ]

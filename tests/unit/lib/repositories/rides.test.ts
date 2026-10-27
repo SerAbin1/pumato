@@ -42,6 +42,7 @@ const {
     releaseRide,
     setRiderGender,
     subscribeRider,
+    setRiderCampus,
     subscribePendingRides,
     subscribeUpcomingRides,
     subscribeRiderRides,
@@ -69,6 +70,7 @@ const booking = {
     dropId: "lib",
     dropName: "Library",
     fare: 20,
+    campusId: "PU",
 };
 
 beforeEach(() => {
@@ -195,6 +197,16 @@ describe("subscribeRider", () => {
     });
 });
 
+describe("setRiderCampus", () => {
+    it("moves a rider to another campus for the admin", async () => {
+        await setRiderCampus("rider1", "PTU");
+        expect(mocks.updateDoc).toHaveBeenCalledWith(
+            { path: "riders/rider1" },
+            { campusId: "PTU", updatedAt: "SERVER_TS" }
+        );
+    });
+});
+
 describe("setRiderGender", () => {
     it("records a rider's gender for the admin", async () => {
         await setRiderGender("rider1", "female");
@@ -210,9 +222,10 @@ describe("rider subscriptions", () => {
 
     it("lists today's pending ride-now requests the rider may see, oldest first", () => {
         const onChange = vi.fn();
-        subscribePendingRides(["any"], onChange, vi.fn(), now);
+        subscribePendingRides("PU", ["any"], onChange, vi.fn(), now);
         expect(constraints(lastQuery())).toEqual([
             { where: ["status", "==", "pending"] },
+            { where: ["campusId", "==", "PU"] },
             { where: ["riderPreference", "in", ["any"]] },
             { where: ["createdAt", ">=", expect.anything()] },
             { orderBy: ["createdAt", "asc"] },
@@ -227,9 +240,10 @@ describe("rider subscriptions", () => {
     });
 
     it("lists pending scheduled requests from an hour ago on, soonest first", () => {
-        subscribeUpcomingRides(["any", "female"], vi.fn(), vi.fn(), now);
+        subscribeUpcomingRides("PU", ["any", "female"], vi.fn(), vi.fn(), now);
         expect(constraints(lastQuery())).toEqual([
             { where: ["status", "==", "pending"] },
+            { where: ["campusId", "==", "PU"] },
             { where: ["riderPreference", "in", ["any", "female"]] },
             { where: ["scheduledFor", ">=", { __ts: new Date("2026-10-24T15:40:00Z") }] },
             { orderBy: ["scheduledFor", "asc"] },
@@ -255,17 +269,20 @@ describe("guest subscriptions", () => {
         ]);
     });
 
-    it("reads rider availability, treating a missing doc as nobody available", () => {
+    it("reads the campus's rider availability, treating a missing one as nobody available", () => {
         const onChange = vi.fn();
-        subscribeRideAvailability(onChange);
+        subscribeRideAvailability("PU", onChange);
         const [ref, listener] = mocks.onSnapshot.mock.calls.at(-1)!;
         expect(ref).toEqual({ path: "site_content/rides_availability" });
 
         listener({ data: () => undefined });
         expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: false, femaleApproved: false });
 
-        listener({ data: () => ({ femaleOnline: true, femaleApproved: true }) });
-        expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: true, femaleApproved: true });
+        listener({ data: () => ({ PTU: { femaleOnline: true, femaleApproved: true } }) });
+        expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: false, femaleApproved: false });
+
+        listener({ data: () => ({ PU: { femaleOnline: false, femaleApproved: true } }) });
+        expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: false, femaleApproved: true });
     });
 });
 

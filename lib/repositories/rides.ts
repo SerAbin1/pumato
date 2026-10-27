@@ -89,7 +89,7 @@ export function subscribeRider(
 
 export type RiderApplication = Pick<
     Rider,
-    "name" | "phone" | "vehicleNumber" | "collegeId" | "gender"
+    "name" | "phone" | "vehicleNumber" | "collegeId" | "campusId" | "gender"
 >;
 
 /**
@@ -120,6 +120,11 @@ export async function submitRiderApplication(
     }
 }
 
+/** Admin: moves a rider to the campus they now give rides on. */
+export async function setRiderCampus(uid: string, campusId: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), { campusId, updatedAt: serverTimestamp() });
+}
+
 /** Admin: records gender for riders approved before the application asked it. */
 export async function setRiderGender(uid: string, gender: RiderGender): Promise<void> {
     await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), { gender, updatedAt: serverTimestamp() });
@@ -138,6 +143,7 @@ export type RideBooking = Pick<
     | "dropId"
     | "dropName"
     | "fare"
+    | "campusId"
     | "passengers"
     | "pickupLocation"
     | "userId"
@@ -247,10 +253,12 @@ const rideRequests = () => collection(db, COLLECTIONS.RIDE_REQUESTS);
 const UPCOMING_GRACE_MS = 60 * 60 * 1000;
 
 /**
- * Today's pending ride-now requests, oldest first. `preferences` must match
- * what the rider may read (see firestore.rules), or the query is refused.
+ * Today's pending ride-now requests on the rider's campus, oldest first.
+ * `campusId` and `preferences` must match what the rider may read (see
+ * firestore.rules), or the query is refused.
  */
 export function subscribePendingRides(
+    campusId: string,
     preferences: RidePreference[],
     onChange: RidesListener,
     onError: (error: Error) => void,
@@ -262,6 +270,7 @@ export function subscribePendingRides(
         query(
             rideRequests(),
             where("status", "==", "pending"),
+            where("campusId", "==", campusId),
             where("riderPreference", "in", preferences),
             where("createdAt", ">=", Timestamp.fromDate(todayStart)),
             orderBy("createdAt", "asc")
@@ -272,8 +281,9 @@ export function subscribePendingRides(
     );
 }
 
-/** Pending scheduled requests, soonest first, including ones just past their time. */
+/** Pending scheduled requests on the rider's campus, soonest first, including ones just past their time. */
 export function subscribeUpcomingRides(
+    campusId: string,
     preferences: RidePreference[],
     onChange: RidesListener,
     onError: (error: Error) => void,
@@ -283,6 +293,7 @@ export function subscribeUpcomingRides(
         query(
             rideRequests(),
             where("status", "==", "pending"),
+            where("campusId", "==", campusId),
             where("riderPreference", "in", preferences),
             where(
                 "scheduledFor",
@@ -351,13 +362,15 @@ export async function fetchRiderCompletedRides(
     return snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest);
 }
 
-/** Whether any female rider can take a request; nobody until the function first writes it. */
+/** Whether any female rider on the campus can take a request; nobody until the function first writes it. */
 export function subscribeRideAvailability(
+    campusId: string,
     onChange: (availability: RidesAvailability) => void
 ): Unsubscribe {
     return onSnapshot(
         doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.RIDES_AVAILABILITY),
-        (snap) => onChange({ femaleOnline: false, femaleApproved: false, ...snap.data() }),
+        (snap) =>
+            onChange({ femaleOnline: false, femaleApproved: false, ...snap.data()?.[campusId] }),
         (error) => console.error("Failed to load rider availability:", error)
     );
 }

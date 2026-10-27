@@ -156,7 +156,7 @@ service cloud.firestore {
     // revoke go through the manageUsers function, which also sets the claim.
     function isValidRider(uid) {
       let d = request.resource.data;
-      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'vehicleNumber', 'collegeId', 'gender', 'status', 'online', 'ratingSum', 'ratingCount', 'createdAt', 'updatedAt'])
+      return d.keys().hasOnly(['uid', 'email', 'name', 'phone', 'vehicleNumber', 'collegeId', 'campusId', 'gender', 'status', 'online', 'ratingSum', 'ratingCount', 'createdAt', 'updatedAt'])
         && d.get('online', false) == false
         // Ratings are the function's to keep; a re-application carries them over untouched.
         && d.get('ratingSum', 0) == (resource == null ? 0 : resource.data.get('ratingSum', 0))
@@ -167,6 +167,7 @@ service cloud.firestore {
         && isPhone(d.phone)
         && isText(d.vehicleNumber, 20)
         && isText(d.collegeId, 40)
+        && isText(d.campusId, 40)
         && isGender(d.gender)
         && d.status == 'pending'
         && d.updatedAt == request.time;
@@ -185,6 +186,10 @@ service cloud.firestore {
 
     function isFemaleRider() {
       return get(/databases/$(database)/documents/riders/$(request.auth.uid)).data.get('gender', null) == 'female';
+    }
+
+    function isRiderCampus(campusId) {
+      return get(/databases/$(database)/documents/riders/$(request.auth.uid)).data.campusId == campusId;
     }
 
     match /riders/{uid} {
@@ -206,8 +211,8 @@ service cloud.firestore {
 
     // Ride requests: guests book a ride now without logging in, so create is open
     // but pinned to the expected shape. Scheduling needs a signed-in user, so they
-    // can follow the ride up. Riders see pending requests on their dashboard; a
-    // female-preference request only female riders.
+    // can follow the ride up. Riders see pending requests booked on their campus
+    // on their dashboard; a female-preference request only female riders.
     function isValidSchedule(d) {
       return d.scheduledFor is timestamp
         && d.scheduledFor > request.time
@@ -227,7 +232,7 @@ service cloud.firestore {
     }
 
     match /ride_requests/{document} {
-      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'riderPreference', 'passengers', 'pickupLocation', 'userId', 'scheduledFor', 'createdAt'])
+      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'campusId', 'riderPreference', 'passengers', 'pickupLocation', 'userId', 'scheduledFor', 'createdAt'])
         && isText(request.resource.data.name, 80)
         && isPhone(request.resource.data.phone)
         && isText(request.resource.data.pickupId, 64)
@@ -239,6 +244,7 @@ service cloud.firestore {
         && (request.resource.data.fare == null
             || (request.resource.data.fare is int && request.resource.data.fare > 0))
         && request.resource.data.status == 'pending'
+        && isText(request.resource.data.campusId, 40)
         && request.resource.data.riderPreference in ['any', 'female']
         // MAX_PASSENGERS in lib/schemas/rides.ts.
         && (!('passengers' in request.resource.data)
@@ -253,10 +259,11 @@ service cloud.firestore {
         && (!('userId' in request.resource.data)
             || (request.auth != null && request.resource.data.userId == request.auth.uid))
         && request.resource.data.createdAt == request.time;
-      // Pending queries must filter riderPreference to what the rider may see.
+      // Pending queries must filter campusId and riderPreference to what the rider may see.
       allow read: if isRider()
         && (resource.data.get('riderUid', null) == request.auth.uid
           || (resource.data.status == 'pending'
+            && isRiderCampus(resource.data.campusId)
             && (resource.data.riderPreference == 'any' || isFemaleRider())));
       allow read: if request.auth != null && resource.data.get('userId', null) == request.auth.uid;
 

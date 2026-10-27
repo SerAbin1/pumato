@@ -214,7 +214,7 @@ export type PickupLocation = z.infer<typeof PickupLocationSchema>;
 export type GuestRide = z.infer<typeof GuestRideSchema>;
 export type CompletedRide = z.infer<typeof CompletedRideSchema>;
 export type CompletedRidesCache = z.infer<typeof CompletedRidesCacheSchema>;
-/** `site_content/rides_availability`, kept up to date by the ridersAvailability function. */
+/** One campus of `site_content/rides_availability`, kept up to date by the ridersAvailability function. */
 export interface RidesAvailability {
     femaleOnline: boolean;
     femaleApproved: boolean;

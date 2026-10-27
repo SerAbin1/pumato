@@ -53,6 +53,7 @@ export {
     subscribeRider,
     submitRiderApplication,
     setRiderOnline,
+    setRiderCampus,
     setRiderGender,
     acceptRide,
     completeRide,

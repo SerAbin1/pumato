@@ -10,6 +10,7 @@ import {
     CheckCircle2,
     Clock,
     Crosshair,
+    GraduationCap,
     Loader2,
     MapPin,
     Navigation,
@@ -22,6 +23,8 @@ import {
 import type { FirebaseError } from "firebase/app";
 import type { User } from "firebase/auth";
 import { useUserAuth } from "@/app/context/UserAuthContext";
+import { useCart } from "@/app/context/CartContext";
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import {
     cancelRideRequest,
     createRideRequest,
@@ -44,6 +47,7 @@ import {
     parseGuestRides,
     passengersLabel,
     pickupAccuracyLabel,
+    placesForCampus,
     rideStatus,
     rideTime,
     routeFare,
@@ -505,8 +509,9 @@ function GuestRides({
 
 export default function RidesPage() {
     const { user } = useUserAuth();
+    const { userDetails, setUserDetails } = useCart();
     const now = useNow();
-    const [places, setPlaces] = useState<RidePlace[] | null>(null);
+    const [allPlaces, setAllPlaces] = useState<RidePlace[] | null>(null);
     const [fares, setFares] = useState<RideFares>({});
     const [schedule, setSchedule] = useState(DEFAULT_RIDE_SCHEDULE);
     const [availability, setAvailability] = useState<RidesAvailability | null>(null);
@@ -528,14 +533,14 @@ export default function RidesPage() {
     useEffect(() => {
         fetchRidesSettings()
             .then((s) => {
-                setPlaces(activePlaces(s.places));
+                setAllPlaces(activePlaces(s.places));
                 setFares(s.fares);
                 setSchedule(s.schedule);
             })
             .catch((error) => {
                 console.error("Failed to load places:", error);
                 toast.error("Couldn't load places. Please refresh.");
-                setPlaces([]);
+                setAllPlaces([]);
             });
         try {
             const saved = JSON.parse(localStorage.getItem(GUEST_KEY) ?? "null");
@@ -555,6 +560,11 @@ export default function RidesPage() {
         return subscribeRideAvailability(setAvailability);
     }, []);
 
+    const campus = userDetails.campus;
+    const places = useMemo(
+        () => allPlaces && placesForCampus(allPlaces, campus),
+        [allPlaces, campus]
+    );
     const byId = useMemo(() => new Map(places?.map((p) => [p.id, p])), [places]);
     const pickup = byId.get(pickupId);
     const drop = byId.get(dropId);
@@ -668,13 +678,13 @@ export default function RidesPage() {
     let content;
     if (booking) {
         content = <BookedCard booking={booking} schedule={schedule} onReset={reset} />;
-    } else if (places === null) {
+    } else if (allPlaces === null || places === null) {
         content = (
             <div className="flex justify-center py-12">
                 <Loader2 size={28} className="animate-spin text-gray-500" />
             </div>
         );
-    } else if (places.length < 2) {
+    } else if (allPlaces.length < 2) {
         content = (
             <p className="text-center text-gray-400 bg-white/5 border border-white/10 rounded-3xl p-8">
                 Rides aren&apos;t available yet. Check back soon!
@@ -693,6 +703,40 @@ export default function RidesPage() {
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-5">
+                        <div>
+                            <p className={labelClass}>
+                                <GraduationCap size={12} className="inline mr-1" /> Campus
+                            </p>
+                            <div className="flex gap-2">
+                                {DEFAULT_CAMPUS_CONFIG.map((c) => (
+                                    <button
+                                        key={c.id}
+                                        type="button"
+                                        onClick={() => {
+                                            if (c.id === campus) return;
+                                            setUserDetails((prev) => ({ ...prev, campus: c.id }));
+                                            // Places differ by campus, so a picked one may be gone.
+                                            setPickupId("");
+                                            setDropId("");
+                                        }}
+                                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                                            campus === c.id
+                                                ? "bg-orange-500/20 border-orange-500/50 text-orange-400"
+                                                : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                                        }`}
+                                    >
+                                        {c.name}
+                                    </button>
+                                ))}
+                            </div>
+                            {places.length < 2 && (
+                                <p className="text-xs text-gray-500 mt-2">
+                                    {campus
+                                        ? "Rides aren't available on this campus yet."
+                                        : "Pick your campus to see places."}
+                                </p>
+                            )}
+                        </div>
                         <div>
                             <p className={labelClass}>
                                 <MapPin size={12} className="inline mr-1" /> Pickup

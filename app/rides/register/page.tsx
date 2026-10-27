@@ -6,6 +6,8 @@ import Link from "next/link";
 import toast from "react-hot-toast";
 import { Bike, CheckCircle2, Clock, Loader2, Send, XCircle } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
+import { useCart } from "@/app/context/CartContext";
+import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { fetchRider, fetchRidesSettings, submitRiderApplication } from "@/lib/repositories";
 import type { RiderApplication } from "@/lib/repositories";
 import { PHONE_PATTERN, RIDER_GENDERS } from "@/lib/schemas/rides";
@@ -25,11 +27,12 @@ function ApplicationForm({
 }) {
     const [form, setForm] = useState(initial);
     const [busy, setBusy] = useState(false);
-    const set = (key: Exclude<keyof RiderApplication, "gender">) => (value: string) =>
+    const set = (key: Exclude<keyof RiderApplication, "gender" | "campusId">) => (value: string) =>
         setForm((f) => ({ ...f, [key]: value }));
 
     const valid =
         !!form.gender &&
+        !!form.campusId &&
         !!form.name.trim() &&
         PHONE_PATTERN.test(form.phone) &&
         !!form.vehicleNumber.trim() &&
@@ -44,13 +47,14 @@ function ApplicationForm({
             phone: form.phone,
             vehicleNumber: form.vehicleNumber.trim().toUpperCase(),
             collegeId: form.collegeId.trim(),
+            campusId: form.campusId,
             gender: form.gender,
         });
         setBusy(false);
     };
 
     const field = (
-        key: Exclude<keyof RiderApplication, "gender">,
+        key: Exclude<keyof RiderApplication, "gender" | "campusId">,
         label: string,
         props: { placeholder: string; maxLength: number; inputMode?: "numeric" }
     ) => (
@@ -95,6 +99,25 @@ function ApplicationForm({
                 </div>
                 <p className="text-xs text-gray-500 mt-2 ml-1">
                     Female riders also get requests from guests who prefer a female rider.
+                </p>
+            </fieldset>
+            <fieldset>
+                <legend className={labelClass}>Campus</legend>
+                <div className="grid grid-cols-2 gap-2">
+                    {DEFAULT_CAMPUS_CONFIG.map((campus) => (
+                        <button
+                            key={campus.id}
+                            type="button"
+                            aria-pressed={form.campusId === campus.id}
+                            onClick={() => setForm((f) => ({ ...f, campusId: campus.id }))}
+                            className={`py-3 rounded-xl border text-sm font-bold transition-all ${form.campusId === campus.id ? "bg-orange-500/15 border-orange-500 text-white" : "bg-black/30 border-white/10 text-gray-400"}`}
+                        >
+                            {campus.name}
+                        </button>
+                    ))}
+                </div>
+                <p className="text-xs text-gray-500 mt-2 ml-1">
+                    You&apos;ll get ride requests booked on this campus.
                 </p>
             </fieldset>
             {field("phone", "Phone", {
@@ -162,11 +185,13 @@ const EMPTY_APPLICATION: RiderApplication = {
     phone: "",
     vehicleNumber: "",
     collegeId: "",
+    campusId: "",
     gender: undefined,
 };
 
 export default function RiderRegisterPage() {
     const { user, loading } = useUserAuth();
+    const { userDetails } = useCart();
     // undefined = still loading; null = hasn't applied
     const [rider, setRider] = useState<Rider | null | undefined>(undefined);
     const [settings, setSettings] = useState<RidesSettings | null>(null);
@@ -220,9 +245,10 @@ export default function RiderRegisterPage() {
               phone: rider.phone,
               vehicleNumber: rider.vehicleNumber,
               collegeId: rider.collegeId,
+              campusId: rider.campusId,
               gender: rider.gender,
           }
-        : EMPTY_APPLICATION;
+        : { ...EMPTY_APPLICATION, campusId: userDetails.campus ?? "" };
 
     let content;
     if (loading || (user && (rider === undefined || !settings))) {

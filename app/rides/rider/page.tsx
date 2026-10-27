@@ -377,7 +377,9 @@ function RideRequests({
     schedule: RideSchedule;
     now: Date;
 }) {
-    // Female riders also see female-preference requests; the rules refuse anything wider.
+    // Riders see their campus's requests, female riders also female-preference ones;
+    // the rules refuse anything wider.
+    const { campusId } = rider;
     const preferences = useMemo<RidePreference[]>(
         () => (rider.gender === "female" ? ["any", "female"] : ["any"]),
         [rider.gender]
@@ -385,17 +387,17 @@ function RideRequests({
     const rideNow = useRides(
         useCallback<RidesSubscription>(
             (onChange, onError) => {
-                if (online) return subscribePendingRides(preferences, onChange, onError);
+                if (online) return subscribePendingRides(campusId, preferences, onChange, onError);
                 onChange([]);
                 return () => {};
             },
-            [online, preferences]
+            [online, campusId, preferences]
         )
     );
     const upcoming = useRides(
         useCallback<RidesSubscription>(
-            (onChange, onError) => subscribeUpcomingRides(preferences, onChange, onError),
-            [preferences]
+            (onChange, onError) => subscribeUpcomingRides(campusId, preferences, onChange, onError),
+            [campusId, preferences]
         )
     );
     const [chosenTab, setTab] = useState<RequestsTab | null>(null);
@@ -507,6 +509,9 @@ function RideRequests({
                 </button>
             </div>
             <div className="space-y-2">{list}</div>
+            <p className="text-xs text-gray-500 text-center">
+                Showing requests booked on {campusId}. Ask the Pumato team to change your campus.
+            </p>
             {!online && (
                 <p className="text-xs text-gray-500 text-center">
                     While you&apos;re offline, you only see scheduled requests.

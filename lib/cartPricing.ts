@@ -52,7 +52,6 @@ export const validateCoupon = (coupon: Coupon, itemTotal: number): CouponValidat
     const mappedCoupon: Coupon = {
         ...coupon,
         minOrder: coupon.min_order,
-        isVisible: coupon.is_visible,
         isActive: coupon.is_active,
         usageLimit: coupon.usage_limit,
         usedCount: coupon.used_count,

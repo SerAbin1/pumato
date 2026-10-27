@@ -13,7 +13,6 @@ interface CouponPayload {
     value?: string | number;
     minOrder?: string | number;
     description?: string;
-    isVisible?: boolean;
     isActive?: boolean;
     usageLimit?: string | number | null;
     usedCount?: number;
@@ -78,7 +77,6 @@ export const manageCoupons = onCall<ManageCouponsRequest>(async (request) => {
             value: payload.value,
             min_order: payload.minOrder,
             description: payload.description,
-            is_visible: payload.isVisible,
             is_active: payload.isActive,
             usage_limit: payload.usageLimit,
             used_count: payload.usedCount || 0,

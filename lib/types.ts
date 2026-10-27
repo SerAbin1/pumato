@@ -131,7 +131,6 @@ export interface Coupon {
     description?: string;
     // snake_case as stored
     min_order?: string | number;
-    is_visible?: boolean;
     is_active?: boolean;
     usage_limit?: string | number | null;
     used_count?: number;
@@ -139,7 +138,6 @@ export interface Coupon {
     item_id?: string | null;
     // camelCase as mapped on the client
     minOrder?: string | number;
-    isVisible?: boolean;
     isActive?: boolean;
     usageLimit?: string | number | null;
     usedCount?: number;

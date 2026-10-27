@@ -425,7 +425,6 @@ export default function AdminPage() {
                     value: c.value,
                     description: c.description,
                     minOrder: c.min_order,
-                    isVisible: c.is_visible,
                     isActive: c.is_active,
                     usageLimit: c.usage_limit,
                     usedCount: c.used_count,

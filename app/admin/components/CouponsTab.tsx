@@ -15,7 +15,6 @@ interface CouponForm {
     value: string | number;
     minOrder: string | number;
     description: string;
-    isVisible: boolean;
     isActive: boolean;
     usageLimit: string | number;
     usedCount?: number;
@@ -51,7 +50,6 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
         value: "",
         minOrder: "0",
         description: "",
-        isVisible: true,
         isActive: true,
         usageLimit: "",
         restaurantId: null,
@@ -80,7 +78,6 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
             value: coupon.value,
             minOrder: coupon.minOrder,
             description: coupon.description,
-            isVisible: coupon.isVisible,
             isActive: newStatus,
             usageLimit: coupon.usageLimit,
             usedCount: coupon.usedCount,
@@ -105,7 +102,6 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
             value: "",
             minOrder: "0",
             description: "",
-            isVisible: true,
             isActive: true,
             usageLimit: "",
             restaurantId: null,
@@ -127,12 +123,6 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
             value: coupon.value || "",
             minOrder: coupon.minOrder || coupon.min_order || "0",
             description: coupon.description || "",
-            isVisible:
-                coupon.isVisible !== undefined
-                    ? coupon.isVisible
-                    : coupon.is_visible !== undefined
-                      ? coupon.is_visible
-                      : true,
             isActive:
                 coupon.isActive !== undefined
                     ? coupon.isActive
@@ -188,7 +178,6 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
                     : couponForm.value || 0,
             minOrder: couponForm.minOrder || 0,
             description: couponForm.description,
-            isVisible: couponForm.isVisible,
             isActive: couponForm.isActive !== false,
             usageLimit: limit,
             usedCount: editingId ? couponForm.usedCount || 0 : 0,
@@ -611,38 +600,6 @@ export default function CouponsTab({ coupons, restaurants, fetchData }: CouponsT
                                     setCouponForm({ ...couponForm, description: e.target.value })
                                 }
                             />
-                        </div>
-
-                        <div className="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5">
-                            <div className="relative inline-block w-12 mr-2 align-middle select-none transition duration-200 ease-in">
-                                <input
-                                    type="checkbox"
-                                    name="toggle"
-                                    id="toggle"
-                                    className="toggle-checkbox absolute block w-6 h-6 rounded-full bg-white appearance-none cursor-pointer"
-                                    checked={couponForm.isVisible !== false}
-                                    onChange={(e) =>
-                                        setCouponForm({
-                                            ...couponForm,
-                                            isVisible: e.target.checked,
-                                        })
-                                    }
-                                    style={{
-                                        right: couponForm.isVisible !== false ? "0" : "auto",
-                                        left: couponForm.isVisible !== false ? "auto" : "0",
-                                    }}
-                                />
-                                <label
-                                    htmlFor="toggle"
-                                    className={`toggle-label block overflow-hidden h-6 rounded-full cursor-pointer ${couponForm.isVisible !== false ? "bg-orange-500" : "bg-gray-600"}`}
-                                ></label>
-                            </div>
-                            <label
-                                htmlFor="toggle"
-                                className="text-sm font-bold text-white cursor-pointer select-none"
-                            >
-                                Show in Cart Quick Apply?
-                            </label>
                         </div>
 
                         <div className="flex items-center gap-4 bg-white/5 p-5 rounded-2xl border border-white/5">

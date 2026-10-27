@@ -6,6 +6,7 @@ import {
     fetchRidesSettings,
     saveRideFares,
     saveRidesSettings,
+    setRiderCampus,
     setRiderGender,
 } from "@/lib/repositories";
 import { manageUsers } from "@/lib/functions";
@@ -67,12 +68,15 @@ function StatusBadge({ status }: { status: RideRequestStatus }) {
     );
 }
 
-/** Scheduled time, passengers and female preference, when a request has them. */
+/** Campus, then scheduled time, passengers and female preference, when a request has them. */
 function RequestTags({ request }: { request: RideRequest }) {
     const at = scheduledTime(request);
     const passengers = passengersLabel(request.passengers);
     return (
         <>
+            <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-orange-500/15 text-orange-300">
+                {request.campusId}
+            </span>
             {passengers && (
                 <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-white/10 text-gray-200">
                     {passengers}
@@ -196,23 +200,31 @@ const PLACE_GROUPS = [
     { id: "", name: "No campus (shown on every campus)" },
 ];
 
+/** `noneLabel` offers "" for no campus, as places may have. */
 function CampusSelect({
     value,
     onChange,
     label,
+    noneLabel,
+    disabled,
+    className = "py-2.5",
 }: {
     value: string;
     onChange: (campusId: string) => void;
     label: string;
+    noneLabel?: string;
+    disabled?: boolean;
+    className?: string;
 }) {
     return (
         <select
             value={value}
             onChange={(e) => onChange(e.target.value)}
             aria-label={label}
-            className="shrink-0 bg-black/30 border border-white/10 rounded-xl px-2 py-2.5 text-xs text-white"
+            disabled={disabled}
+            className={`shrink-0 bg-black/30 border border-white/10 rounded-xl px-2 text-xs text-white ${className}`}
         >
-            <option value="">No campus</option>
+            {noneLabel !== undefined && <option value="">{noneLabel}</option>}
             {DEFAULT_CAMPUS_CONFIG.map((c) => (
                 <option key={c.id} value={c.id}>
                     {c.name}
@@ -335,6 +347,7 @@ function SettingsSection() {
                                         value={place.campusId ?? ""}
                                         onChange={(campusId) => setPlaceCampus(place.id, campusId)}
                                         label={`Campus of ${place.name}`}
+                                        noneLabel="No campus"
                                     />
                                     <button
                                         onClick={() =>
@@ -375,6 +388,7 @@ function SettingsSection() {
                         value={newPlaceCampus}
                         onChange={setNewPlaceCampus}
                         label="Campus of new place"
+                        noneLabel="No campus"
                     />
                     <button
                         onClick={addPlace}
@@ -585,6 +599,20 @@ function RidersSection() {
         }
     };
 
+    const setCampus = async (uid: string, campusId: string) => {
+        setBusy(uid);
+        try {
+            await setRiderCampus(uid, campusId);
+            toast.success("Campus saved");
+            await fetchRiders();
+        } catch (error) {
+            console.error("Failed to set rider campus:", error);
+            toast.error("Failed to save campus");
+        } finally {
+            setBusy(null);
+        }
+    };
+
     const setGender = async (uid: string, gender: RiderGender) => {
         setBusy(uid);
         try {
@@ -659,6 +687,13 @@ function RidersSection() {
                                 <p className="text-xs text-gray-500">{rider.email}</p>
                             </button>
                             <div className="flex gap-2">
+                                <CampusSelect
+                                    value={rider.campusId}
+                                    onChange={(campusId) => setCampus(rider.uid, campusId)}
+                                    label={`Campus of ${rider.name}`}
+                                    disabled={busy === rider.uid}
+                                    className="py-1.5"
+                                />
                                 {/* Riders approved before the application asked have none. */}
                                 {!rider.gender && (
                                     <select

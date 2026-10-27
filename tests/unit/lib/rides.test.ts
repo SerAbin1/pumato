@@ -14,6 +14,7 @@ import {
     pickupMapsUrl,
     placesForCampus,
     rideStatus,
+    routesForCampus,
     scheduledTime,
     splitRequests,
     riderRef,
@@ -79,6 +80,50 @@ describe("placesForCampus", () => {
     it("shows only campus-less places before a campus is picked", () => {
         expect(ids(null)).toEqual(["station"]);
         expect(ids("")).toEqual(["station"]);
+    });
+});
+
+describe("routesForCampus", () => {
+    const place = (id: string, campusId?: string, active = true) => ({
+        id,
+        name: id,
+        active,
+        campusId,
+    });
+    const places = [
+        place("pu1", "PU"),
+        place("pu2", "PU"),
+        place("ptu1", "PTU"),
+        place("ptu2", "PTU"),
+        place("station"),
+        place("bus"),
+        place("hidden", "PU", false),
+    ];
+    const keys = (campus: string | null) =>
+        routesForCampus(places, campus).map(([a, b]) => `${a.id}-${b.id}`);
+
+    it("gives a campus only the routes between its own places", () => {
+        expect(keys("PU")).toEqual(["pu1-pu2"]);
+        expect(keys("PTU")).toEqual(["ptu1-ptu2"]);
+    });
+
+    it("gives others every route with a place on no campus", () => {
+        expect(keys(null)).toEqual([
+            "pu1-station",
+            "pu1-bus",
+            "pu2-station",
+            "pu2-bus",
+            "ptu1-station",
+            "ptu1-bus",
+            "ptu2-station",
+            "ptu2-bus",
+            "station-bus",
+        ]);
+    });
+
+    it("never pairs places on different campuses", () => {
+        const all = [...keys("PU"), ...keys("PTU"), ...keys(null)];
+        expect(all.filter((k) => k.includes("pu") && k.includes("ptu"))).toEqual([]);
     });
 });
 

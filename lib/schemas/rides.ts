@@ -8,6 +8,8 @@ export const RidePlaceSchema = z.object({
     id: z.string().min(1),
     name: z.string().trim().min(1).max(80),
     active: z.boolean(),
+    // A DEFAULT_CAMPUS_CONFIG id; absent for places on no campus, shown on every campus.
+    campusId: z.string().min(1).optional(),
 });
 
 /** Whole rupees. */

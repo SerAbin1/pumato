@@ -26,6 +26,10 @@ export const telegramUrl = (username: string, text: string) =>
 
 export const activePlaces = (places: RidePlace[]) => places.filter((p) => p.active);
 
+/** The places a user on `campus` can book: that campus's, plus those on no campus. */
+export const placesForCampus = (places: RidePlace[], campus: string | null | undefined) =>
+    activePlaces(places).filter((p) => !p.campusId || p.campusId === campus);
+
 /** Sorted, so A → B and B → A share one fare. */
 export const routeKey = (a: string, b: string) => (a < b ? `${a}:${b}` : `${b}:${a}`);
 

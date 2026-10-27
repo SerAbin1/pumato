@@ -1,11 +1,28 @@
 import { describe, it, expect } from "vite-plus/test";
 import {
+    RidePlaceSchema,
     RideRatingSchema,
     RideRequestSchema,
     RiderSchema,
     RideScheduleSchema,
 } from "@/lib/schemas/rides";
 import { DEFAULT_RIDE_SCHEDULE } from "@/lib/rides";
+
+describe("RidePlaceSchema", () => {
+    const place = { id: "gate", name: "Main Gate", active: true };
+
+    it("accepts a place on a campus", () => {
+        expect(RidePlaceSchema.safeParse({ ...place, campusId: "PU" }).success).toBe(true);
+    });
+
+    it("accepts a place on no campus, as places were before campuses", () => {
+        expect(RidePlaceSchema.parse(place).campusId).toBeUndefined();
+    });
+
+    it("refuses an empty campus", () => {
+        expect(RidePlaceSchema.safeParse({ ...place, campusId: "" }).success).toBe(false);
+    });
+});
 
 describe("RideScheduleSchema", () => {
     it("accepts the defaults", () => {

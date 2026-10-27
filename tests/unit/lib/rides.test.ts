@@ -12,6 +12,7 @@ import {
     parseGuestRides,
     pickupAccuracyLabel,
     pickupMapsUrl,
+    placesForCampus,
     rideStatus,
     scheduledTime,
     splitRequests,
@@ -57,6 +58,27 @@ describe("route fares", () => {
 
     it("returns null for a route with no fare", () => {
         expect(routeFare({}, "gate", "lib")).toBeNull();
+    });
+});
+
+describe("placesForCampus", () => {
+    const places = [
+        { id: "pu-gate", name: "PU Gate", active: true, campusId: "PU" },
+        { id: "ptu-gate", name: "PTU Gate", active: true, campusId: "PTU" },
+        { id: "pu-old", name: "PU Old Block", active: false, campusId: "PU" },
+        { id: "station", name: "Railway Station", active: true },
+    ];
+    const ids = (campus: string | null | undefined) =>
+        placesForCampus(places, campus).map((p) => p.id);
+
+    it("shows the campus's places and the campus-less ones", () => {
+        expect(ids("PU")).toEqual(["pu-gate", "station"]);
+        expect(ids("PTU")).toEqual(["ptu-gate", "station"]);
+    });
+
+    it("shows only campus-less places before a campus is picked", () => {
+        expect(ids(null)).toEqual(["station"]);
+        expect(ids("")).toEqual(["station"]);
     });
 });
 

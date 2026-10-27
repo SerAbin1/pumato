@@ -10,12 +10,12 @@ import {
 } from "@/lib/repositories";
 import { manageUsers } from "@/lib/functions";
 import {
-    activePlaces,
     formatFare,
     formatRideTime,
     passengersLabel,
     riderRef,
     routeKey,
+    routesForCampus,
     scheduledTime,
 } from "@/lib/rides";
 import { RIDE_REQUEST_STATUSES, RIDER_GENDERS } from "@/lib/schemas/rides";
@@ -425,8 +425,15 @@ function SettingsSection() {
     );
 }
 
-/** One fare per pair of active places; leave blank and the rider quotes it. */
+/** Each campus's own routes, then others: those touching a place on no campus. "" is others. */
+const FARE_GROUPS = [
+    ...DEFAULT_CAMPUS_CONFIG.map((c) => ({ id: c.id, name: c.name })),
+    { id: "", name: "Others" },
+];
+
+/** One fare per bookable route, a group at a time; leave blank and the rider quotes it. */
 function FaresSection() {
+    const [group, setGroup] = useState(FARE_GROUPS[0].id);
     const [places, setPlaces] = useState<RidesSettings["places"] | null>(null);
     // Inputs stay strings so a half-typed or cleared field doesn't fight the user.
     const [drafts, setDrafts] = useState<Record<string, string>>({});
@@ -435,7 +442,7 @@ function FaresSection() {
     useEffect(() => {
         fetchRidesSettings()
             .then((s) => {
-                setPlaces(activePlaces(s.places));
+                setPlaces(s.places);
                 setDrafts(
                     Object.fromEntries(Object.entries(s.fares).map(([k, v]) => [k, String(v)]))
                 );
@@ -448,7 +455,7 @@ function FaresSection() {
 
     if (!places) return <p className="text-gray-400">Loading...</p>;
 
-    const routes = places.flatMap((a, i) => places.slice(i + 1).map((b) => [a, b] as const));
+    const routes = routesForCampus(places, group || null);
 
     const save = async () => {
         // Hidden places' fares are kept so they come back when the place is shown again.
@@ -473,10 +480,25 @@ function FaresSection() {
         <section className={sectionClass}>
             <p className="text-xs text-gray-400">
                 Fare in ₹ for each route, either direction. Leave blank and the rider confirms the
-                fare on the call.
+                fare on the call. Others is routes to or from a place on no campus.
             </p>
+            <div className="flex gap-2">
+                {FARE_GROUPS.map((g) => (
+                    <button
+                        key={g.id}
+                        onClick={() => setGroup(g.id)}
+                        className={`flex-1 py-2 rounded-xl text-sm font-bold transition-all border ${
+                            group === g.id
+                                ? "bg-orange-500/20 border-orange-500/50 text-orange-400"
+                                : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                        }`}
+                    >
+                        {g.name}
+                    </button>
+                ))}
+            </div>
             {routes.length === 0 ? (
-                <p className="text-gray-500 text-sm">Add at least two places in Settings.</p>
+                <p className="text-gray-500 text-sm">No routes here yet. Add places in Settings.</p>
             ) : (
                 <div className="grid sm:grid-cols-2 gap-2">
                     {routes.map(([a, b]) => {

@@ -31,20 +31,26 @@ export const placesForCampus = (places: RidePlace[], campus: string | null | und
     activePlaces(places).filter((p) => !p.campusId || p.campusId === campus);
 
 /**
- * Pairs of active places to price, split so each bookable route is in one group:
- * a campus gets routes between its own places, others (null) those touching a
- * place on no campus. Routes across two campuses can't be booked, so are in none.
+ * A route stays inside one campus, or between places on no campus: a campus as
+ * a whole (e.g. "PU") is itself a place on no campus, for rides off it.
  */
+const sameGroup = (a: RidePlace, b: RidePlace) => (a.campusId ?? null) === (b.campusId ?? null);
+
+/** Where a user on `campus` can go from the pickup; all their places before one is picked. */
+export const dropPlaces = (
+    places: RidePlace[],
+    campus: string | null | undefined,
+    pickupId: string
+) => {
+    const options = placesForCampus(places, campus);
+    const pickup = options.find((p) => p.id === pickupId);
+    return pickup ? options.filter((p) => p.id !== pickupId && sameGroup(p, pickup)) : options;
+};
+
+/** Pairs of active places to price: a campus's own routes, or others' (null) between places on no campus. */
 export const routesForCampus = (places: RidePlace[], campus: string | null) => {
-    const active = activePlaces(places);
-    const inGroup = (a: RidePlace, b: RidePlace) =>
-        campus ? a.campusId === campus && b.campusId === campus : !a.campusId || !b.campusId;
-    return active.flatMap((a, i) =>
-        active
-            .slice(i + 1)
-            .filter((b) => inGroup(a, b))
-            .map((b) => [a, b] as const)
-    );
+    const group = activePlaces(places).filter((p) => (p.campusId ?? null) === campus);
+    return group.flatMap((a, i) => group.slice(i + 1).map((b) => [a, b] as const));
 };
 
 /** Sorted, so A → B and B → A share one fare. */

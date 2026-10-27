@@ -3,6 +3,7 @@ import {
     addGuestRide,
     averageRating,
     bookableDates,
+    dropPlaces,
     DEFAULT_RIDE_SCHEDULE,
     formatDateOption,
     formatRideTime,
@@ -107,23 +108,31 @@ describe("routesForCampus", () => {
         expect(keys("PTU")).toEqual(["ptu1-ptu2"]);
     });
 
-    it("gives others every route with a place on no campus", () => {
-        expect(keys(null)).toEqual([
-            "pu1-station",
-            "pu1-bus",
-            "pu2-station",
-            "pu2-bus",
-            "ptu1-station",
-            "ptu1-bus",
-            "ptu2-station",
-            "ptu2-bus",
-            "station-bus",
-        ]);
+    it("gives others only the routes between places on no campus", () => {
+        expect(keys(null)).toEqual(["station-bus"]);
+    });
+});
+
+describe("dropPlaces", () => {
+    const places = [
+        { id: "sj", name: "SJ", active: true, campusId: "PU" },
+        { id: "gate1", name: "Gate 1", active: true, campusId: "PU" },
+        { id: "ptu-gate", name: "PTU Gate", active: true, campusId: "PTU" },
+        { id: "pu", name: "PU", active: true },
+        { id: "station", name: "Railway Station", active: true },
+    ];
+    const ids = (pickupId: string) => dropPlaces(places, "PU", pickupId).map((p) => p.id);
+
+    it("keeps a ride from a campus place inside that campus", () => {
+        expect(ids("sj")).toEqual(["gate1"]);
     });
 
-    it("never pairs places on different campuses", () => {
-        const all = [...keys("PU"), ...keys("PTU"), ...keys(null)];
-        expect(all.filter((k) => k.includes("pu") && k.includes("ptu"))).toEqual([]);
+    it("keeps a ride from a place on no campus among places on no campus", () => {
+        expect(ids("pu")).toEqual(["station"]);
+    });
+
+    it("offers all of the campus's places before a pickup is picked", () => {
+        expect(ids("")).toEqual(["sj", "gate1", "pu", "station"]);
     });
 });
 

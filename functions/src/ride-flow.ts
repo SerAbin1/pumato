@@ -63,8 +63,12 @@ export function planScheduledRide(
 
 export type RidePreference = "any" | "female";
 
-/** Which riders a push goes to: `notFemale` skips those a female-only request already reached. */
+/**
+ * Which riders a push goes to: those on the request's campus; `notFemale` skips
+ * those a female-only request already reached.
+ */
 export interface PushAudience {
+    campusId: string;
     onlineOnly: boolean;
     gender: "any" | "female" | "notFemale";
 }
@@ -78,11 +82,12 @@ export interface PushAudience {
  */
 export function pushAudience(
     reason: "new" | "widened" | "rebroadcast",
-    ride: { riderPreference?: RidePreference; scheduled?: boolean }
+    ride: { riderPreference?: RidePreference; scheduled?: boolean; campusId: string }
 ): PushAudience {
+    const { campusId } = ride;
     const onlineOnly = reason === "rebroadcast" || !ride.scheduled;
-    if (reason === "widened") return { onlineOnly, gender: "notFemale" };
-    return { onlineOnly, gender: ride.riderPreference === "female" ? "female" : "any" };
+    if (reason === "widened") return { campusId, onlineOnly, gender: "notFemale" };
+    return { campusId, onlineOnly, gender: ride.riderPreference === "female" ? "female" : "any" };
 }
 
 /** Whether a rider matches a push audience. */
@@ -130,16 +135,34 @@ interface AvailabilityRider {
     status?: string;
     gender?: string;
     online?: boolean;
+    campusId?: string;
 }
 
 const availabilityKey = (r: AvailabilityRider | undefined) =>
-    r?.status === "approved" && r.gender === "female" ? (r.online ? "online" : "approved") : "none";
+    r?.status === "approved" && r.gender === "female"
+        ? `${r.campusId}:${r.online ? "online" : "approved"}`
+        : "none";
 
-/** Whether a rider doc change can move the female availability flags. */
+/** Whether a rider doc change can move a campus's female availability flags. */
 export const affectsAvailability = (
     before: AvailabilityRider | undefined,
     after: AvailabilityRider | undefined
 ) => availabilityKey(before) !== availabilityKey(after);
+
+export interface CampusAvailability {
+    femaleApproved: boolean;
+    femaleOnline: boolean;
+}
+
+/** Each campus's flags from its approved female riders; a campus with none is left out. */
+export function availabilityByCampus(femaleRiders: { campusId: string; online?: boolean }[]) {
+    const byCampus: Record<string, CampusAvailability> = {};
+    for (const { campusId, online } of femaleRiders) {
+        const flags = (byCampus[campusId] ??= { femaleApproved: true, femaleOnline: false });
+        if (online) flags.femaleOnline = true;
+    }
+    return byCampus;
+}
 
 /** Mirrors RideRatingSchema in lib/schemas/rides.ts. */
 const isRating = (value: unknown): value is number =>

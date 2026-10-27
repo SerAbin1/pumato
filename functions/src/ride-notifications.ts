@@ -11,6 +11,7 @@ import { getFcmTokensByUids } from "./fcm-tokens";
 import { DAY_MS, IST_TIME_ZONE } from "./ist";
 import {
     affectsAvailability,
+    availabilityByCampus,
     DEFAULT_SCHEDULE,
     formatRideTime,
     inAudience,
@@ -48,8 +49,11 @@ async function pushUids(uids: string[], { ttl, ...push }: Push) {
     );
 }
 
-async function pushRiders({ onlineOnly, gender }: PushAudience, push: Push) {
-    let riders = db.collection("riders").where("status", "==", "approved");
+async function pushRiders({ campusId, onlineOnly, gender }: PushAudience, push: Push) {
+    let riders = db
+        .collection("riders")
+        .where("status", "==", "approved")
+        .where("campusId", "==", campusId);
     if (onlineOnly) riders = riders.where("online", "==", true);
     const snap = await riders.get();
     await pushUids(
@@ -66,6 +70,7 @@ const rideOf = (data: DocumentData) => ({
     dropName: data.dropName as string,
     fare: data.fare as number | null,
     riderPreference: data.riderPreference ?? "any",
+    campusId: data.campusId as string,
     passengers: data.passengers as number | undefined,
     scheduledFor: toDate(data.scheduledFor),
     scheduled: data.scheduledFor !== undefined,
@@ -84,8 +89,9 @@ const requestPush = (data: DocumentData, title: string): Push => {
 
 /**
  * Pushes riders when a request is booked; the first to accept on their
- * dashboard gets it. Ride-now requests go to online riders, scheduled ones to
- * every approved rider; a female-rider preference narrows either to female riders.
+ * dashboard gets it. Ride-now requests go to online riders on the request's
+ * campus, scheduled ones to every approved rider there; a female-rider
+ * preference narrows either to female riders.
  */
 export const notifyRidersOfRequest = onDocumentCreated(
     "ride_requests/{requestId}",
@@ -284,8 +290,9 @@ export const sweepScheduledRides = onSchedule(
 
 /**
  * Keeps `site_content/rides_availability` in step with the riders, so the
- * booking page (which can't read riders) knows whether a female rider can
- * take a request: online now for a ride-now, approved at all for a scheduled one.
+ * booking page (which can't read riders) knows whether a female rider on the
+ * campus can take a request: online now for a ride-now, approved at all for a
+ * scheduled one. Keyed by campus.
  */
 export const ridersAvailability = onDocumentWritten("riders/{uid}", async (event) => {
     if (!affectsAvailability(event.data?.before.data(), event.data?.after.data())) return;
@@ -295,13 +302,15 @@ export const ridersAvailability = onDocumentWritten("riders/{uid}", async (event
         .where("status", "==", "approved")
         .where("gender", "==", "female");
     await db.runTransaction(async (tx) => {
-        const [approved, online] = await Promise.all([
-            tx.get(female.limit(1)),
-            tx.get(female.where("online", "==", true).limit(1)),
-        ]);
-        tx.set(db.collection("site_content").doc("rides_availability"), {
-            femaleApproved: !approved.empty,
-            femaleOnline: !online.empty,
-        });
+        const riders = await tx.get(female);
+        tx.set(
+            db.collection("site_content").doc("rides_availability"),
+            availabilityByCampus(
+                riders.docs.map((doc) => ({
+                    campusId: doc.get("campusId"),
+                    online: doc.get("online"),
+                }))
+            )
+        );
     });
 });

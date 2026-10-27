@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vite-plus/test";
 import {
     affectsAvailability,
+    availabilityByCampus,
     formatRideTime,
     inAudience,
     newRating,
@@ -74,36 +75,35 @@ describe("planScheduledRide: a rider has accepted", () => {
 });
 
 describe("pushAudience", () => {
-    it("sends a new ride-now request to online riders", () => {
-        expect(pushAudience("new", { riderPreference: "any" })).toEqual({
+    it("sends a new ride-now request to online riders on its campus", () => {
+        expect(pushAudience("new", { riderPreference: "any", campusId: "PU" })).toEqual({
+            campusId: "PU",
             onlineOnly: true,
             gender: "any",
         });
     });
 
-    it("sends a new scheduled request to every approved rider, online or not", () => {
-        expect(pushAudience("new", { riderPreference: "any", scheduled: true })).toEqual({
-            onlineOnly: false,
-            gender: "any",
-        });
+    it("sends a new scheduled request to every approved rider on its campus, online or not", () => {
+        expect(
+            pushAudience("new", { riderPreference: "any", scheduled: true, campusId: "PU" })
+        ).toEqual({ campusId: "PU", onlineOnly: false, gender: "any" });
     });
 
     it("keeps a female-preference request to female riders", () => {
-        expect(pushAudience("rebroadcast", { riderPreference: "female" })).toEqual({
-            onlineOnly: true,
-            gender: "female",
-        });
+        expect(pushAudience("rebroadcast", { riderPreference: "female", campusId: "PTU" })).toEqual(
+            { campusId: "PTU", onlineOnly: true, gender: "female" }
+        );
     });
 
     it("sends a widened request only to riders who didn't get it yet", () => {
-        expect(pushAudience("widened", { riderPreference: "any" })).toEqual({
+        expect(pushAudience("widened", { riderPreference: "any", campusId: "PU" })).toEqual({
+            campusId: "PU",
             onlineOnly: true,
             gender: "notFemale",
         });
-        expect(pushAudience("widened", { riderPreference: "any", scheduled: true })).toEqual({
-            onlineOnly: false,
-            gender: "notFemale",
-        });
+        expect(
+            pushAudience("widened", { riderPreference: "any", scheduled: true, campusId: "PU" })
+        ).toEqual({ campusId: "PU", onlineOnly: false, gender: "notFemale" });
     });
 });
 
@@ -164,7 +164,7 @@ describe("formatRideTime", () => {
 });
 
 describe("affectsAvailability", () => {
-    const rider = { status: "approved", gender: "female", online: true };
+    const rider = { status: "approved", gender: "female", online: true, campusId: "PU" };
 
     it("notices a female rider going offline", () => {
         expect(affectsAvailability(rider, { ...rider, online: false })).toBe(true);
@@ -176,11 +176,34 @@ describe("affectsAvailability", () => {
         expect(affectsAvailability(rider, undefined)).toBe(true);
     });
 
+    it("notices a female rider moving campus", () => {
+        expect(affectsAvailability(rider, { ...rider, campusId: "PTU" })).toBe(true);
+    });
+
     it("ignores changes that can't move the counts", () => {
         const renamed = { ...rider, name: "New name" };
         expect(affectsAvailability(rider, renamed)).toBe(false);
         const male = { status: "approved", gender: "male", online: true };
         expect(affectsAvailability(male, { ...male, online: false })).toBe(false);
+    });
+});
+
+describe("availabilityByCampus", () => {
+    it("flags each campus with an approved female rider, and whether one is online", () => {
+        expect(
+            availabilityByCampus([
+                { campusId: "PU", online: false },
+                { campusId: "PU", online: true },
+                { campusId: "PTU", online: false },
+            ])
+        ).toEqual({
+            PU: { femaleApproved: true, femaleOnline: true },
+            PTU: { femaleApproved: true, femaleOnline: false },
+        });
+    });
+
+    it("leaves out campuses with no female rider", () => {
+        expect(availabilityByCampus([])).toEqual({});
     });
 });
 

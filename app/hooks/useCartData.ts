@@ -1,10 +1,8 @@
 import { db } from "@/lib/firebase";
 import { collection, getDocs, doc, onSnapshot } from "firebase/firestore";
-import { manageCoupons } from "@/lib/functions";
 import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
 import { useState, useEffect } from "react";
-import type { Dispatch, SetStateAction } from "react";
-import type { Coupon, GrocerySettings, OrderSettings, Restaurant } from "@/lib/types";
+import type { GrocerySettings, OrderSettings, Restaurant } from "@/lib/types";
 
 export function useRestaurants() {
     const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -28,39 +26,6 @@ export function useRestaurants() {
     }, []);
 
     return { restaurants, loaded };
-}
-
-export function useCoupons(): {
-    availableCoupons: Coupon[];
-    setAvailableCoupons: Dispatch<SetStateAction<Coupon[]>>;
-} {
-    const [availableCoupons, setAvailableCoupons] = useState<Coupon[]>([]);
-
-    useEffect(() => {
-        const fetchCoupons = async () => {
-            try {
-                const { data } = await manageCoupons<Coupon[] | null>({ action: "FETCH_VISIBLE" });
-
-                // Map to camelCase for frontend consistency
-                const mapped = (data || []).map((c) => ({
-                    ...c,
-                    minOrder: c.min_order,
-                    isVisible: c.is_visible,
-                    usageLimit: c.usage_limit,
-                    usedCount: c.used_count,
-                    restaurantId: c.restaurant_id,
-                    itemId: c.item_id,
-                }));
-                setAvailableCoupons(mapped);
-            } catch (err) {
-                console.error("Failed to fetch coupons", err);
-            }
-        };
-
-        void fetchCoupons();
-    }, []);
-
-    return { availableCoupons, setAvailableCoupons };
 }
 
 export function useOrderSettings() {

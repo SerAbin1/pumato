@@ -7,7 +7,7 @@ const functions = getFunctions(app);
 /**
  * Every callable takes `{ action?, payload? }`-style data and returns whatever
  * that action produces; call sites narrow the result with a type argument,
- * e.g. `manageCoupons<Coupon[]>({ action: "FETCH_VISIBLE" })`.
+ * e.g. `manageCoupons<Coupon | null>({ action: "FETCH_BY_CODE", payload: { code } })`.
  */
 const callable = (name: string) => {
     const fn = httpsCallable(functions, name);

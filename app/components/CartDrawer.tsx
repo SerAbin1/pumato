@@ -65,7 +65,6 @@ export default function CartDrawer() {
         totalItems,
         couponCode,
         discount,
-        availableCoupons,
         activeCoupon,
         isMultiRestaurant,
         orderSettings,
@@ -772,26 +771,6 @@ export default function CartDrawer() {
                                                     {couponMsg.message}
                                                 </motion.p>
                                             )}
-
-                                            {!couponCode &&
-                                                availableCoupons.some((c) => c.isVisible) && (
-                                                    <div className="flex gap-2 px-1 overflow-x-auto pb-1 scrollbar-hide">
-                                                        {availableCoupons
-                                                            .filter((c) => c.isVisible)
-                                                            .map((c) => (
-                                                                <button
-                                                                    key={c.code}
-                                                                    onClick={() => {
-                                                                        setInputCode(c.code);
-                                                                        void handleApplyCoupon();
-                                                                    }}
-                                                                    className="text-[10px] border border-white/10 bg-white/5 text-gray-400 px-2 py-1 rounded-md font-bold whitespace-nowrap hover:bg-white/10 hover:text-white uppercase transition-colors"
-                                                                >
-                                                                    {c.code}
-                                                                </button>
-                                                            ))}
-                                                    </div>
-                                                )}
                                         </div>
                                         {/* Bill Details */}
                                         <div className="bg-white/5 p-5 rounded-2xl border border-white/5 shadow-sm space-y-3">

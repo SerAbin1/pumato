@@ -5,7 +5,6 @@ import type { Dispatch, ReactNode, SetStateAction } from "react";
 import { manageCoupons } from "@/lib/functions";
 import {
     useRestaurants,
-    useCoupons,
     useOrderSettings,
     useGrocerySettings,
     useLaundrySettings,
@@ -36,7 +35,6 @@ export interface CartContextValue {
     // Data
     restaurants: Restaurant[];
     restaurantsLoaded: boolean;
-    availableCoupons: Coupon[];
     orderSettings: OrderSettings;
     grocerySettings: GrocerySettings;
     laundrySettings: { slots: string[] };
@@ -85,7 +83,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     // --- Data Hooks ---
     const { restaurants, loaded: restaurantsLoaded } = useRestaurants();
-    const { availableCoupons, setAvailableCoupons } = useCoupons();
     const { orderSettings } = useOrderSettings();
     const { grocerySettings } = useGrocerySettings();
     const { laundrySettings } = useLaundrySettings();
@@ -181,16 +178,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
             if (!validation.success) return { success: false, message: validation.message };
 
-            // Update local available coupons list if needed
-            setAvailableCoupons((prev) => {
-                const exists = prev.find((c) => c.code === validation.mappedCoupon.code);
-                return exists
-                    ? prev.map((c) =>
-                          c.code === validation.mappedCoupon.code ? validation.mappedCoupon : c
-                      )
-                    : [...prev, validation.mappedCoupon];
-            });
-
             dispatch({
                 type: "APPLY_COUPON",
                 payload: { code: validation.mappedCoupon.code, coupon: validation.mappedCoupon },
@@ -222,7 +209,6 @@ export function CartProvider({ children }: { children: ReactNode }) {
                 // Data
                 restaurants,
                 restaurantsLoaded,
-                availableCoupons,
                 orderSettings,
                 grocerySettings,
                 laundrySettings,

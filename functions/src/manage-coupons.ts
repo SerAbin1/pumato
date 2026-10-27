@@ -38,16 +38,6 @@ async function verifyAdmin(token: string) {
 export const manageCoupons = onCall<ManageCouponsRequest>(async (request) => {
     const { action, payload } = request.data;
 
-    if (action === "FETCH_VISIBLE") {
-        const snapshot = await db
-            .collection(COLLECTION)
-            .where("is_visible", "==", true)
-            .where("is_active", "==", true)
-            .get();
-
-        return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    }
-
     if (action === "FETCH_BY_CODE") {
         const code = String(payload?.code || "")
             .trim()

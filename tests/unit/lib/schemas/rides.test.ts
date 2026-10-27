@@ -44,10 +44,17 @@ const request = {
     dropName: "Library",
     fare: 20,
     status: "pending",
+    campusId: "PU",
     createdAt: new Date(),
 };
 
 describe("RideRequestSchema", () => {
+    it("needs the campus it was booked on, so only that campus's riders get it", () => {
+        const { campusId: _, ...noCampus } = request;
+        expect(RideRequestSchema.safeParse(noCampus).success).toBe(false);
+        expect(RideRequestSchema.safeParse({ ...request, campusId: "" }).success).toBe(false);
+    });
+
     it("defaults the rider preference to any", () => {
         expect(RideRequestSchema.parse(request).riderPreference).toBe("any");
     });
@@ -108,6 +115,7 @@ const application = {
     phone: "9876543210",
     vehicleNumber: "KL01AB1234",
     collegeId: "R1",
+    campusId: "PU",
     status: "pending",
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -124,6 +132,12 @@ describe("RideRatingSchema", () => {
 });
 
 describe("RiderSchema", () => {
+    it("needs the campus the rider gives rides on", () => {
+        const { campusId: _, ...noCampus } = application;
+        expect(RiderSchema.safeParse(noCampus).success).toBe(false);
+        expect(RiderSchema.safeParse({ ...application, campusId: "" }).success).toBe(false);
+    });
+
     it("records the rider's gender", () => {
         expect(RiderSchema.parse({ ...application, gender: "female" }).gender).toBe("female");
     });

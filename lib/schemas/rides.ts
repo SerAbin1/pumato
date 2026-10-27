@@ -1,5 +1,8 @@
 import { z } from "zod";
 
+/** A DEFAULT_CAMPUS_CONFIG id; mirrors isText(…, 40) in firestore.rules. */
+const CampusIdSchema = z.string().min(1).max(40);
+
 /** Mirrors the phone check in firestore.rules (ride_requests, riders). */
 export const PHONE_PATTERN = /^[0-9]{10}$/;
 
@@ -9,7 +12,7 @@ export const RidePlaceSchema = z.object({
     name: z.string().trim().min(1).max(80),
     active: z.boolean(),
     // A DEFAULT_CAMPUS_CONFIG id; absent for places on no campus, shown on every campus.
-    campusId: z.string().min(1).optional(),
+    campusId: CampusIdSchema.optional(),
 });
 
 /** Whole rupees. */
@@ -63,6 +66,8 @@ export const RiderSchema = z.object({
     phone: z.string().regex(PHONE_PATTERN, "Enter a 10-digit phone number"),
     vehicleNumber: z.string().trim().min(1).max(20),
     collegeId: z.string().trim().min(1).max(40),
+    // Riders only see and hear about requests booked on their campus.
+    campusId: CampusIdSchema,
     // Asked on every application; riders approved before it existed have none.
     gender: z.enum(RIDER_GENDERS).optional(),
     status: z.enum(RIDER_STATUSES),
@@ -119,6 +124,8 @@ export const RideRequestSchema = z
         // Null when the admin hasn't priced the route; the rider quotes it on the call.
         fare: FareSchema.nullable(),
         status: z.enum(RIDE_REQUEST_STATUSES),
+        // The booker's campus, even for a route between places on no campus.
+        campusId: CampusIdSchema,
         riderPreference: z.enum(RIDER_PREFERENCES).default("any"),
         // Absent on requests booked before the option existed: one passenger.
         passengers: z.number().int().min(1).max(MAX_PASSENGERS).optional(),

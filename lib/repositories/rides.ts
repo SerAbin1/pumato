@@ -338,8 +338,16 @@ export function subscribeMyRides(
     );
 }
 
-/**
- * The rider's completed rides: the latest 100 on a first visit, then only those
+/** Admin: the newest requests, live, up to `max`. */
+export function subscribeAdminRideRequests(
+    max: number,
+    onChange: RidesListener,
+    onError: (error: Error) => void
+): Unsubscribe {
+    return listen(query(rideRequests(), orderBy("createdAt", "desc"), limit(max)), onChange, onError);
+}
+
+/** The rider's completed rides: the latest 100 on a first visit, then only those
  * completed after `syncedTo` (epoch ms), latest first.
  */
 export async function fetchRiderCompletedRides(

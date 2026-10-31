@@ -1,13 +1,14 @@
 import { useState, useEffect, useCallback } from "react";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS, DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
-import { collection, getDocs, limit, onSnapshot, orderBy, query, where } from "firebase/firestore";
+import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import {
     fetchRidesSettings,
     saveRideFares,
     saveRidesSettings,
     setRiderCampus,
     setRiderGender,
+    subscribeAdminRideRequests,
 } from "@/lib/repositories";
 import { manageUsers } from "@/lib/functions";
 import {
@@ -751,14 +752,9 @@ function RideRequestsSection() {
 
     useEffect(
         () =>
-            onSnapshot(
-                query(
-                    collection(db, COLLECTIONS.RIDE_REQUESTS),
-                    orderBy("createdAt", "desc"),
-                    limit(pageLimit)
-                ),
-                (snap) =>
-                    setRequests(snap.docs.map((d) => ({ id: d.id, ...d.data() }) as RideRequest)),
+            subscribeAdminRideRequests(
+                pageLimit,
+                setRequests,
                 (error) => {
                     console.error("Failed to load ride requests:", error);
                     toast.error("Failed to load ride requests");

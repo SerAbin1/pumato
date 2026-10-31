@@ -49,6 +49,7 @@ const {
     subscribeMyRides,
     fetchRiderCompletedRides,
     subscribeRideAvailability,
+    subscribeAdminRideRequests,
 } = await import("@/lib/repositories/rides");
 const { DEFAULT_RIDE_SCHEDULE } = await import("@/lib/rides");
 
@@ -283,6 +284,22 @@ describe("guest subscriptions", () => {
 
         listener({ data: () => ({ PU: { femaleOnline: false, femaleApproved: true } }) });
         expect(onChange).toHaveBeenLastCalledWith({ femaleOnline: false, femaleApproved: true });
+    });
+});
+
+describe("subscribeAdminRideRequests", () => {
+    it("lists the newest requests first, up to the page size, with their ids", () => {
+        const onChange = vi.fn();
+        subscribeAdminRideRequests(50, onChange, vi.fn());
+        expect(constraints(lastQuery())).toEqual([
+            { orderBy: ["createdAt", "desc"] },
+            { limit: 50 },
+        ]);
+
+        emit([{ id: "r1", data: { pickupName: "Gate 1", status: "pending" } }]);
+        expect(onChange).toHaveBeenCalledWith([
+            { id: "r1", pickupName: "Gate 1", status: "pending" },
+        ]);
     });
 });
 

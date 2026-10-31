@@ -75,6 +75,7 @@ export {
     subscribeUpcomingRides,
     subscribeRiderRides,
     subscribeMyRides,
+    subscribeAdminRideRequests,
     fetchRiderCompletedRides,
     subscribeRideAvailability,
     EMPTY_RIDES_SETTINGS,

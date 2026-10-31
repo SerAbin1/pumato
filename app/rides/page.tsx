@@ -11,41 +11,50 @@ import {
     Clock,
     Crosshair,
     GraduationCap,
+    Hourglass,
     Loader2,
     MapPin,
     Navigation,
+    Phone,
     ShieldCheck,
     Star,
+    TrendingUp,
     Users,
     X,
     Zap,
 } from "lucide-react";
-import type { FirebaseError } from "firebase/app";
 import type { User } from "firebase/auth";
 import { useUserAuth } from "@/app/context/UserAuthContext";
 import { useCart } from "@/app/context/CartContext";
 import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import {
     cancelRideRequest,
+    confirmRideByUser,
     createRideRequest,
+    EMPTY_RIDES_STATS,
     fetchRidesSettings,
+    joinRideWaitlist,
+    leaveRideWaitlist,
+    offerHigherFare,
     rateRide,
     subscribeMyRides,
     subscribeRideAvailability,
+    subscribeRideStats,
+    subscribeWaitlistEntry,
     widenRideRequest,
 } from "@/lib/repositories";
 import { MAX_PASSENGERS, MAX_RATING, PHONE_PATTERN } from "@/lib/schemas/rides";
 import {
     activePlaces,
-    addGuestRide,
     bookableDates,
     dropPlaces,
     DEFAULT_RIDE_SCHEDULE,
+    FARE_OFFER_STEPS,
     formatDateOption,
     formatFare,
     formatRideTime,
     isOpenRide,
-    parseGuestRides,
+    isWaitlistedCampus,
     passengersLabel,
     pickupAccuracyLabel,
     placesForCampus,
@@ -54,6 +63,7 @@ import {
     routeFare,
     scheduleProblem,
     scheduledTime,
+    secondsToConfirm,
     splitMyRides,
 } from "@/lib/rides";
 import { istInstant } from "@/lib/ist";
@@ -63,18 +73,20 @@ import { inputClass, labelClass, primaryButton, secondaryButton } from "./styles
 import AuthCard from "./components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "./components/RidesShell";
 import type {
-    GuestRide,
     PickupLocation,
     RideFares,
     RidePlace,
     RidePreference,
     RideRequest,
     RidesAvailability,
+    RidesStats,
     RideSchedule,
+    RideWaitlistEntry,
 } from "@/lib/types";
 
-const GUEST_KEY = "pumato_rides_guest";
-const GUEST_RIDES_KEY = "pumato_rides_guest_rides";
+/** Remembered on this device only, so the next booking starts filled in. */
+const CONTACT_KEY = "pumato_rides_contact";
+const LEGACY_CONTACT_KEY = "pumato_rides_guest";
 
 type Mode = "now" | "schedule";
 
@@ -121,7 +133,90 @@ function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => 
     );
 }
 
-/** Optional exact pin for a ride now, so the rider can find a guest away from the named spot. */
+/** Public counters, so anyone can see how many riders and rides Pumato has. */
+function StatsBand({ stats }: { stats: RidesStats }) {
+    const numbers = [
+        {
+            icon: <Bike size={16} />,
+            value: stats.totalRiders,
+            label: "Riders",
+        },
+        {
+            icon: <Zap size={16} />,
+            value: stats.onlineRiders,
+            label: "Online now",
+        },
+        {
+            icon: <CheckCircle2 size={16} />,
+            value: stats.completedRides,
+            label: "Rides done",
+        },
+    ];
+    return (
+        <section aria-label="Pumato Rides numbers" className="grid grid-cols-3 gap-2">
+            {numbers.map(({ icon, value, label }) => (
+                <div
+                    key={label}
+                    className="bg-white/5 border border-white/10 rounded-2xl px-3 py-4 text-center"
+                >
+                    <span className="flex items-center justify-center gap-1.5 text-orange-400">
+                        {icon}
+                        <span className="text-2xl font-black text-white">
+                            {value.toLocaleString("en-IN")}
+                        </span>
+                    </span>
+                    <span className="block text-[11px] uppercase tracking-widest text-gray-500 mt-1">
+                        {label}
+                    </span>
+                </div>
+            ))}
+        </section>
+    );
+}
+
+/** Campus buttons, shown wherever the user can still change where they're riding. */
+function CampusPicker({
+    campus,
+    placesAvailable,
+    onPick,
+}: {
+    campus: string | undefined;
+    placesAvailable: boolean;
+    onPick: (campusId: string) => void;
+}) {
+    return (
+        <div>
+            <p className={labelClass}>
+                <GraduationCap size={12} className="inline mr-1" /> Campus
+            </p>
+            <div className="flex gap-2">
+                {DEFAULT_CAMPUS_CONFIG.map((c) => (
+                    <button
+                        key={c.id}
+                        type="button"
+                        onClick={() => onPick(c.id)}
+                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border ${
+                            campus === c.id
+                                ? "bg-orange-500/20 border-orange-500/50 text-orange-400"
+                                : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
+                        }`}
+                    >
+                        {c.name}
+                    </button>
+                ))}
+            </div>
+            {!placesAvailable && (
+                <p className="text-xs text-gray-500 mt-2">
+                    {campus
+                        ? "Rides aren't available on this campus yet."
+                        : "Pick your campus to see places."}
+                </p>
+            )}
+        </div>
+    );
+}
+
+/** Optional exact pin for a ride now, so the rider can find the user away from the named spot. */
 function PickupPin({
     pin,
     placeChosen,
@@ -222,6 +317,60 @@ function WidenButton({ requestId, onWidened }: { requestId: string; onWidened?: 
     );
 }
 
+/** ₹5/₹10/₹15 bumps for a request nobody has taken yet; riders are notified each time. */
+function FareOffers({
+    requestId,
+    fare,
+    onRaised,
+}: {
+    requestId: string;
+    fare: number | null;
+    onRaised?: (fare: number) => void;
+}) {
+    const [raising, setRaising] = useState<number | null>(null);
+
+    const raise = async (increment: number) => {
+        setRaising(increment);
+        try {
+            const raised = await offerHigherFare(requestId, increment);
+            onRaised?.(raised);
+            toast.success(`Fare raised to ${formatFare(raised)}`);
+        } catch (error) {
+            console.error("Failed to raise fare:", error);
+            toast.error("Couldn't raise the fare. Please try again.");
+        } finally {
+            setRaising(null);
+        }
+    };
+
+    if (fare === null) return null;
+    return (
+        <div className="space-y-1.5">
+            <p className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
+                <TrendingUp size={14} className="text-orange-400" /> Offer a higher fare to get a
+                rider faster
+            </p>
+            <div className="flex gap-2">
+                {FARE_OFFER_STEPS.map((step) => (
+                    <button
+                        key={step}
+                        type="button"
+                        onClick={() => void raise(step)}
+                        disabled={raising !== null}
+                        className="flex-1 rounded-xl border border-orange-500/30 bg-orange-500/10 hover:bg-orange-500/20 disabled:opacity-50 py-2 text-sm font-black text-orange-300"
+                    >
+                        {raising === step ? (
+                            <Loader2 size={16} className="animate-spin mx-auto" />
+                        ) : (
+                            `+₹${step}`
+                        )}
+                    </button>
+                ))}
+            </div>
+        </div>
+    );
+}
+
 function BookedCard({
     booking,
     schedule,
@@ -232,6 +381,7 @@ function BookedCard({
     onReset: () => void;
 }) {
     const [widened, setWidened] = useState(false);
+    const [fare, setFare] = useState(booking.fare);
     const femaleOnly = booking.preference === "female" && !widened;
     return (
         <div className="bg-white/5 border border-white/10 rounded-3xl p-8 text-center space-y-4">
@@ -241,7 +391,7 @@ function BookedCard({
             </h2>
             <p className="text-gray-400 text-sm">
                 {booking.pickupName} → {booking.dropName}
-                {booking.fare !== null && <> · {formatFare(booking.fare)}</>}
+                {fare !== null && <> · {formatFare(fare)}</>}
                 {passengersLabel(booking.passengers) && (
                     <> · {passengersLabel(booking.passengers)}</>
                 )}
@@ -256,6 +406,9 @@ function BookedCard({
                     <>A rider will call you on {booking.phone} shortly.</>
                 )}
             </p>
+            {!booking.scheduledFor && (
+                <FareOffers requestId={booking.id} fare={fare} onRaised={setFare} />
+            )}
             {femaleOnly && (
                 <div className="space-y-3 text-sm text-pink-200 bg-pink-500/10 border border-pink-500/30 rounded-2xl p-4">
                     <p>
@@ -337,6 +490,95 @@ function RateRider({ ride }: { ride: RideRequest }) {
     );
 }
 
+/**
+ * Who accepted, with the number masked and the rating snapshotted on accept. The
+ * user has a minute to cancel before the ride confirms itself.
+ */
+function RiderAssigned({
+    ride,
+    now,
+    onCancel,
+}: {
+    ride: RideRequest;
+    now: Date;
+    onCancel?: (ride: RideRequest) => void;
+}) {
+    const [confirming, setConfirming] = useState(false);
+    const secondsLeft = secondsToConfirm(ride, now);
+    const awaiting = secondsLeft !== null;
+    const confirmed = !!ride.userConfirmedAt;
+
+    const confirm = async () => {
+        setConfirming(true);
+        try {
+            await confirmRideByUser(ride.id);
+            toast.success("Ride confirmed");
+        } catch (error) {
+            console.error("Failed to confirm ride:", error);
+            toast.error("Couldn't confirm the ride. Please try again.");
+        } finally {
+            setConfirming(false);
+        }
+    };
+
+    return (
+        <div className="space-y-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
+            <p className="font-bold text-emerald-200">{ride.riderName} is on the way</p>
+            <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-gray-300">
+                {ride.riderRating !== undefined && (
+                    <span className="flex items-center gap-1">
+                        <Star size={14} className="fill-orange-400 text-orange-400" />
+                        {ride.riderRating}
+                        {ride.riderRatingCount ? (
+                            <span className="text-gray-500">({ride.riderRatingCount})</span>
+                        ) : null}
+                    </span>
+                )}
+                {ride.riderPhoneMasked && (
+                    <span className="flex items-center gap-1">
+                        <Phone size={14} /> {ride.riderPhoneMasked}
+                    </span>
+                )}
+                {ride.fare !== null && (
+                    <span className="font-bold text-white">{formatFare(ride.fare)}</span>
+                )}
+            </p>
+            {awaiting ? (
+                <div className="space-y-2 pt-1">
+                    <p className="text-xs text-gray-400">
+                        Confirm within {secondsLeft}s, or the ride confirms itself.
+                    </p>
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => void confirm()}
+                            disabled={confirming}
+                            className="flex-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 py-2 text-xs font-black"
+                        >
+                            {confirming ? (
+                                <Loader2 size={14} className="animate-spin mx-auto" />
+                            ) : (
+                                "Confirm ride"
+                            )}
+                        </button>
+                        {onCancel && (
+                            <button
+                                onClick={() => onCancel(ride)}
+                                className="flex-1 rounded-lg bg-white/10 hover:bg-white/15 py-2 text-xs font-bold text-gray-300"
+                            >
+                                Cancel ride
+                            </button>
+                        )}
+                    </div>
+                </div>
+            ) : confirmed ? (
+                <p className="text-xs text-emerald-300">Ride confirmed</p>
+            ) : (
+                <p className="text-xs text-gray-400">Confirming your ride…</p>
+            )}
+        </div>
+    );
+}
+
 function MyRideCard({
     ride,
     now,
@@ -350,6 +592,7 @@ function MyRideCard({
     const open = isOpenRide(ride, now);
     // A scheduled ride can be cancelled until its time; a ride now while it's under way.
     const cancellable = open && (!at || at > now);
+    const awaiting = ride.status === "accepted" && secondsToConfirm(ride, now) !== null;
     return (
         <div className={rideCard}>
             <div className={`space-y-0.5 text-sm ${open ? "" : "opacity-60"}`}>
@@ -364,6 +607,9 @@ function MyRideCard({
                     )}
                 </p>
             </div>
+            {open && ride.status === "pending" && (
+                <FareOffers requestId={ride.id} fare={ride.fare} />
+            )}
             {open && ride.status === "pending" && ride.riderPreference === "female" && (
                 <>
                     <p className="text-xs text-gray-500">
@@ -372,8 +618,11 @@ function MyRideCard({
                     <WidenButton requestId={ride.id} />
                 </>
             )}
+            {ride.status === "accepted" && ride.riderName && (
+                <RiderAssigned ride={ride} now={now} onCancel={onCancel} />
+            )}
             {ride.status === "completed" && ride.riderName && <RateRider ride={ride} />}
-            {cancellable && onCancel && (
+            {cancellable && onCancel && !awaiting && (
                 <button onClick={() => onCancel(ride)} className={cancelButton}>
                     Cancel ride
                 </button>
@@ -437,74 +686,73 @@ function MyRides({ user, now }: { user: User; now: Date }) {
 }
 
 /**
- * Today's rides booked here without signing in, as booked: a guest can't read
- * the request back, so the list can't show whether a rider took it.
+ * PTU and PIMS take a waitlist instead of bookings, one sign-up per user, so
+ * the count the admin sees is people rather than taps.
  */
-function GuestRides({
-    rides,
-    signedIn,
-    onRemove,
-}: {
-    rides: GuestRide[];
-    signedIn: boolean;
-    onRemove: (id: string) => void;
-}) {
-    const [cancelling, setCancelling] = useState<GuestRide | null>(null);
+function WaitlistCard({ campus, stats, user }: { campus: string; stats: RidesStats; user: User }) {
+    const [entry, setEntry] = useState<RideWaitlistEntry | null>(null);
+    const [busy, setBusy] = useState(false);
+    const count = stats.waitlist[campus] ?? 0;
+    const joined = entry?.campusId === campus;
 
-    const cancel = async (ride: GuestRide) => {
+    useEffect(
+        () =>
+            subscribeWaitlistEntry(user.uid, setEntry, (error) =>
+                console.error("Failed to load waitlist sign-up:", error)
+            ),
+        [user.uid]
+    );
+
+    const toggle = async () => {
+        setBusy(true);
         try {
-            await cancelRideRequest(ride.id);
-            toast.success("Ride cancelled");
-            onRemove(ride.id);
-        } catch (error) {
-            // Refused once the ride is no longer open: completed or cancelled already.
-            if ((error as FirebaseError)?.code === "permission-denied") {
-                toast.error("This ride has already finished.");
-                onRemove(ride.id);
-                return;
+            if (joined) {
+                await leaveRideWaitlist(user.uid);
+                toast.success("You left the waitlist");
+            } else {
+                await joinRideWaitlist(user.uid, campus);
+                toast.success("You're on the waitlist");
             }
-            console.error("Failed to cancel ride:", error);
-            toast.error("Couldn't cancel the ride. Please try again.");
+        } catch (error) {
+            console.error("Failed to update waitlist:", error);
+            toast.error("Couldn't update the waitlist. Please try again.");
+        } finally {
+            setBusy(false);
         }
     };
 
-    if (rides.length === 0) return null;
     return (
-        <section className={`${sideColumn} space-y-3`}>
-            <h2 className="text-lg font-black">
-                {signedIn ? "Booked before you signed in" : "Your rides"}
-            </h2>
-            {rides.map((r) => (
-                <div key={r.id} className={rideCard}>
-                    <div className="space-y-0.5 text-sm">
-                        <RideRoute ride={r} />
-                        <p className="text-gray-400">
-                            Booked {formatRideTime(new Date(r.createdAt))}
-                            {passengersLabel(r.passengers) && (
-                                <> · {passengersLabel(r.passengers)}</>
-                            )}
-                        </p>
-                    </div>
-                    <button onClick={() => setCancelling(r)} className={cancelButton}>
-                        Cancel ride
-                    </button>
-                </div>
-            ))}
-            {!signedIn && (
-                <p className="text-xs text-gray-500">
-                    Sign in when you book to follow your rides and see past ones.
+        <div className="bg-white/5 border border-white/10 rounded-3xl p-8 space-y-4 text-center">
+            <Hourglass size={44} className="text-orange-400 mx-auto" />
+            <h2 className="text-xl font-black">Rides are coming to {campus}</h2>
+            <p className="text-sm text-gray-400">
+                We&apos;re not taking bookings here yet. Join the waitlist and we&apos;ll let you
+                know as soon as riders are ready.
+            </p>
+            <p className="text-sm text-gray-300">
+                {count === 0
+                    ? "Be the first to sign up."
+                    : `${count} ${count === 1 ? "person is" : "people are"} already waiting.`}
+            </p>
+            <button
+                onClick={() => void toggle()}
+                disabled={busy}
+                className={joined ? secondaryButton : primaryButton}
+            >
+                {busy ? <Loader2 size={20} className="animate-spin" /> : <Hourglass size={20} />}
+                {joined ? "Leave the waitlist" : "Join the waitlist"}
+            </button>
+            {joined && (
+                <p className="text-xs text-emerald-300">
+                    You&apos;re on the list. We&apos;ll be in touch.
                 </p>
             )}
-            <ConfirmModal
-                isOpen={cancelling !== null}
-                onClose={() => setCancelling(null)}
-                onConfirm={() => cancelling && void cancel(cancelling)}
-                title="Cancel this ride?"
-                message="If a rider has accepted it, they'll be told it's cancelled."
-                confirmLabel="Cancel ride"
-                cancelLabel="Keep it"
-            />
-        </section>
+            {entry && !joined && (
+                <p className="text-xs text-gray-500">
+                    Joining here moves your sign-up from {entry.campusId}.
+                </p>
+            )}
+        </div>
     );
 }
 
@@ -512,6 +760,7 @@ export default function RidesPage() {
     const { user } = useUserAuth();
     const { userDetails, setUserDetails } = useCart();
     const now = useNow();
+    const [stats, setStats] = useState<RidesStats>(EMPTY_RIDES_STATS);
     const [allPlaces, setAllPlaces] = useState<RidePlace[] | null>(null);
     const [fares, setFares] = useState<RideFares>({});
     const [schedule, setSchedule] = useState(DEFAULT_RIDE_SCHEDULE);
@@ -529,7 +778,6 @@ export default function RidesPage() {
     const [noFemaleRider, setNoFemaleRider] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [booking, setBooking] = useState<Booking | null>(null);
-    const [guestRides, setGuestRides] = useState<GuestRide[]>([]);
 
     useEffect(() => {
         fetchRidesSettings()
@@ -544,23 +792,29 @@ export default function RidesPage() {
                 setAllPlaces([]);
             });
         try {
-            const saved = JSON.parse(localStorage.getItem(GUEST_KEY) ?? "null");
+            const saved = JSON.parse(
+                localStorage.getItem(CONTACT_KEY) ??
+                    localStorage.getItem(LEGACY_CONTACT_KEY) ??
+                    "null"
+            );
             if (saved) {
                 // eslint-disable-next-line react-hooks/set-state-in-effect
                 setName(saved.name ?? "");
                 setPhone(saved.phone ?? "");
             }
         } catch {
-            // Storage unavailable (private mode): the guest just types their details.
-        }
-        try {
-            setGuestRides(parseGuestRides(localStorage.getItem(GUEST_RIDES_KEY), new Date()));
-        } catch {
-            // Storage unavailable: the guest just can't cancel from here.
+            // Storage unavailable (private mode): the user just types their details.
         }
     }, []);
 
+    useEffect(
+        () =>
+            subscribeRideStats(setStats, (error) => console.error("Failed to load stats:", error)),
+        []
+    );
+
     const campus = userDetails.campus;
+    const waitlisted = isWaitlistedCampus(campus);
     useEffect(() => {
         if (!campus) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -586,30 +840,30 @@ export default function RidesPage() {
     const timeProblem = typedFor && scheduleProblem(typedFor, now, schedule);
     const scheduledFor = typedFor && !timeProblem ? typedFor : null;
     const scheduling = mode === "schedule";
-    const needsSignIn = scheduling && !user;
 
     const canSubmit =
+        !!user &&
         !!campus &&
+        !waitlisted &&
         !!pickup &&
         !!drop &&
         pickupId !== dropId &&
         !!name.trim() &&
         PHONE_PATTERN.test(phone) &&
-        (!scheduling || (!!user && !!scheduledFor)) &&
+        (!scheduling || !!scheduledFor) &&
         // Wait to know whether a female rider is available before booking with the preference.
         (!preferFemale || availability !== null);
 
-    const saveGuestRides = (rides: GuestRide[]) => {
-        setGuestRides(rides);
-        try {
-            localStorage.setItem(GUEST_RIDES_KEY, JSON.stringify(rides));
-        } catch {
-            // Not remembering the ride only loses the cancel button after a reload.
-        }
+    const pickCampus = (campusId: string) => {
+        if (campusId === campus) return;
+        setUserDetails((prev) => ({ ...prev, campus: campusId }));
+        // Places differ by campus, so a picked one may be gone.
+        setPickupId("");
+        setDropId("");
     };
 
     const book = async (preference: RidePreference) => {
-        if (!campus || !pickup || !drop || !canSubmit) return;
+        if (!user || !campus || !pickup || !drop || !canSubmit) return;
         setSubmitting(true);
         try {
             const id = await createRideRequest({
@@ -624,26 +878,13 @@ export default function RidesPage() {
                 passengers,
                 ...(!scheduling && pin && { pickupLocation: pin }),
                 riderPreference: preference,
-                // Signed in, a ride now is linked too, so it shows under Your rides.
-                ...(user && { userId: user.uid }),
+                userId: user.uid,
                 ...(scheduling && scheduledFor && { scheduledFor }),
             });
             try {
-                localStorage.setItem(GUEST_KEY, JSON.stringify({ name: name.trim(), phone }));
+                localStorage.setItem(CONTACT_KEY, JSON.stringify({ name: name.trim(), phone }));
             } catch {
-                // Not remembering the guest is fine.
-            }
-            if (!user) {
-                saveGuestRides(
-                    addGuestRide(guestRides, {
-                        id,
-                        pickupName: pickup.name,
-                        dropName: drop.name,
-                        fare,
-                        passengers,
-                        createdAt: now.getTime(),
-                    })
-                );
+                // Not remembering the contact is fine.
             }
             setBooking({
                 id,
@@ -690,10 +931,34 @@ export default function RidesPage() {
     let content;
     if (booking) {
         content = <BookedCard booking={booking} schedule={schedule} onReset={reset} />;
+    } else if (!user) {
+        content = (
+            <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-4">
+                <h2 className="text-xl font-black">Sign in to book a ride</h2>
+                <p className="text-sm text-gray-400">
+                    Anyone can see our riders and rides above. Booking needs a Pumato account, so
+                    you can follow the ride, confirm your rider and cancel if plans change.
+                </p>
+                <AuthCard />
+            </div>
+        );
     } else if (allPlaces === null || places === null) {
         content = (
             <div className="flex justify-center py-12">
                 <Loader2 size={28} className="animate-spin text-gray-500" />
+            </div>
+        );
+    } else if (waitlisted && campus) {
+        content = (
+            <div className="space-y-5">
+                <div className="bg-white/5 border border-white/10 rounded-3xl p-6">
+                    <CampusPicker
+                        campus={campus}
+                        placesAvailable={places.length >= 2}
+                        onPick={pickCampus}
+                    />
+                </div>
+                <WaitlistCard campus={campus} stats={stats} user={user} />
             </div>
         );
     } else if (allPlaces.length < 2) {
@@ -706,243 +971,202 @@ export default function RidesPage() {
         content = (
             <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-5">
                 <ModeToggle mode={mode} onChange={setMode} />
-                {needsSignIn ? (
-                    <div className="space-y-4">
-                        <p className="text-sm text-gray-400">
-                            Sign in to schedule a ride, so you can check on it and cancel it.
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <CampusPicker
+                        campus={campus}
+                        placesAvailable={places.length >= 2}
+                        onPick={pickCampus}
+                    />
+                    <div>
+                        <p className={labelClass}>
+                            <MapPin size={12} className="inline mr-1" /> Pickup
                         </p>
-                        <AuthCard />
+                        <CustomSelect
+                            options={places.map((p) => ({ value: p.id, label: p.name }))}
+                            value={pickupId}
+                            onChange={(id) => {
+                                setPickupId(id);
+                                // The drop list follows the pickup, so the drop may be gone.
+                                if (
+                                    allPlaces &&
+                                    !dropPlaces(allPlaces, campus, id).some((p) => p.id === dropId)
+                                ) {
+                                    setDropId("");
+                                }
+                            }}
+                            placeholder="Where are you?"
+                        />
+                        {!scheduling && (
+                            <PickupPin pin={pin} placeChosen={!!pickup} onChange={setPin} />
+                        )}
                     </div>
-                ) : (
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div>
-                            <p className={labelClass}>
-                                <GraduationCap size={12} className="inline mr-1" /> Campus
-                            </p>
-                            <div className="flex gap-2">
-                                {DEFAULT_CAMPUS_CONFIG.map((c) => (
-                                    <button
-                                        key={c.id}
-                                        type="button"
-                                        onClick={() => {
-                                            if (c.id === campus) return;
-                                            setUserDetails((prev) => ({ ...prev, campus: c.id }));
-                                            // Places differ by campus, so a picked one may be gone.
-                                            setPickupId("");
-                                            setDropId("");
-                                        }}
-                                        className={`flex-1 py-2.5 rounded-xl text-sm font-bold transition-all border ${
-                                            campus === c.id
-                                                ? "bg-orange-500/20 border-orange-500/50 text-orange-400"
-                                                : "bg-white/5 border-white/10 text-gray-400 hover:bg-white/10"
-                                        }`}
-                                    >
-                                        {c.name}
-                                    </button>
-                                ))}
+                    <div>
+                        <p className={labelClass}>
+                            <Navigation size={12} className="inline mr-1" /> Drop
+                        </p>
+                        <CustomSelect
+                            options={drops.map((p) => ({ value: p.id, label: p.name }))}
+                            value={dropId}
+                            onChange={setDropId}
+                            placeholder="Where to?"
+                        />
+                    </div>
+                    <div>
+                        <p className={labelClass}>
+                            <Users size={12} className="inline mr-1" /> Passengers
+                        </p>
+                        <div className="flex gap-2">
+                            {Array.from({ length: MAX_PASSENGERS }, (_, i) => i + 1).map((n) => (
+                                <button
+                                    key={n}
+                                    type="button"
+                                    aria-pressed={passengers === n}
+                                    onClick={() => setPassengers(n)}
+                                    className={`flex-1 rounded-xl border py-2.5 font-black transition-all ${passengers === n ? "bg-orange-500/10 border-orange-500 text-white" : "bg-black/30 border-white/10 text-gray-400 hover:text-white"}`}
+                                >
+                                    {n}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                    {scheduling && (
+                        <div className="grid grid-cols-2 gap-3">
+                            <div>
+                                <p className={labelClass}>
+                                    <CalendarClock size={12} className="inline mr-1" /> Date
+                                </p>
+                                <CustomSelect
+                                    options={dates.map((d) => ({
+                                        value: d,
+                                        label: formatDateOption(d, now),
+                                    }))}
+                                    value={dateKey}
+                                    onChange={setDateKey}
+                                    placeholder="Select date"
+                                />
                             </div>
-                            {places.length < 2 && (
-                                <p className="text-xs text-gray-500 mt-2">
-                                    {campus
-                                        ? "Rides aren't available on this campus yet."
-                                        : "Pick your campus to see places."}
+                            <div>
+                                <label htmlFor="time" className={labelClass}>
+                                    <Clock size={12} className="inline mr-1" /> Pickup time
+                                </label>
+                                <input
+                                    id="time"
+                                    type="time"
+                                    value={time}
+                                    onChange={(e) => setTime(e.target.value)}
+                                    aria-invalid={!!timeProblem}
+                                    aria-describedby={timeProblem ? "time-problem" : undefined}
+                                    className={`${inputClass} [color-scheme:dark]`}
+                                    required
+                                />
+                            </div>
+                            {timeProblem && (
+                                <p
+                                    id="time-problem"
+                                    className="col-span-2 text-sm text-orange-300 ml-1"
+                                >
+                                    {timeProblem}
                                 </p>
                             )}
                         </div>
-                        <div>
-                            <p className={labelClass}>
-                                <MapPin size={12} className="inline mr-1" /> Pickup
-                            </p>
-                            <CustomSelect
-                                options={places.map((p) => ({ value: p.id, label: p.name }))}
-                                value={pickupId}
-                                onChange={(id) => {
-                                    setPickupId(id);
-                                    // The drop list follows the pickup, so the drop may be gone.
-                                    if (
-                                        allPlaces &&
-                                        !dropPlaces(allPlaces, campus, id).some(
-                                            (p) => p.id === dropId
-                                        )
-                                    ) {
-                                        setDropId("");
-                                    }
-                                }}
-                                placeholder="Where are you?"
-                            />
-                            {!scheduling && (
-                                <PickupPin pin={pin} placeChosen={!!pickup} onChange={setPin} />
-                            )}
-                        </div>
-                        <div>
-                            <p className={labelClass}>
-                                <Navigation size={12} className="inline mr-1" /> Drop
-                            </p>
-                            <CustomSelect
-                                options={drops.map((p) => ({ value: p.id, label: p.name }))}
-                                value={dropId}
-                                onChange={setDropId}
-                                placeholder="Where to?"
-                            />
-                        </div>
-                        <div>
-                            <p className={labelClass}>
-                                <Users size={12} className="inline mr-1" /> Passengers
-                            </p>
-                            <div className="flex gap-2">
-                                {Array.from({ length: MAX_PASSENGERS }, (_, i) => i + 1).map(
-                                    (n) => (
-                                        <button
-                                            key={n}
-                                            type="button"
-                                            aria-pressed={passengers === n}
-                                            onClick={() => setPassengers(n)}
-                                            className={`flex-1 rounded-xl border py-2.5 font-black transition-all ${passengers === n ? "bg-orange-500/10 border-orange-500 text-white" : "bg-black/30 border-white/10 text-gray-400 hover:text-white"}`}
-                                        >
-                                            {n}
-                                        </button>
-                                    )
-                                )}
-                            </div>
-                        </div>
-                        {scheduling && (
-                            <div className="grid grid-cols-2 gap-3">
-                                <div>
-                                    <p className={labelClass}>
-                                        <CalendarClock size={12} className="inline mr-1" /> Date
-                                    </p>
-                                    <CustomSelect
-                                        options={dates.map((d) => ({
-                                            value: d,
-                                            label: formatDateOption(d, now),
-                                        }))}
-                                        value={dateKey}
-                                        onChange={setDateKey}
-                                        placeholder="Select date"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="time" className={labelClass}>
-                                        <Clock size={12} className="inline mr-1" /> Pickup time
-                                    </label>
-                                    <input
-                                        id="time"
-                                        type="time"
-                                        value={time}
-                                        onChange={(e) => setTime(e.target.value)}
-                                        aria-invalid={!!timeProblem}
-                                        aria-describedby={timeProblem ? "time-problem" : undefined}
-                                        className={`${inputClass} [color-scheme:dark]`}
-                                        required
-                                    />
-                                </div>
-                                {timeProblem && (
-                                    <p
-                                        id="time-problem"
-                                        className="col-span-2 text-sm text-orange-300 ml-1"
-                                    >
-                                        {timeProblem}
-                                    </p>
-                                )}
-                            </div>
-                        )}
-                        {pickup && drop && (
-                            <p className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-3 text-sm">
-                                <span className="text-gray-400">Fare</span>
-                                {fare === null ? (
-                                    <span className="text-gray-400">Confirmed by rider</span>
-                                ) : (
-                                    <span className="font-black text-white">
-                                        {formatFare(fare)}
-                                    </span>
-                                )}
-                            </p>
-                        )}
-                        <button
-                            type="button"
-                            role="switch"
-                            aria-checked={preferFemale}
-                            onClick={() => setPreferFemale(!preferFemale)}
-                            className="w-full flex items-center gap-3 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-left"
-                        >
-                            <ShieldCheck size={20} className="text-orange-400 shrink-0" />
-                            <span className="flex-1 min-w-0">
-                                <span className="block text-sm font-bold text-white">
-                                    Prefer a female rider
-                                </span>
-                                <span className="block text-xs text-gray-500">
-                                    Optional. Only female riders are notified.
-                                </span>
-                            </span>
-                            <span
-                                className={`w-11 h-6 shrink-0 rounded-full p-0.5 transition-all ${preferFemale ? "bg-orange-600" : "bg-white/15"}`}
-                            >
-                                <span
-                                    className={`block w-5 h-5 rounded-full bg-white transition-all ${preferFemale ? "translate-x-5" : ""}`}
-                                />
-                            </span>
-                        </button>
-                        <div>
-                            <label htmlFor="name" className={labelClass}>
-                                Your name
-                            </label>
-                            <input
-                                id="name"
-                                value={name}
-                                onChange={(e) => setName(e.target.value)}
-                                maxLength={80}
-                                className={inputClass}
-                                placeholder="Name"
-                                required
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="phone" className={labelClass}>
-                                Phone
-                            </label>
-                            <input
-                                id="phone"
-                                type="tel"
-                                inputMode="numeric"
-                                value={phone}
-                                onChange={(e) =>
-                                    setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
-                                }
-                                className={inputClass}
-                                placeholder="10-digit number"
-                                required
-                            />
-                        </div>
-                        <button
-                            type="submit"
-                            disabled={!canSubmit || submitting}
-                            className={primaryButton}
-                        >
-                            {submitting ? (
-                                <Loader2 size={20} className="animate-spin" />
-                            ) : scheduling ? (
-                                <CalendarClock size={20} />
+                    )}
+                    {pickup && drop && (
+                        <p className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-3 text-sm">
+                            <span className="text-gray-400">Fare</span>
+                            {fare === null ? (
+                                <span className="text-gray-400">Confirmed by rider</span>
                             ) : (
-                                <Bike size={20} />
+                                <span className="font-black text-white">{formatFare(fare)}</span>
                             )}
-                            {scheduling ? "Schedule ride" : "Book ride"}
-                        </button>
-                    </form>
-                )}
+                        </p>
+                    )}
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={preferFemale}
+                        onClick={() => setPreferFemale(!preferFemale)}
+                        className="w-full flex items-center gap-3 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-left"
+                    >
+                        <ShieldCheck size={20} className="text-orange-400 shrink-0" />
+                        <span className="flex-1 min-w-0">
+                            <span className="block text-sm font-bold text-white">
+                                Prefer a female rider
+                            </span>
+                            <span className="block text-xs text-gray-500">
+                                Optional. Only female riders are notified.
+                            </span>
+                        </span>
+                        <span
+                            className={`w-11 h-6 shrink-0 rounded-full p-0.5 transition-all ${preferFemale ? "bg-orange-600" : "bg-white/15"}`}
+                        >
+                            <span
+                                className={`block w-5 h-5 rounded-full bg-white transition-all ${preferFemale ? "translate-x-5" : ""}`}
+                            />
+                        </span>
+                    </button>
+                    <div>
+                        <label htmlFor="name" className={labelClass}>
+                            Your name
+                        </label>
+                        <input
+                            id="name"
+                            value={name}
+                            onChange={(e) => setName(e.target.value)}
+                            maxLength={80}
+                            className={inputClass}
+                            placeholder="Name"
+                            required
+                        />
+                    </div>
+                    <div>
+                        <label htmlFor="phone" className={labelClass}>
+                            Phone
+                        </label>
+                        <input
+                            id="phone"
+                            type="tel"
+                            inputMode="numeric"
+                            value={phone}
+                            onChange={(e) =>
+                                setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))
+                            }
+                            className={inputClass}
+                            placeholder="10-digit number"
+                            required
+                        />
+                    </div>
+                    <button
+                        type="submit"
+                        disabled={!canSubmit || submitting}
+                        className={primaryButton}
+                    >
+                        {submitting ? (
+                            <Loader2 size={20} className="animate-spin" />
+                        ) : scheduling ? (
+                            <CalendarClock size={20} />
+                        ) : (
+                            <Bike size={20} />
+                        )}
+                        {scheduling ? "Schedule ride" : "Book ride"}
+                    </button>
+                </form>
             </div>
         );
     }
 
     return (
         <RidesShell title="Pumato Rides" subtitle="Anywhere on campus, now or later.">
-            <div className={mainColumn}>{content}</div>
+            <div className={`${mainColumn} space-y-4`}>
+                <StatsBand stats={stats} />
+                {content}
+            </div>
 
             <Steps
                 title="How it works"
                 steps={[
-                    "Pick where you are and where you're going.",
-                    `Ride now, or schedule one up to ${schedule.maxDaysAhead} days ahead (sign in to schedule).`,
-                    "Riders are notified; the first to accept gets your ride and calls you.",
+                    "Sign in, then pick where you are and where you're going.",
+                    `Ride now, or schedule one up to ${schedule.maxDaysAhead} days ahead.`,
+                    "Riders are notified; the first to accept gets your ride. Confirm them within a minute, or it confirms itself.",
                     "For a scheduled ride, your rider confirms shortly before. If they don't, we find you another.",
                 ]}
                 footer={
@@ -956,11 +1180,6 @@ export default function RidesPage() {
             />
 
             {user && <MyRides user={user} now={now} />}
-            <GuestRides
-                rides={guestRides}
-                signedIn={!!user}
-                onRemove={(id) => saveGuestRides(guestRides.filter((r) => r.id !== id))}
-            />
 
             <ConfirmModal
                 isOpen={noFemaleRider}

@@ -13,4 +13,10 @@ export {
     onRideRequestUpdated,
     sweepScheduledRides,
     ridersAvailability,
+    rideStats,
+    rideCompletionStats,
+    rideWaitlistStats,
+    refreshRideStatsHourly,
+    cancelStaleRideNows,
+    autoConfirmAcceptedRides,
 } from "./ride-notifications";

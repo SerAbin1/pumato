@@ -13,9 +13,8 @@ vi.mock("firebase/firestore", () => ({
     setDoc: vi.fn(),
 }));
 
-const { subscribeOrderSettings, subscribeGrocerySettings } = await import(
-    "@/lib/repositories/siteContent"
-);
+const { subscribeOrderSettings, subscribeGrocerySettings } =
+    await import("@/lib/repositories/siteContent");
 const { subscribeLaundrySlots } = await import("@/lib/repositories/settings");
 
 const lastRef = () => mocks.onSnapshot.mock.calls.at(-1)![0];

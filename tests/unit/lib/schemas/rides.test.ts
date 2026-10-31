@@ -45,6 +45,7 @@ const request = {
     fare: 20,
     status: "pending",
     campusId: "PU",
+    userId: "u1",
     createdAt: new Date(),
 };
 
@@ -70,9 +71,10 @@ describe("RideRequestSchema", () => {
     });
 
     it("refuses a scheduled ride without a user", () => {
-        expect(RideRequestSchema.safeParse({ ...request, scheduledFor: new Date() }).success).toBe(
-            false
-        );
+        const { userId: _userId, ...withoutUser } = request;
+        expect(
+            RideRequestSchema.safeParse({ ...withoutUser, scheduledFor: new Date() }).success
+        ).toBe(false);
     });
 
     it("accepts a ride now with the guest's exact pickup pin", () => {

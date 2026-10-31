@@ -3,6 +3,7 @@ import { db } from "@/lib/firebase";
 import {
     addDoc,
     collection,
+    deleteDoc,
     deleteField,
     doc,
     getDoc,
@@ -27,7 +28,7 @@ import {
     RidesSettingsSchema,
 } from "@/lib/schemas/rides";
 import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
-import { DEFAULT_RIDE_SCHEDULE } from "@/lib/rides";
+import { averageRating, DEFAULT_RIDE_SCHEDULE, FARE_OFFER_STEPS, maskPhone } from "@/lib/rides";
 import type {
     RideFares,
     RidePreference,
@@ -36,6 +37,8 @@ import type {
     RiderGender,
     RidesAvailability,
     RidesSettings,
+    RidesStats,
+    RideWaitlistEntry,
 } from "@/lib/types";
 
 const settingsRef = () => doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.RIDES_SETTINGS);
@@ -172,6 +175,11 @@ export async function acceptRide(
     requestId: string,
     rider: { uid: string; name: string }
 ): Promise<void> {
+    // Snapshot what the user may see about the rider: a masked number and their
+    // rating, not the rider's whole application.
+    const riderData = (await getDoc(doc(db, COLLECTIONS.RIDERS, rider.uid))).data() ?? {};
+    const masked = maskPhone(String(riderData.phone ?? ""));
+    const rating = averageRating(riderData);
     const ref = doc(db, COLLECTIONS.RIDE_REQUESTS, requestId);
     await runTransaction(db, async (tx) => {
         const snap = await tx.get(ref);
@@ -180,6 +188,9 @@ export async function acceptRide(
             status: "accepted",
             riderUid: rider.uid,
             riderName: rider.name,
+            ...(masked && { riderPhoneMasked: masked }),
+            ...(rating !== null && { riderRating: rating }),
+            ...(riderData.ratingCount > 0 && { riderRatingCount: riderData.ratingCount }),
             acceptedAt: serverTimestamp(),
         });
     });
@@ -198,7 +209,11 @@ export async function releaseRide(requestId: string): Promise<void> {
         status: "pending",
         riderUid: deleteField(),
         riderName: deleteField(),
+        riderPhoneMasked: deleteField(),
+        riderRating: deleteField(),
+        riderRatingCount: deleteField(),
         acceptedAt: deleteField(),
+        userConfirmedAt: deleteField(),
         confirmRequestedAt: deleteField(),
         riderConfirmedAt: deleteField(),
     });
@@ -229,6 +244,63 @@ export async function rateRide(requestId: string, rating: number): Promise<void>
     await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
         rating: RideRatingSchema.parse(rating),
     });
+}
+
+/** Raises the fare while the ride waits, to attract riders. @returns the new fare */
+export async function offerHigherFare(requestId: string, increment: number): Promise<number> {
+    if (!(FARE_OFFER_STEPS as readonly number[]).includes(increment)) {
+        throw new Error("Pick a ₹5, ₹10 or ₹15 increase");
+    }
+    const ref = doc(db, COLLECTIONS.RIDE_REQUESTS, requestId);
+    return runTransaction(db, async (tx) => {
+        const data = (await tx.get(ref)).data();
+        if (data?.status !== "pending") throw new Error("This ride is no longer waiting");
+        const fare = (data.fare ?? 0) + increment;
+        tx.update(ref, { fare });
+        return fare;
+    });
+}
+
+/** The user accepts the rider within their minute; otherwise the sweep confirms for them. */
+export async function confirmRideByUser(requestId: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
+        userConfirmedAt: serverTimestamp(),
+    });
+}
+
+/** Signs the user up for their campus's waitlist, replacing any other campus. */
+export async function joinRideWaitlist(uid: string, campusId: string): Promise<void> {
+    const ref = doc(db, COLLECTIONS.RIDE_WAITLIST, uid);
+    await runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        if (snap.exists()) {
+            tx.update(ref, { campusId, updatedAt: serverTimestamp() });
+        } else {
+            tx.set(ref, {
+                userId: uid,
+                campusId,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+            });
+        }
+    });
+}
+
+export async function leaveRideWaitlist(uid: string): Promise<void> {
+    await deleteDoc(doc(db, COLLECTIONS.RIDE_WAITLIST, uid));
+}
+
+/** The user's waitlist sign-up, whatever campus they picked. */
+export function subscribeWaitlistEntry(
+    uid: string,
+    onChange: (entry: RideWaitlistEntry | null) => void,
+    onError: (error: Error) => void
+): Unsubscribe {
+    return onSnapshot(
+        doc(db, COLLECTIONS.RIDE_WAITLIST, uid),
+        (snap) => onChange(snap.exists() ? (snap.data() as RideWaitlistEntry) : null),
+        onError
+    );
 }
 
 type RidesListener = (rides: RideRequest[]) => void;
@@ -344,7 +416,11 @@ export function subscribeAdminRideRequests(
     onChange: RidesListener,
     onError: (error: Error) => void
 ): Unsubscribe {
-    return listen(query(rideRequests(), orderBy("createdAt", "desc"), limit(max)), onChange, onError);
+    return listen(
+        query(rideRequests(), orderBy("createdAt", "desc"), limit(max)),
+        onChange,
+        onError
+    );
 }
 
 /** The rider's completed rides: the latest 100 on a first visit, then only those
@@ -380,5 +456,29 @@ export function subscribeRideAvailability(
         (snap) =>
             onChange({ femaleOnline: false, femaleApproved: false, ...snap.data()?.[campusId] }),
         (error) => console.error("Failed to load rider availability:", error)
+    );
+}
+
+export const EMPTY_RIDES_STATS: RidesStats = {
+    totalRiders: 0,
+    onlineRiders: 0,
+    completedRides: 0,
+    waitlist: {},
+};
+
+/** Public counters for the booking page and admin, kept by the ride functions. */
+export function subscribeRideStats(
+    onChange: (stats: RidesStats) => void,
+    onError?: (error: Error) => void
+): Unsubscribe {
+    return onSnapshot(
+        doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.RIDES_STATS),
+        (snap) =>
+            onChange({
+                ...EMPTY_RIDES_STATS,
+                ...snap.data(),
+                waitlist: snap.data()?.waitlist ?? {},
+            }),
+        onError
     );
 }

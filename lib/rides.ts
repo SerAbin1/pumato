@@ -7,8 +7,8 @@ import {
     istNow,
 } from "@/lib/ist";
 import { format12h } from "@/lib/formatters";
-import { GuestRideSchema } from "@/lib/schemas/rides";
-import type { GuestRide, RideFares, RidePlace, RideRequestStatus, RideSchedule } from "@/lib/types";
+import { WAITLISTED_CAMPUSES } from "@/lib/schemas/rides";
+import type { RideFares, RidePlace, RideRequestStatus, RideSchedule } from "@/lib/types";
 
 /** Short code the rider quotes in chat so the admin can find their application. */
 export const riderRef = (uid: string) => uid.slice(0, 6).toUpperCase();
@@ -195,38 +195,11 @@ export const splitMyRides = <T extends MyRide>(rides: T[], now: Date) => {
     };
 };
 
-const MAX_GUEST_RIDES = 5;
-
-/**
- * A guest's saved rides from storage, keeping only today's: riders stop seeing
- * a ride now after its day. Broken storage or entries just read as none.
- */
-export const parseGuestRides = (raw: string | null, now: Date): GuestRide[] => {
-    let saved: unknown;
-    try {
-        saved = JSON.parse(raw ?? "[]");
-    } catch {
-        return [];
-    }
-    if (!Array.isArray(saved)) return [];
-    const today = formatISTDateKey(istNow(now));
-    return saved.flatMap((entry) => {
-        const parsed = GuestRideSchema.safeParse(entry);
-        return parsed.success && formatISTDateKey(istNow(new Date(parsed.data.createdAt))) === today
-            ? [parsed.data]
-            : [];
-    });
-};
-
-/** Newest first, keeping the last few. */
-export const addGuestRide = (rides: GuestRide[], ride: GuestRide) =>
-    [ride, ...rides.filter((r) => r.id !== ride.id)].slice(0, MAX_GUEST_RIDES);
-
 /** "2 passengers", or null for a single passenger (the usual case, so not worth a badge). */
 export const passengersLabel = (passengers: number | undefined) =>
     passengers && passengers > 1 ? `${passengers} passengers` : null;
 
-/** A Google Maps link to the guest's pin; a plain search URL, so no API key. */
+/** A Google Maps link to the user's pin; a plain search URL, so no API key. */
 export const pickupMapsUrl = ({ lat, lng }: { lat: number; lng: number }) =>
     `https://maps.google.com/?q=${lat},${lng}`;
 
@@ -242,6 +215,44 @@ export const averageRating = ({
     ratingSum?: number;
     ratingCount?: number;
 }) => (ratingCount > 0 ? Math.round((ratingSum / ratingCount) * 10) / 10 : null);
+
+/** Fare bumps a user can offer to attract riders, in rupees. */
+export const FARE_OFFER_STEPS = [5, 10, 15] as const;
+
+/** Campuses that take a waitlist instead of ride bookings. */
+export const isWaitlistedCampus = (campus: string | null | undefined): boolean =>
+    !!campus && (WAITLISTED_CAMPUSES as readonly string[]).includes(campus);
+
+/**
+ * "98******10": enough for the user to recognise the rider's number, not enough
+ * to read it. Mirrors maskPhone in functions/src/ride-flow.ts.
+ */
+export const maskPhone = (phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length <= 4) return "*".repeat(digits.length);
+    return `${digits.slice(0, 2)}${"*".repeat(digits.length - 4)}${digits.slice(-2)}`;
+};
+
+/** How long the user has to cancel after a rider accepts; otherwise it confirms. */
+export const USER_CONFIRM_MS = 60_000;
+
+/** When a rider's acceptance auto-confirms, from the stored timestamp. */
+export const userConfirmDeadline = (ride: { acceptedAt?: { toDate?: () => Date } | null }) =>
+    ride.acceptedAt?.toDate?.()
+        ? new Date(ride.acceptedAt.toDate().getTime() + USER_CONFIRM_MS)
+        : null;
+
+/** Seconds left in the confirm window, or null once it has passed or there's nothing to confirm. */
+export const secondsToConfirm = (
+    ride: { acceptedAt?: { toDate?: () => Date } | null; userConfirmedAt?: unknown },
+    now: Date
+) => {
+    if (ride.userConfirmedAt) return null;
+    const deadline = userConfirmDeadline(ride);
+    if (!deadline) return null;
+    const left = Math.ceil((deadline.getTime() - now.getTime()) / 1000);
+    return left > 0 ? left : null;
+};
 
 /**
  * A rider's requests: live is scheduled rides that are due, then rides now;

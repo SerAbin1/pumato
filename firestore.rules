@@ -209,10 +209,9 @@ service cloud.firestore {
         && request.resource.data.updatedAt == request.time;
     }
 
-    // Ride requests: guests book a ride now without logging in, so create is open
-    // but pinned to the expected shape. Scheduling needs a signed-in user, so they
-    // can follow the ride up. Riders see pending requests booked on their campus
-    // on their dashboard; a female-preference request only female riders.
+    // Ride requests: signed-in users book and follow their own rides. Riders see
+    // pending requests booked on their campus on their dashboard; a
+    // female-preference request only female riders.
     function isValidSchedule(d) {
       return d.scheduledFor is timestamp
         && d.scheduledFor > request.time
@@ -232,7 +231,8 @@ service cloud.firestore {
     }
 
     match /ride_requests/{document} {
-      allow create: if request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'campusId', 'riderPreference', 'passengers', 'pickupLocation', 'userId', 'scheduledFor', 'createdAt'])
+      allow create: if request.auth != null
+        && request.resource.data.keys().hasOnly(['name', 'phone', 'pickupId', 'pickupName', 'dropId', 'dropName', 'fare', 'status', 'campusId', 'riderPreference', 'passengers', 'pickupLocation', 'userId', 'scheduledFor', 'createdAt'])
         && isText(request.resource.data.name, 80)
         && isPhone(request.resource.data.phone)
         && isText(request.resource.data.pickupId, 64)
@@ -256,8 +256,7 @@ service cloud.firestore {
         && (!('pickupLocation' in request.resource.data)
             || (!('scheduledFor' in request.resource.data)
                 && isValidPickupLocation(request.resource.data.pickupLocation)))
-        && (!('userId' in request.resource.data)
-            || (request.auth != null && request.resource.data.userId == request.auth.uid))
+        && request.resource.data.userId == request.auth.uid
         && request.resource.data.createdAt == request.time;
       // Pending queries must filter campusId and riderPreference to what the rider may see.
       allow read: if isRider()
@@ -267,21 +266,40 @@ service cloud.firestore {
             && (resource.data.riderPreference == 'any' || isFemaleRider())));
       allow read: if request.auth != null && resource.data.get('userId', null) == request.auth.uid;
 
-      // Anyone holding the request id (the guest who booked it) can drop the
-      // female-rider preference while it waits, so every rider can take it.
-      allow update: if resource.data.status == 'pending'
+      // The user drops the female-rider preference while it waits, so every rider can take it.
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && resource.data.status == 'pending'
         && resource.data.get('riderPreference', 'any') == 'female'
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['riderPreference'])
         && request.resource.data.riderPreference == 'any';
 
-      // The user cancels their ride before it's done: the signed-in owner, or for a
-      // guest's ride, anyone holding the request id (kept in the guest's browser).
-      allow update: if (resource.data.get('userId', null) == null
-          || (request.auth != null && resource.data.userId == request.auth.uid))
+      // The user offers a higher fare while it waits: +₹5, +₹10 or +₹15, which
+      // notifies the riders again. FareCompare in lib/rides.ts has the same steps.
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && resource.data.status == 'pending'
+        && resource.data.fare is int
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['fare'])
+        && request.resource.data.fare is int
+        && request.resource.data.fare - resource.data.fare in [5, 10, 15];
+
+      // The user cancels their ride before it's done.
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
         && resource.data.status in ['pending', 'accepted']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
         && request.resource.data.status == 'cancelled'
         && request.resource.data.cancelledAt == request.time;
+
+      // The user confirms the rider within their minute; the function does this
+      // for them if they close the app.
+      allow update: if request.auth != null
+        && resource.data.userId == request.auth.uid
+        && resource.data.status == 'accepted'
+        && !('userConfirmedAt' in resource.data)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userConfirmedAt'])
+        && request.resource.data.userConfirmedAt == request.time;
 
       // The signed-in user rates the rider of their completed ride, once.
       // RideRatingSchema in lib/schemas/rides.ts.
@@ -295,15 +313,25 @@ service cloud.firestore {
         && request.resource.data.rating <= 5;
 
       // Accept: an approved, online rider takes a pending ride. The transaction in
-      // acceptRide plus the `pending` check here make the first rider win.
+      // acceptRide plus the `pending` check here make the first rider win. The
+      // masked phone and rating are snapshotted so the user can see who's coming.
       allow update: if isRider() && isOnlineRider()
         && resource.data.status == 'pending'
         && (resource.data.get('riderPreference', 'any') == 'any' || isFemaleRider())
         && request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['status', 'riderUid', 'riderName', 'acceptedAt'])
+            .hasOnly(['status', 'riderUid', 'riderName', 'riderPhoneMasked', 'riderRating', 'riderRatingCount', 'acceptedAt'])
         && request.resource.data.status == 'accepted'
         && request.resource.data.riderUid == request.auth.uid
         && isText(request.resource.data.riderName, 80)
+        && (!('riderPhoneMasked' in request.resource.data)
+            || isText(request.resource.data.riderPhoneMasked, 20))
+        && (!('riderRating' in request.resource.data)
+            || (request.resource.data.riderRating is number
+                && request.resource.data.riderRating >= 1
+                && request.resource.data.riderRating <= 5))
+        && (!('riderRatingCount' in request.resource.data)
+            || (request.resource.data.riderRatingCount is int
+                && request.resource.data.riderRatingCount > 0))
         && request.resource.data.acceptedAt == request.time;
 
       // Confirm a scheduled ride once the sweep has asked: only the rider who accepted it.
@@ -322,11 +350,34 @@ service cloud.firestore {
               && request.resource.data.status == 'completed'
               && request.resource.data.completedAt == request.time)
           || (request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status', 'riderUid', 'riderName', 'acceptedAt', 'confirmRequestedAt', 'riderConfirmedAt'])
+                .hasOnly(['status', 'riderUid', 'riderName', 'riderPhoneMasked', 'riderRating', 'riderRatingCount', 'acceptedAt', 'userConfirmedAt', 'confirmRequestedAt', 'riderConfirmedAt'])
               && request.resource.data.status == 'pending'
-              && !request.resource.data.keys().hasAny(['riderUid', 'riderName', 'acceptedAt', 'confirmRequestedAt', 'riderConfirmedAt'])));
+              && !request.resource.data.keys().hasAny(['riderUid', 'riderName', 'riderPhoneMasked', 'riderRating', 'riderRatingCount', 'acceptedAt', 'userConfirmedAt', 'confirmRequestedAt', 'riderConfirmedAt'])));
 
       allow read, update, delete: if isAdmin();
+    }
+
+    // Ride waitlist: one sign-up per user, on a campus that isn't taking bookings
+    // yet. The functions mirror the counts into site_content/rides_stats.
+    match /ride_waitlist/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['userId', 'campusId', 'createdAt', 'updatedAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.campusId in ['PTU', 'PIMS']
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.updatedAt == request.time;
+      // Changing campus keeps the original sign-up time, so counts stay honest.
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['userId', 'campusId', 'createdAt', 'updatedAt'])
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.campusId in ['PTU', 'PIMS']
+        && request.resource.data.createdAt == resource.data.createdAt
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['campusId', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time;
+      allow delete: if request.auth != null && request.auth.uid == uid;
     }
 
     // --- Marketplace Requests: public create (seller's sell request), admin-only inbox ---

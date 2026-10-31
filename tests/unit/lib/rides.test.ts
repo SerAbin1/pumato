@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vite-plus/test";
 import {
-    addGuestRide,
     averageRating,
     bookableDates,
     dropPlaces,
@@ -9,14 +8,16 @@ import {
     formatRideTime,
     isDueSoon,
     isSchedulable,
+    isWaitlistedCampus,
+    maskPhone,
     occupiesRider,
-    parseGuestRides,
     pickupAccuracyLabel,
     pickupMapsUrl,
     placesForCampus,
     rideStatus,
     routesForCampus,
     scheduledTime,
+    secondsToConfirm,
     splitRequests,
     riderRef,
     routeFare,
@@ -323,38 +324,6 @@ describe("a user's rides", () => {
     });
 });
 
-describe("a guest's saved rides", () => {
-    const ride = (id: string, bookedAt = istInstant("2026-10-24", "21:00")) => ({
-        id,
-        pickupName: "Gate 1",
-        dropName: "Library",
-        fare: 20,
-        passengers: 1,
-        createdAt: bookedAt.getTime(),
-    });
-
-    it("reads back today's rides and drops earlier days'", () => {
-        const yesterday = ride("old", istInstant("2026-10-23", "23:50"));
-        expect(parseGuestRides(JSON.stringify([ride("r1"), yesterday]), now)).toEqual([ride("r1")]);
-    });
-
-    it("treats missing or broken storage as no rides", () => {
-        expect(parseGuestRides(null, now)).toEqual([]);
-        expect(parseGuestRides("{not json", now)).toEqual([]);
-        expect(parseGuestRides(JSON.stringify({ id: "r1" }), now)).toEqual([]);
-    });
-
-    it("skips entries that don't look like a saved ride", () => {
-        const raw = JSON.stringify([{ id: "r2", pickupName: "Gate 1" }, ride("r1")]);
-        expect(parseGuestRides(raw, now)).toEqual([ride("r1")]);
-    });
-
-    it("adds the newest ride first and keeps the last five", () => {
-        const saved = ["a", "b", "c", "d", "e"].map((id) => ride(id));
-        expect(addGuestRide(saved, ride("f")).map((r) => r.id)).toEqual(["f", "a", "b", "c", "d"]);
-    });
-});
-
 describe("averageRating", () => {
     it("rounds to one decimal place", () => {
         expect(averageRating({ ratingSum: 29, ratingCount: 6 })).toBe(4.8);
@@ -401,5 +370,45 @@ describe("pickup pin", () => {
 
     it("gives a rough fix in kilometres", () => {
         expect(pickupAccuracyLabel(1840)).toBe("±1.8 km");
+    });
+});
+
+describe("waitlisted campuses", () => {
+    it("takes a waitlist for PTU and PIMS only", () => {
+        expect(isWaitlistedCampus("PTU")).toBe(true);
+        expect(isWaitlistedCampus("PIMS")).toBe(true);
+        expect(isWaitlistedCampus("PU")).toBe(false);
+        expect(isWaitlistedCampus(null)).toBe(false);
+    });
+});
+
+describe("maskPhone", () => {
+    it("keeps the first and last two digits", () => {
+        expect(maskPhone("9876543210")).toBe("98******10");
+    });
+});
+
+describe("secondsToConfirm", () => {
+    const acceptedAt = { toDate: () => istInstant("2026-10-24", "22:10") };
+
+    it("counts down the minute after a rider accepts", () => {
+        expect(secondsToConfirm({ acceptedAt }, istInstant("2026-10-24", "22:10"))).toBe(60);
+        expect(
+            secondsToConfirm(
+                { acceptedAt },
+                new Date(istInstant("2026-10-24", "22:10").getTime() + 30_000)
+            )
+        ).toBe(30);
+    });
+
+    it("stops once confirmed or once the window passes", () => {
+        expect(
+            secondsToConfirm(
+                { acceptedAt, userConfirmedAt: acceptedAt },
+                istInstant("2026-10-24", "22:10:10")
+            )
+        ).toBeNull();
+        expect(secondsToConfirm({ acceptedAt }, istInstant("2026-10-24", "22:11"))).toBeNull();
+        expect(secondsToConfirm({}, istInstant("2026-10-24", "22:11"))).toBeNull();
     });
 });

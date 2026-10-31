@@ -15,11 +15,10 @@ vi.mock("firebase/firestore", () => ({
     serverTimestamp: () => "SERVER_TS",
 }));
 
-const { subscribeLaundryOrders, sortLaundryOrders } = await import(
-    "@/lib/repositories/laundry"
-);
+const { subscribeLaundryOrders, sortLaundryOrders } = await import("@/lib/repositories/laundry");
+import type { LaundryOrderRecord } from "@/lib/repositories/laundry";
 
-type Order = Parameters<typeof sortLaundryOrders>[0][number];
+type Order = LaundryOrderRecord;
 
 const order = (id: string, scheduledDate: string, createdAt: Date | null): Order =>
     ({ id, scheduledDate, createdAt }) as Order;
@@ -30,7 +29,7 @@ beforeEach(() => {
 
 describe("sortLaundryOrders", () => {
     it("groups by pickup day, then newest booking first within a day", () => {
-        const sorted = sortLaundryOrders([
+        const sorted = sortLaundryOrders<Order>([
             order("late", "2026-10-25", new Date(1)),
             order("early", "2026-10-24", new Date(2)),
             order("earlyOld", "2026-10-24", new Date(3)),
@@ -39,7 +38,7 @@ describe("sortLaundryOrders", () => {
     });
 
     it("sorts an order with no booking time as the oldest of its day", () => {
-        const sorted = sortLaundryOrders([
+        const sorted = sortLaundryOrders<Order>([
             order("clocked", "2026-10-24", new Date(5)),
             order("stampless", "2026-10-24", null),
         ]);

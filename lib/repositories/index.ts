@@ -81,6 +81,13 @@ export {
     subscribeAdminRideRequests,
     fetchRiderCompletedRides,
     subscribeRideAvailability,
+    subscribeRideStats,
+    offerHigherFare,
+    confirmRideByUser,
+    joinRideWaitlist,
+    leaveRideWaitlist,
+    subscribeWaitlistEntry,
     EMPTY_RIDES_SETTINGS,
+    EMPTY_RIDES_STATS,
 } from "./rides";
 export type { RiderApplication, RideBooking } from "./rides";

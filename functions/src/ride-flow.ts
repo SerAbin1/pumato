@@ -177,3 +177,64 @@ export function newRating(
     if (typeof after.riderUid !== "string") return null;
     return { riderUid: after.riderUid, rating: after.rating };
 }
+
+// A ride now nobody accepts within this long is dropped.
+export const AUTO_CANCEL_MINUTES = 10;
+
+/** Whether a ride now has waited past the auto-cancel window. */
+export function isStaleRideNow(createdAt: Date | undefined, now: Date): boolean {
+    if (!createdAt) return false;
+    return now.getTime() - createdAt.getTime() >= AUTO_CANCEL_MINUTES * MINUTE_MS;
+}
+
+// The user's window to cancel after a rider accepts; then it confirms itself.
+export const USER_CONFIRM_MINUTES = 1;
+
+/** What the sweep should do to an accepted ride's user confirmation now, or null. */
+export function planUserConfirmation(
+    ride: { status?: string; acceptedAt?: Date; userConfirmedAt?: Date },
+    now: Date
+): "confirm" | null {
+    if (ride.status !== "accepted" || !ride.acceptedAt || ride.userConfirmedAt) return null;
+    return now.getTime() >= ride.acceptedAt.getTime() + USER_CONFIRM_MINUTES * MINUTE_MS
+        ? "confirm"
+        : null;
+}
+
+/** How much a user raised the fare in an update, or null if they didn't. */
+export function fareIncrease(
+    before: Record<string, unknown>,
+    after: Record<string, unknown>
+): number | null {
+    const from = before.fare;
+    const to = after.fare;
+    if (typeof to !== "number" || typeof from !== "number" || to <= from) return null;
+    return to - from;
+}
+
+/** "98******10": enough to recognise the number, not enough to read it. */
+export function maskPhone(phone: string): string {
+    const digits = phone.replace(/\D/g, "");
+    if (digits.length <= 4) return "*".repeat(digits.length);
+    return `${digits.slice(0, 2)}${"*".repeat(digits.length - 4)}${digits.slice(-2)}`;
+}
+
+/** Whether a write should make the public completed-ride count refresh. */
+export function completionChanged(
+    before: Record<string, unknown> | undefined,
+    after: Record<string, unknown> | undefined
+): boolean {
+    return (before?.status === "completed") !== (after?.status === "completed");
+}
+
+/** Waitlist sign-ups per campus, leaving out campuses nobody has joined. */
+export function waitlistByCampus(
+    campuses: readonly string[],
+    entries: { campusId?: string }[]
+): Record<string, number> {
+    const counts: Record<string, number> = {};
+    for (const campus of campuses) {
+        counts[campus] = entries.filter((e) => e.campusId === campus).length;
+    }
+    return counts;
+}

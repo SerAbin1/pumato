@@ -3,12 +3,14 @@ import { db } from "@/lib/firebase";
 import { COLLECTIONS, DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { collection, getDocs, orderBy, query, where } from "firebase/firestore";
 import {
+    EMPTY_RIDES_STATS,
     fetchRidesSettings,
     saveRideFares,
     saveRidesSettings,
     setRiderCampus,
     setRiderGender,
     subscribeAdminRideRequests,
+    subscribeRideStats,
 } from "@/lib/repositories";
 import { manageUsers } from "@/lib/functions";
 import {
@@ -32,6 +34,7 @@ import type {
     RideSchedule,
     RiderStatus,
     RidesSettings,
+    RidesStats,
 } from "@/lib/types";
 
 const inputClass =
@@ -752,14 +755,10 @@ function RideRequestsSection() {
 
     useEffect(
         () =>
-            subscribeAdminRideRequests(
-                pageLimit,
-                setRequests,
-                (error) => {
-                    console.error("Failed to load ride requests:", error);
-                    toast.error("Failed to load ride requests");
-                }
-            ),
+            subscribeAdminRideRequests(pageLimit, setRequests, (error) => {
+                console.error("Failed to load ride requests:", error);
+                toast.error("Failed to load ride requests");
+            }),
         [pageLimit]
     );
 
@@ -843,11 +842,54 @@ const SUB_TABS = [
     { id: "settings", label: "Settings" },
 ] as const;
 
+/** The same public counters the booking page shows, plus the waitlist demand. */
+function RideStatsSection() {
+    const [stats, setStats] = useState<RidesStats>(EMPTY_RIDES_STATS);
+
+    useEffect(
+        () =>
+            subscribeRideStats(setStats, (error) =>
+                console.error("Failed to load ride stats:", error)
+            ),
+        []
+    );
+
+    const cards = [
+        { label: "Approved riders", value: stats.totalRiders },
+        { label: "Online now", value: stats.onlineRiders },
+        { label: "Rides completed", value: stats.completedRides },
+    ];
+    return (
+        <section className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {cards.map(({ label, value }) => (
+                <div key={label} className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                    <p className="text-2xl font-black text-white">
+                        {value.toLocaleString("en-IN")}
+                    </p>
+                    <p className="text-xs text-gray-500">{label}</p>
+                </div>
+            ))}
+            <div className="bg-white/5 border border-white/10 rounded-2xl p-4">
+                <p className="text-2xl font-black text-white">
+                    {Object.values(stats.waitlist).reduce((sum, n) => sum + n, 0)}
+                </p>
+                <p className="text-xs text-gray-500">
+                    Waitlist ·{" "}
+                    {Object.entries(stats.waitlist)
+                        .map(([campus, count]) => `${campus} ${count}`)
+                        .join(" · ") || "none yet"}
+                </p>
+            </div>
+        </section>
+    );
+}
+
 export default function RidesTab() {
     const [subTab, setSubTab] = useState<(typeof SUB_TABS)[number]["id"]>("requests");
 
     return (
         <div className="max-w-5xl mx-auto">
+            <RideStatsSection />
             <div className="flex gap-1 mb-8 border-b border-white/10">
                 {SUB_TABS.map((tab) => (
                     <button

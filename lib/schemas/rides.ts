@@ -96,7 +96,18 @@ export const RIDE_REQUEST_STATUSES = [
 /** Most passengers one request can book; matches firestore.rules. */
 export const MAX_PASSENGERS = 2;
 
-/** Where the guest is standing, from the browser's location; a ride now only. */
+/** Campuses taking ride waitlist sign-ups instead of bookings. */
+export const WAITLISTED_CAMPUSES = ["PTU", "PIMS"] as const;
+
+/** `ride_waitlist/{uid}`: one campus per user, so the admin's headcount is real. */
+export const RideWaitlistEntrySchema = z.object({
+    userId: z.string().min(1),
+    campusId: CampusIdSchema,
+    createdAt: z.any(),
+    updatedAt: z.any(),
+});
+
+/** Where the user is standing, from the browser's location; a ride now only. */
 export const PickupLocationSchema = z
     .object({
         lat: z.number().min(-90).max(90),
@@ -131,8 +142,8 @@ export const RideRequestSchema = z
         passengers: z.number().int().min(1).max(MAX_PASSENGERS).optional(),
         pickupLocation: PickupLocationSchema.optional(),
         createdAt: z.any(),
-        // Scheduled rides only: booking needs a signed-in user, so they can follow it up.
-        userId: z.string().optional(),
+        // Every booking is signed in, so it can be followed up and cancelled.
+        userId: z.string().min(1),
         scheduledFor: z.any().optional(),
         // Set by the sweep: when riders were pushed again near the ride's time,
         // and when the accepted rider was asked to confirm.
@@ -143,34 +154,28 @@ export const RideRequestSchema = z
         // Set when a rider accepts; cleared if they release the ride.
         riderUid: z.string().optional(),
         riderName: z.string().optional(),
+        // Snapshotted on accept, so the user can check who is coming without
+        // being able to read the rider's whole application.
+        riderPhoneMasked: z.string().max(20).optional(),
+        riderRating: z.number().min(1).max(5).optional(),
+        riderRatingCount: z.number().int().positive().optional(),
         acceptedAt: z.any().optional(),
+        // The user's 1-minute window to cancel or confirm, then the function stamps it.
+        userConfirmedAt: z.any().optional(),
         completedAt: z.any().optional(),
+        // A ride now nobody took within 10 minutes is cancelled by the sweep.
+        expiredAt: z.any().optional(),
         // Given once by the signed-in user who booked it; the function adds it to the
         // rider's total and stamps ratingCountedAt so a retry can't count it twice.
         rating: RideRatingSchema.optional(),
         ratingCountedAt: z.any().optional(),
     })
     .refine((r) => r.pickupId !== r.dropId, "Pickup and drop must differ")
-    .refine((r) => r.scheduledFor === undefined || !!r.userId, "Sign in to schedule a ride")
     // Where they are when booking isn't where they'll be at a later time.
     .refine(
         (r) => r.scheduledFor === undefined || r.pickupLocation === undefined,
         "Only a ride now can share a pickup pin"
     );
-
-/**
- * A signed-out guest's ride, kept in their browser so they can cancel it. Guests
- * can only ride now, and can't read the request back, so this is as booked.
- */
-export const GuestRideSchema = z.object({
-    id: z.string().min(1),
-    pickupName: z.string(),
-    dropName: z.string(),
-    fare: FareSchema.nullable(),
-    passengers: z.number().int().min(1),
-    // Epoch ms, as JSON keeps it.
-    createdAt: z.number(),
-});
 
 /**
  * A ride the rider completed, as their browser keeps it for history and

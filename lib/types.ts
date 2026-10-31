@@ -46,11 +46,11 @@ import type {
     RIDER_STATUSES,
     CompletedRidesCacheSchema,
     CompletedRideSchema,
-    GuestRideSchema,
     PickupLocationSchema,
     RidePlaceSchema,
     RideRequestSchema,
     RideScheduleSchema,
+    RideWaitlistEntrySchema,
     RiderSchema,
     RidesSettingsSchema,
 } from "@/lib/schemas/rides";
@@ -211,11 +211,20 @@ export type RideRequestStatus = (typeof RIDE_REQUEST_STATUSES)[number];
 export type RideRequest = z.infer<typeof RideRequestSchema> & { id: string };
 export type RidePreference = (typeof RIDER_PREFERENCES)[number];
 export type PickupLocation = z.infer<typeof PickupLocationSchema>;
-export type GuestRide = z.infer<typeof GuestRideSchema>;
 export type CompletedRide = z.infer<typeof CompletedRideSchema>;
 export type CompletedRidesCache = z.infer<typeof CompletedRidesCacheSchema>;
+export type RideWaitlistEntry = z.infer<typeof RideWaitlistEntrySchema>;
 /** One campus of `site_content/rides_availability`, kept up to date by the ridersAvailability function. */
 export interface RidesAvailability {
     femaleOnline: boolean;
     femaleApproved: boolean;
+}
+
+/** `site_content/rides_stats`: public counters kept up to date by the ride functions. */
+export interface RidesStats {
+    totalRiders: number;
+    onlineRiders: number;
+    completedRides: number;
+    /** Signed-up demand for each waitlisted campus. */
+    waitlist: Record<string, number>;
 }

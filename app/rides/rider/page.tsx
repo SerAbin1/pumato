@@ -233,7 +233,7 @@ function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }
     );
 }
 
-/** Rides this rider accepted and hasn't finished: shows the guest's contact. */
+/** Rides this rider accepted and hasn't finished: shows the user's contact. */
 function MyRides({
     rides,
     schedule,
@@ -412,7 +412,7 @@ function RideRequests({
             toast.success(
                 at && !isDueSoon(at, new Date(), schedule)
                     ? `Ride accepted. We'll ask you to confirm ${schedule.reminderMinutes} min before.`
-                    : "Ride accepted. Call the guest now."
+                    : "Ride accepted. Call the user now."
             );
         } catch (error) {
             // Once another rider has it, the request is no longer readable to us.
@@ -858,9 +858,9 @@ export default function RiderDashboardPage() {
                     steps={[
                         "Go online whenever you're free to give rides.",
                         "You'll be notified of every new ride request, and of rides booked ahead.",
-                        "The first rider to accept gets it, along with the guest's number.",
+                        "The first rider to accept gets it, along with the user's number.",
                         "For a scheduled ride, confirm when we ask, shortly before it starts.",
-                        "Call the guest, give the ride, then mark it complete.",
+                        "Call the user, give the ride, then mark it complete.",
                     ]}
                 />
             )}

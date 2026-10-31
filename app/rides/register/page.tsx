@@ -98,7 +98,7 @@ function ApplicationForm({
                     ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-2 ml-1">
-                    Female riders also get requests from guests who prefer a female rider.
+                    Female riders also get requests from users who prefer a female rider.
                 </p>
             </fieldset>
             <fieldset>

@@ -101,7 +101,8 @@ export const subscribeOrderSettings = (
 ) =>
     subscribeSiteContent<OrderSettings>(
         SITE_CONTENT_DOCS.ORDER_SETTINGS,
-        (settings) => onChange({ ...settings, deliveryCampusConfig: settings.deliveryCampusConfig || [] }),
+        (settings) =>
+            onChange({ ...settings, deliveryCampusConfig: settings.deliveryCampusConfig || [] }),
         onError
     );
 

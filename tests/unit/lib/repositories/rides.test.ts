@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
     getDocs: vi.fn(),
     addDoc: vi.fn(),
     updateDoc: vi.fn(),
+    deleteDoc: vi.fn(),
+    runTransaction: vi.fn(),
     onSnapshot: vi.fn(),
 }));
 
@@ -17,9 +19,10 @@ vi.mock("firebase/firestore", () => ({
     getDocs: mocks.getDocs,
     addDoc: mocks.addDoc,
     updateDoc: mocks.updateDoc,
+    deleteDoc: mocks.deleteDoc,
     onSnapshot: mocks.onSnapshot,
     setDoc: vi.fn(),
-    runTransaction: vi.fn(),
+    runTransaction: mocks.runTransaction,
     serverTimestamp: () => "SERVER_TS",
     deleteField: () => "DELETE",
     query: (...args: unknown[]) => ({ __query: args }),
@@ -50,6 +53,13 @@ const {
     fetchRiderCompletedRides,
     subscribeRideAvailability,
     subscribeAdminRideRequests,
+    offerHigherFare,
+    confirmRideByUser,
+    joinRideWaitlist,
+    leaveRideWaitlist,
+    subscribeWaitlistEntry,
+    subscribeRideStats,
+    acceptRide,
 } = await import("@/lib/repositories/rides");
 const { DEFAULT_RIDE_SCHEDULE } = await import("@/lib/rides");
 
@@ -72,6 +82,7 @@ const booking = {
     dropName: "Library",
     fare: 20,
     campusId: "PU",
+    userId: "u1",
 };
 
 beforeEach(() => {
@@ -90,24 +101,25 @@ describe("fetchRidesSettings", () => {
 });
 
 describe("createRideRequest", () => {
-    it("books a ride now with no schedule fields", async () => {
+    it("books a ride now with no schedule fields, linked to its user", async () => {
         expect(await createRideRequest({ ...booking, riderPreference: "female" })).toBe("new-ride");
         const [ref, data] = mocks.addDoc.mock.calls[0];
         expect(ref).toEqual({ collection: "ride_requests" });
         expect(data).toMatchObject({
             status: "pending",
             riderPreference: "female",
+            userId: "u1",
             createdAt: "SERVER_TS",
         });
         expect(data).not.toHaveProperty("scheduledFor");
-        expect(data).not.toHaveProperty("userId");
     });
 
-    it("links a signed-in user's ride now to them, so it shows in their rides", async () => {
-        await createRideRequest({ ...booking, riderPreference: "any", userId: "u1" });
-        const data = mocks.addDoc.mock.calls[0][1];
-        expect(data).toMatchObject({ userId: "u1" });
-        expect(data).not.toHaveProperty("scheduledFor");
+    it("refuses a booking with no signed-in user", async () => {
+        const { userId: _userId, ...withoutUser } = booking;
+        await expect(
+            createRideRequest({ ...withoutUser, riderPreference: "any" } as never)
+        ).rejects.toThrow();
+        expect(mocks.addDoc).not.toHaveBeenCalled();
     });
 
     it("stores a scheduled ride's time as a timestamp, with its user", async () => {
@@ -115,20 +127,12 @@ describe("createRideRequest", () => {
         await createRideRequest({
             ...booking,
             riderPreference: "any",
-            userId: "u1",
             scheduledFor: at,
         });
         expect(mocks.addDoc.mock.calls[0][1]).toMatchObject({
             userId: "u1",
             scheduledFor: { __ts: at },
         });
-    });
-
-    it("refuses a scheduled ride without a user", async () => {
-        await expect(
-            createRideRequest({ ...booking, riderPreference: "any", scheduledFor: new Date() })
-        ).rejects.toThrow();
-        expect(mocks.addDoc).not.toHaveBeenCalled();
     });
 });
 
@@ -149,7 +153,11 @@ describe("ride updates", () => {
                 status: "pending",
                 riderUid: "DELETE",
                 riderName: "DELETE",
+                riderPhoneMasked: "DELETE",
+                riderRating: "DELETE",
+                riderRatingCount: "DELETE",
                 acceptedAt: "DELETE",
+                userConfirmedAt: "DELETE",
                 confirmRequestedAt: "DELETE",
                 riderConfirmedAt: "DELETE",
             }
@@ -330,5 +338,153 @@ describe("fetchRiderCompletedRides", () => {
             { where: ["completedAt", ">", { __ms: 5000 }] },
             { orderBy: ["completedAt", "desc"] },
         ]);
+    });
+});
+
+function fakeTransaction(data: Record<string, unknown> | null) {
+    const tx = {
+        get: vi.fn(async () => ({ exists: () => data !== null, data: () => data ?? undefined })),
+        update: vi.fn(),
+        set: vi.fn(),
+    };
+    mocks.runTransaction.mockImplementation(async (_db, fn) => fn(tx));
+    return tx;
+}
+
+describe("offerHigherFare", () => {
+    it("adds the offer to the fare and returns the new one", async () => {
+        const tx = fakeTransaction({ status: "pending", fare: 20 });
+        expect(await offerHigherFare("r1", 10)).toBe(30);
+        expect(tx.update).toHaveBeenCalledWith({ path: "ride_requests/r1" }, { fare: 30 });
+    });
+
+    it("refuses an increase that isn't ₹5, ₹10 or ₹15", async () => {
+        fakeTransaction({ status: "pending", fare: 20 });
+        await expect(offerHigherFare("r1", 7)).rejects.toThrow();
+        expect(mocks.runTransaction).not.toHaveBeenCalled();
+    });
+
+    it("refuses to raise the fare once a rider has it", async () => {
+        fakeTransaction({ status: "accepted", fare: 20 });
+        await expect(offerHigherFare("r1", 5)).rejects.toThrow();
+    });
+});
+
+describe("acceptRide", () => {
+    it("snapshots the rider's masked phone and rating for the user", async () => {
+        mocks.getDoc.mockResolvedValue({
+            exists: () => true,
+            data: () => ({ name: "Ravi", phone: "9876543210", ratingSum: 19, ratingCount: 4 }),
+        });
+        const tx = fakeTransaction({ status: "pending" });
+        await acceptRide("r1", { uid: "rider1", name: "Ravi" });
+
+        expect(mocks.getDoc).toHaveBeenCalledWith({ path: "riders/rider1" });
+        expect(tx.update).toHaveBeenCalledWith(
+            { path: "ride_requests/r1" },
+            {
+                status: "accepted",
+                riderUid: "rider1",
+                riderName: "Ravi",
+                riderPhoneMasked: "98******10",
+                riderRating: 4.8,
+                riderRatingCount: 4,
+                acceptedAt: "SERVER_TS",
+            }
+        );
+    });
+
+    it("leaves the rating off a rider nobody has rated yet", async () => {
+        mocks.getDoc.mockResolvedValue({
+            exists: () => true,
+            data: () => ({ name: "Ravi", phone: "9876543210" }),
+        });
+        const tx = fakeTransaction({ status: "pending" });
+        await acceptRide("r1", { uid: "rider1", name: "Ravi" });
+        const [, changes] = tx.update.mock.calls[0];
+        expect(changes).not.toHaveProperty("riderRating");
+        expect(changes).not.toHaveProperty("riderRatingCount");
+    });
+});
+
+describe("confirmRideByUser", () => {
+    it("records the user's confirmation", async () => {
+        await confirmRideByUser("r1");
+        expect(mocks.updateDoc).toHaveBeenCalledWith(
+            { path: "ride_requests/r1" },
+            { userConfirmedAt: "SERVER_TS" }
+        );
+    });
+});
+
+describe("ride waitlist", () => {
+    it("signs a user up with their campus", async () => {
+        const tx = fakeTransaction(null);
+        await joinRideWaitlist("u1", "PTU");
+        expect(tx.set).toHaveBeenCalledWith(
+            { path: "ride_waitlist/u1" },
+            {
+                userId: "u1",
+                campusId: "PTU",
+                createdAt: "SERVER_TS",
+                updatedAt: "SERVER_TS",
+            }
+        );
+    });
+
+    it("moves an existing sign-up to the campus they now want", async () => {
+        const tx = fakeTransaction({ userId: "u1", campusId: "PTU" });
+        await joinRideWaitlist("u1", "PIMS");
+        expect(tx.update).toHaveBeenCalledWith(
+            { path: "ride_waitlist/u1" },
+            { campusId: "PIMS", updatedAt: "SERVER_TS" }
+        );
+        expect(tx.set).not.toHaveBeenCalled();
+    });
+
+    it("removes the sign-up when the user leaves", async () => {
+        await leaveRideWaitlist("u1");
+        expect(mocks.deleteDoc).toHaveBeenCalledWith({ path: "ride_waitlist/u1" });
+    });
+
+    it("follows the user's own sign-up", () => {
+        const onChange = vi.fn();
+        subscribeWaitlistEntry("u1", onChange, vi.fn());
+        const [ref, listener] = mocks.onSnapshot.mock.calls.at(-1)!;
+        expect(ref).toEqual({ path: "ride_waitlist/u1" });
+
+        listener({ exists: () => false });
+        expect(onChange).toHaveBeenLastCalledWith(null);
+
+        listener({ exists: () => true, data: () => ({ userId: "u1", campusId: "PTU" }) });
+        expect(onChange).toHaveBeenLastCalledWith({ userId: "u1", campusId: "PTU" });
+    });
+});
+
+describe("subscribeRideStats", () => {
+    it("reads the public counters, defaulting anything not written yet", () => {
+        const onChange = vi.fn();
+        subscribeRideStats(onChange);
+        expect(mocks.onSnapshot.mock.calls.at(-1)![0]).toEqual({
+            path: "site_content/rides_stats",
+        });
+
+        mocks.onSnapshot.mock.calls.at(-1)![1]({ data: () => undefined });
+        expect(onChange).toHaveBeenLastCalledWith({
+            totalRiders: 0,
+            onlineRiders: 0,
+            completedRides: 0,
+            waitlist: {},
+        });
+
+        mocks.onSnapshot.mock.calls.at(-1)![1]({
+            data: () => ({ totalRiders: 4, waitlist: { PTU: 3 } }),
+        });
+        expect(onChange).toHaveBeenLastCalledWith({
+            totalRiders: 4,
+            onlineRiders: 0,
+            completedRides: 0,
+            waitlist: { PTU: 3 },
+        });
     });
 });

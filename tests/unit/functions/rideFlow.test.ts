@@ -2,12 +2,18 @@ import { describe, it, expect } from "vite-plus/test";
 import {
     affectsAvailability,
     availabilityByCampus,
+    completionChanged,
+    fareIncrease,
     formatRideTime,
     inAudience,
+    isStaleRideNow,
+    maskPhone,
     newRating,
     planScheduledRide,
+    planUserConfirmation,
     pushAudience,
     rideRequestBody,
+    waitlistByCampus,
 } from "../../../functions/src/ride-flow";
 import type { SweepRide } from "../../../functions/src/ride-flow";
 
@@ -232,5 +238,105 @@ describe("newRating", () => {
 
     it("ignores a rating on a ride with no rider", () => {
         expect(newRating({ status: "completed" }, { status: "completed", rating: 5 })).toBeNull();
+    });
+});
+
+describe("isStaleRideNow", () => {
+    const bookedAt = at("16:00");
+
+    it("leaves a ride alone for its first 10 minutes", () => {
+        expect(isStaleRideNow(bookedAt, at("16:09"))).toBe(false);
+    });
+
+    it("cancels a ride now nobody took after 10 minutes", () => {
+        expect(isStaleRideNow(bookedAt, at("16:10"))).toBe(true);
+    });
+
+    it("never cancels a ride with no booking time", () => {
+        expect(isStaleRideNow(undefined, at("17:00"))).toBe(false);
+    });
+});
+
+describe("planUserConfirmation", () => {
+    const accepted = (extra = {}) => ({
+        status: "accepted",
+        acceptedAt: at("16:00"),
+        ...extra,
+    });
+
+    it("gives the user a minute to cancel or confirm", () => {
+        expect(planUserConfirmation(accepted(), at("16:00"))).toBeNull();
+        expect(
+            planUserConfirmation(accepted(), new Date(at("16:00").getTime() + 59_000))
+        ).toBeNull();
+    });
+
+    it("confirms by itself once the minute is up", () => {
+        expect(planUserConfirmation(accepted(), at("16:01"))).toBe("confirm");
+    });
+
+    it("leaves a ride the user already confirmed", () => {
+        expect(
+            planUserConfirmation(accepted({ userConfirmedAt: at("16:00:20") }), at("16:02"))
+        ).toBe(null);
+    });
+
+    it("ignores pending and scheduled-only rides", () => {
+        expect(
+            planUserConfirmation({ status: "pending", acceptedAt: at("16:00") }, at("16:02"))
+        ).toBe(null);
+        expect(planUserConfirmation({ status: "accepted" }, at("16:02"))).toBe(null);
+    });
+});
+
+describe("fareIncrease", () => {
+    it("reports how much the user added", () => {
+        expect(fareIncrease({ fare: 20 }, { fare: 25 })).toBe(5);
+        expect(fareIncrease({ fare: 20 }, { fare: 35 })).toBe(15);
+    });
+
+    it("ignores other updates and fare drops", () => {
+        expect(fareIncrease({ fare: 20 }, { fare: 20 })).toBeNull();
+        expect(fareIncrease({ fare: 20 }, { fare: 15 })).toBeNull();
+        expect(fareIncrease({ fare: null }, { fare: 5 })).toBeNull();
+        expect(fareIncrease({}, {})).toBeNull();
+    });
+});
+
+describe("maskPhone", () => {
+    it("keeps the first and last two digits and stars the rest", () => {
+        expect(maskPhone("9876543210")).toBe("98******10");
+    });
+
+    it("stars a number too short to mask", () => {
+        expect(maskPhone("1234")).toBe("****");
+    });
+});
+
+describe("completionChanged", () => {
+    it("notices a ride becoming completed, and one being un-completed", () => {
+        expect(completionChanged({ status: "accepted" }, { status: "completed" })).toBe(true);
+        expect(completionChanged({ status: "completed" }, { status: "accepted" })).toBe(true);
+        expect(completionChanged({ status: "completed" }, undefined)).toBe(true);
+    });
+
+    it("ignores updates to rides that aren't completing", () => {
+        expect(completionChanged({ status: "pending" }, { status: "accepted" })).toBe(false);
+        expect(completionChanged(undefined, { status: "pending" })).toBe(false);
+    });
+});
+
+describe("waitlistByCampus", () => {
+    it("counts each campus's sign-ups", () => {
+        expect(
+            waitlistByCampus(
+                ["PTU", "PIMS"],
+                [{ campusId: "PTU" }, { campusId: "PIMS" }, { campusId: "PTU" }]
+            )
+        ).toEqual({ PTU: 2, PIMS: 1 });
+    });
+
+    it("reports zero for a campus nobody joined", () => {
+        expect(waitlistByCampus(["PTU", "PIMS"], [])).toEqual({ PTU: 0, PIMS: 0 });
     });
 });

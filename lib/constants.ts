@@ -14,6 +14,7 @@ export const COLLECTIONS = {
     FEEDBACK: "feedback",
     RIDERS: "riders",
     RIDE_REQUESTS: "ride_requests",
+    RIDE_WAITLIST: "ride_waitlist",
 };
 
 export const COUNTER_DOCS = {
@@ -30,6 +31,8 @@ export const SITE_CONTENT_DOCS = {
     RIDES_SETTINGS: "rides_settings",
     // Written by the ridersAvailability function; whether any female rider can take a request.
     RIDES_AVAILABILITY: "rides_availability",
+    // Written by the ride functions: public counters and waitlist demand.
+    RIDES_STATS: "rides_stats",
     // Written by the trending Cloud Functions (weekly + admin refresh), never by clients.
     TRENDING: "trending",
 };

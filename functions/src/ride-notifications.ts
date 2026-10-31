@@ -11,14 +11,21 @@ import { getFcmTokensByUids } from "./fcm-tokens";
 import { DAY_MS, IST_TIME_ZONE } from "./ist";
 import {
     affectsAvailability,
+    AUTO_CANCEL_MINUTES,
     availabilityByCampus,
+    completionChanged,
     DEFAULT_SCHEDULE,
+    fareIncrease,
     formatRideTime,
     inAudience,
+    isStaleRideNow,
     newRating,
     planScheduledRide,
+    planUserConfirmation,
     pushAudience,
     rideRequestBody,
+    USER_CONFIRM_MINUTES,
+    waitlistByCampus,
 } from "./ride-flow";
 import type { PushAudience, SweepAction, SweepSchedule } from "./ride-flow";
 
@@ -26,6 +33,7 @@ const db = getFirestore();
 const messaging = getMessaging();
 
 const RIDER_URL = "/rides/rider";
+const USER_URL = "/rides";
 
 /** Data-only, so the service worker builds the notification with this tag and opens targetUrl. */
 interface Push {
@@ -34,15 +42,16 @@ interface Push {
     tag: string;
     // Seconds; a ride-now request nobody sees within a few minutes is stale.
     ttl: number;
+    targetUrl?: string;
 }
 
-async function pushUids(uids: string[], { ttl, ...push }: Push) {
+async function pushUids(uids: string[], { ttl, targetUrl = RIDER_URL, ...push }: Push) {
     const tokens = await getFcmTokensByUids(uids);
     await Promise.allSettled(
         tokens.map((token) =>
             messaging.send({
                 token,
-                data: { ...push, targetUrl: RIDER_URL },
+                data: { ...push, targetUrl },
                 webpush: { headers: { Urgency: "high", TTL: String(ttl) } },
             })
         )
@@ -85,6 +94,18 @@ const requestPush = (data: DocumentData, title: string): Push => {
         // A scheduled ride is still worth hearing about hours later.
         ttl: ride.scheduled ? 6 * 60 * 60 : 300,
     };
+};
+
+/** "Ravi · 4.8★ · 98******10 accepted Gate 1 → Library · ₹20. Confirm within 1 minute." */
+const acceptedBody = (data: DocumentData): string => {
+    const rider = [
+        data.riderName as string,
+        typeof data.riderRating === "number" ? `${data.riderRating}★` : null,
+        data.riderPhoneMasked as string | undefined,
+    ]
+        .filter(Boolean)
+        .join(" · ");
+    return `${rider} accepted ${rideRequestBody(rideOf(data))}. Confirm within ${USER_CONFIRM_MINUTES} minute or it confirms automatically.`;
 };
 
 /**
@@ -131,10 +152,30 @@ export const onRideRequestUpdated = onDocumentUpdated(
         const rated = newRating(before, after);
         if (rated && event.data) await countRating(event.data.after.ref, rated);
 
+        // A higher offer is a fresh reason for riders to take it.
+        const raised = fareIncrease(before, after);
+        if (after.status === "pending" && raised !== null) {
+            await pushRiders(
+                pushAudience("new", rideOf(after)),
+                requestPush(after, `Fare raised by ₹${raised}: now ₹${after.fare}`)
+            );
+        }
+
+        // The rider accepted: the user checks who is coming and can cancel for a minute.
+        if (before.status === "pending" && after.status === "accepted" && after.userId) {
+            await pushUids([after.userId], {
+                title: "Rider found",
+                body: acceptedBody(after),
+                tag: "ride-accepted",
+                ttl: (USER_CONFIRM_MINUTES + 2) * 60,
+                targetUrl: USER_URL,
+            });
+        }
+
         if (after.status === "cancelled" && before.status === "accepted" && before.riderUid) {
             await pushUids([before.riderUid], {
                 title: "Ride cancelled",
-                body: `${rideRequestBody(rideOf(before))} was cancelled by the guest.`,
+                body: `${rideRequestBody(rideOf(before))} was cancelled by the user.`,
                 tag: "ride-cancelled",
                 ttl: 60 * 60,
             });
@@ -208,7 +249,11 @@ async function sweepRide(
                     status: "pending",
                     riderUid: FieldValue.delete(),
                     riderName: FieldValue.delete(),
+                    riderPhoneMasked: FieldValue.delete(),
+                    riderRating: FieldValue.delete(),
+                    riderRatingCount: FieldValue.delete(),
                     acceptedAt: FieldValue.delete(),
+                    userConfirmedAt: FieldValue.delete(),
                     confirmRequestedAt: FieldValue.delete(),
                     broadcastAt: at,
                 });
@@ -314,3 +359,148 @@ export const ridersAvailability = onDocumentWritten("riders/{uid}", async (event
         );
     });
 });
+
+const WAITLISTED_CAMPUSES = ["PTU", "PIMS"] as const;
+
+/** Public counters for the booking page and admin; merge keeps other writers' fields. */
+async function writeRideStats(fields: Record<string, unknown>) {
+    await db
+        .collection("site_content")
+        .doc("rides_stats")
+        .set({ ...fields, updatedAt: FieldValue.serverTimestamp() }, { merge: true });
+}
+
+async function refreshRideStats() {
+    const [riders, online, completed] = await Promise.all([
+        db.collection("riders").where("status", "==", "approved").count().get(),
+        db
+            .collection("riders")
+            .where("status", "==", "approved")
+            .where("online", "==", true)
+            .count()
+            .get(),
+        db.collection("ride_requests").where("status", "==", "completed").count().get(),
+    ]);
+    await writeRideStats({
+        totalRiders: riders.data().count,
+        onlineRiders: online.data().count,
+        completedRides: completed.data().count,
+    });
+}
+
+async function refreshWaitlistStats() {
+    const snap = await db.collection("ride_waitlist").get();
+    await writeRideStats({
+        waitlist: waitlistByCampus(
+            WAITLISTED_CAMPUSES,
+            snap.docs.map((doc) => doc.data())
+        ),
+    });
+}
+
+/** Keeps the public rider and completed-ride counts in step with the riders. */
+export const rideStats = onDocumentWritten("riders/{uid}", async () => {
+    await refreshRideStats();
+});
+
+/** Keeps the completed-ride count in step once a ride finishes (or an old one is removed). */
+export const rideCompletionStats = onDocumentWritten("ride_requests/{requestId}", async (event) => {
+    if (completionChanged(event.data?.before.data(), event.data?.after.data())) {
+        await refreshRideStats();
+    }
+});
+
+/** Keeps each waitlisted campus's demand count in step with its sign-ups. */
+export const rideWaitlistStats = onDocumentWritten("ride_waitlist/{uid}", async () => {
+    await refreshWaitlistStats();
+});
+
+/** Recomputes the counters now and then, so a missed trigger or a first deploy catches up. */
+export const refreshRideStatsHourly = onSchedule(
+    { schedule: "every 60 minutes", timeZone: IST_TIME_ZONE },
+    async () => {
+        await Promise.all([refreshRideStats(), refreshWaitlistStats()]);
+    }
+);
+
+/**
+ * Drops a ride now nobody accepted within AUTO_CANCEL_MINUTES and tells the
+ * user, so a stale request doesn't sit on every rider's dashboard.
+ */
+export const cancelStaleRideNows = onSchedule(
+    { schedule: "every 1 minutes", timeZone: IST_TIME_ZONE },
+    async () => {
+        const now = new Date();
+        const cutoff = Timestamp.fromMillis(now.getTime() - AUTO_CANCEL_MINUTES * 60_000);
+        const snap = await db
+            .collection("ride_requests")
+            .where("status", "==", "pending")
+            .where("createdAt", "<=", cutoff)
+            .get();
+
+        await Promise.allSettled(
+            snap.docs.map(async (doc) => {
+                // Re-read in a transaction: a rider may have accepted it since the query.
+                const expired = await db.runTransaction(async (tx) => {
+                    const fresh = await tx.get(doc.ref);
+                    if (fresh.get("status") !== "pending" || fresh.get("scheduledFor")) {
+                        return false;
+                    }
+                    if (!isStaleRideNow(toDate(fresh.get("createdAt")), now)) return false;
+                    tx.update(doc.ref, {
+                        status: "expired",
+                        expiredAt: Timestamp.fromDate(now),
+                    });
+                    return true;
+                });
+                if (!expired) return;
+
+                const userId = doc.get("userId");
+                if (!userId) return;
+                await pushUids([userId], {
+                    title: "No rider found",
+                    body: `${rideRequestBody(rideOf(doc.data()))} · Nobody took it in ${AUTO_CANCEL_MINUTES} minutes. Try again or offer a higher fare.`,
+                    tag: "ride-expired",
+                    ttl: 10 * 60,
+                    targetUrl: USER_URL,
+                });
+            })
+        );
+    }
+);
+
+/**
+ * Confirms an accepted ride for the user once their minute to cancel is up,
+ * so the ride goes ahead even if they close the app.
+ */
+export const autoConfirmAcceptedRides = onSchedule(
+    { schedule: "every 1 minutes", timeZone: IST_TIME_ZONE },
+    async () => {
+        const now = new Date();
+        const cutoff = Timestamp.fromMillis(now.getTime() - USER_CONFIRM_MINUTES * 60_000);
+        const snap = await db
+            .collection("ride_requests")
+            .where("status", "==", "accepted")
+            .where("acceptedAt", "<=", cutoff)
+            .get();
+
+        await Promise.allSettled(
+            snap.docs.map((doc) =>
+                db.runTransaction(async (tx) => {
+                    const fresh = await tx.get(doc.ref);
+                    const due =
+                        planUserConfirmation(
+                            {
+                                status: fresh.get("status"),
+                                acceptedAt: toDate(fresh.get("acceptedAt")),
+                                userConfirmedAt: toDate(fresh.get("userConfirmedAt")),
+                            },
+                            now
+                        ) === "confirm";
+                    if (!due) return;
+                    tx.update(doc.ref, { userConfirmedAt: Timestamp.fromDate(now) });
+                })
+            )
+        );
+    }
+);

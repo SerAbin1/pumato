@@ -2,7 +2,8 @@ import type { z } from "zod";
 import type { AnyRecord, GrocerySettings, OrderSettings, PromoBanners } from "@/lib/types";
 import type { TrendingDoc } from "@/lib/trending";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import type { Unsubscribe } from "firebase/firestore";
 import {
     OrderSettingsSchema,
     PromoBannersSchema,
@@ -77,3 +78,34 @@ export const fetchPromoBanners = () =>
 export const fetchGrocerySettings = () =>
     fetchSiteContent<GrocerySettings>(SITE_CONTENT_DOCS.GROCERY_SETTINGS);
 export const fetchTrending = () => fetchSiteContent<TrendingDoc>(SITE_CONTENT_DOCS.TRENDING);
+
+/** Live site_content doc: calls `onChange` with its data while it exists. */
+function subscribeSiteContent<T>(
+    docId: string,
+    onChange: (data: T) => void,
+    onError?: (error: Error) => void
+): Unsubscribe {
+    return onSnapshot(
+        doc(db, COLLECTIONS.SITE_CONTENT, docId),
+        (snap) => {
+            if (snap.exists()) onChange(snap.data() as T);
+        },
+        onError
+    );
+}
+
+/** Order settings as the admin saves them, with the campus config always a list. */
+export const subscribeOrderSettings = (
+    onChange: (settings: OrderSettings) => void,
+    onError?: (error: Error) => void
+) =>
+    subscribeSiteContent<OrderSettings>(
+        SITE_CONTENT_DOCS.ORDER_SETTINGS,
+        (settings) => onChange({ ...settings, deliveryCampusConfig: settings.deliveryCampusConfig || [] }),
+        onError
+    );
+
+export const subscribeGrocerySettings = (
+    onChange: (settings: GrocerySettings) => void,
+    onError?: (error: Error) => void
+) => subscribeSiteContent<GrocerySettings>(SITE_CONTENT_DOCS.GROCERY_SETTINGS, onChange, onError);

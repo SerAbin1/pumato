@@ -30,6 +30,8 @@ export {
     fetchOrderSettings,
     fetchPromoBanners,
     fetchGrocerySettings,
+    subscribeOrderSettings,
+    subscribeGrocerySettings,
     fetchTrending,
 } from "./siteContent";
 
@@ -47,6 +49,7 @@ export {
     saveLaundrySlots,
     fetchLaundryConfig,
     fetchLaundrySlots,
+    subscribeLaundrySlots,
 } from "./settings";
 
 export { fetchFavourites, saveFavourites } from "./user";

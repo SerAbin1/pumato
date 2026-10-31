@@ -1,7 +1,12 @@
 import { db } from "@/lib/firebase";
-import { collection, getDocs, doc, onSnapshot } from "firebase/firestore";
-import { COLLECTIONS, SITE_CONTENT_DOCS } from "@/lib/constants";
+import { collection, getDocs } from "firebase/firestore";
+import { COLLECTIONS } from "@/lib/constants";
 import { useState, useEffect } from "react";
+import {
+    subscribeGrocerySettings,
+    subscribeLaundrySlots,
+    subscribeOrderSettings,
+} from "@/lib/repositories";
 import type { GrocerySettings, OrderSettings, Restaurant } from "@/lib/types";
 
 export function useRestaurants() {
@@ -31,21 +36,7 @@ export function useRestaurants() {
 export function useOrderSettings() {
     const [orderSettings, setOrderSettings] = useState<OrderSettings>({});
 
-    useEffect(() => {
-        const unsubscribe = onSnapshot(
-            doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.ORDER_SETTINGS),
-            (settingsDoc) => {
-                if (settingsDoc.exists()) {
-                    const data = settingsDoc.data() as OrderSettings;
-                    setOrderSettings({
-                        ...data,
-                        deliveryCampusConfig: data.deliveryCampusConfig || [],
-                    });
-                }
-            }
-        );
-        return () => unsubscribe();
-    }, []);
+    useEffect(() => subscribeOrderSettings(setOrderSettings), []);
 
     return { orderSettings };
 }
@@ -53,17 +44,7 @@ export function useOrderSettings() {
 export function useGrocerySettings() {
     const [grocerySettings, setGrocerySettings] = useState<GrocerySettings>({});
 
-    useEffect(() => {
-        const unsubscribe = onSnapshot(
-            doc(db, COLLECTIONS.SITE_CONTENT, SITE_CONTENT_DOCS.GROCERY_SETTINGS),
-            (settingsDoc) => {
-                if (settingsDoc.exists()) {
-                    setGrocerySettings(settingsDoc.data() as GrocerySettings);
-                }
-            }
-        );
-        return () => unsubscribe();
-    }, []);
+    useEffect(() => subscribeGrocerySettings(setGrocerySettings), []);
 
     return { grocerySettings };
 }
@@ -73,17 +54,7 @@ export function useLaundrySettings() {
         slots: [],
     });
 
-    useEffect(() => {
-        const unsubscribe = onSnapshot(
-            doc(db, COLLECTIONS.LAUNDRY_SLOTS, "default"),
-            (settingsDoc) => {
-                if (settingsDoc.exists()) {
-                    setLaundrySettings(settingsDoc.data() as { slots: string[] });
-                }
-            }
-        );
-        return () => unsubscribe();
-    }, []);
+    useEffect(() => subscribeLaundrySlots("default", setLaundrySettings), []);
 
     return { laundrySettings };
 }

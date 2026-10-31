@@ -1,7 +1,8 @@
 import type { z } from "zod";
 import type { CampusConfig, LaundryPricing } from "@/lib/types";
 import { db } from "@/lib/firebase";
-import { doc, getDoc, setDoc } from "firebase/firestore";
+import { doc, getDoc, onSnapshot, setDoc } from "firebase/firestore";
+import type { Unsubscribe } from "firebase/firestore";
 import {
     LaundryCampusSettingsSchema,
     LaundryPricingSchema,
@@ -60,4 +61,17 @@ export async function fetchLaundryConfig(): Promise<{
 export async function fetchLaundrySlots(docId: string): Promise<string[]> {
     const snap = await getDoc(doc(db, COLLECTIONS.LAUNDRY_SLOTS, docId));
     return snap.exists() ? snap.data().slots || [] : [];
+}
+
+/** Follows a day's slots as the admin edits them; a missing doc means none. */
+export function subscribeLaundrySlots(
+    docId: string,
+    onChange: (settings: { slots: string[] }) => void,
+    onError?: (error: Error) => void
+): Unsubscribe {
+    return onSnapshot(
+        doc(db, COLLECTIONS.LAUNDRY_SLOTS, docId),
+        (snap) => onChange({ slots: snap.exists() ? snap.data().slots || [] : [] }),
+        onError
+    );
 }

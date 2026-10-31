@@ -11,7 +11,14 @@ export {
 } from "./order";
 export type { PartnerOrdersView, AdminOrdersView, DeliveryOrdersView } from "./order";
 
-export { createLaundryOrder, updateLaundryOrder, deleteLaundryOrder } from "./laundry";
+export {
+    createLaundryOrder,
+    updateLaundryOrder,
+    deleteLaundryOrder,
+    subscribeLaundryOrders,
+    sortLaundryOrders,
+} from "./laundry";
+export type { LaundryOrderRecord } from "./laundry";
 
 export {
     saveOrderSettings,

@@ -20,7 +20,7 @@ import {
     Bike,
 } from "lucide-react";
 import { db } from "@/lib/firebase";
-import { collection, getDocs, onSnapshot } from "firebase/firestore";
+import { collection, getDocs } from "firebase/firestore";
 import {
     saveOrderSettings,
     savePromoBanners,
@@ -34,6 +34,7 @@ import {
     fetchLaundryConfig,
     fetchLaundrySlots,
     subscribeAdminOrders,
+    subscribeLaundryOrders,
 } from "@/lib/repositories";
 import toast from "react-hot-toast";
 import { manageCoupons } from "@/lib/functions";
@@ -345,30 +346,9 @@ export default function AdminPage() {
 
     useEffect(() => {
         if (!user || !isAdmin) return;
-
-        const unsub = onSnapshot(
-            collection(db, COLLECTIONS.LAUNDRY_ORDERS),
-            (snap) => {
-                const ordersData = snap.docs
-                    .map(
-                        (snapshotDoc) =>
-                            ({
-                                id: snapshotDoc.id,
-                                ...snapshotDoc.data(),
-                                createdAt: snapshotDoc.data().createdAt?.toDate?.() || null,
-                            }) as AdminLaundryOrder
-                    )
-                    .sort((a, b) => {
-                        const dateCompare = (a.scheduledDate || "").localeCompare(
-                            b.scheduledDate || ""
-                        );
-                        if (dateCompare !== 0) return dateCompare;
-                        const timeA = a.createdAt?.getTime?.() || 0;
-                        const timeB = b.createdAt?.getTime?.() || 0;
-                        return timeB - timeA;
-                    });
-
-                setLaundryOrders(ordersData);
+        return subscribeLaundryOrders(
+            (orders) => {
+                setLaundryOrders(orders);
                 setLoadingLaundryOrders(false);
             },
             (error) => {
@@ -376,8 +356,6 @@ export default function AdminPage() {
                 setLoadingLaundryOrders(false);
             }
         );
-
-        return () => unsub();
     }, [user, isAdmin]);
 
     // Past orders listener (picked_up / delivered)

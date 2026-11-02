@@ -11,6 +11,7 @@ export default defineConfig({
         "*": "vp check --fix --no-error-on-unmatched-pattern",
     },
     test: {
+        isolate: false,
         // Vitest v4 compatibility: preserve mock call history.
         // Remove after tests no longer rely on calls from setup or earlier tests.
         // https://viteplus.dev/guide/vitest-v5#remove-unneeded-compatibility-settings

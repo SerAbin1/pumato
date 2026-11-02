@@ -93,7 +93,7 @@ function RequestTags({ request }: { request: RideRequest }) {
             )}
             {request.riderPreference === "female" && (
                 <span className="px-2 py-0.5 rounded-lg text-xs font-bold bg-pink-500/20 text-pink-300">
-                    Female rider
+                    Female pilot
                 </span>
             )}
         </>
@@ -101,7 +101,7 @@ function RequestTags({ request }: { request: RideRequest }) {
 }
 
 /** Everything a rider has done: counts plus each ride with guest, route and times. */
-function RiderDetails({ rider }: { rider: Rider }) {
+function PilotDetails({ rider }: { rider: Rider }) {
     const [rides, setRides] = useState<RideRequest[] | null>(null);
 
     useEffect(() => {
@@ -117,7 +117,7 @@ function RiderDetails({ rider }: { rider: Rider }) {
             )
             .catch((error) => {
                 console.error("Failed to load rider history:", error);
-                toast.error("Failed to load rider history");
+                toast.error("Failed to load pilot history");
                 setRides([]);
             });
     }, [rider.uid]);
@@ -192,8 +192,8 @@ function RiderDetails({ rider }: { rider: Rider }) {
 }
 
 const SCHEDULE_FIELDS: { key: keyof RideSchedule; label: string }[] = [
-    { key: "reminderMinutes", label: "Ask rider to confirm (min before)" },
-    { key: "confirmMinutes", label: "Rider has to confirm (min)" },
+    { key: "reminderMinutes", label: "Ask pilot to confirm (min before)" },
+    { key: "confirmMinutes", label: "Pilot has to confirm (min)" },
     { key: "minLeadMinutes", label: "Earliest booking (min ahead)" },
     { key: "maxDaysAhead", label: "Latest booking (days ahead)" },
 ];
@@ -406,8 +406,8 @@ function SettingsSection() {
 
             <div className="space-y-2">
                 <p className="text-xs text-gray-400">
-                    Scheduled rides. The accepted rider is asked to confirm before the ride; if they
-                    don&apos;t in time, the ride goes back to every online rider.
+                    Scheduled rides. The accepted pilot is asked to confirm before the ride; if they
+                    don&apos;t in time, the ride goes back to every online pilot.
                 </p>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     {SCHEDULE_FIELDS.map(({ key, label }) => (
@@ -497,7 +497,7 @@ function FaresSection() {
     return (
         <section className={sectionClass}>
             <p className="text-xs text-gray-400">
-                Fare in ₹ for each route, either direction. Leave blank and the rider confirms the
+                Fare in ₹ for each route, either direction. Leave blank and the pilot confirms the
                 fare on the call. Others is routes to or from a place on no campus.
             </p>
             <div className="flex gap-2">
@@ -566,7 +566,7 @@ function FaresSection() {
     );
 }
 
-function RidersSection() {
+function PilotsSection() {
     const [riders, setRiders] = useState<Rider[] | null>(null);
     const [filter, setFilter] = useState<RiderStatus>("pending");
     const [busy, setBusy] = useState<string | null>(null);
@@ -580,7 +580,7 @@ function RidersSection() {
             setRiders(snap.docs.map((d) => d.data() as Rider));
         } catch (error) {
             console.error("Failed to load riders:", error);
-            toast.error("Failed to load riders");
+            toast.error("Failed to load pilots");
         }
     }, []);
 
@@ -652,7 +652,7 @@ function RidersSection() {
             {riders === null ? (
                 <p className="text-gray-400">Loading...</p>
             ) : shown.length === 0 ? (
-                <p className="text-gray-500 text-sm">No {filter} riders.</p>
+                <p className="text-gray-500 text-sm">No {filter} pilots.</p>
             ) : (
                 <div className="space-y-2">
                     {shown.map((rider) => (
@@ -692,7 +692,7 @@ function RidersSection() {
                             </button>
                             <div className="flex gap-2">
                                 <CampusSelect
-                                    value={rider.campusId}
+                                    value={rider.campusId ?? ""}
                                     onChange={(campusId) => setCampus(rider.uid, campusId)}
                                     label={`Campus of ${rider.name}`}
                                     disabled={busy === rider.uid}
@@ -737,7 +737,7 @@ function RidersSection() {
                                     )
                                 )}
                             </div>
-                            {expanded === rider.uid && <RiderDetails rider={rider} />}
+                            {expanded === rider.uid && <PilotDetails rider={rider} />}
                         </div>
                     ))}
                 </div>
@@ -809,7 +809,7 @@ function RideRequestsSection() {
                                     {r.name} · {formatTime(r.createdAt)}
                                 </p>
                                 {r.riderName && (
-                                    <p className="text-xs text-gray-500">Rider: {r.riderName}</p>
+                                    <p className="text-xs text-gray-500">Pilot: {r.riderName}</p>
                                 )}
                             </div>
                             <a
@@ -837,7 +837,7 @@ function RideRequestsSection() {
 
 const SUB_TABS = [
     { id: "requests", label: "Ride requests" },
-    { id: "riders", label: "Riders" },
+    { id: "riders", label: "Pilots" },
     { id: "fares", label: "Fares" },
     { id: "settings", label: "Settings" },
 ] as const;
@@ -855,7 +855,7 @@ function RideStatsSection() {
     );
 
     const cards = [
-        { label: "Approved riders", value: stats.totalRiders },
+        { label: "Approved pilots", value: stats.totalRiders },
         { label: "Online now", value: stats.onlineRiders },
         { label: "Rides completed", value: stats.completedRides },
     ];
@@ -907,7 +907,7 @@ export default function RidesTab() {
             </div>
 
             {subTab === "requests" && <RideRequestsSection />}
-            {subTab === "riders" && <RidersSection />}
+            {subTab === "riders" && <PilotsSection />}
             {subTab === "fares" && <FaresSection />}
             {subTab === "settings" && <SettingsSection />}
         </div>

@@ -241,9 +241,9 @@ describe("scheduledRideStatus", () => {
     const ts = { toDate: () => now };
 
     it("says whether the ride is still looking for a rider", () => {
-        expect(scheduledRideStatus({ status: "pending" })).toBe("Waiting for a rider");
+        expect(scheduledRideStatus({ status: "pending" })).toBe("Waiting for a pilot");
         expect(scheduledRideStatus({ status: "pending", broadcastAt: ts })).toBe(
-            "Looking for a rider now"
+            "Looking for a pilot now"
         );
     });
 
@@ -259,7 +259,7 @@ describe("scheduledRideStatus", () => {
     it("describes finished rides", () => {
         expect(scheduledRideStatus({ status: "completed" })).toBe("Completed");
         expect(scheduledRideStatus({ status: "cancelled" })).toBe("Cancelled");
-        expect(scheduledRideStatus({ status: "expired" })).toBe("No rider found");
+        expect(scheduledRideStatus({ status: "expired" })).toBe("No pilot found");
     });
 });
 
@@ -272,8 +272,8 @@ describe("a user's rides", () => {
     });
 
     it("says nobody took a ride now still waiting from an earlier day", () => {
-        expect(rideStatus(rideNow("pending", "2026-10-23"), now)).toBe("No rider found");
-        expect(rideStatus(rideNow("pending"), now)).toBe("Waiting for a rider");
+        expect(rideStatus(rideNow("pending", "2026-10-23"), now)).toBe("No pilot found");
+        expect(rideStatus(rideNow("pending"), now)).toBe("Waiting for a pilot");
     });
 
     it("leaves accepted and scheduled rides as they stand", () => {
@@ -289,7 +289,7 @@ describe("a user's rides", () => {
                 },
                 now
             )
-        ).toBe("Waiting for a rider");
+        ).toBe("Waiting for a pilot");
     });
 
     it("splits current rides, soonest first, from past ones, latest first", () => {

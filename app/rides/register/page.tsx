@@ -98,7 +98,7 @@ function ApplicationForm({
                     ))}
                 </div>
                 <p className="text-xs text-gray-500 mt-2 ml-1">
-                    Female riders also get requests from users who prefer a female rider.
+                    Female pilots also get requests from users who prefer a female pilot.
                 </p>
             </fieldset>
             <fieldset>
@@ -189,13 +189,13 @@ const EMPTY_APPLICATION: RiderApplication = {
     gender: undefined,
 };
 
-export default function RiderRegisterPage() {
+export default function PilotRegisterPage() {
     const { user, loading } = useUserAuth();
     const { userDetails } = useCart();
     // undefined = still loading; null = hasn't applied
     const [rider, setRider] = useState<Rider | null | undefined>(undefined);
     const [settings, setSettings] = useState<RidesSettings | null>(null);
-    const [isRiderClaim, setIsRiderClaim] = useState(false);
+    const [isPilotClaim, setIsPilotClaim] = useState(false);
     const [editing, setEditing] = useState(false);
 
     const load = useCallback(async (signedIn: User, refreshToken: boolean) => {
@@ -208,7 +208,7 @@ export default function RiderRegisterPage() {
             ]);
             setRider(r);
             setSettings(s);
-            setIsRiderClaim(token.claims.rider === true);
+            setIsPilotClaim(token.claims.rider === true);
         } catch (error) {
             console.error("Failed to load rider application:", error);
             toast.error("Couldn't load your application. Please refresh.");
@@ -218,7 +218,7 @@ export default function RiderRegisterPage() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setRider(undefined);
-        setIsRiderClaim(false);
+        setIsPilotClaim(false);
         setEditing(false);
         if (user) void load(user, true);
     }, [user, load]);
@@ -259,14 +259,14 @@ export default function RiderRegisterPage() {
         );
     } else if (!user) {
         content = <AuthCard />;
-    } else if (isRiderClaim || rider?.status === "approved") {
+    } else if (isPilotClaim || rider?.status === "approved") {
         content = (
             <div className={`${cardClass} text-center`}>
                 <CheckCircle2 size={48} className="text-green-400 mx-auto" />
-                <h2 className="text-xl font-black">You&apos;re a Pumato rider</h2>
+                <h2 className="text-xl font-black">You&apos;re a Pumato pilot</h2>
                 <p className="text-sm text-gray-400">You&apos;re verified and ready to ride.</p>
-                <Link href="/rides/rider" className={primaryButton}>
-                    <Bike size={20} /> Go to rider dashboard
+                <Link href="/rides/pilot" className={primaryButton}>
+                    <Bike size={20} /> Go to pilot dashboard
                 </Link>
             </div>
         );
@@ -274,7 +274,7 @@ export default function RiderRegisterPage() {
         content = (
             <div className={`${cardClass} text-center`}>
                 <XCircle size={48} className="text-red-400 mx-auto" />
-                <h2 className="text-xl font-black">Rider access removed</h2>
+                <h2 className="text-xl font-black">Pilot access removed</h2>
                 <p className="text-sm text-gray-400">Please contact the Pumato team.</p>
             </div>
         );
@@ -312,7 +312,7 @@ export default function RiderRegisterPage() {
     }
 
     return (
-        <RidesShell title="Become a rider" subtitle="Give rides around campus with Pumato Rides.">
+        <RidesShell title="Become a pilot" subtitle="Give rides around campus with Pumato Rides.">
             <div className={mainColumn}>{content}</div>
 
             <Steps
@@ -324,8 +324,8 @@ export default function RiderRegisterPage() {
                 ]}
                 footer={
                     <p className="text-sm text-gray-500">
-                        Already a rider?{" "}
-                        <Link href="/rides/rider" className="text-orange-400 font-bold">
+                        Already a pilot?{" "}
+                        <Link href="/rides/pilot" className="text-orange-400 font-bold">
                             Go to your dashboard →
                         </Link>
                     </p>

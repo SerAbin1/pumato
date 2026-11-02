@@ -159,7 +159,7 @@ describe("rideRequestBody", () => {
                 fare: null,
                 riderPreference: "female",
             })
-        ).toBe("Gate 1 → Library · Female rider requested");
+        ).toBe("Gate 1 → Library · Female pilot requested");
     });
 });
 

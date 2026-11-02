@@ -32,7 +32,7 @@ import type { PushAudience, SweepAction, SweepSchedule } from "./ride-flow";
 const db = getFirestore();
 const messaging = getMessaging();
 
-const RIDER_URL = "/rides/rider";
+const PILOT_URL = "/rides/pilot";
 const USER_URL = "/rides";
 
 /** Data-only, so the service worker builds the notification with this tag and opens targetUrl. */
@@ -45,7 +45,7 @@ interface Push {
     targetUrl?: string;
 }
 
-async function pushUids(uids: string[], { ttl, targetUrl = RIDER_URL, ...push }: Push) {
+async function pushUids(uids: string[], { ttl, targetUrl = PILOT_URL, ...push }: Push) {
     const tokens = await getFcmTokensByUids(uids);
     await Promise.allSettled(
         tokens.map((token) =>
@@ -164,7 +164,7 @@ export const onRideRequestUpdated = onDocumentUpdated(
         // The rider accepted: the user checks who is coming and can cancel for a minute.
         if (before.status === "pending" && after.status === "accepted" && after.userId) {
             await pushUids([after.userId], {
-                title: "Rider found",
+                title: "Pilot found",
                 body: acceptedBody(after),
                 tag: "ride-accepted",
                 ttl: (USER_CONFIRM_MINUTES + 2) * 60,
@@ -271,7 +271,7 @@ async function notifySweep(action: SweepAction, data: DocumentData, schedule: Sw
     const when = ride.scheduledFor ? formatRideTime(ride.scheduledFor) : "";
     const rebroadcast = () =>
         pushRiders(pushAudience("rebroadcast", ride), {
-            ...requestPush(data, "Scheduled ride needs a rider"),
+            ...requestPush(data, "Scheduled ride needs a pilot"),
             ttl: schedule.reminderMinutes * 60,
         });
 
@@ -282,7 +282,7 @@ async function notifySweep(action: SweepAction, data: DocumentData, schedule: Sw
         case "remind":
             await pushUids([data.riderUid], {
                 title: "Confirm your scheduled ride",
-                body: `${ride.pickupName} → ${ride.dropName} at ${when}. Confirm within ${schedule.confirmMinutes} min or it goes to other riders.`,
+                body: `${ride.pickupName} → ${ride.dropName} at ${when}. Confirm within ${schedule.confirmMinutes} min or it goes to other pilots.`,
                 tag: "ride-confirm",
                 ttl: schedule.confirmMinutes * 60,
             });
@@ -291,7 +291,7 @@ async function notifySweep(action: SweepAction, data: DocumentData, schedule: Sw
             await Promise.all([
                 pushUids([data.riderUid], {
                     title: "Ride released",
-                    body: `You didn't confirm ${ride.pickupName} → ${ride.dropName} at ${when}, so it went to other riders.`,
+                    body: `You didn't confirm ${ride.pickupName} → ${ride.dropName} at ${when}, so it went to other pilots.`,
                     tag: "ride-released",
                     ttl: 60 * 60,
                 }),
@@ -458,7 +458,7 @@ export const cancelStaleRideNows = onSchedule(
                 const userId = doc.get("userId");
                 if (!userId) return;
                 await pushUids([userId], {
-                    title: "No rider found",
+                    title: "No pilot found",
                     body: `${rideRequestBody(rideOf(doc.data()))} · Nobody took it in ${AUTO_CANCEL_MINUTES} minutes. Try again or offer a higher fare.`,
                     tag: "ride-expired",
                     ttl: 10 * 60,

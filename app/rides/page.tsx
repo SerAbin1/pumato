@@ -139,7 +139,7 @@ function StatsBand({ stats }: { stats: RidesStats }) {
         {
             icon: <Bike size={16} />,
             value: stats.totalRiders,
-            label: "Riders",
+            label: "Pilots",
         },
         {
             icon: <Zap size={16} />,
@@ -293,18 +293,18 @@ function PickupPin({
     );
 }
 
-/** "Send to all riders" for a female-preference request; hides once sent. */
+/** "Send to all pilots" for a female-preference request; hides once sent. */
 function WidenButton({ requestId, onWidened }: { requestId: string; onWidened?: () => void }) {
     const [busy, setBusy] = useState(false);
     const widen = async () => {
         setBusy(true);
         try {
             await widenRideRequest(requestId);
-            toast.success("Sent to all riders");
+            toast.success("Sent to all pilots");
             onWidened?.();
         } catch (error) {
             console.error("Failed to widen ride request:", error);
-            toast.error("Couldn't send to all riders. Please try again.");
+            toast.error("Couldn't send to all pilots. Please try again.");
         } finally {
             setBusy(false);
         }
@@ -312,7 +312,7 @@ function WidenButton({ requestId, onWidened }: { requestId: string; onWidened?: 
     return (
         <button onClick={widen} disabled={busy} className={secondaryButton}>
             {busy ? <Loader2 size={18} className="animate-spin" /> : <Users size={18} />}
-            Send to all riders
+            Send to all pilots
         </button>
     );
 }
@@ -348,7 +348,7 @@ function FareOffers({
         <div className="space-y-1.5">
             <p className="flex items-center gap-1.5 text-xs font-bold text-gray-400">
                 <TrendingUp size={14} className="text-orange-400" /> Offer a higher fare to get a
-                rider faster
+                pilot faster
             </p>
             <div className="flex gap-2">
                 {FARE_OFFER_STEPS.map((step) => (
@@ -398,12 +398,12 @@ function BookedCard({
                 <br />
                 {booking.scheduledFor ? (
                     <>
-                        {formatRideTime(booking.scheduledFor)}. A rider can accept it any time
+                        {formatRideTime(booking.scheduledFor)}. A pilot can accept it any time
                         before; we&apos;ll ask them to confirm {schedule.reminderMinutes} min
                         before. Follow it under Your rides.
                     </>
                 ) : (
-                    <>A rider will call you on {booking.phone} shortly.</>
+                    <>A pilot will call you on {booking.phone} shortly.</>
                 )}
             </p>
             {!booking.scheduledFor && (
@@ -413,8 +413,8 @@ function BookedCard({
                 <div className="space-y-3 text-sm text-pink-200 bg-pink-500/10 border border-pink-500/30 rounded-2xl p-4">
                     <p>
                         {booking.scheduledFor
-                            ? "Only female riders were notified. Check back to see if one accepted; removing the preference makes it more likely a rider takes it."
-                            : "Only female riders were notified. It may be faster with all riders."}
+                            ? "Only female pilots were notified. Check back to see if one accepted; removing the preference makes it more likely a pilot takes it."
+                            : "Only female pilots were notified. It may be faster with all pilots."}
                     </p>
                     <WidenButton requestId={booking.id} onWidened={() => setWidened(true)} />
                 </div>
@@ -446,14 +446,14 @@ function RideRoute({
 }
 
 /** Stars for the rider of a completed ride; tapping one saves it, once. */
-function RateRider({ ride }: { ride: RideRequest }) {
+function RatePilot({ ride }: { ride: RideRequest }) {
     const [saving, setSaving] = useState<number | null>(null);
 
     const rate = async (stars: number) => {
         setSaving(stars);
         try {
             await rateRide(ride.id, stars);
-            toast.success("Thanks for rating your rider!");
+            toast.success("Thanks for rating your pilot!");
         } catch (error) {
             console.error("Failed to rate ride:", error);
             toast.error("Couldn't save your rating. Please try again.");
@@ -494,7 +494,7 @@ function RateRider({ ride }: { ride: RideRequest }) {
  * Who accepted, with the number masked and the rating snapshotted on accept. The
  * user has a minute to cancel before the ride confirms itself.
  */
-function RiderAssigned({
+function PilotAssigned({
     ride,
     now,
     onCancel,
@@ -603,7 +603,7 @@ function MyRideCard({
                 <p className={open ? "text-orange-300" : "text-gray-500"}>
                     {rideStatus(ride, now)}
                     {open && ride.riderPreference === "female" && ride.status === "pending" && (
-                        <> · female riders only</>
+                        <> · female pilots only</>
                     )}
                 </p>
             </div>
@@ -613,15 +613,15 @@ function MyRideCard({
             {open && ride.status === "pending" && ride.riderPreference === "female" && (
                 <>
                     <p className="text-xs text-gray-500">
-                        Removing the preference makes it more likely a rider takes it.
+                        Removing the preference makes it more likely a pilot takes it.
                     </p>
                     <WidenButton requestId={ride.id} />
                 </>
             )}
             {ride.status === "accepted" && ride.riderName && (
-                <RiderAssigned ride={ride} now={now} onCancel={onCancel} />
+                <PilotAssigned ride={ride} now={now} onCancel={onCancel} />
             )}
-            {ride.status === "completed" && ride.riderName && <RateRider ride={ride} />}
+            {ride.status === "completed" && ride.riderName && <RatePilot ride={ride} />}
             {cancellable && onCancel && !awaiting && (
                 <button onClick={() => onCancel(ride)} className={cancelButton}>
                     Cancel ride
@@ -675,8 +675,8 @@ function MyRides({ user, now }: { user: User; now: Date }) {
                 title="Cancel this ride?"
                 message={
                     cancelling?.status === "accepted"
-                        ? "Your rider will be told it's cancelled."
-                        : "No rider will be sent."
+                        ? "Your pilot will be told it's cancelled."
+                        : "No pilot will be sent."
                 }
                 confirmLabel="Cancel ride"
                 cancelLabel="Keep it"
@@ -727,7 +727,7 @@ function WaitlistCard({ campus, stats, user }: { campus: string; stats: RidesSta
             <h2 className="text-xl font-black">Rides are coming to {campus}</h2>
             <p className="text-sm text-gray-400">
                 We&apos;re not taking bookings here yet. Join the waitlist and we&apos;ll let you
-                know as soon as riders are ready.
+                know as soon as pilots are ready.
             </p>
             <p className="text-sm text-gray-300">
                 {count === 0
@@ -775,7 +775,7 @@ export default function RidesPage() {
     const [dateKey, setDateKey] = useState("");
     const [time, setTime] = useState("");
     const [preferFemale, setPreferFemale] = useState(false);
-    const [noFemaleRider, setNoFemaleRider] = useState(false);
+    const [noFemalePilot, setNoFemalePilot] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [booking, setBooking] = useState<Booking | null>(null);
 
@@ -912,7 +912,7 @@ export default function RidesPage() {
             ? availability?.femaleApproved
             : availability?.femaleOnline;
         if (preferFemale && !femaleAvailable) {
-            setNoFemaleRider(true);
+            setNoFemalePilot(true);
             return;
         }
         void book(preferFemale ? "female" : "any");
@@ -936,8 +936,8 @@ export default function RidesPage() {
             <div className="bg-white/5 border border-white/10 rounded-3xl p-6 space-y-4">
                 <h2 className="text-xl font-black">Sign in to book a ride</h2>
                 <p className="text-sm text-gray-400">
-                    Anyone can see our riders and rides above. Booking needs a Pumato account, so
-                    you can follow the ride, confirm your rider and cancel if plans change.
+                    Anyone can see our pilots and rides above. Booking needs a Pumato account, so
+                    you can follow the ride, confirm your pilot and cancel if plans change.
                 </p>
                 <AuthCard />
             </div>
@@ -1074,7 +1074,7 @@ export default function RidesPage() {
                         <p className="flex items-center justify-between bg-black/30 rounded-xl px-4 py-3 text-sm">
                             <span className="text-gray-400">Fare</span>
                             {fare === null ? (
-                                <span className="text-gray-400">Confirmed by rider</span>
+                                <span className="text-gray-400">Confirmed by pilot</span>
                             ) : (
                                 <span className="font-black text-white">{formatFare(fare)}</span>
                             )}
@@ -1090,10 +1090,10 @@ export default function RidesPage() {
                         <ShieldCheck size={20} className="text-orange-400 shrink-0" />
                         <span className="flex-1 min-w-0">
                             <span className="block text-sm font-bold text-white">
-                                Prefer a female rider
+                                Prefer a female pilot
                             </span>
                             <span className="block text-xs text-gray-500">
-                                Optional. Only female riders are notified.
+                                Optional. Only female pilots are notified.
                             </span>
                         </span>
                         <span
@@ -1166,14 +1166,14 @@ export default function RidesPage() {
                 steps={[
                     "Sign in, then pick where you are and where you're going.",
                     `Ride now, or schedule one up to ${schedule.maxDaysAhead} days ahead.`,
-                    "Riders are notified; the first to accept gets your ride. Confirm them within a minute, or it confirms itself.",
-                    "For a scheduled ride, your rider confirms shortly before. If they don't, we find you another.",
+                    "Pilots are notified; the first to accept gets your ride. Confirm them within a minute, or it confirms itself.",
+                    "For a scheduled ride, your pilot confirms shortly before. If they don't, we find you another.",
                 ]}
                 footer={
                     <p className="text-sm text-gray-500">
                         Got a bike?{" "}
                         <Link href="/rides/register" className="text-orange-400 font-bold">
-                            Become a rider →
+                            Become a pilot →
                         </Link>
                     </p>
                 }
@@ -1182,17 +1182,17 @@ export default function RidesPage() {
             {user && <MyRides user={user} now={now} />}
 
             <ConfirmModal
-                isOpen={noFemaleRider}
-                onClose={() => setNoFemaleRider(false)}
+                isOpen={noFemalePilot}
+                onClose={() => setNoFemalePilot(false)}
                 onConfirm={() => {
                     setPreferFemale(false);
                     void book("any");
                 }}
-                title="No female riders available"
+                title="No female pilots available"
                 message={
                     scheduling
-                        ? "There are no female riders to take scheduled rides right now. Remove the preference to send it to all riders, or try again later."
-                        : "No female riders are online right now. Remove the preference to send your request to all riders, or try again later."
+                        ? "There are no female pilots to take scheduled rides right now. Remove the preference to send it to all pilots, or try again later."
+                        : "No female pilots are online right now. Remove the preference to send your request to all pilots, or try again later."
                 }
                 confirmLabel="Remove female preference"
                 cancelLabel="Wait, try again later"

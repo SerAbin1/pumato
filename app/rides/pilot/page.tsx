@@ -74,10 +74,10 @@ import AuthCard from "../components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "../components/RidesShell";
 import { cardClass, primaryButton, secondaryButton } from "../styles";
 
-const NOT_A_RIDER: Record<string, { title: string; body: string; cta: string }> = {
+const NOT_A_PILOT: Record<string, { title: string; body: string; cta: string }> = {
     none: {
-        title: "You're not a rider yet",
-        body: "Apply to become a Pumato rider to start getting ride requests.",
+        title: "You're not a pilot yet",
+        body: "Apply to become a Pumato pilot to start getting ride requests.",
         cta: "Apply to ride",
     },
     pending: {
@@ -91,7 +91,7 @@ const NOT_A_RIDER: Record<string, { title: string; body: string; cta: string }> 
         cta: "Apply again",
     },
     revoked: {
-        title: "Rider access removed",
+        title: "Pilot access removed",
         body: "Please contact the Pumato team.",
         cta: "View my application",
     },
@@ -223,7 +223,7 @@ function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }
                     )}
                     {ride.riderPreference === "female" && (
                         <span className={`${badgeClass} bg-pink-500/15 text-pink-300`}>
-                            Female rider requested
+                            Female pilot requested
                         </span>
                     )}
                 </div>
@@ -294,7 +294,7 @@ function MyRides({
                                     {formatClock(
                                         new Date(asked.getTime() + schedule.confirmMinutes * 60_000)
                                     )}{" "}
-                                    or this ride goes to other riders.
+                                    or this ride goes to other pilots.
                                 </p>
                                 <button
                                     onClick={() =>
@@ -786,30 +786,30 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     );
 }
 
-export default function RiderDashboardPage() {
+export default function PilotDashboardPage() {
     const { user, loading } = useUserAuth();
     // undefined = still loading; null = hasn't applied
     const [rider, setRider] = useState<Rider | null | undefined>(undefined);
     // undefined = still checking
-    const [isRiderClaim, setIsRiderClaim] = useState<boolean | undefined>(undefined);
+    const [isPilotClaim, setIsPilotClaim] = useState<boolean | undefined>(undefined);
 
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setRider(undefined);
-        setIsRiderClaim(undefined);
+        setIsPilotClaim(undefined);
         if (!user) return;
         let stale = false;
         // Force-refresh so a freshly approved (or revoked) rider sees it.
         user.getIdTokenResult(true)
-            .then((token) => !stale && setIsRiderClaim(token.claims.rider === true))
+            .then((token) => !stale && setIsPilotClaim(token.claims.rider === true))
             .catch((error) => {
                 console.error("Failed to check rider access:", error);
-                toast.error("Couldn't load your rider profile. Please refresh.");
+                toast.error("Couldn't load your pilot profile. Please refresh.");
             });
         // Live, so a new rating or an online switch elsewhere shows without a reload.
         const unsubscribe = subscribeRider(user.uid, setRider, (error) => {
             console.error("Failed to load rider:", error);
-            toast.error("Couldn't load your rider profile. Please refresh.");
+            toast.error("Couldn't load your pilot profile. Please refresh.");
         });
         return () => {
             stale = true;
@@ -817,8 +817,8 @@ export default function RiderDashboardPage() {
         };
     }, [user]);
 
-    const isLoading = loading || (user && (rider === undefined || isRiderClaim === undefined));
-    const showDashboard = !isLoading && user && rider?.status === "approved" && isRiderClaim;
+    const isLoading = loading || (user && (rider === undefined || isPilotClaim === undefined));
+    const showDashboard = !isLoading && user && rider?.status === "approved" && isPilotClaim;
 
     let content;
     if (isLoading) {
@@ -836,7 +836,7 @@ export default function RiderDashboardPage() {
     } else if (showDashboard && rider) {
         content = <Dashboard user={user} rider={rider} />;
     } else {
-        const copy = NOT_A_RIDER[rider?.status ?? "none"] ?? NOT_A_RIDER.none;
+        const copy = NOT_A_PILOT[rider?.status ?? "none"] ?? NOT_A_PILOT.none;
         content = (
             <div className={`${mainColumn} ${cardClass} text-center`}>
                 <h2 className="text-xl font-black">{copy.title}</h2>
@@ -849,7 +849,7 @@ export default function RiderDashboardPage() {
     }
 
     return (
-        <RidesShell title="Rider dashboard" subtitle="Pumato Rides">
+        <RidesShell title="Pilot dashboard" subtitle="Pumato Rides">
             {content}
             {/* The dashboard fills both columns itself; other states explain riding. */}
             {!showDashboard && (
@@ -858,7 +858,7 @@ export default function RiderDashboardPage() {
                     steps={[
                         "Go online whenever you're free to give rides.",
                         "You'll be notified of every new ride request, and of rides booked ahead.",
-                        "The first rider to accept gets it, along with the user's number.",
+                        "The first pilot to accept gets it, along with the user's number.",
                         "For a scheduled ride, confirm when we ask, shortly before it starts.",
                         "Call the user, give the ride, then mark it complete.",
                     ]}

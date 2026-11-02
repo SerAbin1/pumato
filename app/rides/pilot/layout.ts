@@ -3,13 +3,13 @@ import type { ReactNode } from "react";
 import { CANONICAL_URLS } from "@/lib/seo";
 
 export const metadata: Metadata = {
-    title: "Rider Dashboard | Pumato Rides",
+    title: "Pilot Dashboard | Pumato Rides",
     description: "Go online and take ride requests on Pumato Rides.",
     alternates: {
-        canonical: CANONICAL_URLS.ridesRider,
+        canonical: CANONICAL_URLS.ridesPilot,
     },
 };
 
-export default function RiderDashboardLayout({ children }: { children: ReactNode }) {
+export default function PilotDashboardLayout({ children }: { children: ReactNode }) {
     return children;
 }

@@ -125,7 +125,7 @@ export function rideRequestBody(ride: {
         ride.passengers && ride.passengers > 1 ? `${ride.passengers} passengers` : null,
         ride.fare ? `₹${ride.fare}` : null,
         ride.scheduledFor ? formatRideTime(ride.scheduledFor) : null,
-        ride.riderPreference === "female" ? "Female rider requested" : null,
+        ride.riderPreference === "female" ? "Female pilot requested" : null,
     ]
         .filter(Boolean)
         .join(" · ");

@@ -14,7 +14,7 @@ import type { RideFares, RidePlace, RideRequestStatus, RideSchedule } from "@/li
 export const riderRef = (uid: string) => uid.slice(0, 6).toUpperCase();
 
 export const riderVerificationMessage = (rider: { name: string; uid: string }) =>
-    `Hi! I've applied to be a rider on Pumato Rides.\n\nName: ${rider.name}\nRef: ${riderRef(rider.uid)}\n\nSharing my documents for verification.`;
+    `Hi! I've applied to be a pilot on Pumato Rides.\n\nName: ${rider.name}\nRef: ${riderRef(rider.uid)}\n\nSharing my documents for verification.`;
 
 /** Strips everything but digits, so "+91 90480 86503" works as a wa.me number. */
 export const whatsappUrl = (number: string, text: string) =>
@@ -146,7 +146,7 @@ export const scheduledRideStatus = (ride: {
 }) => {
     switch (ride.status) {
         case "pending":
-            return ride.broadcastAt ? "Looking for a rider now" : "Waiting for a rider";
+            return ride.broadcastAt ? "Looking for a pilot now" : "Waiting for a pilot";
         case "accepted":
             return `${ride.riderConfirmedAt ? "Confirmed" : "Accepted"} by ${ride.riderName}`;
         case "completed":
@@ -154,7 +154,7 @@ export const scheduledRideStatus = (ride: {
         case "cancelled":
             return "Cancelled";
         case "expired":
-            return "No rider found";
+            return "No pilot found";
     }
 };
 
@@ -180,7 +180,7 @@ export const isUnclaimed = (ride: MyRide, now: Date) =>
 
 /** Where any of the user's rides stands, ride now or scheduled. */
 export const rideStatus = (ride: MyRide & Parameters<typeof scheduledRideStatus>[0], now: Date) =>
-    isUnclaimed(ride, now) ? "No rider found" : scheduledRideStatus(ride);
+    isUnclaimed(ride, now) ? "No pilot found" : scheduledRideStatus(ride);
 
 /** Still waiting for, or with, a rider. */
 export const isOpenRide = (ride: MyRide, now: Date) =>

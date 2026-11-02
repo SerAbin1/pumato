@@ -470,6 +470,8 @@ export default function Navbar() {
     const isGroceryPage = pathname?.startsWith("/grocery");
     const isLaundryPage = pathname?.startsWith("/laundry");
     const isAdminPage = pathname?.startsWith("/admin");
+    const normalizedPathname = pathname?.replace(/\/+$/, "") ?? "";
+    const isFoodPage = normalizedPathname === "/delivery" || normalizedPathname === "/restaurant";
 
     // Laundry's settings are just its slot list; the indicator is hidden there anyway.
     type ServiceSettings = (OrderSettings | GrocerySettings | { slots: string[] }) & {
@@ -610,7 +612,7 @@ export default function Navbar() {
                         )}
                     </div>
 
-                    {/* Right side: User Auth + Cart */}
+                    {/* Right side: User Auth (+ Cart on food pages) */}
                     <div className="flex items-center gap-3 md:gap-4">
                         {/* User Auth */}
                         {!authLoading &&
@@ -630,20 +632,22 @@ export default function Navbar() {
 
                         <WhatsNewBell />
 
-                        <button
-                            onClick={() => setIsCartOpen(true)}
-                            className="relative p-2 rounded-full hover:bg-white/10 transition-colors group"
-                        >
-                            <ShoppingBag
-                                size={24}
-                                className="text-gray-200 group-hover:text-white transition-colors"
-                            />
-                            {totalItems > 0 && (
-                                <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg border border-black transform scale-100 group-hover:scale-110 transition-transform">
-                                    {totalItems}
-                                </span>
-                            )}
-                        </button>
+                        {isFoodPage && (
+                            <button
+                                onClick={() => setIsCartOpen(true)}
+                                className="relative p-2 rounded-full hover:bg-white/10 transition-colors group"
+                            >
+                                <ShoppingBag
+                                    size={24}
+                                    className="text-gray-200 group-hover:text-white transition-colors"
+                                />
+                                {totalItems > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-gradient-to-r from-orange-500 to-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-lg border border-black transform scale-100 group-hover:scale-110 transition-transform">
+                                        {totalItems}
+                                    </span>
+                                )}
+                            </button>
+                        )}
                     </div>
                 </div>
             </motion.nav>

@@ -17,6 +17,15 @@ export const riderRef = (uid: string) => uid.slice(0, 6).toUpperCase();
 export const isPilotClaim = (claims: Record<string, unknown> | null | undefined) =>
     claims?.rider === true;
 
+/**
+ * True when the rider is an approved pilot: the `rider` claim Firebase grants
+ * them *and* an approved rider doc. The claim alone means nothing without approval.
+ */
+export const isApprovedPilot = (
+    rider: { status?: string } | null | undefined,
+    hasPilotClaim: boolean
+) => hasPilotClaim && rider?.status === "approved";
+
 export const riderVerificationMessage = (rider: { name: string; uid: string }) =>
     `Hi! I've applied to be a pilot on Pumato Rides.\n\nName: ${rider.name}\nRef: ${riderRef(rider.uid)}\n\nSharing my documents for verification.`;
 

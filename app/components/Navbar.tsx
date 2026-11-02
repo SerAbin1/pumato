@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { ShoppingBag, X, LogIn, LogOut, Package, Heart } from "lucide-react";
+import { ShoppingBag, X, LogIn, LogOut, Package, Heart, Bike } from "lucide-react";
 import { useCart } from "../context/CartContext";
 import { useUserAuth } from "../context/UserAuthContext";
 import { useRestaurants } from "../hooks/useCartData";
+import { useIsPilot } from "../hooks/useIsPilot";
 import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
 import { useState, useEffect, useRef, useMemo } from "react";
 import CartDrawer from "./CartDrawer";
@@ -354,6 +355,7 @@ const CommunityDropdown = ({ groups }: { groups: { name: string; link: string }[
 const UserMenu = ({ user, logout }: { user: User; logout: () => Promise<void> }) => {
     const [isOpen, setIsOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const isPilot = useIsPilot(user);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -409,6 +411,16 @@ const UserMenu = ({ user, logout }: { user: User; logout: () => Promise<void> })
                             </p>
                             <p className="text-xs text-gray-400 truncate">{user?.email}</p>
                         </div>
+                        {isPilot && (
+                            <Link
+                                href="/rides/pilot"
+                                onClick={() => setIsOpen(false)}
+                                className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 transition-colors text-sm font-medium"
+                            >
+                                <Bike size={16} />
+                                Pilot Dashboard
+                            </Link>
+                        )}
                         <Link
                             href="/orders"
                             onClick={() => setIsOpen(false)}

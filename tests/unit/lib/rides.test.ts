@@ -8,6 +8,7 @@ import {
     formatRideTime,
     isDueSoon,
     isPilotClaim,
+    isApprovedPilot,
     isSchedulable,
     isWaitlistedCampus,
     maskPhone,
@@ -53,6 +54,16 @@ describe("rider contact links", () => {
         expect(isPilotClaim({ rider: false })).toBe(false);
         expect(isPilotClaim({})).toBe(false);
         expect(isPilotClaim(undefined)).toBe(false);
+    });
+});
+
+describe("pilot approval", () => {
+    it("is an approved pilot only with the rider claim and an approved rider doc", () => {
+        expect(isApprovedPilot({ status: "approved" }, true)).toBe(true);
+        expect(isApprovedPilot({ status: "pending" }, true)).toBe(false);
+        expect(isApprovedPilot({ status: "approved" }, false)).toBe(false);
+        expect(isApprovedPilot(null, true)).toBe(false);
+        expect(isApprovedPilot(undefined, true)).toBe(false);
     });
 });
 

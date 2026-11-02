@@ -3,16 +3,10 @@ import { getAuth } from "firebase-admin/auth";
 import type { UserRecord } from "firebase-admin/auth";
 import { getFirestore, FieldValue } from "firebase-admin/firestore";
 import { grantRole, revokeRole } from "./claims";
+import { riderTransition } from "./rider-status";
 
 const auth = getAuth();
 const db = getFirestore();
-
-/** Which rider status each admin action moves from and to. */
-const RIDER_TRANSITIONS = {
-    APPROVE_RIDER: { from: "pending", to: "approved" },
-    REJECT_RIDER: { from: "pending", to: "rejected" },
-    REVOKE_RIDER: { from: "approved", to: "revoked" },
-} as const;
 
 interface ManageUsersRequest {
     action?: string;
@@ -90,11 +84,12 @@ export const manageUsers = onCall<ManageUsersRequest>(async (request) => {
         return { success: true, uid: userRecord.uid };
     }
 
-    if (action && action in RIDER_TRANSITIONS) {
+    const transition = action ? riderTransition(action) : null;
+    if (transition) {
         if (!uid) {
             throw new HttpsError("invalid-argument", "Missing rider uid.");
         }
-        const { from, to } = RIDER_TRANSITIONS[action as keyof typeof RIDER_TRANSITIONS];
+        const { from, to } = transition;
         const riderRef = db.collection("riders").doc(uid);
         const rider = await riderRef.get();
         if (rider.get("status") !== from) {

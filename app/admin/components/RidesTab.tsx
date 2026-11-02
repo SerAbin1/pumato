@@ -49,6 +49,7 @@ const RIDER_ACTIONS: Partial<
         { action: "REJECT_RIDER", label: "Reject", className: "bg-red-600" },
     ],
     approved: [{ action: "REVOKE_RIDER", label: "Revoke", className: "bg-red-600" }],
+    revoked: [{ action: "UNREVOKE_RIDER", label: "Un-revoke", className: "bg-green-600" }],
 };
 
 const REQUEST_STATUS_STYLES: Record<RideRequestStatus, string> = {
@@ -727,7 +728,8 @@ function PilotsSection() {
                                             disabled={busy === rider.uid}
                                             className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-white text-xs font-bold disabled:opacity-40 ${className}`}
                                         >
-                                            {label === "Approve" ? (
+                                            {action === "APPROVE_RIDER" ||
+                                            action === "UNREVOKE_RIDER" ? (
                                                 <Check size={14} />
                                             ) : (
                                                 <X size={14} />

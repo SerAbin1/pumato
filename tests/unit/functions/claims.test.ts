@@ -34,3 +34,11 @@ describe("revokeRole", () => {
         expect(revokeRole(existing, "partner")).toEqual({ rider: true });
     });
 });
+
+describe("un-revoke (revoke then re-grant)", () => {
+    it("restores a revoked rider's claim while keeping their other roles", () => {
+        const afterRevoke = revokeRole({ admin: true, rider: true }, "rider");
+        expect(afterRevoke).toEqual({ admin: true });
+        expect(grantRole(afterRevoke, { role: "rider" })).toEqual({ admin: true, rider: true });
+    });
+});

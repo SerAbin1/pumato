@@ -7,6 +7,7 @@ import {
     formatDateOption,
     formatRideTime,
     isDueSoon,
+    isPilotClaim,
     isSchedulable,
     isWaitlistedCampus,
     maskPhone,
@@ -45,6 +46,13 @@ describe("rider contact links", () => {
 
     it("gives a rider a short uppercase ref from their uid", () => {
         expect(riderRef("abc123xyz")).toBe("ABC123");
+    });
+
+    it("recognises an approved pilot by their rider claim", () => {
+        expect(isPilotClaim({ rider: true })).toBe(true);
+        expect(isPilotClaim({ rider: false })).toBe(false);
+        expect(isPilotClaim({})).toBe(false);
+        expect(isPilotClaim(undefined)).toBe(false);
     });
 });
 

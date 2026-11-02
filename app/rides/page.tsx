@@ -3,6 +3,7 @@
 import type { FormEvent, ReactNode } from "react";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import {
     Bike,
@@ -54,6 +55,7 @@ import {
     formatFare,
     formatRideTime,
     isOpenRide,
+    isPilotClaim,
     isWaitlistedCampus,
     passengersLabel,
     pickupAccuracyLabel,
@@ -758,6 +760,7 @@ function WaitlistCard({ campus, stats, user }: { campus: string; stats: RidesSta
 
 export default function RidesPage() {
     const { user } = useUserAuth();
+    const router = useRouter();
     const { userDetails, setUserDetails } = useCart();
     const now = useNow();
     const [stats, setStats] = useState<RidesStats>(EMPTY_RIDES_STATS);
@@ -778,6 +781,21 @@ export default function RidesPage() {
     const [noFemalePilot, setNoFemalePilot] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [booking, setBooking] = useState<Booking | null>(null);
+
+    // Pilots belong on their dashboard, not the booking form.
+    useEffect(() => {
+        if (!user) return;
+        let stale = false;
+        // Force-refresh so a freshly approved pilot is redirected too.
+        user.getIdTokenResult(true)
+            .then((token) => {
+                if (!stale && isPilotClaim(token.claims)) router.replace("/rides/pilot");
+            })
+            .catch((error) => console.error("Failed to check pilot access:", error));
+        return () => {
+            stale = true;
+        };
+    }, [user, router]);
 
     useEffect(() => {
         fetchRidesSettings()

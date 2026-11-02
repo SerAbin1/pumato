@@ -13,6 +13,10 @@ import type { RideFares, RidePlace, RideRequestStatus, RideSchedule } from "@/li
 /** Short code the rider quotes in chat so the admin can find their application. */
 export const riderRef = (uid: string) => uid.slice(0, 6).toUpperCase();
 
+/** Approved pilots carry the `rider` custom claim; it is removed when they're revoked. */
+export const isPilotClaim = (claims: Record<string, unknown> | null | undefined) =>
+    claims?.rider === true;
+
 export const riderVerificationMessage = (rider: { name: string; uid: string }) =>
     `Hi! I've applied to be a pilot on Pumato Rides.\n\nName: ${rider.name}\nRef: ${riderRef(rider.uid)}\n\nSharing my documents for verification.`;
 

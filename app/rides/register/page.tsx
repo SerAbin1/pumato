@@ -3,6 +3,7 @@
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { Bike, CheckCircle2, Clock, Loader2, Send, XCircle } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
@@ -11,7 +12,13 @@ import { DEFAULT_CAMPUS_CONFIG } from "@/lib/constants";
 import { fetchRider, fetchRidesSettings, submitRiderApplication } from "@/lib/repositories";
 import type { RiderApplication } from "@/lib/repositories";
 import { PHONE_PATTERN, RIDER_GENDERS } from "@/lib/schemas/rides";
-import { riderRef, riderVerificationMessage, telegramUrl, whatsappUrl } from "@/lib/rides";
+import {
+    isPilotClaim,
+    riderRef,
+    riderVerificationMessage,
+    telegramUrl,
+    whatsappUrl,
+} from "@/lib/rides";
 import type { User } from "firebase/auth";
 import type { Rider, RidesSettings } from "@/lib/types";
 import AuthCard from "../components/AuthCard";
@@ -191,11 +198,12 @@ const EMPTY_APPLICATION: RiderApplication = {
 
 export default function PilotRegisterPage() {
     const { user, loading } = useUserAuth();
+    const router = useRouter();
     const { userDetails } = useCart();
     // undefined = still loading; null = hasn't applied
     const [rider, setRider] = useState<Rider | null | undefined>(undefined);
     const [settings, setSettings] = useState<RidesSettings | null>(null);
-    const [isPilotClaim, setIsPilotClaim] = useState(false);
+    const [hasPilotClaim, setHasPilotClaim] = useState(false);
     const [editing, setEditing] = useState(false);
 
     const load = useCallback(async (signedIn: User, refreshToken: boolean) => {
@@ -208,7 +216,7 @@ export default function PilotRegisterPage() {
             ]);
             setRider(r);
             setSettings(s);
-            setIsPilotClaim(token.claims.rider === true);
+            setHasPilotClaim(isPilotClaim(token.claims));
         } catch (error) {
             console.error("Failed to load rider application:", error);
             toast.error("Couldn't load your application. Please refresh.");
@@ -218,10 +226,15 @@ export default function PilotRegisterPage() {
     useEffect(() => {
         // eslint-disable-next-line react-hooks/set-state-in-effect
         setRider(undefined);
-        setIsPilotClaim(false);
+        setHasPilotClaim(false);
         setEditing(false);
         if (user) void load(user, true);
     }, [user, load]);
+
+    // Approved pilots belong on their dashboard, not the application form.
+    useEffect(() => {
+        if (hasPilotClaim) router.replace("/rides/pilot");
+    }, [hasPilotClaim, router]);
 
     const handleSubmit = async (application: RiderApplication) => {
         if (!user) return;
@@ -259,7 +272,14 @@ export default function PilotRegisterPage() {
         );
     } else if (!user) {
         content = <AuthCard />;
-    } else if (isPilotClaim || rider?.status === "approved") {
+    } else if (hasPilotClaim) {
+        // Redirecting to the dashboard; keep the form from flashing up.
+        content = (
+            <div className="flex justify-center py-12">
+                <Loader2 size={28} className="animate-spin text-gray-500" />
+            </div>
+        );
+    } else if (rider?.status === "approved") {
         content = (
             <div className={`${cardClass} text-center`}>
                 <CheckCircle2 size={48} className="text-green-400 mx-auto" />

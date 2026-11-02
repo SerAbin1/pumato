@@ -179,7 +179,7 @@ export function newRating(
 }
 
 // A ride now nobody accepts within this long is dropped.
-export const AUTO_CANCEL_MINUTES = 10;
+export const AUTO_CANCEL_MINUTES = 7;
 
 /** Whether a ride now has waited past the auto-cancel window. */
 export function isStaleRideNow(createdAt: Date | undefined, now: Date): boolean {

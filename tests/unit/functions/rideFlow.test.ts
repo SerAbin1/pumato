@@ -244,12 +244,12 @@ describe("newRating", () => {
 describe("isStaleRideNow", () => {
     const bookedAt = at("16:00");
 
-    it("leaves a ride alone for its first 10 minutes", () => {
-        expect(isStaleRideNow(bookedAt, at("16:09"))).toBe(false);
+    it("leaves a ride alone for its first 7 minutes", () => {
+        expect(isStaleRideNow(bookedAt, at("16:06"))).toBe(false);
     });
 
-    it("cancels a ride now nobody took after 10 minutes", () => {
-        expect(isStaleRideNow(bookedAt, at("16:10"))).toBe(true);
+    it("cancels a ride now nobody took after 7 minutes", () => {
+        expect(isStaleRideNow(bookedAt, at("16:07"))).toBe(true);
     });
 
     it("never cancels a ride with no booking time", () => {

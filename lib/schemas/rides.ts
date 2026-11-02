@@ -163,7 +163,7 @@ export const RideRequestSchema = z
         // The user's 1-minute window to cancel or confirm, then the function stamps it.
         userConfirmedAt: z.any().optional(),
         completedAt: z.any().optional(),
-        // A ride now nobody took within 10 minutes is cancelled by the sweep.
+        // A ride now nobody took within 7 minutes is cancelled by the sweep.
         expiredAt: z.any().optional(),
         // Given once by the signed-in user who booked it; the function adds it to the
         // rider's total and stamps ratingCountedAt so a retry can't count it twice.

@@ -51,6 +51,7 @@ import {
     dropPlaces,
     DEFAULT_RIDE_SCHEDULE,
     FARE_OFFER_STEPS,
+    formatCountdown,
     formatDateOption,
     formatFare,
     formatRideTime,
@@ -66,6 +67,7 @@ import {
     scheduleProblem,
     scheduledTime,
     secondsToConfirm,
+    secondsToCancel,
     splitMyRides,
 } from "@/lib/rides";
 import { istInstant } from "@/lib/ist";
@@ -103,7 +105,7 @@ interface Booking {
     scheduledFor: Date | null;
 }
 
-/** The current time, ticking so the bookable slots stay current. */
+/** The current time, ticking fast enough for ride timers to count down. */
 function useNow(intervalMs = 60_000) {
     const [now, setNow] = useState(() => new Date());
     useEffect(() => {
@@ -595,6 +597,7 @@ function MyRideCard({
     // A scheduled ride can be cancelled until its time; a ride now while it's under way.
     const cancellable = open && (!at || at > now);
     const awaiting = ride.status === "accepted" && secondsToConfirm(ride, now) !== null;
+    const secondsLeft = secondsToCancel(ride, now);
     return (
         <div className={rideCard}>
             <div className={`space-y-0.5 text-sm ${open ? "" : "opacity-60"}`}>
@@ -609,6 +612,11 @@ function MyRideCard({
                     )}
                 </p>
             </div>
+            {open && ride.status === "pending" && !at && secondsLeft !== null && (
+                <p className="text-xs text-gray-400">
+                    Auto-cancel in {formatCountdown(secondsLeft)} if no pilot takes it.
+                </p>
+            )}
             {open && ride.status === "pending" && (
                 <FareOffers requestId={ride.id} fare={ride.fare} />
             )}
@@ -762,7 +770,7 @@ export default function RidesPage() {
     const { user } = useUserAuth();
     const router = useRouter();
     const { userDetails, setUserDetails } = useCart();
-    const now = useNow();
+    const now = useNow(1000);
     const [stats, setStats] = useState<RidesStats>(EMPTY_RIDES_STATS);
     const [allPlaces, setAllPlaces] = useState<RidePlace[] | null>(null);
     const [fares, setFares] = useState<RideFares>({});
@@ -1185,6 +1193,7 @@ export default function RidesPage() {
                     "Sign in, then pick where you are and where you're going.",
                     `Ride now, or schedule one up to ${schedule.maxDaysAhead} days ahead.`,
                     "Pilots are notified; the first to accept gets your ride. Confirm them within a minute, or it confirms itself.",
+                    "A ride now with no pilot within 7 minutes is cancelled automatically.",
                     "For a scheduled ride, your pilot confirms shortly before. If they don't, we find you another.",
                 ]}
                 footer={

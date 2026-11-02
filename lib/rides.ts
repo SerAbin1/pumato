@@ -267,6 +267,45 @@ export const secondsToConfirm = (
     return left > 0 ? left : null;
 };
 
+/** How long a ride-now request waits for a pilot before the sweep cancels it. */
+export const AUTO_CANCEL_MINUTES = 7;
+
+/** Seconds left before a deadline, or null once it has passed. */
+const secondsLeftOf = (deadline: Date, now: Date) => {
+    const left = Math.ceil((deadline.getTime() - now.getTime()) / 1000);
+    return left > 0 ? left : null;
+};
+
+/** When a pending ride-now nobody took is auto-cancelled, from the stored booking time. */
+export const autoCancelDeadline = (ride: { createdAt?: { toDate?: () => Date } | null }) =>
+    ride.createdAt?.toDate?.()
+        ? new Date(ride.createdAt.toDate().getTime() + AUTO_CANCEL_MINUTES * 60_000)
+        : null;
+
+/** Seconds left before the sweep cancels a pending ride-now, or null when there's no window. */
+export const secondsToCancel = (
+    ride: {
+        status?: string;
+        scheduledFor?: { toDate?: () => Date } | null;
+        createdAt?: { toDate?: () => Date } | null;
+    },
+    now: Date
+) => {
+    if (ride.status !== "pending" || ride.scheduledFor) return null;
+    const deadline = autoCancelDeadline(ride);
+    return deadline ? secondsLeftOf(deadline, now) : null;
+};
+
+/** Seconds left before a ride-now gets auto-cancelled, from when it was requested. */
+export const secondsToAutoCancel = (createdAt: Date | null | undefined, now: Date) =>
+    createdAt
+        ? secondsLeftOf(new Date(createdAt.getTime() + AUTO_CANCEL_MINUTES * 60_000), now)
+        : null;
+
+/** "7:00" for a seconds-left countdown; sub-hour windows read m:ss. */
+export const formatCountdown = (seconds: number) =>
+    `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
+
 /**
  * A rider's requests: live is scheduled rides that are due, then rides now;
  * later is scheduled rides they can claim ahead.

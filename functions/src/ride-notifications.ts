@@ -461,7 +461,7 @@ export const cancelStaleRideNows = onSchedule(
                     title: "No pilot found",
                     body: `${rideRequestBody(rideOf(doc.data()))} · Nobody took it in ${AUTO_CANCEL_MINUTES} minutes. Try again or offer a higher fare.`,
                     tag: "ride-expired",
-                    ttl: 10 * 60,
+                    ttl: AUTO_CANCEL_MINUTES * 60,
                     targetUrl: USER_URL,
                 });
             })

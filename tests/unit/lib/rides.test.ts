@@ -4,6 +4,7 @@ import {
     bookableDates,
     dropPlaces,
     DEFAULT_RIDE_SCHEDULE,
+    formatCountdown,
     formatDateOption,
     formatRideTime,
     isDueSoon,
@@ -19,6 +20,8 @@ import {
     rideStatus,
     routesForCampus,
     scheduledTime,
+    secondsToAutoCancel,
+    secondsToCancel,
     secondsToConfirm,
     splitRequests,
     riderRef,
@@ -429,5 +432,89 @@ describe("secondsToConfirm", () => {
         ).toBeNull();
         expect(secondsToConfirm({ acceptedAt }, istInstant("2026-10-24", "22:11"))).toBeNull();
         expect(secondsToConfirm({}, istInstant("2026-10-24", "22:11"))).toBeNull();
+    });
+});
+
+describe("secondsToCancel", () => {
+    const bookedAt = { toDate: () => istInstant("2026-10-24", "22:10") };
+
+    it("counts down the auto-cancel window after a ride is requested", () => {
+        expect(
+            secondsToCancel(
+                { status: "pending", createdAt: bookedAt },
+                istInstant("2026-10-24", "22:10")
+            )
+        ).toBe(420);
+        expect(
+            secondsToCancel(
+                { status: "pending", createdAt: bookedAt },
+                new Date(istInstant("2026-10-24", "22:16").getTime() + 30_000)
+            )
+        ).toBe(30);
+    });
+
+    it("stops once the ride is taken, cancelled or scheduled", () => {
+        expect(
+            secondsToCancel(
+                { status: "accepted", createdAt: bookedAt },
+                istInstant("2026-10-24", "22:10")
+            )
+        ).toBeNull();
+        expect(
+            secondsToCancel(
+                { status: "cancelled", createdAt: bookedAt },
+                istInstant("2026-10-24", "22:10")
+            )
+        ).toBeNull();
+        expect(
+            secondsToCancel(
+                {
+                    status: "pending",
+                    createdAt: bookedAt,
+                    scheduledFor: { toDate: () => istInstant("2026-10-25", "09:00") },
+                },
+                istInstant("2026-10-24", "22:10")
+            )
+        ).toBeNull();
+    });
+
+    it("returns null before a booking time is stamped or once the window has passed", () => {
+        expect(
+            secondsToCancel({ status: "pending" }, istInstant("2026-10-24", "22:10"))
+        ).toBeNull();
+        expect(
+            secondsToCancel(
+                { status: "pending", createdAt: bookedAt },
+                istInstant("2026-10-24", "22:18")
+            )
+        ).toBeNull();
+    });
+});
+
+describe("secondsToAutoCancel", () => {
+    it("counts down from when the ride was requested", () => {
+        const bookedAt = new Date(istInstant("2026-10-24", "22:10").getTime());
+        expect(secondsToAutoCancel(bookedAt, istInstant("2026-10-24", "22:10"))).toBe(420);
+        expect(
+            secondsToAutoCancel(bookedAt, new Date(bookedAt.getTime() + 6 * 60_000 + 30_000))
+        ).toBe(30);
+    });
+
+    it("returns null before the ride is requested or once the window has passed", () => {
+        expect(secondsToAutoCancel(null, istInstant("2026-10-24", "22:10"))).toBeNull();
+        expect(
+            secondsToAutoCancel(
+                new Date(istInstant("2026-10-24", "22:10").getTime()),
+                istInstant("2026-10-24", "22:18")
+            )
+        ).toBeNull();
+    });
+});
+
+describe("formatCountdown", () => {
+    it("reads m:ss for a window under an hour", () => {
+        expect(formatCountdown(420)).toBe("7:00");
+        expect(formatCountdown(30)).toBe("0:30");
+        expect(formatCountdown(5)).toBe("0:05");
     });
 });

@@ -617,7 +617,7 @@ function MyRideCard({
             <div className={`space-y-0.5 text-sm ${open ? "" : "opacity-60"}`}>
                 <RideRoute ride={ride} />
                 <p className="text-gray-400">
-                    {at ? formatRideTime(at) : `Booked ${formatRideTime(rideTime(ride, now))}`}
+                    {at ? formatRideTime(at) : `Requested ${formatRideTime(rideTime(ride, now))}`}
                 </p>
                 <p className={open ? "text-orange-300" : "text-gray-500"}>
                     {rideStatus(ride, now)}

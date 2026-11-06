@@ -23,6 +23,7 @@ export const completedRidesKey = (uid: string) => `pumato_rider_rides_${uid}`;
 export const toCompletedRide = (ride: {
     id: string;
     name: string;
+    phone?: string;
     pickupName: string;
     dropName: string;
     fare: number | null;
@@ -36,6 +37,7 @@ export const toCompletedRide = (ride: {
     fare: ride.fare,
     passengers: ride.passengers ?? 1,
     guestName: ride.name,
+    phone: ride.phone,
     completedAt: ride.completedAt.toDate().getTime(),
 });
 
@@ -67,15 +69,6 @@ export const addSyncedRides = (
         cache.syncedTo
     ),
     rides: merge(cache.rides, rides),
-});
-
-/**
- * A ride the rider just completed here, timed by this device. The sync point
- * stays, so a clock running ahead can't skip a ride; the next sync refetches it.
- */
-export const addLocalRide = (cache: CompletedRidesCache, ride: CompletedRide) => ({
-    syncedTo: cache.syncedTo,
-    rides: merge(cache.rides, [ride]),
 });
 
 /** Monday 00:00 IST to the next Monday. */

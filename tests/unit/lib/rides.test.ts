@@ -16,6 +16,8 @@ import {
     occupiesRider,
     pickupAccuracyLabel,
     pickupMapsUrl,
+    rideFeedbackUrl,
+    userCanCancel,
     placesForCampus,
     rideStatus,
     routesForCampus,
@@ -336,7 +338,7 @@ describe("a user's rides", () => {
             [waiting, riding, tomorrow, done, unclaimed, lastWeek],
             now
         );
-        expect(current.map((r) => r.id)).toEqual(["riding", "waiting", "tomorrow"]);
+        expect(current.map((r) => r.id)).toEqual(["tomorrow", "waiting", "riding"]);
         expect(past.map((r) => r.id)).toEqual(["done", "unclaimed", "lastWeek"]);
     });
 
@@ -488,6 +490,118 @@ describe("secondsToCancel", () => {
                 istInstant("2026-10-24", "22:18")
             )
         ).toBeNull();
+    });
+});
+
+describe("userCanCancel", () => {
+    const bookedAt = { toDate: () => istInstant("2026-10-24", "22:10") };
+    const acceptedAt = { toDate: () => istInstant("2026-10-24", "22:12") };
+
+    it("allows cancelling freely while the ride waits for a pilot", () => {
+        expect(
+            userCanCancel(
+                { status: "pending", createdAt: bookedAt },
+                istInstant("2026-10-24", "22:12")
+            )
+        ).toBe(true);
+        expect(
+            userCanCancel(
+                {
+                    status: "pending",
+                    createdAt: bookedAt,
+                    scheduledFor: { toDate: () => istInstant("2026-10-25", "09:00") },
+                },
+                istInstant("2026-10-24", "22:10")
+            )
+        ).toBe(true);
+    });
+
+    it("allows cancelling an accepted ride only inside the confirm window", () => {
+        expect(
+            userCanCancel(
+                { status: "accepted", acceptedAt, createdAt: bookedAt },
+                new Date(acceptedAt.toDate().getTime() + 10_000)
+            )
+        ).toBe(true);
+        expect(
+            userCanCancel(
+                { status: "accepted", acceptedAt, createdAt: bookedAt },
+                new Date(acceptedAt.toDate().getTime() + 61_000)
+            )
+        ).toBe(false);
+    });
+
+    it("never cancels a ride once it's confirmed", () => {
+        expect(
+            userCanCancel(
+                {
+                    status: "accepted",
+                    acceptedAt,
+                    createdAt: bookedAt,
+                    userConfirmedAt: acceptedAt,
+                },
+                new Date(acceptedAt.toDate().getTime() + 10_000)
+            )
+        ).toBe(false);
+    });
+
+    it("never cancels a ride that's finished", () => {
+        for (const status of ["completed", "cancelled", "expired"] as const) {
+            expect(
+                userCanCancel({ status, createdAt: bookedAt }, istInstant("2026-10-24", "22:14"))
+            ).toBe(false);
+        }
+    });
+
+    it("leaves a pending ride now nobody took (it shows as No pilot found)", () => {
+        expect(
+            userCanCancel(
+                { status: "pending", createdAt: bookedAt },
+                istInstant("2026-10-25", "22:14")
+            )
+        ).toBe(false);
+    });
+
+    it("keeps a scheduled ride's cancellation open until its time", () => {
+        expect(
+            userCanCancel(
+                {
+                    status: "pending",
+                    createdAt: bookedAt,
+                    scheduledFor: { toDate: () => istInstant("2026-10-25", "09:00") },
+                },
+                istInstant("2026-10-25", "09:00")
+            )
+        ).toBe(false);
+    });
+});
+
+describe("rideFeedbackUrl", () => {
+    const ride = { id: "abc123", pickupName: "Gate 1", dropName: "Library", fare: 20 };
+
+    it("prefills a report mail with the ride details", () => {
+        const url = new URL(rideFeedbackUrl("report", ride));
+        expect(url.protocol).toBe("mailto:");
+        expect(url.pathname).toBe("pumato.feedbacks@gmail.com");
+        expect(url.searchParams.get("subject")).toBe("Ride report");
+        expect(url.searchParams.get("body")).toContain("abc123");
+        expect(url.searchParams.get("body")).toContain("Gate 1 → Library");
+        expect(url.searchParams.get("body")).toContain("₹20");
+    });
+
+    it("marks feedback mails apart from reports", () => {
+        const url = new URL(rideFeedbackUrl("feedback", ride));
+        expect(url.searchParams.get("subject")).toBe("Pumato feedback");
+    });
+
+    it("leaves a route without a set fare out of the body", () => {
+        const url = new URL(rideFeedbackUrl("report", { ...ride, fare: null }));
+        expect(url.searchParams.get("body")).not.toContain("Fare");
+    });
+
+    it("escapes a route whose name needs encoding", () => {
+        const url = new URL(rideFeedbackUrl("report", { ...ride, dropName: "Library & Café" }));
+        expect(url.searchParams.get("body")).toContain("Library & Café");
     });
 });
 

@@ -14,6 +14,7 @@ import {
     AUTO_CANCEL_MINUTES,
     availabilityByCampus,
     completionChanged,
+    confirmationCompletes,
     DEFAULT_SCHEDULE,
     fareIncrease,
     formatRideTime,
@@ -151,6 +152,18 @@ export const onRideRequestUpdated = onDocumentUpdated(
 
         const rated = newRating(before, after);
         if (rated && event.data) await countRating(event.data.after.ref, rated);
+
+        // A confirmed ride is a completed ride: the user's window resolved (their
+        // tap or the sweep's auto-confirm) or a scheduled rider confirmed. Only
+        // this function writes `completed`; the refire lands on a completed ride
+        // and does nothing.
+        if (confirmationCompletes(before, after) && event.data) {
+            await event.data.after.ref.update({
+                status: "completed",
+                completedAt: FieldValue.serverTimestamp(),
+            });
+            return;
+        }
 
         // A higher offer is a fresh reason for riders to take it.
         const raised = fareIncrease(before, after);

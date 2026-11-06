@@ -199,11 +199,11 @@ export const rideStatus = (ride: MyRide & Parameters<typeof scheduledRideStatus>
 export const isOpenRide = (ride: MyRide, now: Date) =>
     (ride.status === "pending" || ride.status === "accepted") && !isUnclaimed(ride, now);
 
-/** The user's rides still under way, soonest first, and the rest, latest first. */
+/** The user's rides still under way, latest first, and the rest, latest first. */
 export const splitMyRides = <T extends MyRide>(rides: T[], now: Date) => {
     const byTime = (a: T, b: T) => rideTime(a, now).getTime() - rideTime(b, now).getTime();
     return {
-        current: rides.filter((r) => isOpenRide(r, now)).sort(byTime),
+        current: rides.filter((r) => isOpenRide(r, now)).sort((a, b) => byTime(b, a)),
         past: rides.filter((r) => !isOpenRide(r, now)).sort((a, b) => byTime(b, a)),
     };
 };
@@ -265,6 +265,50 @@ export const secondsToConfirm = (
     if (!deadline) return null;
     const left = Math.ceil((deadline.getTime() - now.getTime()) / 1000);
     return left > 0 ? left : null;
+};
+
+/**
+ * Whether the user may still cancel their ride. Freely while it waits for a
+ * pilot (until a scheduled ride's time), only inside the minute-long confirm
+ * window once a rider has accepted, and never once the ride is confirmed —
+ * confirmed rides are completed rides, and the rules refuse those too.
+ */
+export const userCanCancel = (
+    ride: {
+        status: RideRequestStatus;
+        createdAt?: Stamp | null;
+        scheduledFor?: Stamp;
+        acceptedAt?: { toDate?: () => Date } | null;
+        userConfirmedAt?: unknown;
+    },
+    now: Date
+): boolean => {
+    if (ride.status === "accepted") return secondsToConfirm(ride, now) !== null;
+    if (ride.status !== "pending") return false;
+    // A ride now nobody took shows as "No pilot found" rather than open.
+    if (isUnclaimed(ride, now)) return false;
+    const at = scheduledTime(ride);
+    return !at || at > now;
+};
+
+/** Support mailbox both the ride's Report and Feedback buttons point at. */
+export const FEEDBACK_EMAIL = "pumato.feedbacks@gmail.com";
+
+/** A mailto: link prefilled with the ride, so the admin can trace the message. */
+export const rideFeedbackUrl = (
+    kind: "report" | "feedback",
+    ride: { id: string; pickupName: string; dropName: string; fare: number | null | undefined },
+    sentAt = new Date()
+): string => {
+    const subject = kind === "report" ? "Ride report" : "Pumato feedback";
+    const body = [
+        `Ride id: ${ride.id}`,
+        `Route: ${ride.pickupName} → ${ride.dropName}`,
+        ...(ride.fare ? [`Fare: ₹${ride.fare}`] : []),
+        `Date: ${formatRideTime(sentAt)}`,
+        "",
+    ].join("\n");
+    return `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 };
 
 /** How long a ride-now request waits for a pilot before the sweep cancels it. */

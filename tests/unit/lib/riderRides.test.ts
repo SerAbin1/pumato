@@ -1,6 +1,5 @@
 import { describe, it, expect } from "vite-plus/test";
 import {
-    addLocalRide,
     addSyncedRides,
     EMPTY_COMPLETED_RIDES,
     formatWeek,
@@ -83,16 +82,8 @@ describe("merging completed rides", () => {
         expect(cache.syncedTo).toBe(7);
     });
 
-    it("adds a ride the rider just completed without moving the sync point", () => {
-        // The device clock may run ahead; the next sync fetches it with the server's time.
-        const synced = addSyncedRides(EMPTY_COMPLETED_RIDES, [ride("a", earlier)]);
-        const cache = addLocalRide(synced, ride("b", later));
-        expect(cache.syncedTo).toBe(earlier.getTime());
-        expect(cache.rides.map((r) => r.id)).toEqual(["b", "a"]);
-    });
-
-    it("replaces the local copy once the server's arrives", () => {
-        const local = addLocalRide(EMPTY_COMPLETED_RIDES, ride("a", later));
+    it("replaces the local copy of a ride once the server's arrives", () => {
+        const local = { syncedTo: null, rides: [ride("a", later)] };
         const server = istInstant("2026-10-24", "19:59");
         const cache = addSyncedRides(local, [ride("a", server)]);
         expect(cache.rides).toEqual([ride("a", server)]);

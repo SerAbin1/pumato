@@ -284,13 +284,19 @@ service cloud.firestore {
         && request.resource.data.fare is int
         && request.resource.data.fare - resource.data.fare in [5, 10, 15];
 
-      // The user cancels their ride before it's done.
+      // The user cancels their ride — freely while it waits for a pilot, and
+      // once a rider has accepted only inside the minute-long confirm window,
+      // before the ride confirms itself. userCanCancel in lib/rides.ts mirrors this.
       allow update: if request.auth != null
         && resource.data.userId == request.auth.uid
-        && resource.data.status in ['pending', 'accepted']
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'cancelledAt'])
         && request.resource.data.status == 'cancelled'
-        && request.resource.data.cancelledAt == request.time;
+        && request.resource.data.cancelledAt == request.time
+        && ((resource.data.status == 'pending')
+            || (resource.data.status == 'accepted'
+                && !('userConfirmedAt' in resource.data)
+                && 'acceptedAt' in resource.data
+                && resource.data.acceptedAt > request.time - duration.value(60, 's')));
 
       // The user confirms the rider within their minute; the function does this
       // for them if they close the app.
@@ -341,18 +347,6 @@ service cloud.firestore {
         && 'confirmRequestedAt' in resource.data
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['riderConfirmedAt'])
         && request.resource.data.riderConfirmedAt == request.time;
-
-      // Complete, or release back to pending: only the rider who accepted it.
-      allow update: if isRider()
-        && resource.data.status == 'accepted'
-        && resource.data.riderUid == request.auth.uid
-        && ((request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'completedAt'])
-              && request.resource.data.status == 'completed'
-              && request.resource.data.completedAt == request.time)
-          || (request.resource.data.diff(resource.data).affectedKeys()
-                .hasOnly(['status', 'riderUid', 'riderName', 'riderPhoneMasked', 'riderRating', 'riderRatingCount', 'acceptedAt', 'userConfirmedAt', 'confirmRequestedAt', 'riderConfirmedAt'])
-              && request.resource.data.status == 'pending'
-              && !request.resource.data.keys().hasAny(['riderUid', 'riderName', 'riderPhoneMasked', 'riderRating', 'riderRatingCount', 'acceptedAt', 'userConfirmedAt', 'confirmRequestedAt', 'riderConfirmedAt'])));
 
       allow read, update, delete: if isAdmin();
     }

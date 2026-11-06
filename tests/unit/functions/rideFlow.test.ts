@@ -3,6 +3,7 @@ import {
     affectsAvailability,
     availabilityByCampus,
     completionChanged,
+    confirmationCompletes,
     fareIncrease,
     formatRideTime,
     inAudience,
@@ -310,6 +311,30 @@ describe("maskPhone", () => {
 
     it("stars a number too short to mask", () => {
         expect(maskPhone("1234")).toBe("****");
+    });
+});
+
+describe("confirmationCompletes", () => {
+    const accepted = { status: "accepted", riderUid: "rider1" };
+
+    it("completes a ride the user confirmed", () => {
+        expect(confirmationCompletes(accepted, { ...accepted, userConfirmedAt: 1 })).toBe(true);
+    });
+
+    it("completes a scheduled ride its rider confirmed", () => {
+        expect(confirmationCompletes(accepted, { ...accepted, riderConfirmedAt: 1 })).toBe(true);
+    });
+
+    it("ignores a confirmation already present before the write", () => {
+        const confirmed = { ...accepted, userConfirmedAt: 1 };
+        expect(confirmationCompletes(confirmed, confirmed)).toBe(false);
+        expect(confirmationCompletes(confirmed, { ...confirmed, riderConfirmedAt: 2 })).toBe(true);
+    });
+
+    it("ignores rides that aren't accepted", () => {
+        expect(confirmationCompletes({ status: "pending" }, { status: "pending" })).toBe(false);
+        expect(confirmationCompletes(accepted, accepted)).toBe(false);
+        expect(confirmationCompletes(undefined, accepted)).toBe(false);
     });
 });
 

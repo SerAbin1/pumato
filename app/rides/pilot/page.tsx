@@ -15,7 +15,6 @@ import {
     Phone,
     Power,
     Star,
-    Undo2,
     Users,
 } from "lucide-react";
 import { useUserAuth } from "@/app/context/UserAuthContext";
@@ -37,7 +36,6 @@ import {
     AUTO_CANCEL_MINUTES,
 } from "@/lib/rides";
 import {
-    addLocalRide,
     addSyncedRides,
     completedRidesKey,
     EMPTY_COMPLETED_RIDES,
@@ -48,14 +46,13 @@ import {
 } from "@/lib/riderRides";
 import {
     acceptRide,
-    completeRide,
     confirmRide,
     fetchRiderCompletedRides,
     fetchRidesSettings,
-    releaseRide,
     RIDE_TAKEN,
     setRiderOnline,
     subscribeRider,
+    subscribeRiderCompletedRides,
     subscribePendingRides,
     subscribeRiderRides,
     subscribeUpcomingRides,
@@ -107,8 +104,6 @@ const formatRequested = (r: RideRequest) =>
 const formatClock = (at: Date) => at.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
 
 const rowClass = "bg-black/30 border border-white/5 rounded-xl p-4 space-y-3";
-const smallButton =
-    "flex-1 flex items-center justify-center gap-1 px-3 py-2 rounded-xl text-sm font-bold disabled:opacity-40 transition-all";
 const badgeClass = "inline-flex items-center gap-1 px-2 py-0.5 rounded-lg text-xs font-bold";
 
 type RidesSubscription = (
@@ -142,8 +137,12 @@ function useNow(intervalMs = 30_000) {
 
 /**
  * The rider's completed rides: the browser's copy at once, then only the rides
- * completed since it was saved. Null until the copy is read.
+ * completed since it was saved. The backend completes a ride when it's
+ * confirmed, so the live listener below is what keeps this current while the
+ * dashboard is open.
  */
+const FINISHED_RIDES_WINDOW_MS = 7 * 60 * 60 * 1000;
+
 function useCompletedRides(uid: string) {
     const [cache, setCache] = useState<CompletedRidesCache | null>(null);
 
@@ -175,9 +174,9 @@ function useCompletedRides(uid: string) {
             .then((rides) => {
                 if (stale) return;
                 // A completed ride always carries completedAt.
-                const fetched = rides.map((r) =>
-                    toCompletedRide({ ...r, completedAt: r.completedAt })
-                );
+                const fetched = rides
+                    .filter((r) => r.completedAt)
+                    .map((r) => toCompletedRide({ ...r, completedAt: r.completedAt }));
                 update((c) => addSyncedRides(c, fetched));
             })
             .catch((error) => console.error("Failed to load completed rides:", error));
@@ -186,19 +185,40 @@ function useCompletedRides(uid: string) {
         };
     }, [uid, update]);
 
-    /** Counts a ride the rider just completed, without fetching it. */
-    const addCompleted = useCallback(
-        (ride: RideRequest) =>
-            update((c) =>
-                addLocalRide(
-                    c,
-                    toCompletedRide({ ...ride, completedAt: { toDate: () => new Date() } })
-                )
+    // Finished rides arrive the moment their confirmation is stamped; keeping
+    // only the last few means the dashboard pays for its updates, not its history.
+    useEffect(
+        () =>
+            subscribeRiderCompletedRides(
+                uid,
+                10,
+                (rides) => {
+                    update((c) =>
+                        addSyncedRides(
+                            c,
+                            rides
+                                .filter((r) => r.completedAt)
+                                .map((r) => toCompletedRide({ ...r, completedAt: r.completedAt }))
+                        )
+                    );
+                },
+                (error) => console.error("Failed to watch completed rides:", error)
             ),
-        [update]
+        [uid, update]
     );
 
-    return { rides: cache?.rides ?? null, addCompleted };
+    /** Rides completed in the last few hours, for the faded rows on the ride list. */
+    const recent = useCallback(
+        (now: Date) =>
+            (cache?.rides ?? []).filter(
+                (r) =>
+                    r.completedAt >= now.getTime() - FINISHED_RIDES_WINDOW_MS &&
+                    r.completedAt <= now.getTime() + 60_000
+            ),
+        [cache]
+    );
+
+    return { rides: cache?.rides ?? null, recent };
 }
 
 /** Route, fare, and for a scheduled or female-preference ride, a badge saying so. */
@@ -237,30 +257,55 @@ function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }
     );
 }
 
+/** One of the rider's finished rides: the ride list's settled rows, kept from the browser's copy. */
+function FinishedRow({ ride }: { ride: CompletedRide }) {
+    return (
+        <div className="bg-black/30 border border-white/5 rounded-xl p-4 opacity-60">
+            <div className="flex items-center justify-between gap-2">
+                <p className="font-bold text-white">
+                    {ride.pickupName} → {ride.dropName}
+                    {ride.fare !== null && (
+                        <span className="text-orange-400"> · {formatFare(ride.fare)}</span>
+                    )}
+                </p>
+                <span className={`${badgeClass} bg-green-500/15 text-green-300`}>Completed</span>
+            </div>
+            <div className="space-y-1">
+                <p className="text-sm text-gray-400">
+                    {ride.guestName} · {formatRideTime(new Date(ride.completedAt))}
+                </p>
+                {ride.phone && (
+                    <a
+                        href={`tel:${ride.phone}`}
+                        className="text-xs text-orange-300 hover:text-orange-400"
+                    >
+                        <Phone size={14} /> Call {ride.guestName} · {ride.phone}
+                    </a>
+                )}
+            </div>
+        </div>
+    );
+}
+
 /** Rides this rider accepted and hasn't finished: shows the user's contact. */
 function MyRides({
     rides,
+    finished,
     schedule,
     now,
-    onCompleted,
 }: {
     rides: RideRequest[] | null;
+    // Completed rides of the last few hours, from the browser's cache.
+    finished: CompletedRide[];
     schedule: RideSchedule;
     now: Date;
-    onCompleted: (ride: RideRequest) => void;
 }) {
     const [busy, setBusy] = useState<string | null>(null);
 
-    const act = async (
-        id: string,
-        action: (id: string) => Promise<void>,
-        failure: string,
-        onDone?: () => void
-    ) => {
+    const act = async (id: string, action: (id: string) => Promise<void>, failure: string) => {
         setBusy(id);
         try {
             await action(id);
-            onDone?.();
         } catch (error) {
             console.error(failure, error);
             toast.error(`${failure} Please try again.`);
@@ -269,18 +314,20 @@ function MyRides({
         }
     };
 
-    if (!rides?.length) return null;
+    if (rides === null) return null;
+    if (!rides.length && !finished.length) return null;
     // Rides now first, then scheduled rides soonest first.
     const sorted = [...rides].sort(
         (a, b) => (scheduledTime(a)?.getTime() ?? 0) - (scheduledTime(b)?.getTime() ?? 0)
     );
+    const settled = [...finished].sort((a, b) => b.completedAt - a.completedAt);
     return (
         <div className={cardClass}>
             <h2 className="font-black">Your rides</h2>
             {sorted.map((r) => {
                 const asked = r.confirmRequestedAt?.toDate?.() as Date | undefined;
                 const needsConfirm = !!asked && !r.riderConfirmedAt;
-                // Customer's 1-minute cancel/confirm window after a ride-now is accepted.
+                // Customer's 1-minute confirm window after a ride-now is accepted.
                 // Null once confirmed or expired, so the else branch shows confirmed + phone.
                 const secondsLeft = secondsToConfirm(r, now);
                 const awaitingCustomerConfirm = r.status === "accepted" && secondsLeft !== null;
@@ -328,7 +375,7 @@ function MyRides({
                                         />
                                     </div>
                                     <p className="text-xs text-gray-400 text-center">
-                                        Customer can cancel in {secondsLeft}s
+                                        Ride will be confirmed in {secondsLeft}s
                                     </p>
                                 </div>
                             ) : (
@@ -357,29 +404,12 @@ function MyRides({
                                 {pickupAccuracyLabel(r.pickupLocation.accuracy)})
                             </a>
                         )}
-                        <div className="flex gap-2">
-                            <button
-                                onClick={() =>
-                                    act(r.id, completeRide, "Couldn't complete the ride.", () =>
-                                        onCompleted(r)
-                                    )
-                                }
-                                disabled={busy === r.id}
-                                className={`${smallButton} bg-green-600 hover:bg-green-500 text-white`}
-                            >
-                                <Check size={16} /> Complete
-                            </button>
-                            <button
-                                onClick={() => act(r.id, releaseRide, "Couldn't release the ride.")}
-                                disabled={busy === r.id}
-                                className={`${smallButton} bg-white/10 hover:bg-white/15 text-gray-300`}
-                            >
-                                <Undo2 size={16} /> Release
-                            </button>
-                        </div>
                     </div>
                 );
             })}
+            {settled.map((r) => (
+                <FinishedRow key={r.id} ride={r} />
+            ))}
         </div>
     );
 }
@@ -512,7 +542,7 @@ function RideRequests({
             <>
                 {hasActiveRide && (
                     <p className="text-center text-sm text-orange-300">
-                        Complete or release your current ride to accept another.
+                        You&apos;re already on a ride. It frees up once it&apos;s confirmed.
                     </p>
                 )}
                 {live.map((r) => row(r, hasActiveRide !== false))}
@@ -810,9 +840,9 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
 
                 <MyRides
                     rides={myRides}
+                    finished={completed.recent(now)}
                     schedule={schedule}
                     now={now}
-                    onCompleted={completed.addCompleted}
                 />
                 <div className="max-lg:order-last">
                     <Earnings rides={completed.rides} rider={rider} now={now} />
@@ -907,7 +937,7 @@ export default function PilotDashboardPage() {
                         "You'll be notified of every new ride request, and of rides booked ahead.",
                         "The first pilot to accept gets it, along with the user's number.",
                         "For a scheduled ride, confirm when we ask, shortly before it starts.",
-                        "Call the user, give the ride, then mark it complete.",
+                        "Call the user and give the ride; it completes itself once they confirm.",
                     ]}
                 />
             )}

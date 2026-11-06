@@ -42,13 +42,13 @@ const {
     widenRideRequest,
     cancelRideRequest,
     rateRide,
-    releaseRide,
     setRiderGender,
     subscribeRider,
     setRiderCampus,
     subscribePendingRides,
     subscribeUpcomingRides,
     subscribeRiderRides,
+    subscribeRiderCompletedRides,
     subscribeMyRides,
     fetchRiderCompletedRides,
     subscribeRideAvailability,
@@ -142,25 +142,6 @@ describe("ride updates", () => {
         expect(mocks.updateDoc).toHaveBeenCalledWith(
             { path: "ride_requests/r1" },
             { riderConfirmedAt: "SERVER_TS" }
-        );
-    });
-
-    it("releases a ride with its confirmation, so the next rider is asked afresh", async () => {
-        await releaseRide("r1");
-        expect(mocks.updateDoc).toHaveBeenCalledWith(
-            { path: "ride_requests/r1" },
-            {
-                status: "pending",
-                riderUid: "DELETE",
-                riderName: "DELETE",
-                riderPhoneMasked: "DELETE",
-                riderRating: "DELETE",
-                riderRatingCount: "DELETE",
-                acceptedAt: "DELETE",
-                userConfirmedAt: "DELETE",
-                confirmRequestedAt: "DELETE",
-                riderConfirmedAt: "DELETE",
-            }
         );
     });
 
@@ -308,6 +289,24 @@ describe("subscribeAdminRideRequests", () => {
         expect(onChange).toHaveBeenCalledWith([
             { id: "r1", pickupName: "Gate 1", status: "pending" },
         ]);
+    });
+});
+
+describe("subscribeRiderCompletedRides", () => {
+    const completedAt = { toDate: () => new Date(1000) };
+
+    it("watches the rider's latest finished rides, newest first", () => {
+        const onChange = vi.fn();
+        subscribeRiderCompletedRides("rider1", 10, onChange, vi.fn());
+        expect(constraints(lastQuery())).toEqual([
+            { where: ["riderUid", "==", "rider1"] },
+            { where: ["status", "==", "completed"] },
+            { orderBy: ["completedAt", "desc"] },
+            { limit: 10 },
+        ]);
+
+        emit([{ id: "r1", data: { name: "Asha", completedAt } }]);
+        expect(onChange).toHaveBeenCalledWith([{ id: "r1", name: "Asha", completedAt }]);
     });
 });
 

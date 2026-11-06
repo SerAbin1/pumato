@@ -61,6 +61,7 @@ import {
     passengersLabel,
     pickupAccuracyLabel,
     placesForCampus,
+    rideFeedbackUrl,
     rideStatus,
     rideTime,
     routeFare,
@@ -69,6 +70,7 @@ import {
     secondsToConfirm,
     secondsToCancel,
     splitMyRides,
+    userCanCancel,
 } from "@/lib/rides";
 import { istInstant } from "@/lib/ist";
 import CustomSelect from "@/app/components/CustomSelect";
@@ -463,7 +465,7 @@ function RideRoute({
     );
 }
 
-/** Stars for the rider of a completed ride; tapping one saves it, once. */
+/** Stars for the pilot of a finished ride; tapping one saves it, once. */
 function RatePilot({ ride }: { ride: RideRequest }) {
     const [saving, setSaving] = useState<number | null>(null);
 
@@ -508,6 +510,25 @@ function RatePilot({ ride }: { ride: RideRequest }) {
     );
 }
 
+/** A finished ride's follow-ups: stars, then report and feedback by mail. */
+function RideFollowUp({ ride }: { ride: RideRequest }) {
+    const followUpButton =
+        "flex-1 rounded-xl bg-white/10 hover:bg-white/15 py-2 text-sm font-bold text-white text-center transition-all";
+    return (
+        <div className="space-y-2">
+            <RatePilot ride={ride} />
+            <div className="flex gap-2">
+                <a href={rideFeedbackUrl("report", ride)} className={followUpButton}>
+                    Report
+                </a>
+                <a href={rideFeedbackUrl("feedback", ride)} className={followUpButton}>
+                    Feedback
+                </a>
+            </div>
+        </div>
+    );
+}
+
 /**
  * Who accepted, with the number masked and the rating snapshotted on accept. The
  * user has a minute to cancel before the ride confirms itself.
@@ -541,7 +562,11 @@ function PilotAssigned({
 
     return (
         <div className="space-y-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm">
-            <p className="font-bold text-emerald-200">{ride.riderName} is on the way</p>
+            <p className="font-bold text-emerald-200">
+                {ride.status === "completed"
+                    ? `${ride.riderName} is your pilot`
+                    : `${ride.riderName} is on the way`}
+            </p>
             <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-gray-300">
                 {ride.riderRating !== undefined && (
                     <span className="flex items-center gap-1">
@@ -608,8 +633,9 @@ function MyRideCard({
 }) {
     const at = scheduledTime(ride);
     const open = isOpenRide(ride, now);
-    // A scheduled ride can be cancelled until its time; a ride now while it's under way.
-    const cancellable = open && (!at || at > now);
+    // Cancel freely while it waits; once a pilot is accepted, only until the
+    // ride confirms — then it's final.
+    const cancellable = userCanCancel(ride, now);
     const awaiting = ride.status === "accepted" && secondsToConfirm(ride, now) !== null;
     const secondsLeft = secondsToCancel(ride, now);
     return (
@@ -646,10 +672,14 @@ function MyRideCard({
                     <WidenButton requestId={ride.id} />
                 </>
             )}
-            {ride.status === "accepted" && ride.riderName && (
-                <PilotAssigned ride={ride} now={now} onCancel={onCancel} />
+            {ride.riderName && (ride.status === "accepted" || ride.status === "completed") && (
+                <PilotAssigned
+                    ride={ride}
+                    now={now}
+                    onCancel={cancellable ? onCancel : undefined}
+                />
             )}
-            {ride.status === "completed" && ride.riderName && <RatePilot ride={ride} />}
+            {ride.status === "completed" && ride.riderName && <RideFollowUp ride={ride} />}
             {cancellable && onCancel && !awaiting && (
                 <button onClick={() => onCancel(ride)} className={cancelButton}>
                     Cancel ride
@@ -982,7 +1012,8 @@ export default function RidesPage() {
                 <h2 className="text-xl font-black">Sign in to book a ride</h2>
                 <p className="text-sm text-gray-400">
                     Anyone can see our pilots and rides above. Booking needs a Pumato account, so
-                    you can follow the ride, confirm your pilot and cancel if plans change.
+                    you can follow the ride, confirm your pilot and cancel until it&apos;s
+                    confirmed.
                 </p>
                 <AuthCard />
             </div>
@@ -1213,7 +1244,7 @@ export default function RidesPage() {
                 steps={[
                     "Sign in, then pick where you are and where you're going.",
                     `Ride now, or schedule one up to ${schedule.maxDaysAhead} days ahead.`,
-                    "Pilots are notified; the first to accept gets your ride. Confirm them within a minute, or it confirms itself.",
+                    "Pilots are notified; the first to accept gets your ride. Confirm them within a minute, or it confirms itself. A confirmed ride is final and can't be cancelled.",
                     "A ride now with no pilot within 7 minutes is cancelled automatically.",
                     "For a scheduled ride, your pilot confirms shortly before. If they don't, we find you another.",
                 ]}

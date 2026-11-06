@@ -81,9 +81,10 @@ export const RiderSchema = z.object({
 });
 
 /**
- * pending → accepted → completed; the rider can release an accepted ride back
- * to pending. A scheduled ride can also be cancelled by its user, or expire
- * when nobody took it.
+ * pending → accepted → completed, where completing is the backend's job: it
+ * marks an accepted ride completed the moment it's confirmed. Rides can also
+ * be cancelled by their user (pending freely, accepted only until confirmed)
+ * or, when scheduled and never taken, expire.
  */
 export const RIDE_REQUEST_STATUSES = [
     "pending",
@@ -188,6 +189,7 @@ export const CompletedRideSchema = z.object({
     fare: FareSchema.nullable(),
     passengers: z.number().int().min(1),
     guestName: z.string(),
+    phone: z.string().regex(PHONE_PATTERN, "Enter a 10-digit phone number").optional(),
     // Epoch ms, as JSON keeps it.
     completedAt: z.number(),
 });

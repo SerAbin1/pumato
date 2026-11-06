@@ -4,7 +4,6 @@ import {
     addDoc,
     collection,
     deleteDoc,
-    deleteField,
     doc,
     getDoc,
     getDocs,
@@ -193,29 +192,6 @@ export async function acceptRide(
             ...(riderData.ratingCount > 0 && { riderRatingCount: riderData.ratingCount }),
             acceptedAt: serverTimestamp(),
         });
-    });
-}
-
-export async function completeRide(requestId: string): Promise<void> {
-    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
-        status: "completed",
-        completedAt: serverTimestamp(),
-    });
-}
-
-/** Hands an accepted ride back so another online rider can take it. */
-export async function releaseRide(requestId: string): Promise<void> {
-    await updateDoc(doc(db, COLLECTIONS.RIDE_REQUESTS, requestId), {
-        status: "pending",
-        riderUid: deleteField(),
-        riderName: deleteField(),
-        riderPhoneMasked: deleteField(),
-        riderRating: deleteField(),
-        riderRatingCount: deleteField(),
-        acceptedAt: deleteField(),
-        userConfirmedAt: deleteField(),
-        confirmRequestedAt: deleteField(),
-        riderConfirmedAt: deleteField(),
     });
 }
 
@@ -418,6 +394,30 @@ export function subscribeAdminRideRequests(
 ): Unsubscribe {
     return listen(
         query(rideRequests(), orderBy("createdAt", "desc"), limit(max)),
+        onChange,
+        onError
+    );
+}
+
+/**
+ * The rider's finished rides, live, latest first — the backend completes a
+ * ride the moment it's confirmed, so this is how earnings and the ride list
+ * keep up without the pilot tapping anything.
+ */
+export function subscribeRiderCompletedRides(
+    riderUid: string,
+    max: number,
+    onChange: RidesListener,
+    onError: (error: Error) => void
+): Unsubscribe {
+    return listen(
+        query(
+            rideRequests(),
+            where("riderUid", "==", riderUid),
+            where("status", "==", "completed"),
+            orderBy("completedAt", "desc"),
+            limit(max)
+        ),
         onChange,
         onError
     );

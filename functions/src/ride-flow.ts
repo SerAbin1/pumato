@@ -227,6 +227,23 @@ export function completionChanged(
     return (before?.status === "completed") !== (after?.status === "completed");
 }
 
+/**
+ * Whether this write confirmed an accepted ride enough to complete it: the
+ * user's minute-long window resolved (their tap or the sweep's auto-confirm),
+ * or a scheduled rider confirmed. Both stamps alone mean "confirmed", and the
+ * client no longer completes rides by hand — this is the only path.
+ */
+export function confirmationCompletes(
+    before: Record<string, unknown> | undefined,
+    after: Record<string, unknown> | undefined
+): boolean {
+    if (!after || after.status !== "accepted") return false;
+    return (
+        (after.userConfirmedAt !== undefined && before?.userConfirmedAt === undefined) ||
+        (after.riderConfirmedAt !== undefined && before?.riderConfirmedAt === undefined)
+    );
+}
+
 /** Waitlist sign-ups per campus, leaving out campuses nobody has joined. */
 export function waitlistByCampus(
     campuses: readonly string[],

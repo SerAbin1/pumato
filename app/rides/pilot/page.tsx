@@ -31,7 +31,10 @@ import {
     pickupAccuracyLabel,
     pickupMapsUrl,
     scheduledTime,
+    secondsToConfirm,
     splitRequests,
+    secondsToCancel,
+    AUTO_CANCEL_MINUTES,
 } from "@/lib/rides";
 import {
     addLocalRide,
@@ -72,6 +75,7 @@ import type {
 import { isIOS, unblockSteps } from "@/lib/notificationHelp";
 import AuthCard from "../components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "../components/RidesShell";
+import { AutoCancelTimer } from "../components/AutoCancelTimer";
 import { cardClass, primaryButton, secondaryButton } from "../styles";
 
 const NOT_A_PILOT: Record<string, { title: string; body: string; cta: string }> = {
@@ -237,10 +241,12 @@ function RideSummary({ ride, detail }: { ride: RideRequest; detail?: ReactNode }
 function MyRides({
     rides,
     schedule,
+    now,
     onCompleted,
 }: {
     rides: RideRequest[] | null;
     schedule: RideSchedule;
+    now: Date;
     onCompleted: (ride: RideRequest) => void;
 }) {
     const [busy, setBusy] = useState<string | null>(null);
@@ -274,6 +280,10 @@ function MyRides({
             {sorted.map((r) => {
                 const asked = r.confirmRequestedAt?.toDate?.() as Date | undefined;
                 const needsConfirm = !!asked && !r.riderConfirmedAt;
+                // Customer's 1-minute cancel/confirm window after a ride-now is accepted.
+                // Null once confirmed or expired, so the else branch shows confirmed + phone.
+                const secondsLeft = secondsToConfirm(r, now);
+                const awaitingCustomerConfirm = r.status === "accepted" && secondsLeft !== null;
                 return (
                     <div key={r.id} className={rowClass}>
                         <RideSummary
@@ -307,12 +317,35 @@ function MyRides({
                                 </button>
                             </div>
                         )}
-                        <a
-                            href={`tel:${r.phone}`}
-                            className={needsConfirm ? secondaryButton : primaryButton}
-                        >
-                            <Phone size={18} /> Call {r.phone}
-                        </a>
+                        {r.status === "accepted" ? (
+                            awaitingCustomerConfirm ? (
+                                <div className="space-y-2">
+                                    <div className="flex justify-center">
+                                        <AutoCancelTimer
+                                            secondsLeft={secondsLeft}
+                                            totalSeconds={60}
+                                            size={72}
+                                        />
+                                    </div>
+                                    <p className="text-xs text-gray-400 text-center">
+                                        Customer can cancel in {secondsLeft}s
+                                    </p>
+                                </div>
+                            ) : (
+                                <>
+                                    <p className="text-xs text-emerald-300 text-center">
+                                        Ride confirmed
+                                    </p>
+                                    <a href={`tel:${r.phone}`} className={primaryButton}>
+                                        <Phone size={18} /> Call {r.phone}
+                                    </a>
+                                </>
+                            )
+                        ) : (
+                            <a href={`tel:${r.phone}`} className={secondaryButton}>
+                                <Phone size={18} /> Call {r.phone}
+                            </a>
+                        )}
                         {r.pickupLocation && (
                             <a
                                 href={pickupMapsUrl(r.pickupLocation)}
@@ -436,6 +469,14 @@ function RideRequests({
     const row = (r: RideRequest, blocked: boolean) => (
         <div key={r.id} className={rowClass}>
             <RideSummary ride={r} detail={scheduledTime(r) ? null : formatRequested(r)} />
+            <div className="flex justify-center">
+                {/* Ride-now requests auto-cancel 7 minutes after they're requested. */}
+                <AutoCancelTimer
+                    secondsLeft={secondsToCancel(r, now)}
+                    totalSeconds={AUTO_CANCEL_MINUTES * 60}
+                    size={72}
+                />
+            </div>
             <button
                 onClick={() => accept(r)}
                 disabled={accepting !== null || blocked}
@@ -702,7 +743,8 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     const { permission, request } = useFcmToken(user);
     const completed = useCompletedRides(user.uid);
     const [schedule, setSchedule] = useState(DEFAULT_RIDE_SCHEDULE);
-    const now = useNow();
+    // Ticks every second so the customer's cancel/confirm countdown runs smoothly.
+    const now = useNow(1000);
     const myRides = useRides(
         useCallback<RidesSubscription>(
             (onChange, onError) => subscribeRiderRides(user.uid, onChange, onError),
@@ -766,7 +808,12 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
                     </button>
                 </div>
 
-                <MyRides rides={myRides} schedule={schedule} onCompleted={completed.addCompleted} />
+                <MyRides
+                    rides={myRides}
+                    schedule={schedule}
+                    now={now}
+                    onCompleted={completed.addCompleted}
+                />
                 <div className="max-lg:order-last">
                     <Earnings rides={completed.rides} rider={rider} now={now} />
                 </div>

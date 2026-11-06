@@ -49,9 +49,9 @@ import {
     activePlaces,
     bookableDates,
     dropPlaces,
+    AUTO_CANCEL_MINUTES,
     DEFAULT_RIDE_SCHEDULE,
     FARE_OFFER_STEPS,
-    formatCountdown,
     formatDateOption,
     formatFare,
     formatRideTime,
@@ -75,6 +75,7 @@ import CustomSelect from "@/app/components/CustomSelect";
 import ConfirmModal from "@/app/components/ConfirmModal";
 import { inputClass, labelClass, primaryButton, secondaryButton } from "./styles";
 import AuthCard from "./components/AuthCard";
+import { AutoCancelTimer } from "./components/AutoCancelTimer";
 import RidesShell, { mainColumn, sideColumn, Steps } from "./components/RidesShell";
 import type {
     PickupLocation,
@@ -113,6 +114,23 @@ function useNow(intervalMs = 60_000) {
         return () => clearInterval(id);
     }, [intervalMs]);
     return now;
+}
+
+/** The signed-in user's rides, live; null until the first snapshot loads. */
+function useMyRides(uid: string | undefined) {
+    const [rides, setRides] = useState<RideRequest[] | null>(null);
+    useEffect(() => {
+        if (!uid) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setRides([]);
+            return;
+        }
+        return subscribeMyRides(uid, setRides, (error) => {
+            console.error("Failed to load rides:", error);
+            toast.error("Couldn't load your rides. Please refresh.");
+        });
+    }, [uid]);
+    return rides;
 }
 
 function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (mode: Mode) => void }) {
@@ -429,7 +447,6 @@ function BookedCard({
 
 const rideCard = "bg-white/5 border border-white/10 rounded-2xl p-4 space-y-3";
 const cancelButton = "w-full text-sm text-gray-400 hover:text-red-400";
-const groupHeading = "text-xs font-bold text-gray-400 uppercase tracking-widest";
 
 function RideRoute({
     ride,
@@ -610,9 +627,13 @@ function MyRideCard({
                 </p>
             </div>
             {open && ride.status === "pending" && !at && secondsLeft !== null && (
-                <p className="text-xs text-gray-400">
-                    Auto-cancel in {formatCountdown(secondsLeft)} if no pilot takes it.
-                </p>
+                <div className="flex justify-center">
+                    <AutoCancelTimer
+                        secondsLeft={secondsLeft}
+                        totalSeconds={AUTO_CANCEL_MINUTES * 60}
+                        size={72}
+                    />
+                </div>
             )}
             {open && ride.status === "pending" && (
                 <FareOffers requestId={ride.id} fare={ride.fare} />
@@ -638,19 +659,9 @@ function MyRideCard({
     );
 }
 
-/** The signed-in user's rides, ride now or scheduled: the ones under way, then past ones. */
-function MyRides({ user, now }: { user: User; now: Date }) {
-    const [rides, setRides] = useState<RideRequest[]>([]);
+/** Ride cards with cancel handling; the caller decides which rides to show. */
+function RideList({ rides, now, heading }: { rides: RideRequest[]; now: Date; heading?: string }) {
     const [cancelling, setCancelling] = useState<RideRequest | null>(null);
-
-    useEffect(
-        () =>
-            subscribeMyRides(user.uid, setRides, (error) => {
-                console.error("Failed to load rides:", error);
-                toast.error("Couldn't load your rides. Please refresh.");
-            }),
-        [user.uid]
-    );
 
     const cancel = async (ride: RideRequest) => {
         try {
@@ -663,17 +674,11 @@ function MyRides({ user, now }: { user: User; now: Date }) {
     };
 
     if (rides.length === 0) return null;
-    const { current, past } = splitMyRides(rides, now);
     return (
         <section className={`${sideColumn} space-y-3`}>
-            <h2 className="text-lg font-black">Your rides</h2>
-            {current.length > 0 && <h3 className={groupHeading}>Current</h3>}
-            {current.map((r) => (
+            {heading && <h2 className="text-lg font-black">{heading}</h2>}
+            {rides.map((r) => (
                 <MyRideCard key={r.id} ride={r} now={now} onCancel={setCancelling} />
-            ))}
-            {past.length > 0 && <h3 className={`${groupHeading} pt-2`}>Past</h3>}
-            {past.map((r) => (
-                <MyRideCard key={r.id} ride={r} now={now} />
             ))}
             <ConfirmModal
                 isOpen={cancelling !== null}
@@ -787,6 +792,15 @@ export default function RidesPage() {
     const [submitting, setSubmitting] = useState(false);
     const [booking, setBooking] = useState<Booking | null>(null);
 
+    // One live subscription for the user's rides, shared by the active-ride band
+    // and the history section.
+    const rides = useMyRides(user?.uid);
+    const { current: activeRides, past } = useMemo(
+        () => (rides ? splitMyRides(rides, now) : { current: [], past: [] }),
+        [rides, now]
+    );
+    const hasActiveRide = activeRides.length > 0;
+
     // Pilots belong on their dashboard, not the booking form.
     useEffect(() => {
         if (!user) return;
@@ -830,14 +844,22 @@ export default function RidesPage() {
         }
     }, []);
 
-    useEffect(
-        () =>
-            subscribeRideStats(setStats, (error) => console.error("Failed to load stats:", error)),
-        []
-    );
-
     const campus = userDetails.campus;
     const waitlisted = isWaitlistedCampus(campus);
+    // The counters matter before booking; while a request is under way hide them
+    // and keep the stats listener off. Waitlisted campuses always read them (the
+    // waitlist card shows a live count).
+    const showStats = rides !== null && (waitlisted || !hasActiveRide);
+    useEffect(
+        () =>
+            showStats
+                ? subscribeRideStats(setStats, (error) =>
+                      console.error("Failed to load stats:", error)
+                  )
+                : undefined,
+        [showStats]
+    );
+
     useEffect(() => {
         if (!campus) return;
         // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -1179,8 +1201,10 @@ export default function RidesPage() {
 
     return (
         <RidesShell title="Pumato Rides" subtitle="Anywhere on campus, now or later.">
+            {hasActiveRide && <RideList rides={activeRides} now={now} heading="Your rides" />}
+
             <div className={`${mainColumn} space-y-4`}>
-                <StatsBand stats={stats} />
+                {showStats && <StatsBand stats={stats} />}
                 {content}
             </div>
 
@@ -1203,7 +1227,7 @@ export default function RidesPage() {
                 }
             />
 
-            {user && <MyRides user={user} now={now} />}
+            <RideList rides={past} now={now} heading="Ride history" />
 
             <ConfirmModal
                 isOpen={noFemalePilot}

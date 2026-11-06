@@ -4,7 +4,15 @@ import type { ReactNode } from "react";
 
 import Navbar from "../components/Navbar";
 import { motion } from "framer-motion";
-import { ArrowLeft, ScrollText, Utensils, ShoppingBasket, Shirt, ArrowRight } from "lucide-react";
+import {
+    ArrowLeft,
+    ScrollText,
+    Utensils,
+    ShoppingBasket,
+    Shirt,
+    Bike,
+    ArrowRight,
+} from "lucide-react";
 import Link from "next/link";
 
 const YEAR = new Date().getFullYear();
@@ -81,6 +89,13 @@ export default function TermsHubPage() {
                         description="Terms for campus pickup and delivery laundry services."
                         color="blue"
                     />
+                    <TermsLink
+                        href="/terms/pilots"
+                        title="Pilot Terms"
+                        icon={<Bike size={32} />}
+                        description="Partner Terms &amp; Conditions for approved PUMATO Pilots."
+                        color="purple"
+                    />
                 </div>
 
                 <div className="mt-20 p-8 rounded-3xl bg-white/5 border border-white/10 backdrop-blur-sm">
@@ -116,12 +131,13 @@ function TermsLink({
     title: ReactNode;
     icon: ReactNode;
     description: ReactNode;
-    color: "orange" | "green" | "blue";
+    color: "orange" | "green" | "blue" | "purple";
 }) {
     const colorClasses = {
         orange: "text-orange-500 border-orange-500/10 hover:border-orange-500/50 bg-orange-500/5",
         green: "text-green-500 border-green-500/10 hover:border-green-500/50 bg-green-500/5",
         blue: "text-blue-500 border-blue-500/10 hover:border-blue-500/50 bg-blue-500/5",
+        purple: "text-purple-500 border-purple-500/10 hover:border-purple-500/50 bg-purple-500/5",
     };
 
     return (

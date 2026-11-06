@@ -55,6 +55,17 @@ const TYPE_CONFIG: Record<
             "Listings automatically stop showing after their set expiry date",
         ],
     },
+    pilots: {
+        color: "orange",
+        termsLink: "/terms/pilots",
+        terms: [
+            "Pilots participate as independent service partners with no fixed hours or minimum bookings",
+            "Pilot accounts are personal and non-transferable; only the verified Pilot may perform services",
+            "Voluntary tips belong entirely to the Pilot and carry no PUMATO commission",
+            "Serious misconduct may result in immediate protective suspension and possible termination",
+            "An account may be marked inactive after 45 consecutive days without participation",
+        ],
+    },
 };
 
 const COLOR_CLASSES: Record<TermsColor, { icon: string; dot: string; link: string }> = {

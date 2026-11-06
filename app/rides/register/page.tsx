@@ -23,6 +23,7 @@ import type { User } from "firebase/auth";
 import type { Rider, RidesSettings } from "@/lib/types";
 import AuthCard from "../components/AuthCard";
 import RidesShell, { mainColumn, Steps } from "../components/RidesShell";
+import TermsFooter from "@/app/components/TermsFooter";
 import { cardClass, inputClass, labelClass, primaryButton } from "../styles";
 
 function ApplicationForm({
@@ -333,7 +334,10 @@ export default function PilotRegisterPage() {
 
     return (
         <RidesShell title="Become a pilot" subtitle="Give rides around campus with Pumato Rides.">
-            <div className={mainColumn}>{content}</div>
+            <div className={mainColumn}>
+                {content}
+                <TermsFooter type="pilots" />
+            </div>
 
             <Steps
                 title="What you need"

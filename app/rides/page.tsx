@@ -399,16 +399,13 @@ function BookedCard({
                 {passengersLabel(booking.passengers) && (
                     <> · {passengersLabel(booking.passengers)}</>
                 )}
-                <br />
                 {booking.scheduledFor ? (
                     <>
                         {formatRideTime(booking.scheduledFor)}. A pilot can accept it any time
                         before; we&apos;ll ask them to confirm {schedule.reminderMinutes} min
                         before. Follow it under Your rides.
                     </>
-                ) : (
-                    <>A pilot will call you on {booking.phone} shortly.</>
-                )}
+                ) : null}
             </p>
             {!booking.scheduledFor && (
                 <FareOffers requestId={booking.id} fare={fare} onRaised={setFare} />

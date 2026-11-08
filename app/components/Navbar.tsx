@@ -611,6 +611,12 @@ export default function Navbar() {
                         >
                             Marketplace
                         </Link>
+                        <Link
+                            href="/rides"
+                            className={`hover:text-white transition-colors ${pathname === "/rides" ? "text-white font-bold" : ""}`}
+                        >
+                            Rides
+                        </Link>
                         <CommunityDropdown groups={whatsappGroups} />
                         {shouldShowLiveIndicator && (
                             <LiveIndicator

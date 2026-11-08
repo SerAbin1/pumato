@@ -14,6 +14,7 @@ import {
     Instagram,
     Mail,
     MessageCircle,
+    Bike,
     ArrowRight,
     Zap,
     Wallet,
@@ -266,7 +267,7 @@ export default function GatewayPage() {
                         </motion.p>
 
                         <motion.div
-                            className="flex justify-center gap-6 md:gap-10"
+                            className="flex flex-wrap justify-center gap-6 md:gap-10"
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: 1.2, duration: 0.6 }}
@@ -277,6 +278,11 @@ export default function GatewayPage() {
                                     href: "/delivery",
                                     icon: <UtensilsCrossed size={24} className="text-orange-500" />,
                                     isLive: isFoodLive,
+                                },
+                                {
+                                    label: "Rides",
+                                    href: "/rides",
+                                    icon: <Bike size={24} className="text-orange-400" />,
                                 },
                                 {
                                     label: "Grocery",
@@ -363,6 +369,34 @@ export default function GatewayPage() {
                                     </p>
                                     <span className="inline-flex items-center gap-2 text-white font-bold border-b border-white/30 pb-1 group-hover:border-orange-500 group-hover:text-orange-500 transition-colors text-sm">
                                         Order Now <ArrowRight size={16} />
+                                    </span>
+                                </div>
+                            </Link>
+                        </TiltCard>
+
+                        {/* Rides Card — second on mobile; on desktop it drops below the four as a full-width banner */}
+                        <TiltCard className="relative h-[50vh] md:h-[40vh] md:order-last md:col-span-4 w-full rounded-[2.5rem] overflow-hidden group border border-white/10 cursor-pointer">
+                            <Link href="/rides" className="block h-full w-full">
+                                <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
+                                <div className="absolute inset-0 z-0">
+                                    <Image
+                                        src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=1600&auto=format&fit=crop"
+                                        fill
+                                        sizes="100vw"
+                                        className="object-cover transition-transform duration-700 group-hover:scale-110"
+                                        alt="Rides"
+                                    />
+                                </div>
+
+                                <div className="absolute inset-x-0 bottom-0 z-20 p-6 md:p-10 mb-4">
+                                    <h2 className="text-4xl md:text-5xl font-black mb-2 tracking-tighter">
+                                        Rides.
+                                    </h2>
+                                    <p className="text-gray-300 text-sm md:text-base max-w-sm mb-4 line-clamp-2">
+                                        Anywhere on campus, now or later. Book a pilot in seconds.
+                                    </p>
+                                    <span className="inline-flex items-center gap-2 text-white font-bold border-b border-white/30 pb-1 group-hover:border-orange-500 group-hover:text-orange-500 transition-colors text-sm">
+                                        Book a Ride <ArrowRight size={16} />
                                     </span>
                                 </div>
                             </Link>

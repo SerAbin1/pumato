@@ -56,15 +56,16 @@ import {
     formatFare,
     formatRideTime,
     isOpenRide,
+    isInUni,
     isPilotClaim,
     isWaitlistedCampus,
     passengersLabel,
     pickupAccuracyLabel,
     placesForCampus,
     rideFeedbackUrl,
+    rideFare,
     rideStatus,
     rideTime,
-    routeFare,
     scheduleProblem,
     scheduledTime,
     secondsToConfirm,
@@ -907,7 +908,15 @@ export default function RidesPage() {
     );
     const pickup = byId.get(pickupId);
     const drop = byId.get(dropId);
-    const fare = pickup && drop ? routeFare(fares, pickup.id, drop.id) : null;
+    const fare = pickup && drop ? rideFare(fares, pickup.id, drop.id, passengers) : null;
+
+    // Two passengers are only offered at university places; reset otherwise.
+    useEffect(() => {
+        if (!isInUni(pickup)) {
+            // eslint-disable-next-line react-hooks/set-state-in-effect
+            setPassengers(1);
+        }
+    }, [pickup]);
 
     const dates = bookableDates(now, schedule);
     const typedFor = dateKey && time ? istInstant(dateKey, time) : null;
@@ -1087,24 +1096,28 @@ export default function RidesPage() {
                             placeholder="Where to?"
                         />
                     </div>
-                    <div>
-                        <p className={labelClass}>
-                            <Users size={12} className="inline mr-1" /> Passengers
-                        </p>
-                        <div className="flex gap-2">
-                            {Array.from({ length: MAX_PASSENGERS }, (_, i) => i + 1).map((n) => (
-                                <button
-                                    key={n}
-                                    type="button"
-                                    aria-pressed={passengers === n}
-                                    onClick={() => setPassengers(n)}
-                                    className={`flex-1 rounded-xl border py-2.5 font-black transition-all ${passengers === n ? "bg-orange-500/10 border-orange-500 text-white" : "bg-black/30 border-white/10 text-gray-400 hover:text-white"}`}
-                                >
-                                    {n}
-                                </button>
-                            ))}
+                    {isInUni(pickup) && (
+                        <div>
+                            <p className={labelClass}>
+                                <Users size={12} className="inline mr-1" /> Passengers
+                            </p>
+                            <div className="flex gap-2">
+                                {Array.from({ length: MAX_PASSENGERS }, (_, i) => i + 1).map(
+                                    (n) => (
+                                        <button
+                                            key={n}
+                                            type="button"
+                                            aria-pressed={passengers === n}
+                                            onClick={() => setPassengers(n)}
+                                            className={`flex-1 rounded-xl border py-2.5 font-black transition-all ${passengers === n ? "bg-orange-500/10 border-orange-500 text-white" : "bg-black/30 border-white/10 text-gray-400 hover:text-white"}`}
+                                        >
+                                            {n}
+                                        </button>
+                                    )
+                                )}
+                            </div>
                         </div>
-                    </div>
+                    )}
                     {scheduling && (
                         <div className="grid grid-cols-2 gap-3">
                             <div>

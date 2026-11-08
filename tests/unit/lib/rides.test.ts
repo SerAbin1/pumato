@@ -11,6 +11,7 @@ import {
     isPilotClaim,
     isApprovedPilot,
     isSchedulable,
+    isInUni,
     isWaitlistedCampus,
     maskPhone,
     occupiesRider,
@@ -27,6 +28,7 @@ import {
     secondsToConfirm,
     splitRequests,
     riderRef,
+    rideFare,
     routeFare,
     routeKey,
     scheduleProblem,
@@ -85,6 +87,35 @@ describe("route fares", () => {
 
     it("returns null for a route with no fare", () => {
         expect(routeFare({}, "gate", "lib")).toBeNull();
+    });
+});
+
+describe("rideFare", () => {
+    it("adds the surcharge for two passengers", () => {
+        const fares = { [routeKey("gate", "lib")]: 20 };
+        expect(rideFare(fares, "gate", "lib", 2)).toBe(30);
+        expect(rideFare(fares, "lib", "gate", 2)).toBe(30);
+    });
+
+    it("leaves a single passenger's fare untouched", () => {
+        const fares = { [routeKey("gate", "lib")]: 20 };
+        expect(rideFare(fares, "gate", "lib", 1)).toBe(20);
+    });
+
+    it("stays null for an unpriced route", () => {
+        expect(rideFare({}, "gate", "lib", 2)).toBeNull();
+    });
+});
+
+describe("isInUni", () => {
+    it("is true for a place on a campus", () => {
+        expect(isInUni({ id: "sj", name: "SJ", active: true, campusId: "PU" })).toBe(true);
+    });
+
+    it("is false for a place on no campus", () => {
+        expect(isInUni({ id: "station", name: "Station", active: true })).toBe(false);
+        expect(isInUni(null)).toBe(false);
+        expect(isInUni(undefined)).toBe(false);
     });
 });
 

@@ -73,6 +73,24 @@ export const routeKey = (a: string, b: string) => (a < b ? `${a}:${b}` : `${b}:$
 export const routeFare = (fares: RideFares, pickupId: string, dropId: string) =>
     fares[routeKey(pickupId, dropId)] ?? null;
 
+/** Extra fare added when two passengers share a ride. */
+export const PASSENGER_SURCHARGE = 10;
+
+/** The route fare, plus the passenger surcharge for two passengers; null if unpriced. */
+export const rideFare = (
+    fares: RideFares,
+    pickupId: string,
+    dropId: string,
+    passengers: number
+) => {
+    const base = routeFare(fares, pickupId, dropId);
+    if (base === null) return null;
+    return passengers === 2 ? base + PASSENGER_SURCHARGE : base;
+};
+
+/** Whether a place sits inside a university campus (rather than on no campus). */
+export const isInUni = (place: RidePlace | null | undefined) => !!place?.campusId;
+
 export const formatFare = (fare: number) => `₹${fare}`;
 
 export const DEFAULT_RIDE_SCHEDULE: RideSchedule = {

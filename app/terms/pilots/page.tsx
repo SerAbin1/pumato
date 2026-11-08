@@ -431,7 +431,26 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="3. Earnings, Commission and Payments">
+                            <TermBlock title="3. Cash Collection, COD and Remittance">
+                                <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
+                                    <li>
+                                        Any cash on delivery (COD) or payments collected by Pilots
+                                        from customers or on behalf of merchants must be held
+                                        safely.
+                                    </li>
+                                    <li>
+                                        Collected cash must be remitted or settled within the
+                                        prescribed settlement schedule.
+                                    </li>
+                                    <li>
+                                        Failing to remit, withholding, or misusing collected
+                                        customer or merchant funds will lead to immediate account
+                                        termination and recovery proceedings.
+                                    </li>
+                                </ul>
+                            </TermBlock>
+
+                            <TermBlock title="4. Earnings, Commission and Payments">
                                 <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
                                     <li>
                                         Earnings structures may vary by service and may include
@@ -463,7 +482,7 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="4. Code of Conduct">
+                            <TermBlock title="5. Code of Conduct">
                                 <p className="text-gray-300 leading-relaxed text-sm md:text-base">
                                     Every Pilot must maintain respectful and responsible conduct.
                                 </p>
@@ -491,7 +510,7 @@ export default function PilotsTermsPage() {
                                 </p>
                             </TermBlock>
 
-                            <TermBlock title="5. Customer Privacy and Information">
+                            <TermBlock title="6. Customer Privacy and Information">
                                 <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
                                     <li>
                                         Pilots must protect customer names, phone numbers,
@@ -513,7 +532,7 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="6. Account and Pilot Identity">
+                            <TermBlock title="7. Account and Pilot Identity">
                                 <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
                                     <li>
                                         Every approved Pilot receives an individual digital Pilot
@@ -535,20 +554,13 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="7. Exclusivity and Competing Platforms">
+                            <TermBlock title="8. Platform Integrity and Fair Participation">
                                 <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
                                     <li>
                                         While registered as an active PUMATO Pilot, a Pilot must not
-                                        provide the same or directly competing services through
-                                        other platforms.
-                                    </li>
-                                    <li>
-                                        Unrelated employment, business activities and personal work
-                                        are permitted.
-                                    </li>
-                                    <li>
-                                        Pilots must not divert PUMATO customers, bookings or
-                                        business opportunities to competitors.
+                                        provide service & divert PUMATO customers, bookings or
+                                        business opportunities to competing channels or offline
+                                        arrangements.
                                     </li>
                                     <li>
                                         PUMATO customer information and internal business
@@ -561,7 +573,7 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="8. Inactivity">
+                            <TermBlock title="9. Inactivity">
                                 <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
                                     <li>
                                         An account may be marked inactive if the Pilot does not
@@ -582,7 +594,7 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="9. Complaints and Disputes">
+                            <TermBlock title="10. Complaints and Disputes">
                                 <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
                                     <li>
                                         Official complaints, payment disputes and other formal
@@ -608,7 +620,7 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="10. Suspension and Termination">
+                            <TermBlock title="11. Suspension and Termination">
                                 <p className="text-gray-300 leading-relaxed text-sm md:text-base">
                                     PUMATO Admin may restrict individual service access, temporarily
                                     suspend a Pilot account or terminate Pilot participation where
@@ -625,7 +637,7 @@ export default function PilotsTermsPage() {
                                 </p>
                             </TermBlock>
 
-                            <TermBlock title="11. Voluntary Exit">
+                            <TermBlock title="12. Voluntary Exit">
                                 <ul className="list-disc pl-5 space-y-2 text-gray-400 mt-2">
                                     <li>
                                         Pilots may leave the programme at any time without a
@@ -643,7 +655,7 @@ export default function PilotsTermsPage() {
                                 </ul>
                             </TermBlock>
 
-                            <TermBlock title="12. Pilot Benefits">
+                            <TermBlock title="13. Pilot Benefits">
                                 <p className="text-gray-300 leading-relaxed text-sm md:text-base">
                                     PUMATO may introduce exclusive benefits and privileges for
                                     approved Pilots. PUMATO Pilot Benefits are subject to
@@ -662,7 +674,7 @@ export default function PilotsTermsPage() {
                                 </p>
                             </TermBlock>
 
-                            <TermBlock title="13. Administrative Authority">
+                            <TermBlock title="14. Administrative Authority">
                                 <p className="text-gray-300 leading-relaxed text-sm md:text-base">
                                     PUMATO Admin reserves the right to introduce, modify, suspend or
                                     discontinue services, eligibility requirements, verification
@@ -676,7 +688,7 @@ export default function PilotsTermsPage() {
                                 </p>
                             </TermBlock>
 
-                            <TermBlock title="14. Acceptance of Terms">
+                            <TermBlock title="15. Acceptance of Terms">
                                 <p className="text-gray-300 leading-relaxed text-sm md:text-base">
                                     By submitting the PUMATO Pilots application, the applicant
                                     confirms that they have read, understood and agreed to these
@@ -691,7 +703,7 @@ export default function PilotsTermsPage() {
                                 </p>
                             </TermBlock>
 
-                            <TermBlock title="15. Contact and Official Communication">
+                            <TermBlock title="16. Contact and Official Communication">
                                 <p className="text-gray-300 leading-relaxed text-sm md:text-base">
                                     For applications, complaints, payment disputes, appeals and
                                     official requests, contact:

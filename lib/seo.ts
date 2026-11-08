@@ -29,5 +29,5 @@ export const CANONICAL_URLS = {
     deliveryPartner: getCanonicalUrl("/delivery-partner"),
     rides: getCanonicalUrl("/rides"),
     ridesRegister: getCanonicalUrl("/rides/register"),
-    ridesPilot: getCanonicalUrl("/rides/pilot"),
+    ridesPilot: getCanonicalUrl("/pilots"),
 };

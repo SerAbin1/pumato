@@ -234,7 +234,7 @@ export default function PilotRegisterPage() {
 
     // Approved pilots belong on their dashboard, not the application form.
     useEffect(() => {
-        if (hasPilotClaim) router.replace("/rides/pilot");
+        if (hasPilotClaim) router.replace("/pilots");
     }, [hasPilotClaim, router]);
 
     const handleSubmit = async (application: RiderApplication) => {
@@ -286,7 +286,7 @@ export default function PilotRegisterPage() {
                 <CheckCircle2 size={48} className="text-green-400 mx-auto" />
                 <h2 className="text-xl font-black">You&apos;re a Pumato pilot</h2>
                 <p className="text-sm text-gray-400">You&apos;re verified and ready to ride.</p>
-                <Link href="/rides/pilot" className={primaryButton}>
+                <Link href="/pilots" className={primaryButton}>
                     <Bike size={20} /> Go to pilot dashboard
                 </Link>
             </div>
@@ -349,7 +349,7 @@ export default function PilotRegisterPage() {
                 footer={
                     <p className="text-sm text-gray-500">
                         Already a pilot?{" "}
-                        <Link href="/rides/pilot" className="text-orange-400 font-bold">
+                        <Link href="/pilots" className="text-orange-400 font-bold">
                             Go to your dashboard →
                         </Link>
                     </p>

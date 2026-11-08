@@ -33,7 +33,7 @@ import type { PushAudience, SweepAction, SweepSchedule } from "./ride-flow";
 const db = getFirestore();
 const messaging = getMessaging();
 
-const PILOT_URL = "/rides/pilot";
+const PILOT_URL = "/pilots";
 const USER_URL = "/rides";
 
 /** Data-only, so the service worker builds the notification with this tag and opens targetUrl. */

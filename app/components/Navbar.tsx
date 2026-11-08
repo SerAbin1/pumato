@@ -413,7 +413,7 @@ const UserMenu = ({ user, logout }: { user: User; logout: () => Promise<void> })
                         </div>
                         {isPilot && (
                             <Link
-                                href="/rides/pilot"
+                                href="/pilots"
                                 onClick={() => setIsOpen(false)}
                                 className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-orange-400 hover:bg-orange-500/10 hover:text-orange-300 transition-colors text-sm font-medium"
                             >

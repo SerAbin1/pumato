@@ -70,10 +70,10 @@ import type {
     RideSchedule,
 } from "@/lib/types";
 import { isIOS, unblockSteps } from "@/lib/notificationHelp";
-import AuthCard from "../components/AuthCard";
-import RidesShell, { mainColumn, sideColumn, Steps } from "../components/RidesShell";
-import { AutoCancelTimer } from "../components/AutoCancelTimer";
-import { cardClass, primaryButton, secondaryButton } from "../styles";
+import AuthCard from "../rides/components/AuthCard";
+import RidesShell, { mainColumn, sideColumn, Steps } from "../rides/components/RidesShell";
+import { AutoCancelTimer } from "../rides/components/AutoCancelTimer";
+import { cardClass, primaryButton, secondaryButton } from "../rides/styles";
 
 const NOT_A_PILOT: Record<string, { title: string; body: string; cta: string }> = {
     none: {

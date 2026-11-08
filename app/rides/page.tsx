@@ -838,7 +838,7 @@ export default function RidesPage() {
         // Force-refresh so a freshly approved pilot is redirected too.
         user.getIdTokenResult(true)
             .then((token) => {
-                if (!stale && isPilotClaim(token.claims)) router.replace("/rides/pilot");
+                if (!stale && isPilotClaim(token.claims)) router.replace("/pilots");
             })
             .catch((error) => console.error("Failed to check pilot access:", error));
         return () => {

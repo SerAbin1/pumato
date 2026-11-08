@@ -380,7 +380,7 @@ export default function GatewayPage() {
                                 <div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent z-10" />
                                 <div className="absolute inset-0 z-0">
                                     <Image
-                                        src="https://images.unsplash.com/photo-1558981806-ec527fa84c39?q=80&w=1600&auto=format&fit=crop"
+                                        src="/rides_pic.jpeg"
                                         fill
                                         sizes="100vw"
                                         className="object-cover transition-transform duration-700 group-hover:scale-110"

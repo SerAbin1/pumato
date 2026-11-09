@@ -5,6 +5,7 @@ import Image from "next/image";
 import { Fragment } from "react";
 import { planInsertions } from "@/lib/marketplacePromotions";
 import SponsoredListingCard from "@/app/marketplace/components/SponsoredListingCard";
+import { track } from "@/lib/analytics";
 import type { MarketplaceListing, Restaurant } from "@/lib/types";
 
 export default function RestaurantList({
@@ -46,6 +47,12 @@ export default function RestaurantList({
                             <Link
                                 href={`/restaurant?id=${restaurant.id}`}
                                 className={isClosed ? "cursor-pointer" : ""}
+                                onClick={() =>
+                                    track("restaurant_viewed", {
+                                        restaurantId: restaurant.id,
+                                        source: "list",
+                                    })
+                                }
                             >
                                 <div
                                     className={`relative bg-white/5 backdrop-blur-md rounded-[2rem] overflow-hidden border border-white/10 transition-all shadow-lg ${!isClosed ? "hover:border-orange-500/50 hover:bg-white/10 hover:shadow-orange-900/20" : ""}`}
@@ -119,6 +126,7 @@ export default function RestaurantList({
                             <SponsoredListingCard
                                 listing={sponsoredAfter.get(restaurant.id)!}
                                 variant="grid"
+                                surface="restaurant_list"
                             />
                         )}
                     </Fragment>

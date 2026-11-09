@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import type { FirebaseError } from "firebase/app";
 import type { User } from "firebase/auth";
 import { auth } from "@/lib/firebase";
+import { setAnalyticsContext } from "@/lib/analytics";
 import {
     signInWithEmailAndPassword,
     createUserWithEmailAndPassword,
@@ -42,6 +43,7 @@ export function UserAuthProvider({ children }: { children: ReactNode }) {
         const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
             setUser(firebaseUser);
             setLoading(false);
+            setAnalyticsContext({ userId: firebaseUser?.uid ?? null });
         });
 
         return () => unsubscribe();

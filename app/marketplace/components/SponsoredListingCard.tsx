@@ -5,6 +5,8 @@ import Image from "next/image";
 import { motion } from "framer-motion";
 import { Package } from "lucide-react";
 import type { MarketplaceListing } from "@/lib/types";
+import { useEffect } from "react";
+import { track } from "@/lib/analytics";
 
 type SponsoredListing = Pick<MarketplaceListing, "id"> &
     Partial<Pick<MarketplaceListing, "images" | "itemName" | "askingPrice" | "description">>;
@@ -47,11 +49,23 @@ function ListingImage({
 export default function SponsoredListingCard({
     listing,
     variant = "menu",
+    placement = "inFeed",
+    surface,
 }: {
     listing: SponsoredListing;
     variant?: "menu" | "grid";
+    placement?: "inFeed" | "popup";
+    surface?: string;
 }) {
     const href = `/marketplace?id=${listing.id}`;
+
+    useEffect(() => {
+        track("promo_impression", {
+            listingId: listing.id,
+            placement,
+            surface: surface ?? "",
+        });
+    }, [listing.id, placement, surface]);
 
     if (variant === "grid") {
         return (
@@ -62,7 +76,16 @@ export default function SponsoredListingCard({
                 whileHover={{ y: -5 }}
                 className="group"
             >
-                <Link href={href}>
+                <Link
+                    href={href}
+                    onClick={() =>
+                        track("promo_clicked", {
+                            listingId: listing.id,
+                            placement,
+                            surface: surface ?? "",
+                        })
+                    }
+                >
                     <div className="relative bg-white/5 backdrop-blur-md rounded-[2rem] overflow-hidden border border-purple-500/30 transition-all shadow-lg hover:border-purple-500/60 hover:bg-white/10 hover:shadow-purple-900/20">
                         <div className="relative h-60 overflow-hidden">
                             <ListingImage
@@ -106,6 +129,13 @@ export default function SponsoredListingCard({
         >
             <Link
                 href={href}
+                onClick={() =>
+                    track("promo_clicked", {
+                        listingId: listing.id,
+                        placement,
+                        surface: surface ?? "",
+                    })
+                }
                 className="bg-purple-500/5 p-4 md:p-6 rounded-[2rem] border border-purple-500/20 flex items-center gap-4 md:gap-8 group transition-all hover:bg-purple-500/10 hover:border-purple-500/40 hover:shadow-2xl"
             >
                 <div className="flex-1 min-w-0">

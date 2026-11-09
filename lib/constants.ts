@@ -14,6 +14,8 @@ export const COLLECTIONS = {
     FEEDBACK: "feedback",
     RIDERS: "riders",
     RIDE_REQUESTS: "ride_requests",
+    ANALYTICS_EVENTS: "analytics_events",
+    ANALYTICS_DAILY: "analytics_daily",
     RIDE_WAITLIST: "ride_waitlist",
 };
 

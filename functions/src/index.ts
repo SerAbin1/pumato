@@ -7,6 +7,7 @@ export { manageUsers } from "./manage-users";
 export { sendFcmNotification } from "./send-fcm-notification";
 export { scheduledTrending, refreshTrending } from "./trending";
 export { placeDirectOrder, updateDirectOrder } from "./direct-orders";
+export { trackEvents, aggregateAnalyticsDaily } from "./analytics";
 export { restockMenus } from "./restock";
 export {
     notifyRidersOfRequest,

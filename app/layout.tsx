@@ -6,6 +6,7 @@ import { CartProvider } from "./context/CartContext";
 import { UserAuthProvider } from "./context/UserAuthContext";
 import { FavouritesProvider } from "./context/FavouritesContext";
 import FeedbackButton from "./components/FeedbackButton";
+import AnalyticsPageView from "./components/AnalyticsPageView";
 import PromoPopup from "./marketplace/components/PromoPopup";
 import { CANONICAL_URLS } from "@/lib/seo";
 
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
                         <FavouritesProvider>{children}</FavouritesProvider>
                         <PromoPopup />
                         <FeedbackButton />
+                        <AnalyticsPageView />
                         <Toaster
                             position="bottom-center"
                             toastOptions={{

@@ -9,6 +9,7 @@ import {
     useGrocerySettings,
     useLaundrySettings,
 } from "@/app/hooks/useCartData";
+import { setAnalyticsContext, track } from "@/lib/analytics";
 import { cartReducer, initialState } from "./cartReducer";
 import * as Pricing from "@/lib/cartPricing";
 import type { CampusPreOrderConfig, MinOrderShortfall } from "@/lib/cartPricing";
@@ -110,6 +111,7 @@ export function CartProvider({ children }: { children: ReactNode }) {
         if (typeof window !== "undefined") {
             localStorage.setItem("pumato_user_details", JSON.stringify(state.userDetails));
         }
+        setAnalyticsContext({ campus: state.userDetails.campus || null });
     }, [state.userDetails]);
 
     // --- Derived State (Memoized Calculation) ---
@@ -152,6 +154,12 @@ export function CartProvider({ children }: { children: ReactNode }) {
 
     const addToCart = (item: CartItemInput, quantityDelta = 1) => {
         dispatch({ type: "ADD_ITEM", payload: { item, quantityDelta } });
+        track("add_to_cart", {
+            restaurantId: item.restaurantId,
+            itemId: item.id,
+            quantity: quantityDelta,
+            source: "unknown",
+        });
     };
     const removeFromCart = (key: string) => dispatch({ type: "REMOVE_ITEM", payload: key });
     const updateQuantity = (key: string, delta: number) =>

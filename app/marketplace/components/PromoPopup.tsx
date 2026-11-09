@@ -9,6 +9,7 @@ import { X, Package } from "lucide-react";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { useCart } from "@/app/context/CartContext";
 import { isInCooldown, normalizePromotion } from "@/lib/marketplacePromotions";
+import { track } from "@/lib/analytics";
 import type { MarketplaceListing } from "@/lib/types";
 
 const DISMISSALS_KEY = "pumato_promo_dismissals";
@@ -82,6 +83,15 @@ export default function PromoPopup() {
         recordDismissal(listing!.id);
         setListing(null);
     };
+
+    useEffect(() => {
+        if (!listing) return;
+        track("promo_impression", {
+            listingId: listing.id,
+            placement: "popup",
+            surface: "",
+        });
+    }, [listing]);
 
     useEffect(() => {
         if (!listing) return;
@@ -161,7 +171,14 @@ export default function PromoPopup() {
                                 </button>
                                 <Link
                                     href={`/marketplace?id=${listing.id}`}
-                                    onClick={() => close()}
+                                    onClick={() => {
+                                        track("promo_clicked", {
+                                            listingId: listing.id,
+                                            placement: "popup",
+                                            surface: "",
+                                        });
+                                        close();
+                                    }}
                                     className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-center transition-colors"
                                 >
                                     View

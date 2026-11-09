@@ -5,12 +5,18 @@ import { useRouter } from "next/navigation";
 import { db } from "@/lib/firebase";
 import { COLLECTIONS } from "@/lib/constants";
 import { collection, getDocs, query, where, orderBy, Timestamp } from "firebase/firestore";
+import { fetchAnalyticsDaily } from "@/lib/repositories/analytics";
+import type { DailyRollup } from "@/lib/analytics";
 import { ArrowLeft, RefreshCw, Loader2 } from "lucide-react";
 import FilterBar from "./components/FilterBar";
 import MetricsCards from "./components/MetricsCards";
 import RevenueChart from "./components/RevenueChart";
 import DelayBreakdown from "./components/DelayBreakdown";
 import OtherMetrics from "./components/OtherMetrics";
+import SearchAnalytics from "./components/SearchAnalytics";
+import TrendingAnalytics from "./components/TrendingAnalytics";
+import PromoAnalytics from "./components/PromoAnalytics";
+import RestaurantAnalytics from "./components/RestaurantAnalytics";
 import type { DateRange } from "./components/FilterBar";
 import type { DelayStage } from "./components/DelayBreakdown";
 
@@ -191,6 +197,11 @@ export default function AnalyticsPage() {
     const [orders, setOrders] = useState<AnalyticsOrder[]>([]);
     const [preset, setPreset] = useState<Preset | null>("30days");
     const [customRange, setCustomRange] = useState<DateRange>({ start: null, end: null });
+    const [tab, setTab] = useState<"orders" | "search" | "trending" | "promos" | "restaurants">(
+        "orders"
+    );
+    const [analytics, setAnalytics] = useState<DailyRollup[]>([]);
+    const [analyticsLoading, setAnalyticsLoading] = useState(false);
 
     const fetchOrders = useCallback(
         async (isRefresh = false) => {
@@ -209,14 +220,19 @@ export default function AnalyticsPage() {
                     endDate = range.end;
                 }
 
-                const q = query(
-                    collection(db, COLLECTIONS.ORDERS),
-                    where("createdAt", ">=", Timestamp.fromDate(startDate)),
-                    where("createdAt", "<=", Timestamp.fromDate(endDate)),
-                    orderBy("createdAt", "desc")
-                );
+                setAnalyticsLoading(true);
+                const [snapshot, rollups] = await Promise.all([
+                    getDocs(
+                        query(
+                            collection(db, COLLECTIONS.ORDERS),
+                            where("createdAt", ">=", Timestamp.fromDate(startDate)),
+                            where("createdAt", "<=", Timestamp.fromDate(endDate)),
+                            orderBy("createdAt", "desc")
+                        )
+                    ),
+                    fetchAnalyticsDaily(startDate, endDate),
+                ]);
 
-                const snapshot = await getDocs(q);
                 const ordersData = snapshot.docs.map((doc): AnalyticsOrder => ({
                     id: doc.id,
                     ...doc.data(),
@@ -231,11 +247,13 @@ export default function AnalyticsPage() {
                 }));
 
                 setOrders(ordersData);
+                setAnalytics(rollups);
             } catch (error) {
                 console.error("Error fetching orders:", error);
             } finally {
                 setLoading(false);
                 setRefreshing(false);
+                setAnalyticsLoading(false);
             }
         },
         [preset, customRange]
@@ -290,17 +308,47 @@ export default function AnalyticsPage() {
                     onCustomRangeChange={handleCustomRangeChange}
                 />
 
-                {loading ? (
+                <div className="flex flex-wrap gap-2 mb-6">
+                    {[
+                        { id: "orders", label: "Orders" },
+                        { id: "search", label: "Search" },
+                        { id: "trending", label: "Trending" },
+                        { id: "promos", label: "Promotions" },
+                        { id: "restaurants", label: "Restaurants" },
+                    ].map((t) => (
+                        <button
+                            key={t.id}
+                            onClick={() => setTab(t.id as typeof tab)}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all ${
+                                tab === t.id
+                                    ? "bg-orange-600 text-white"
+                                    : "text-gray-400 hover:text-white hover:bg-white/5"
+                            }`}
+                        >
+                            {t.label}
+                        </button>
+                    ))}
+                </div>
+
+                {loading || analyticsLoading ? (
                     <div className="flex items-center justify-center py-20">
                         <Loader2 size={40} className="animate-spin text-orange-500" />
                     </div>
-                ) : (
+                ) : tab === "orders" ? (
                     <>
                         <MetricsCards metrics={metrics} />
                         <RevenueChart data={metrics.chartData} />
                         <DelayBreakdown breakdown={metrics.breakdown} />
                         <OtherMetrics metrics={metrics} />
                     </>
+                ) : tab === "search" ? (
+                    <SearchAnalytics rollups={analytics} />
+                ) : tab === "trending" ? (
+                    <TrendingAnalytics rollups={analytics} />
+                ) : tab === "promos" ? (
+                    <PromoAnalytics rollups={analytics} />
+                ) : (
+                    <RestaurantAnalytics rollups={analytics} />
                 )}
             </div>
         </div>

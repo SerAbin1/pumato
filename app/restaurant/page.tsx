@@ -29,6 +29,7 @@ import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { planInsertions } from "@/lib/marketplacePromotions";
 import { plainCartLine } from "@/lib/restaurants/menuItem";
 import SponsoredListingCard from "@/app/marketplace/components/SponsoredListingCard";
+import { track } from "@/lib/analytics";
 import type { MarketplaceListing, MenuItem, Restaurant } from "@/lib/types";
 
 const SEARCH_DEBOUNCE_MS = 200;
@@ -189,6 +190,17 @@ function RestaurantContent() {
 
         return finalMenu;
     }, [restaurant, filteredMenu, menuFuse, searchTerm, sortOrder, seed]);
+
+    useEffect(() => {
+        if (!searchTerm || !restaurant) return;
+        const count = Object.values(processedMenu).flat().length;
+        track("search_submitted", {
+            scope: "restaurant_menu",
+            query: searchTerm,
+            resultCount: count,
+            restaurantId: restaurant.id,
+        });
+    }, [searchTerm, processedMenu, restaurant]);
 
     const promos = usePromotedListings("inFeed", "restaurant_menu");
     // Item id -> sponsored listing shown right after it. Skipped while searching.
@@ -740,6 +752,7 @@ function RestaurantContent() {
                                                                     listing={sponsoredAfter.get(
                                                                         item.id
                                                                     )!}
+                                                                    surface="restaurant_menu"
                                                                 />
                                                             )}
                                                         </Fragment>

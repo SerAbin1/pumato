@@ -19,6 +19,7 @@ import { shuffleRestaurants } from "@/lib/shuffle";
 import usePromotedListings from "@/app/hooks/usePromotedListings";
 import { resolveTrending, loadTrendingEntries, TRENDING_MIN_ITEMS } from "@/lib/trending";
 import { fetchTrending } from "@/lib/repositories";
+import { track } from "@/lib/analytics";
 import { plainCartLine } from "@/lib/restaurants/menuItem";
 import type { TrendingEntry } from "@/lib/trending";
 import type { PromoBanners, Restaurant } from "@/lib/types";
@@ -107,6 +108,12 @@ export default function DeliveryPage() {
         () => resolveTrending(trendingEntries, restaurants),
         [trendingEntries, restaurants]
     );
+
+    useEffect(() => {
+        if (trendingItems.length >= TRENDING_MIN_ITEMS) {
+            track("trending_section_viewed", { itemCount: trendingItems.length });
+        }
+    }, [trendingItems.length]);
 
     // Fetch restaurants on load
     useEffect(() => {
@@ -211,6 +218,15 @@ export default function DeliveryPage() {
 
         return { filteredRestaurants: allMatchedRestaurants, filteredFoods: matchedFoods };
     }, [restaurants, searchIndex, activeQuery]);
+
+    useEffect(() => {
+        if (activeQuery.length < SEARCH_MIN_CHARS) return;
+        track("search_submitted", {
+            scope: "global",
+            query: activeQuery,
+            resultCount: filteredRestaurants.length + filteredFoods.length,
+        });
+    }, [activeQuery, filteredRestaurants.length, filteredFoods.length]);
 
     return (
         <main className="min-h-screen bg-black text-white relative overflow-x-hidden">
@@ -406,7 +422,17 @@ export default function DeliveryPage() {
                                     >
                                         <Link
                                             href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
-                                            onClick={() => saveSearch(searchQuery)}
+                                            onClick={() => {
+                                                saveSearch(searchQuery);
+                                                track("search_result_clicked", {
+                                                    scope: "global",
+                                                    resultType: "dish",
+                                                    targetRestaurantId: item.restaurantId,
+                                                    targetItemId: item.id,
+                                                    position: idx,
+                                                    query: activeQuery,
+                                                });
+                                            }}
                                             className="flex items-center gap-4 flex-1 min-w-0"
                                         >
                                             <div className="flex-1 min-w-0">
@@ -435,7 +461,17 @@ export default function DeliveryPage() {
                                         ) : needsChoice ? (
                                             <Link
                                                 href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
-                                                onClick={() => saveSearch(searchQuery)}
+                                                onClick={() => {
+                                                    saveSearch(searchQuery);
+                                                    track("search_result_clicked", {
+                                                        scope: "global",
+                                                        resultType: "dish",
+                                                        targetRestaurantId: item.restaurantId,
+                                                        targetItemId: item.id,
+                                                        position: idx,
+                                                        query: activeQuery,
+                                                    });
+                                                }}
                                                 className="bg-white/10 text-white px-3 py-2 rounded-xl font-black text-[10px] hover:bg-white/20 transition-colors tracking-widest"
                                             >
                                                 CUSTOMIZE
@@ -482,6 +518,13 @@ export default function DeliveryPage() {
                                     <Link
                                         href={`/restaurant?id=${item.restaurantId}&highlight=${encodeURIComponent(item.name)}`}
                                         className="min-w-0"
+                                        onClick={() =>
+                                            track("trending_item_clicked", {
+                                                restaurantId: item.restaurantId,
+                                                itemId: item.id,
+                                                position: idx,
+                                            })
+                                        }
                                     >
                                         <span className="text-[10px] font-black text-orange-400 uppercase tracking-widest">
                                             #{idx + 1}

@@ -386,6 +386,16 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    // --- Analytics: clients write via Cloud Functions; admins read rollups ---
+    match /analytics_events/{eventId} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+    match /analytics_daily/{day} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
     // --- Catch-all: admin write only, no public read for unlisted collections ---
     match /{document=**} {
       allow write, read: if isAdmin();

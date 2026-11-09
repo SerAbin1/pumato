@@ -73,6 +73,8 @@ export const RiderSchema = z.object({
     status: z.enum(RIDER_STATUSES),
     // Set by the approved rider from their dashboard; online riders get ride requests.
     online: z.boolean().optional(),
+    // Last client heartbeat (or action) time; the sweep marks riders offline when stale.
+    lastActiveAt: z.any().optional(),
     // Kept by the onRideRequestUpdated function as users rate this rider's rides.
     ratingSum: z.number().int().optional(),
     ratingCount: z.number().int().optional(),

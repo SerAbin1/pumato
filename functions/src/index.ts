@@ -2,6 +2,7 @@
 import "./app";
 
 export { manageCoupons } from "./manage-coupons";
+export { markInactiveRidersOffline } from "./rider-presence";
 export { checkoutCoupon } from "./checkout-coupon";
 export { manageUsers } from "./manage-users";
 export { sendFcmNotification } from "./send-fcm-notification";

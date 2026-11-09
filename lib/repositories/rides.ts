@@ -133,7 +133,46 @@ export async function setRiderGender(uid: string, gender: RiderGender): Promise<
 }
 
 export async function setRiderOnline(uid: string, online: boolean): Promise<void> {
-    await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), { online, updatedAt: serverTimestamp() });
+    await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), {
+        online,
+        lastActiveAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+}
+
+export async function touchRiderActivity(uid: string): Promise<void> {
+    await updateDoc(doc(db, COLLECTIONS.RIDERS, uid), {
+        lastActiveAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+    });
+}
+
+const HEARTBEAT_KEY = (uid: string) => `pumato:rider:lastHeartbeat:${uid}`;
+const HEARTBEAT_MIN_MS = 7 * 60 * 1000;
+
+export async function maybeTouchRiderActivity(uid: string): Promise<void> {
+    let last = 0;
+    try {
+        last = Number(localStorage.getItem(HEARTBEAT_KEY(uid)) || 0);
+    } catch {
+        last = 0;
+    }
+    if (Date.now() - last < HEARTBEAT_MIN_MS) return;
+    try {
+        localStorage.setItem(HEARTBEAT_KEY(uid), String(Date.now()));
+    } catch {
+        // ignore storage errors; still attempt the write
+    }
+    try {
+        await touchRiderActivity(uid);
+    } catch (error) {
+        try {
+            localStorage.removeItem(HEARTBEAT_KEY(uid));
+        } catch {
+            // ignore
+        }
+        throw error;
+    }
 }
 
 export type RideBooking = Pick<

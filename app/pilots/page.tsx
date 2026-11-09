@@ -51,6 +51,7 @@ import {
     fetchRidesSettings,
     RIDE_TAKEN,
     setRiderOnline,
+    maybeTouchRiderActivity,
     subscribeRider,
     subscribeRiderCompletedRides,
     subscribePendingRides,
@@ -471,6 +472,7 @@ function RideRequests({
         setAccepting(ride.id);
         try {
             await acceptRide(ride.id, { uid: rider.uid, name: rider.name });
+            void maybeTouchRiderActivity(rider.uid).catch(() => {});
             const at = scheduledTime(ride);
             toast.success(
                 at && !isDueSoon(at, new Date(), schedule)
@@ -785,6 +787,19 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
     const hasActiveRide =
         myRides === null ? null : myRides.some((r) => occupiesRider(r, now, schedule));
 
+    // Heartbeat: keep lastActiveAt fresh while the dashboard is open and online.
+    useEffect(() => {
+        if (!online) return;
+        void maybeTouchRiderActivity(user.uid).catch(() => {});
+        const onVisible = () => {
+            if (document.visibilityState === "visible") {
+                void maybeTouchRiderActivity(user.uid).catch(() => {});
+            }
+        };
+        document.addEventListener("visibilitychange", onVisible);
+        return () => document.removeEventListener("visibilitychange", onVisible);
+    }, [online, user.uid]);
+
     useEffect(() => {
         fetchRidesSettings()
             .then((s) => setSchedule(s.schedule))
@@ -795,6 +810,7 @@ function Dashboard({ user, rider }: { user: User; rider: Rider }) {
         setBusy(true);
         try {
             await setRiderOnline(user.uid, !online);
+            void maybeTouchRiderActivity(user.uid).catch(() => {});
         } catch (error) {
             console.error("Failed to change online status:", error);
             toast.error("Couldn't change your status. Please try again.");

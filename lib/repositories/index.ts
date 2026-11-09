@@ -63,6 +63,8 @@ export {
     subscribeRider,
     submitRiderApplication,
     setRiderOnline,
+    touchRiderActivity,
+    maybeTouchRiderActivity,
     setRiderCampus,
     setRiderGender,
     acceptRide,

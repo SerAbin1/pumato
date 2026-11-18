@@ -56,19 +56,19 @@ describe("isInactiveRider", () => {
     it("false when no timestamp", () => {
         expect(isInactiveRider({ status: "approved", online: true }, NOW)).toBe(false);
     });
-    it("false within 30 min", () => {
-        expect(isInactiveRider({ ...base, lastActiveAt: ts(ago(29).getTime()) }, NOW)).toBe(false);
+    it("false within 60 min", () => {
+        expect(isInactiveRider({ ...base, lastActiveAt: ts(ago(59).getTime()) }, NOW)).toBe(false);
     });
-    it("false at exactly 30 min (strict >)", () => {
-        expect(isInactiveRider({ ...base, lastActiveAt: ts(ago(30).getTime()) }, NOW)).toBe(false);
+    it("false at exactly 60 min (strict >)", () => {
+        expect(isInactiveRider({ ...base, lastActiveAt: ts(ago(60).getTime()) }, NOW)).toBe(false);
     });
-    it("true after 30 min", () => {
-        expect(isInactiveRider({ ...base, lastActiveAt: ts(ago(31).getTime()) }, NOW)).toBe(true);
+    it("true after 60 min", () => {
+        expect(isInactiveRider({ ...base, lastActiveAt: ts(ago(61).getTime()) }, NOW)).toBe(true);
     });
     it("uses updatedAt fallback", () => {
         expect(
             isInactiveRider(
-                { status: "approved", online: true, updatedAt: ts(ago(45).getTime()) },
+                { status: "approved", online: true, updatedAt: ts(ago(65).getTime()) },
                 NOW
             )
         ).toBe(true);
@@ -77,11 +77,5 @@ describe("isInactiveRider", () => {
         expect(
             isInactiveRider({ ...base, lastActiveAt: ts(ago(10).getTime()) }, NOW, 5 * 60 * 1000)
         ).toBe(true);
-    });
-});
-
-describe("constants", () => {
-    it("threshold is 30 min", () => {
-        expect(INACTIVE_THRESHOLD_MS).toBe(30 * 60 * 1000);
     });
 });

@@ -3,8 +3,13 @@
  * Firebase imports, so they can be unit-tested directly.
  */
 
-/** 30 minutes of inactivity marks a rider offline. */
-export const INACTIVE_THRESHOLD_MS = 30 * 60 * 1000;
+/**
+ * 60 minutes of inactivity marks a rider offline.
+ * might take anywhere from 60-90mins to be marked offline
+ * due to function cron schedule
+ */
+
+export const INACTIVE_THRESHOLD_MS = 60 * 60 * 1000;
 
 /** 7 minutes between client heartbeats. */
 export const HEARTBEAT_MIN_MS = 7 * 60 * 1000;

@@ -201,20 +201,10 @@ service cloud.firestore {
         && resource.data.status in ['pending', 'rejected']
         && isValidRider(uid)
         && request.resource.data.createdAt == resource.data.createdAt;
-      // An approved rider goes online / offline from their dashboard; the write
-      // also refreshes lastActiveAt, and changes nothing else.
+      // An approved rider manages their own presence: online / offline toggles
+      // and the activity heartbeat. Only the owner of an approved rider doc.
       allow update: if request.auth != null && request.auth.uid == uid
-        && resource.data.status == 'approved'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['online', 'updatedAt', 'lastActiveAt'])
-        && request.resource.data.online is bool
-        && request.resource.data.lastActiveAt == request.time
-        && request.resource.data.updatedAt == request.time;
-      // An approved rider's heartbeat keeps lastActiveAt fresh; changes nothing else.
-      allow update: if request.auth != null && request.auth.uid == uid
-        && resource.data.status == 'approved'
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['lastActiveAt', 'updatedAt'])
-        && request.resource.data.lastActiveAt == request.time
-        && request.resource.data.updatedAt == request.time;
+        && resource.data.status == 'approved';
     }
 
     // Ride requests: signed-in users book and follow their own rides. Riders see

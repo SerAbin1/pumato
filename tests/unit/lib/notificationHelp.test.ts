@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vite-plus/test";
-import { isIOS, unblockSteps } from "@/lib/notificationHelp";
+import { isIOS, unblockSteps, homeScreenSteps } from "@/lib/notificationHelp";
 
 const UA = {
     iphone: "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Mobile/15E148 Safari/604.1",
@@ -13,6 +13,8 @@ const UA = {
     androidFirefox: "Mozilla/5.0 (Android 14; Mobile; rv:131.0) Gecko/131.0 Firefox/131.0",
     macSafari:
         "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.5 Safari/605.1.15",
+    chromeIOS:
+        "Mozilla/5.0 (iPhone; CPU iPhone OS 17_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/130.0.0.0 Mobile/15E148 Safari/604.1",
 };
 
 describe("isIOS", () => {
@@ -52,5 +54,26 @@ describe("unblockSteps", () => {
         expect(unblockSteps(UA.macSafari, 0)).toMatch(
             /Safari → Settings → Websites → Notifications/
         );
+    });
+});
+
+describe("homeScreenSteps", () => {
+    it("walks Safari on iPhone through Add to Home Screen and the permission prompt", () => {
+        const steps = homeScreenSteps(UA.iphone, 5);
+        expect(steps).toMatch(/Share/);
+        expect(steps).toMatch(/Add to Home Screen/);
+        expect(steps).toMatch(/allow/i);
+    });
+
+    it("sends other iOS browsers to Safari before adding to the home screen", () => {
+        const steps = homeScreenSteps(UA.chromeIOS, 5);
+        expect(steps).toMatch(/Safari/);
+        expect(steps).toMatch(/Add to Home Screen/);
+    });
+
+    it("says nothing on platforms where a browser tab already gets notifications", () => {
+        expect(homeScreenSteps(UA.androidChrome, 5)).toBeNull();
+        expect(homeScreenSteps(UA.desktopChrome, 0)).toBeNull();
+        expect(homeScreenSteps(UA.macSafari, 0)).toBeNull();
     });
 });

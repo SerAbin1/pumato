@@ -70,7 +70,7 @@ import type {
     Rider,
     RideSchedule,
 } from "@/lib/types";
-import { isIOS, unblockSteps } from "@/lib/notificationHelp";
+import { isIOS, unblockSteps, homeScreenSteps } from "@/lib/notificationHelp";
 import AuthCard from "../rides/components/AuthCard";
 import RidesShell, { mainColumn, sideColumn, Steps } from "../rides/components/RidesShell";
 import { AutoCancelTimer } from "../rides/components/AutoCancelTimer";
@@ -726,11 +726,11 @@ function NotificationNotice({
     if (homeScreen) {
         message = (
             <>
-                iPhone browsers don&apos;t show notifications from websites, so you won&apos;t hear
-                about new requests. Check this page now and then.
+                On iPhone, notifications only work in Safari and only for Pumato added to your home
+                screen — a browser tab can&apos;t show them, so you won&apos;t hear about new
+                requests here. Check this page now and then.
                 <span className="block mt-2 text-orange-200/70">
-                    To get notifications, tap <b>Share</b> → <b>Add to Home Screen</b>, then open
-                    Pumato from your home screen.
+                    {homeScreenSteps(navigator.userAgent, navigator.maxTouchPoints)}
                 </span>
             </>
         );
